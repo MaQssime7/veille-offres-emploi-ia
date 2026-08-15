@@ -1,14 +1,40 @@
 # Veille offres emploi IA
 
-Agent de veille quotidienne sur les offres d'emploi dans l'IA.
-Récupère les offres via l'API France Travail, les évalue selon des
-critères de pertinence définis, et génère une synthèse classée.
+Agent de veille quotidienne sur les offres d'emploi dans l'IA. Récupère les
+offres via l'API France Travail, les évalue selon des critères de pertinence
+définis, et présente un classement dans une interface web.
+
+Chaque offre reçoit **deux notes séparées** : l'*intérêt* (le sujet
+correspond-il ?) et l'*accessibilité* (ai-je une chance d'être retenu ?). Elles
+ne sont jamais fusionnées, parce qu'un poste passionnant mais hors de portée et
+un poste tiède mais accessible n'appellent pas la même décision.
+
+## Architecture
+
+```
+GitHub Actions (cron quotidien)  →  pipeline Python  →  Supabase (Postgres)
+                                                              ↑
+                                    Vercel + Next.js + shadcn/ui (lecture serveur)
+```
+
+Le pipeline se découpe en trois étapes, et la frontière entre elles est la
+décision d'architecture centrale du projet :
+
+| Étape | Outil | Pourquoi |
+|---|---|---|
+| **Collecte** | Python, sans IA | Un appel d'API et une écriture en base n'ont besoin d'aucun modèle |
+| **Notation** | API Messages (`anthropic`), sortie structurée | Une entrée, une sortie, aucune exploration : un agent y serait plus lent, plus cher et non déterministe pour aucun gain |
+| **Enrichissement** | Claude Agent SDK | Enquête ouverte et multi-étapes sur l'entreprise : c'est exactement ce pour quoi un agent existe |
 
 ## Stack
 
-- Claude Agent SDK
-- API France Travail (Offres d'emploi v2)
-- SQLite
+- Python 3.11+ (pipeline)
+- Next.js + shadcn/ui, hébergé sur Vercel (interface)
+- Supabase / Postgres (persistance)
+- GitHub Actions (déclenchement quotidien)
+- API France Travail — Offres d'emploi v2
+- API Anthropic — `anthropic` pour la notation, `claude-agent-sdk` pour
+  l'enrichissement
 
 ## Configuration
 
@@ -24,10 +50,23 @@ Les variables attendues :
 |---|---|
 | `FT_CLIENT_ID` | Identifiant client de l'API France Travail |
 | `FT_CLIENT_SECRET` | Clé secrète de l'API France Travail |
-| `ANTHROPIC_API_KEY` | Clé d'API Anthropic (Claude Agent SDK) |
+| `ANTHROPIC_API_KEY` | Clé d'API Anthropic |
+| `SUPABASE_URL` | URL du projet Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clé d'accès serveur à la base |
 
 Le fichier `.env` n'est jamais commité — il est exclu par le `.gitignore`.
 
+⚠️ `SUPABASE_SERVICE_ROLE_KEY` contourne toutes les règles de sécurité de la
+base. Elle ne doit jamais atteindre le navigateur : ni dans une variable
+`NEXT_PUBLIC_*`, ni dans un composant client, ni dans ce dépôt.
+
+## Documentation
+
+| Fichier | Contenu |
+|---|---|
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Les décisions de cadrage et **leur justification** |
+| `CLAUDE.md` | Règles de travail et pièges techniques établis |
+
 ## Statut
 
-En cours de développement.
+En cours de cadrage. Le pipeline n'est pas encore écrit.
