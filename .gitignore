@@ -1,0 +1,17 @@
+# Secrets — jamais commités
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Base de données locale
+*.db
+*.sqlite3
+
+# macOS
+.DS_Store
