@@ -1,13 +1,30 @@
 # CLAUDE.md — Veille offres emploi IA
 
-Ce fichier est lu à chaque session de Claude Code dans ce dépôt. Il complète le
-`CLAUDE.md` global de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
+Lu à chaque session de Claude Code dans ce dépôt. Complète le `CLAUDE.md` global
+de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
+
+## Où trouver quoi
+
+| Sujet | Où |
+|---|---|
+| **Pourquoi** une décision de cadrage est ce qu'elle est · questions encore ouvertes | `docs/DECISIONS.md` |
+| API France Travail : authentification, pagination, quota, cas limites | `docs/API_FRANCE_TRAVAIL.md` |
+| API Anthropic : modèles, paramètres, sortie structurée, cache, batches | référence `/claude-api` |
+| Claude Agent SDK : surface d'API | `code.claude.com/docs/en/agent-sdk` |
+| Ce que le produit doit faire · dans quel ordre le construire | `docs/PRD.md` · `docs/PLAN.md` *(à venir)* |
+
+**Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
+comportement sur *n'importe quelle* tâche du projet. Toute référence propre à un
+module — paramètres d'API, schémas, procédures — part dans `docs/` avec un
+pointeur impératif ici. Une section qui dépasse une vingtaine de lignes de détail
+technique doit sortir. Sans cette règle, ce fichier fait 800 lignes dans un mois
+et personne ne le lit plus.
 
 ## Le projet
 
 Agent de veille quotidienne sur les offres d'emploi dans l'IA. Le pipeline :
 récupérer les offres via l'API France Travail → les évaluer contre des critères
-de pertinence → produire une synthèse classée.
+de pertinence → présenter un classement dans une interface web.
 
 **Deux usages, pas un seul.** Le projet sert à Maxime pour sa recherche d'emploi
 *et* de vitrine technique en entretien — le dépôt est public
@@ -20,218 +37,118 @@ de pertinence → produire une synthèse classée.
 - Le README est la première chose lue. Il doit rester à jour quand
   l'architecture bouge.
 
-## État actuel (au 15 août 2026)
+## État actuel (au 16 août 2026)
 
-Squelette seulement : `README.md`, `.gitignore`, `.env.example`. **Aucun code
-Python n'existe encore.** Pas de `docs/PRD.md`, pas de `docs/PLAN.md`.
+Squelette et documentation de cadrage. **Aucun code n'existe encore** — ni
+Python, ni Next.js. Pas de `docs/PRD.md`, pas de `docs/PLAN.md`.
 
-Avant d'écrire la première ligne de pipeline, passer par `/cadre` puis
-`/planifie` — le découpage en phases n'existe pas et le construire à l'aveugle
-produirait du jetable.
+Le cadrage a avancé le 16 août 2026 : critères de recherche, notation à deux
+axes, forme du livrable, stack et règles de sécurité sont tranchés dans
+`docs/DECISIONS.md`. **Ces décisions sont acquises — ne pas les rouvrir.**
+
+Prochaine étape : `/cadre` puis `/planifie`. Ne pas écrire de pipeline avant : le
+découpage en phases n'existe pas, et le construire à l'aveugle produit du jetable.
 
 ## Stack
 
-- **Python 3.11+**, environnement virtuel dédié (voir Commandes).
-- **SQLite** pour la persistance (déduplication des offres, historique des
-  évaluations).
-- **API France Travail** — Offres d'emploi v2.
-- **API Anthropic** pour l'évaluation — voir la section dédiée, le choix de la
-  bibliothèque n'est pas celui que le README laisse entendre.
+Tranchée le 16 août 2026. Justifications dans `docs/DECISIONS.md` § 3.
 
-Pas de framework web pour l'instant. Si une interface devient nécessaire, la
-question se repose de zéro (`/planifie`), elle n'est pas tranchée ici.
+- **Python 3.11+** pour le pipeline, environnement virtuel dédié (voir Commandes).
+- **Supabase** (Postgres hébergé) pour la persistance. **Pas SQLite** : une
+  interface hébergée ne peut pas lire un fichier posé sur le Mac de Maxime.
+- **Next.js + shadcn/ui sur Vercel** pour l'interface.
+- **GitHub Actions** (cron) pour le déclenchement quotidien — Vercel est un
+  environnement JavaScript, il n'héberge pas un processus Python long.
+- **API France Travail** Offres d'emploi v2 · **API Anthropic** pour l'évaluation.
 
 ## Commandes
 
 Le `python3` par défaut de cette machine est celui d'Anaconda (`/opt/anaconda3`).
-**Ne pas installer les dépendances du projet dedans** — créer un environnement
-isolé, sinon les paquets du projet se mélangent à l'installation Anaconda
-globale et deviennent impossibles à démêler.
+**Ne pas installer les dépendances du projet dedans** — elles se mélangeraient à
+l'installation Anaconda globale et deviendraient impossibles à démêler.
 
 ```bash
-# Créer l'environnement (une seule fois)
-python3 -m venv .venv
-
-# L'activer (à chaque nouvelle session de terminal)
-source .venv/bin/activate
-
-# Installer les dépendances
+python3 -m venv .venv          # une seule fois
+source .venv/bin/activate      # à chaque nouvelle session de terminal
 pip install -r requirements.txt
-
-# Vérifier qu'on est dans le bon environnement
-which python   # doit afficher .../veille-offres-emploi-ia/.venv/bin/python
+which python                   # doit afficher .../veille-offres-emploi-ia/.venv/bin/python
 ```
 
-`.venv/` est exclu par le `.gitignore`. Si `which python` pointe vers
-`/opt/anaconda3`, l'environnement n'est pas activé — toute installation partira
-au mauvais endroit.
+Si `which python` pointe vers `/opt/anaconda3`, l'environnement n'est pas activé
+et toute installation partira au mauvais endroit. `.venv/` est exclu par le
+`.gitignore`.
 
-## API France Travail — Offres d'emploi v2
+## API France Travail
 
-**Paramètres vérifiés en conditions réelles le 15 août 2026** — authentification
-et appel de recherche testés avec succès contre les identifiants du projet. Ne
-pas les rechercher à nouveau, ils sont établis.
+⚠️ **Avant d'écrire une ligne du client de collecte, lire
+`docs/API_FRANCE_TRAVAIL.md`.** Les paramètres d'authentification, de pagination
+et de quota y sont **vérifiés en conditions réelles** — ne pas les rechercher à
+nouveau, ne pas les improviser. Les pièges qui font échouer *silencieusement* y
+sont documentés avec leur symptôme : scope exact, identifiants dans le corps et
+non en en-tête Basic, HTTP 206 sur réponse partielle, plafond de pagination,
+déduplication sur l'identifiant de l'offre.
 
-**Authentification** — OAuth2 `client_credentials`, sans interaction
-utilisateur. Un jeton de courte durée est obtenu contre l'identifiant et la clé
-secrète, puis envoyé en `Authorization: Bearer` sur chaque appel.
-
-```
-POST https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=%2Fpartenaire
-Content-Type: application/x-www-form-urlencoded
-
-grant_type=client_credentials
-client_id=<FT_CLIENT_ID>
-client_secret=<FT_CLIENT_SECRET>
-scope=api_offresdemploiv2 o2dsoffre
-```
-
-- **Le scope est exactement `api_offresdemploiv2 o2dsoffre`**, les deux valeurs
-  séparées par une espace. Pas de préfixe `application_<client_id>` — cette
-  variante échoue.
-- **Les identifiants vont dans le corps de la requête, pas en en-tête Basic.**
-  Une authentification `Authorization: Basic` est rejetée par le serveur avec
-  une page HTML d'erreur de contrôle d'accès en HTTP 409 — pas un JSON, ce qui
-  fait planter tout code qui suppose une réponse JSON sur le chemin d'erreur.
-- Un `invalid_client` en HTTP 400 alors que les identifiants sont bons signifie
-  presque toujours que **l'API n'est pas rattachée à l'application** sur
-  francetravail.io. Créer l'application ne suffit pas.
-- La clé secrète n'est affichée **qu'une fois**, à la création de l'application.
-  Perdue, elle ne se relit pas : il faut renouveler les identifiants, ce qui
-  invalide les anciens.
-
-**Recherche d'offres**
-
-```
-GET https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search
-Authorization: Bearer <jeton>
-```
-
-**Quota : 10 appels par seconde** pour cette application. Le pipeline doit
-espacer ses appels — une boucle de pagination sans temporisation le dépassera.
-
-**Pièges de pagination — le point qui casse en pratique.** Le paramètre `range`
-prend la forme `0-149` :
-
-- Maximum **150 résultats par appel**.
-- Plafond d'environ **1150 offres par recherche** (index maximum ~1149).
-  Au-delà, il faut affiner la requête — typiquement en découpant par date de
-  création — et non paginer davantage.
-- L'en-tête `Content-Range` de la réponse donne le total réellement disponible.
-  C'est lui qui doit piloter la boucle de pagination, pas une constante en dur.
-- Une réponse partielle renvoie **HTTP 206**, pas 200. Un code qui teste
-  `status_code == 200` rate silencieusement toutes les pages intermédiaires.
-
-**Cas limites à gérer dès la première version**, parce que personne ne les
-rattrapera ensuite : jeton expiré en milieu de pagination (le renouveler et
-reprendre, pas planter) ; réponse vide (zéro offre n'est pas une erreur) ;
-quota d'appels dépassé ; offre déjà présente en base (déduplication sur
-l'identifiant de l'offre, pas sur le titre).
-
-## La partie IA — décision prise, et où elle s'applique
+## La partie IA — la frontière est la décision centrale
 
 **Décision de Maxime (15 août 2026) : le Claude Agent SDK est retenu, et
-l'objectif d'apprentissage prime.** Ce projet sert à monter en compétence sur
-l'orchestration d'agents, qui est ce que les entreprises demandent. Ne pas
-rouvrir cette décision à chaque session.
+l'objectif d'apprentissage prime.** Ne pas rouvrir cette décision.
 
-Ce qu'il faut savoir pour la mettre en œuvre correctement, parce que les deux
-outils coexistent dans ce projet :
+Les deux outils coexistent dans ce projet, et les confondre est l'erreur à ne pas
+commettre :
 
 | | Ce que c'est | Ce qu'il fait ici |
 |---|---|---|
-| `claude-agent-sdk` | Claude Code en bibliothèque : boucle d'agent, outils Read/Write/Edit/Bash/Glob/Grep/WebSearch/WebFetch intégrés, MCP, sous-agents, permissions | L'enquête ouverte : enrichir les offres retenues |
-| `anthropic` (API Messages) | Un appel, une réponse structurée | La notation en volume : une offre → une note |
+| `claude-agent-sdk` | Claude Code en bibliothèque : boucle d'agent, outils Read/Write/Edit/Bash/Glob/Grep/WebSearch/WebFetch, MCP, sous-agents, permissions | L'enquête ouverte : enrichir les offres retenues |
+| `anthropic` (API Messages) | Un appel, une réponse structurée | La notation en volume : une offre → deux notes |
 
-**Le placement de la frontière est la décision d'architecture centrale de ce
-projet, et l'argument d'entretien le plus fort.** Un agent posé sur une tâche
-de classification (une entrée, une sortie, aucune exploration) est plus lent,
-plus cher et non déterministe pour aucun gain — un lead technique qui connaît
-le SDK le verra. Un agent posé sur une enquête ouverte (chercher l'entreprise,
-lire son site, croiser, rédiger une fiche) est exactement ce pour quoi le SDK
-existe, et ses outils web et fichier intégrés le font sans code maison.
+**Le placement de cette frontière est l'argument d'entretien le plus fort du
+projet.** Un agent posé sur une classification — une entrée, une sortie, aucune
+exploration — est plus lent, plus cher et non déterministe pour aucun gain, et un
+lead technique qui connaît le SDK le verra. Un agent posé sur une enquête ouverte
+— chercher l'entreprise, lire son site, croiser, rédiger une fiche — est
+exactement ce pour quoi le SDK existe.
 
-Découpage recommandé (à valider en `/cadre`) :
-
-1. **Collecte** — appel API France Travail, écriture en SQLite. Python simple,
-   zéro IA.
-2. **Notation** — API Messages, sortie structurée, traitement par lot. Rapide
-   et bon marché sur le volume.
-3. **Enrichissement** — Claude Agent SDK, sur les quelques offres retenues.
-   Tâche ouverte, multi-étapes, imprévisible : le vrai terrain d'un agent.
+Découpage en trois étapes (collecte / notation / enrichissement) : voir le README
+et `docs/DECISIONS.md` § 3. Il reste une recommandation, à valider en `/cadre`.
 
 ⚠️ **Avant d'écrire du code Agent SDK, lire la documentation officielle**
-(`code.claude.com/docs/en/agent-sdk`). La référence `/claude-api` de cette
-machine couvre l'API Messages et les Managed Agents — elle ne couvre **pas** le
-Agent SDK, et improviser sa surface d'API produirait du code faux.
+(`code.claude.com/docs/en/agent-sdk`). La référence `/claude-api` couvre l'API
+Messages et les Managed Agents — **pas** le Agent SDK. Improviser sa surface
+d'API produit du code faux. Le SDK fournit la boucle d'agent et les outils,
+**pas l'hébergement**.
 
-Le SDK fournit la boucle d'agent et les outils, **pas l'hébergement** : c'est
-au projet de décider où le processus tourne.
-
-Pour la partie API Messages (étape 2) :
-
-- Paquet : `pip install anthropic`
-- Modèle par défaut : `claude-opus-5`. Pour une classification en volume,
-  `claude-haiku-4-5` coûte 5× moins cher — l'arbitrage est celui de Maxime,
-  pas le mien, et se pose dans la conversation.
-- **Sortie structurée** (`output_config.format` avec un schéma JSON) plutôt que
-  parser du texte libre. Une note et une justification par offre, garanties
-  bien formées.
-- **Mise en cache du prompt** (`cache_control`) : les critères de pertinence
-  sont identiques d'une offre à l'autre. Les mettre en préfixe stable et les
-  marquer divise leur coût par dix sur les appels suivants.
-- **API Batches** : la veille est quotidienne et non urgente. Un traitement par
-  lot coûte 50 % moins cher qu'appel par appel.
-- Vérifier `stop_reason` avant de lire `response.content` — lire `content[0]`
-  sans contrôle casse sur un refus.
-
-Avant d'écrire du code appelant l'API Anthropic, charger la référence
-`/claude-api` — les identifiants de modèles et les paramètres changent, et un
-identifiant inventé renvoie une 404.
+⚠️ **Avant d'écrire du code appelant l'API Anthropic, charger `/claude-api`.**
+Les identifiants de modèles et les paramètres changent ; un identifiant inventé
+renvoie une 404.
 
 ## Sécurité — non négociable
 
-Les clés de ce projet donnent accès à un compte facturé. Règles dures :
+Les clés de ce projet donnent accès à un compte facturé et à une base de données.
 
-1. **Aucune clé en clair dans le code, jamais.** Les secrets vivent dans
-   `.env`, lu via `os.environ`. `.env` est exclu par le `.gitignore` — vérifier
-   la sortie de `git status` avant chaque commit ; si `.env` y apparaît,
-   s'arrêter.
+1. **Aucune clé en clair dans le code, jamais.** Les secrets vivent dans `.env`,
+   lu via `os.environ`. `.env` est exclu par le `.gitignore` — vérifier la sortie
+   de `git status` avant chaque commit ; si `.env` y apparaît, s'arrêter.
 2. **Aucune clé dans la conversation, les logs ou un message d'erreur.** Un
    `print(config)` qui affiche le jeton finit dans un terminal, une capture
    d'écran, un dépôt public.
-3. **Le dépôt est public.** Des robots scannent GitHub en continu à la
-   recherche de clés commitées et les exploitent en minutes, aux frais du
-   propriétaire. Une clé poussée par erreur est compromise même après
-   suppression du fichier : elle reste dans l'historique Git. La révoquer,
-   pas seulement la supprimer.
-4. **Pas de données personnelles en base.** Les offres sont publiques ; les
-   coordonnées de contact qu'elles contiennent parfois ne le sont pas au sens
-   du RGPD. Ne stocker que ce dont le pipeline a besoin.
+3. **Le dépôt est public.** Des robots scannent GitHub en continu à la recherche
+   de clés commitées et les exploitent en minutes, aux frais du propriétaire. Une
+   clé poussée par erreur reste dans l'historique Git même après suppression du
+   fichier : la **révoquer**, pas seulement la supprimer.
+4. **Supabase : deux clés, deux rôles opposés.** La clé **anon** est publique par
+   conception. La clé **service_role** contourne *toutes* les règles de sécurité
+   de la base — jamais dans une variable `NEXT_PUBLIC_*`, jamais dans un composant
+   client, jamais commitée. RLS activé sur toutes les tables, et **le navigateur
+   ne parle jamais directement à Supabase** : tout passe par le serveur.
+5. **Aucun déclenchement d'agent accessible publiquement sans garde-fou.** Un
+   bouton en ligne qui lance un agent Claude sans protection est une facture
+   ouverte : un robot qui scanne les URL peut l'actionner en boucle.
+6. **Pas de données personnelles en base.** Les offres sont publiques ; les
+   coordonnées de contact qu'elles contiennent parfois ne le sont pas au sens du
+   RGPD. Ne stocker que ce dont le pipeline a besoin.
 
-Si un secret a déjà été commité : le révoquer côté France Travail / Anthropic
-**avant** de nettoyer l'historique. Le nettoyage seul ne protège rien.
-
-## Ce qui n'est pas tranché
-
-À ne pas décider en écrivant du code — ces questions se posent dans la
-conversation, et pour la plupart relèvent de `/cadre` :
-
-- **La forme du livrable quotidien** : fichier Markdown ? e-mail ? notification ?
-  interface web ? Ça commande toute l'architecture aval.
-- **Les critères de pertinence eux-mêmes** : métiers visés, localisation,
-  niveau d'expérience, taille d'entreprise. C'est le cœur du filtrage et
-  personne d'autre que Maxime ne les connaît.
-- **Le déclenchement** : lancement manuel, tâche planifiée locale (`cron`),
-  hébergement distant ?
-- **Le schéma de la base** : découle des trois points ci-dessus.
-- **La frontière agent / code déterministe** : le découpage en trois étapes
-  ci-dessus est une recommandation, pas une décision. À valider en `/cadre`.
-- **Un serveur MCP maison** pour exposer l'API France Travail à l'agent, au
-  lieu d'outils Python directs. Coût : une phase de plus. Bénéfice : MCP est le
-  protocole standard de branchement d'outils sur un agent, et c'est une
-  compétence recherchée au moins autant que le SDK lui-même. À arbitrer une
-  fois les trois étapes de base livrées, pas avant.
+Si un secret a déjà été commité : le révoquer côté France Travail / Anthropic /
+Supabase **avant** de nettoyer l'historique. Le nettoyage seul ne protège rien.
 
 ## Convention de travail
 
