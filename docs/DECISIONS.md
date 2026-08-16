@@ -178,11 +178,35 @@ streaming synchrone.
 
 Tout accès aux données passe par le serveur Next.js. Voir section 4.
 
-Nuance connue : Supabase Realtime écoute normalement depuis le navigateur avec
-la clé publique, ce qui suppose une politique de lecture sur la table concernée.
-Le choix — ouvrir cette seule table en lecture (elle ne contient que des lignes
-du type « je lis le site de X ») ou faire passer le flux par une route serveur —
-se tranchera à la construction.
+**Tranché au `/planifie` du 16 août 2026 : Supabase Realtime est écarté, le flux
+passe par une route serveur sondée toutes les 1,5 seconde.** Realtime écoute
+depuis le **navigateur**, avec la clé publique, ce qui obligerait à ouvrir une
+politique de lecture publique sur la table des étapes — en contradiction directe
+avec les deux règles dures de la section 4 (« RLS activé, aucune politique
+publique » et « le navigateur ne parle jamais directement à Supabase »). Une
+exception ouverte pour une seule table est exactement ce qui s'oublie et s'étend.
+
+Le coût est nul : un enrichissement dure au plus cinq minutes et produit une
+poignée d'étapes, soit au pire 200 requêtes sur toute sa durée, pour un site à un
+seul utilisateur. **Le rendu à l'écran est identique** — les étapes apparaissent
+au fil de l'eau, avec le fondu-glissé décalé de 130 ms prévu au `DESIGN.md`. Et
+l'argument d'entretien est meilleur, pas moins bon : refuser d'exposer sa base au
+navigateur pour un gain de confort nul se défend mieux qu'un WebSocket décoratif.
+
+**Comment le processus Python apprend qu'un enrichissement est demandé** — ce
+point manquait à la description ci-dessus. Le serveur Next.js **appelle l'API
+GitHub pour lancer le workflow sur-le-champ**. Un cron ne descend pas sous cinq
+minutes et se déclenche souvent avec dix à quinze minutes de retard : la
+démonstration en entretien, qui est un objectif produit explicite, deviendrait
+impossible. Le serveur écrit lui-même une première étape « Demande reçue » en
+moins d'une seconde ; la première étape produite par l'agent arrive 30 à 60
+secondes plus tard, le temps que GitHub alloue une machine.
+
+⚠️ Ce choix ajoute un **jeton GitHub** dans les variables Vercel. Il doit être
+limité à ce dépôt et au seul droit de lancer un workflow — s'il fuitait, on
+pourrait lancer en boucle le workflow qui détient la clé Anthropic. Et **il
+expire** : son expiration est une panne parfaitement silencieuse, où le site
+marche, la veille tourne, et seul le bouton « Enrichir » cesse d'agir.
 
 ---
 
@@ -296,17 +320,41 @@ tout le reste.
 3. **Relire chaque fichier** — chemin de machine, nom de client, clé oubliée dans
    un exemple. Un dépôt public est scanné par des robots en continu.
 
-## 8. Ce qui reste ouvert
+## 8. Tranché au `/planifie` du 16 août 2026
 
-| Question | Où ça se tranche |
+Les questions laissées ouvertes en cadrage sont fermées. Le détail est dans
+`docs/PLAN.md` ; seul le verdict et son motif sont rappelés ici.
+
+| Question | Verdict |
 |---|---|
-| Ordre de construction : enrichissement nocturne automatique d'abord, bouton manuel ensuite | `/planifie` |
-| Développement en local d'abord puis bascule vers Supabase, ou Supabase dès le premier jour | `/planifie` |
-| Modèle utilisé pour la notation en volume | Non tranché. Arbitrage de Maxime, à poser dans la conversation avant d'écrire l'étape de notation |
-| Serveur MCP maison pour exposer France Travail à l'agent | Après les trois étapes de base, comme prévu au `CLAUDE.md` |
+| **Ordre de construction de l'enrichissement** | **Manuel d'abord, automatique ensuite** — l'inverse de la recommandation d'origine, voir ci-dessous |
+| **Local d'abord ou Supabase dès le premier jour** | **Supabase dès le premier jour.** GitHub Actions ne peut pas lire un fichier posé sur le Mac : la couche de stockage serait à écrire deux fois, et la seconde fois avec des données réelles dedans |
+| **Modèle pour la notation en volume** | **`claude-sonnet-5`**, avec cache de prompt et API Batches. Écarte Haiku 4.5 dont le cache ne s'active qu'au-delà de 4 096 tokens : le fichier de critères passerait sous le seuil et ne serait **jamais mis en cache, silencieusement**. L'écart de coût entre les deux est d'environ 3 $ par mois — dérisoire face au risque d'un jugement mal étalonné sur le cœur du produit |
+| Serveur MCP maison pour exposer France Travail à l'agent | **Toujours ouvert.** Après les trois étapes de base, comme prévu au `CLAUDE.md` |
 
-**Recommandation en attente sur la première ligne** : construire l'enrichissement
-nocturne automatique d'abord, le bouton manuel ensuite en réutilisant le même
-code d'agent. Le bouton sans l'automatique donne une démo mais aucune veille ;
-l'automatique sans le bouton donne une veille complète sans la démo. Dans cet
-ordre, le bouton devient une phase courte posée sur du code déjà testé.
+### Pourquoi l'ordre de l'enrichissement a été inversé
+
+La recommandation de cadrage disait l'automatique d'abord, au motif que *« le
+bouton sans l'automatique donne une démo mais aucune veille »*. Cet argument
+supposait qu'on construisait l'enrichissement tôt dans le projet. Le découpage
+retenu le place en fin de parcours : **à la fin de la phase 5, la veille est déjà
+complète** — collecte, notation, statuts, écran du matin. L'enrichissement n'est
+plus ce qui fait exister la veille.
+
+Ce qui devient décisif, c'est la **boucle de qualité sur les fiches** : tant que
+le bouton n'existe pas, chaque itération sur le prompt de l'agent coûte une nuit
+d'attente. Avec le bouton d'abord, la phase automatique se réduit à poser une
+règle de sélection sur un mécanisme déjà éprouvé.
+
+### Deux décisions produit prises en séance et reportées au PRD
+
+- **L'écran d'accueil n'affiche que la collecte de la nuit**, et non plus tout ce
+  qui reste à traiter. La page porte la date de la collecte en tête ; y mêler des
+  offres de la semaine précédente ferait mentir cet entête. Le tri quotidien se
+  fait dans la vue d'ensemble, qui devient le poste de travail réel — et donc
+  l'écran le plus important du produit, alors qu'il est le seul des quatre que
+  `/design` n'a jamais dessiné.
+- **Le marqueur « nouveau » se calcule par appartenance à la dernière exécution
+  réussie**, jamais par comparaison à une date de dernière visite. Une date de
+  visite stockée viderait la liste sous les yeux de l'utilisateur au
+  rechargement.
