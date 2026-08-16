@@ -43,14 +43,16 @@ tourne.
 
 Un site personnel, protégé par mot de passe, que Maxime ouvre le matin. Il y
 trouve les offres du jour déjà collectées et jugées, classées, chacune avec deux
-notes séparées et la phrase qui explique chaque note. Les deux offres les plus
-accessibles parmi celles qui l'intéressent ont déjà reçu, pendant la nuit, une
-fiche d'enrichissement sur l'entreprise : taille, âge, ce qu'elle vend et à qui, ce
-qu'elle fait réellement en IA, la technique attendue sur ce poste, et les sources
-consultées.
+notes séparées et la phrase qui explique chaque note.
 
-Sur n'importe quelle autre offre, il peut déclencher le même enrichissement d'un clic et
-regarder l'agent travailler étape par étape.
+Sur une offre qui l'accroche, il déclenche d'un clic un enrichissement sur
+l'entreprise et regarde l'agent travailler étape par étape : taille, âge, ce
+qu'elle vend et à qui, ce qu'elle fait réellement en IA, la technique attendue sur
+ce poste, et les sources consultées. **Rien ne s'enrichit sans ce clic** —
+l'enrichissement automatique nocturne a été retiré de la v1 le 16 août 2026, parce
+qu'il aurait produit une soixantaine de fiches par mois, lues ou non, sur une
+sélection reposant sur des seuils encore non calibrés. Une enveloppe quotidienne de
+tokens borne ce que ces enrichissements peuvent coûter en une journée.
 
 Chaque offre porte un statut qu'il change à la lecture — à traiter, candidaté,
 écarté — et un champ de notes personnelles. L'écran d'accueil est un **compte
@@ -123,12 +125,12 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
 
 ### Enrichissement de l'entreprise
 
-14. **US-14** — En tant que Maxime, je veux trouver le matin une fiche d'enrichissement
-    déjà complète sur les deux offres les plus accessibles parmi celles qui
-    m'intéressent, afin de pouvoir postuler immédiatement.
+14. ~~**US-14** — trouver le matin une fiche d'enrichissement déjà complète sur les
+    deux offres les plus accessibles.~~ **Retirée de la v1 le 16 août 2026** —
+    l'enrichissement devient exclusivement manuel, voir Évolutions prévues. Le
+    numéro est conservé : `docs/PLAN.md` référence les user stories par numéro.
 15. **US-15** — En tant que Maxime, je veux déclencher l'enrichissement moi-même sur
-    n'importe quelle autre offre, afin de creuser celles que le tri automatique
-    n'a pas retenues.
+    n'importe quelle offre, afin de creuser celles que je juge dignes d'attention.
 16. **US-16** — En tant que Maxime, je veux voir les étapes de l'enrichissement défiler
     pendant qu'il tourne, afin de savoir que ça avance et de pouvoir le montrer
     en entretien.
@@ -173,9 +175,10 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
 27. **US-27** — En tant que Maxime, je veux un message explicite quand aucune
     offre nouvelle ne dépasse le seuil, afin de comprendre que la journée est
     simplement calme.
-28. **US-28** — En tant que Maxime, je veux que le système n'enrichisse rien les
-    jours où aucune offre n'atteint le seuil, afin de ne pas payer un enrichissement
-    sur une offre qui ne m'intéresse pas.
+28. ~~**US-28** — que le système n'enrichisse rien les jours où aucune offre
+    n'atteint le seuil.~~ **Sans objet depuis le 16 août 2026** — plus rien ne
+    s'enrichit sans action explicite, donc il n'y a plus de dépense automatique à
+    éviter. Remplacée par US-38. Numéro conservé.
 29. **US-29** — En tant que Maxime, je veux voir un message clair quand un
     enrichissement échoue, et pouvoir le relancer, afin de ne pas rester devant une
     fiche vide sans explication.
@@ -208,15 +211,24 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
     traités, issue, consommation — afin de pouvoir construire plus tard un écran
     de suivi sans avoir perdu l'historique des semaines précédentes.
 
+### Maîtrise de la dépense
+
+38. **US-38** — En tant que Maxime, je veux qu'une enveloppe quotidienne de tokens
+    borne ce que mes enrichissements peuvent consommer dans une journée, afin qu'un
+    bug de relance en boucle ou une série de clics ne puisse pas produire une
+    facture que je découvrirais à la fin du mois.
+
 ## Critères de succès
 
 1. Le site affiche, chaque jour avant 8 h, les offres collectées dans la nuit,
    chacune portant deux notes chiffrées et deux justifications non vides.
 2. Le site affiche en permanence la date et l'heure de la dernière veille
    réussie, et signale visuellement toute veille datant de plus de 36 heures.
-3. Au plus deux enrichissements automatiques sont lancés par nuit ; zéro les jours où
-   aucune offre n'atteint 50 en intérêt **et** 50 en accessibilité — vérifiable
-   en comptant les fiches produites contre les notes du jour.
+3. **Aucun enrichissement n'est jamais déclenché sans action explicite de Maxime**,
+   et la consommation quotidienne des enrichissements reste sous l'enveloppe fixée
+   dans le fichier de configuration — vérifiable de deux façons : les traces
+   portant un déclenchement automatique doivent être à zéro, et la somme des tokens
+   des enrichissements d'une même journée ne doit jamais dépasser l'enveloppe.
 4. Un enrichissement déclenché manuellement affiche sa première étape en moins de dix
    secondes et se conclut — fiche produite ou échec signalé — en moins de cinq
    minutes.
@@ -299,7 +311,8 @@ c'est du hors périmètre — ou une idée qui attendra d'être demandée.
 | Évolution | Pourquoi pas maintenant | Ce que ça impose **dès la v1** |
 |---|---|---|
 | **Écran de suivi d'exploitation** — nombre d'exécutions, taux de réussite, durée moyenne, volumes traités, coût cumulé | Aucune valeur tant qu'il n'y a pas plusieurs semaines d'exécutions à comparer | Écrire une trace à chaque exécution et à chaque enrichissement dès le premier jour, avec les **compteurs de consommation bruts** et jamais un montant en euros seul. Un historique ne se reconstitue pas après coup, et un prix mal calculé fige une erreur définitive |
-| **Conversation avec l'agent sur une offre enrichie** — poser des questions et challenger la fiche d'enrichissement d'une offre précise, l'annonce et la fiche en contexte | La fiche d'enrichissement doit d'abord exister et être jugée utile. Discuter d'une fiche qu'on n'a jamais lue ne démontre rien | Trois choses. **1.** Stocker la fiche d'enrichissement en **champs séparés** (taille, date de création, chiffre d'affaires, secteur, technique attendue) et pas en texte rédigé — voir la justification renforcée ci-dessous. **2.** Conserver un identifiant d'offre stable, jamais renuméroté : la conversation s'y rattache. **3.** Décider **avant la première table** une enveloppe de consommation par offre, comptée en **tokens cumulés (entrée + sortie)** et affichée en pourcentage |
+| **Conversation avec l'agent sur une offre enrichie** — poser des questions et challenger la fiche d'enrichissement d'une offre précise, l'annonce et la fiche en contexte | La fiche d'enrichissement doit d'abord exister et être jugée utile. Discuter d'une fiche qu'on n'a jamais lue ne démontre rien | Trois choses. **1.** Stocker la fiche d'enrichissement en **champs séparés** (taille, date de création, chiffre d'affaires, secteur, technique attendue) et pas en texte rédigé — voir la justification renforcée ci-dessous. **2.** Conserver un identifiant d'offre stable, jamais renuméroté : la conversation s'y rattache. **3.** Décider **avant la première table** une enveloppe de consommation par offre, comptée en **tokens cumulés (entrée + sortie)** et affichée en pourcentage. Elle s'accompagnera d'une **enveloppe quotidienne de conversation, distincte de celle des enrichissements** — les deux ne doivent pas se voler leur budget, sans quoi une matinée d'enrichissement bloquerait toute discussion l'après-midi. Rien à prévoir dans le schéma : elle se calculera en sommant les traces du jour, comme celle des enrichissements |
+| **Enrichissement automatique nocturne** — au plus deux offres par nuit, choisies parmi celles dont l'intérêt **et** l'accessibilité atteignent 50, triées par accessibilité décroissante | Retiré de la v1 le 16 août 2026. Il produirait une soixantaine de fiches par mois, lues ou non, sur une sélection reposant sur des seuils que deux semaines de données réelles n'ont pas encore calibrés. **Condition de retour : quand les seuils auront été re-réglés sur des données réelles et que le coût par enrichissement aura été mesuré** — deux chiffres que la v1 produit | Presque rien, et c'est pourquoi il se retire sans dommage : le mécanisme d'agent est identique, seule la règle de sélection change. Deux choses à ne pas perdre, toutes deux déjà acquises. **1.** Conserver **toutes les notes de toutes les offres**, y compris celles sous le seuil, sans quoi il sera impossible de calibrer la sélection le jour venu. **2.** Garder la colonne `declenchement` sur la trace d'enrichissement, même si elle ne porte que « manuel » en v1 : elle ne se rajoute pas rétroactivement sur l'historique |
 
 **Pourquoi la fiche en champs séparés, même sans conversation globale.** Cette
 contrainte figurait auparavant sous une autre évolution — un agent conversationnel
@@ -405,13 +418,29 @@ marqueur « nouveau ».
 
 ### Enrichissement de l'entreprise
 
-- **Automatique**, chaque nuit : au plus deux offres, choisies parmi celles de la
-  collecte du jour dont l'intérêt **et** l'accessibilité atteignent 50, classées
-  par accessibilité décroissante, l'intérêt départageant les ex æquo. Si une
-  seule offre passe le seuil, une seule est enrichie. Si aucune, aucun enrichissement
-  n'est lancée.
-- **Manuelle** : un bouton sur chaque offre non encore enrichie. Le bouton se
-  désactive dès le premier clic et pendant toute la durée de l'enrichissement.
+- **Exclusivement manuel.** Tranché le 16 août 2026 : rien ne s'enrichit sans un
+  clic. L'enrichissement automatique nocturne est reporté — voir Évolutions
+  prévues. Motif : il aurait produit une soixantaine de fiches par mois, lues ou
+  non, sur une sélection reposant sur des seuils explicitement marqués « à
+  re-régler après deux semaines de données réelles ». Le bon déclencheur est la
+  lecture d'une offre qui accroche.
+- Un bouton sur chaque offre non encore enrichie. Il se désactive dès le premier
+  clic et pendant toute la durée de l'enrichissement — mais **la garde qui compte
+  est côté serveur**, un bouton grisé ne protège de rien.
+- **Une enveloppe quotidienne de tokens** borne ce que les enrichissements peuvent
+  consommer dans une journée. Elle vit dans le fichier de configuration versionné,
+  elle est vérifiée côté serveur, et elle se calcule en sommant les traces du jour
+  — jamais dans un compteur séparé, qui divergerait à la première écriture ratée.
+  Au-delà, le bouton indique que le plafond du jour est atteint ; le lendemain, le
+  compte repart de zéro.
+  - **Valeur de départ : 300 000 tokens par jour**, soit environ deux à trois
+    enrichissements. Chiffre estimé, **à re-régler dès que le coût réel d'un
+    enrichissement sera mesuré**.
+  - ⚠️ **La notation nocturne n'entre pas dans cette enveloppe.** Son coût est
+    faible et prévisible, et surtout : un matin où France Travail renvoie
+    quatre cents offres, un plafond ferait **rater des offres**. La règle tient en
+    une phrase — *l'enveloppe borne ce que Maxime déclenche, jamais ce que le
+    système fait de lui-même chaque nuit.*
 - Les étapes de l'enrichissement s'affichent au fil de l'eau pendant qu'il tourne.
 - L'enrichissement est borné en nombre d'étapes et en durée. Au-delà, elle s'arrête et
   rend ce qu'elle a trouvé.
@@ -465,10 +494,12 @@ Registre public des entreprises pour la fiche d'enrichissement. Hébergement du 
 de la base sur des offres gratuites dont les conditions peuvent changer.
 
 **Hypothèse non vérifiée** — Le volume réel d'offres pertinentes par jour en
-Île-de-France est inconnu. Le dimensionnement retenu — deux enrichissements par nuit,
-seuil à 50 — repose sur une estimation d'environ quarante offres collectées
-quotidiennement. Ces chiffres sont à re-régler après deux semaines de données
-réelles.
+Île-de-France est inconnu. Le dimensionnement retenu — seuil d'affichage à 50,
+enveloppe quotidienne de 300 000 tokens d'enrichissement — repose sur une
+estimation d'environ quarante offres collectées quotidiennement et d'environ
+100 000 à 150 000 tokens par enrichissement. **Aucun de ces chiffres n'est
+mesuré.** Ils sont à re-régler après deux semaines de données réelles et après la
+première mesure du coût d'un enrichissement.
 
 **Réserve sur le chiffre d'affaires** — Le registre public national fournit la
 date de création, la tranche d'effectif et la catégorie d'entreprise, mais **pas**
@@ -493,9 +524,14 @@ couvre l'indicateur de dernière veille réussie.
 d'accessibilité sont visibles par quiconque détient le mot de passe. Le donner en
 entretien expose l'appréciation portée sur l'entreprise de l'interlocuteur.
 
-**Coût estimé** — Ordre de grandeur non vérifié : quelques centimes par jour pour
-la notation, 0,20 € à 1 € par enrichissement, soit 12 € à 60 € par mois dans le pire
-cas. À confirmer contre la tarification réelle avant la mise en service.
+**Coût estimé** — Ordre de grandeur non vérifié, **révisé le 16 août 2026 après le
+retrait de l'enrichissement automatique** : environ 5 à 8 $ par mois pour la
+notation (Sonnet 5, cache de prompt et API Batches), et 0,20 € à 1 € par
+enrichissement déclenché à la main. Sur une dizaine à une vingtaine
+d'enrichissements par mois, le total se situe autour de **7 à 30 € par mois**, au
+lieu des 12 à 60 € qu'imposait l'automatique. L'enveloppe quotidienne de 300 000
+tokens plafonne le pire cas indépendamment de cette estimation. À confirmer contre
+la tarification réelle avant la mise en service.
 
 **Évolutions prévues** — Voir la section dédiée plus haut. Deux items à ce jour :
 l'écran de suivi d'exploitation et la conversation avec l'agent **sur une offre

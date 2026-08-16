@@ -267,7 +267,7 @@ Quatre questions de la liste ouverte sont fermées. Le détail est dans
 |---|---|
 | Ce que contient exactement une fiche d'offre à l'écran | Entête, les deux notes avec justification, résumé court, description intégrale repliée, lien d'origine, bloc d'enrichissement, note personnelle |
 | Heure de la veille, fréquence, comportement un jour sans offre | Une exécution par jour, tôt le matin, heure de Paris. Un jour sans offre est un jour normal : état vide explicite, et aucun enrichissement lancé |
-| Enrichissement automatique, bouton manuel, ou les deux | **Les deux.** Automatique chaque nuit sur au plus deux offres atteignant 50 en intérêt *et* 50 en accessibilité, triées par accessibilité décroissante ; bouton manuel sur toutes les autres. L'**ordre de construction** reste à `/planifie` |
+| Enrichissement automatique, bouton manuel, ou les deux | ~~**Les deux.**~~ **Amendé le 16 août 2026 : manuel uniquement.** Voir section 9 |
 | Comment éviter qu'un recruteur lise la note d'accessibilité de sa propre entreprise | **Mot de passe unique**, vérifié côté serveur, couvrant pages et adresses de données. Ni comptes, ni rôles. Écarte du même coup le risque de facture ouverte sur le bouton d'enrichissement |
 
 Le cadrage a aussi ajouté deux exigences qui n'étaient dans aucune liste :
@@ -327,26 +327,12 @@ Les questions laissées ouvertes en cadrage sont fermées. Le détail est dans
 
 | Question | Verdict |
 |---|---|
-| **Ordre de construction de l'enrichissement** | **Manuel d'abord, automatique ensuite** — l'inverse de la recommandation d'origine, voir ci-dessous |
+| **Ordre de construction de l'enrichissement** | Question devenue sans objet : l'automatique a été **retiré de la v1** le même jour. Voir section 9 |
 | **Local d'abord ou Supabase dès le premier jour** | **Supabase dès le premier jour.** GitHub Actions ne peut pas lire un fichier posé sur le Mac : la couche de stockage serait à écrire deux fois, et la seconde fois avec des données réelles dedans |
 | **Modèle pour la notation en volume** | **`claude-sonnet-5`**, avec cache de prompt et API Batches. Écarte Haiku 4.5 dont le cache ne s'active qu'au-delà de 4 096 tokens : le fichier de critères passerait sous le seuil et ne serait **jamais mis en cache, silencieusement**. L'écart de coût entre les deux est d'environ 3 $ par mois — dérisoire face au risque d'un jugement mal étalonné sur le cœur du produit |
 | Serveur MCP maison pour exposer France Travail à l'agent | **Toujours ouvert.** Après les trois étapes de base, comme prévu au `CLAUDE.md` |
 
-### Pourquoi l'ordre de l'enrichissement a été inversé
-
-La recommandation de cadrage disait l'automatique d'abord, au motif que *« le
-bouton sans l'automatique donne une démo mais aucune veille »*. Cet argument
-supposait qu'on construisait l'enrichissement tôt dans le projet. Le découpage
-retenu le place en fin de parcours : **à la fin de la phase 5, la veille est déjà
-complète** — collecte, notation, statuts, écran du matin. L'enrichissement n'est
-plus ce qui fait exister la veille.
-
-Ce qui devient décisif, c'est la **boucle de qualité sur les fiches** : tant que
-le bouton n'existe pas, chaque itération sur le prompt de l'agent coûte une nuit
-d'attente. Avec le bouton d'abord, la phase automatique se réduit à poser une
-règle de sélection sur un mécanisme déjà éprouvé.
-
-### Deux décisions produit prises en séance et reportées au PRD
+### Trois décisions produit prises en séance et reportées au PRD
 
 - **L'écran d'accueil n'affiche que la collecte de la nuit**, et non plus tout ce
   qui reste à traiter. La page porte la date de la collecte en tête ; y mêler des
@@ -358,3 +344,67 @@ règle de sélection sur un mécanisme déjà éprouvé.
   réussie**, jamais par comparaison à une date de dernière visite. Une date de
   visite stockée viderait la liste sous les yeux de l'utilisateur au
   rechargement.
+- **L'enrichissement automatique nocturne est retiré de la v1** — voir section 9.
+
+---
+
+## 9. L'enrichissement devient exclusivement manuel
+
+**Décision du 16 août 2026**, prise en fin de session `/planifie`, avant tout
+développement. Elle annule le verdict « les deux » de la section 6.
+
+### Pourquoi
+
+1. **Soixante fiches par mois, lues ou non.** Deux par nuit sur trente nuits, à
+   0,20 € à 1 € pièce. C'est le poste de dépense dominant du projet, et il
+   tournait sans supervision.
+2. **La sélection reposait sur des seuils non calibrés.** Le seuil à 50/50 est
+   marqué au PRD « à re-régler après deux semaines de données réelles » :
+   l'automatique aurait dépensé sur une heuristique pendant exactement la période
+   où elle est la moins fiable.
+3. **Le bon déclencheur est la lecture.** On ouvre une offre, elle accroche, on
+   veut savoir à qui on a affaire. C'est là que la fiche vaut quelque chose. Une
+   fiche produite à quatre heures du matin sur une offre qu'on ne lira peut-être
+   jamais est du travail payé et perdu. Cohérent avec la décision prise plus tôt
+   dans la même séance : le poste de travail est la vue d'ensemble, pas l'écran du
+   matin.
+
+### Ce que ce retrait emportait avec lui, et qu'il a fallu remplacer
+
+⚠️ « Au plus deux enrichissements par nuit » n'était pas seulement une règle de
+sélection : **c'était le seul mécanisme du projet qui bornait la dépense d'une
+journée.** En manuel, rien n'empêche quarante clics dans l'après-midi — ni un bug
+de double soumission, ni une boucle de relance sur un enrichissement qui échoue en
+série.
+
+Il est remplacé par une **enveloppe quotidienne comptée en tokens**, et non en
+nombre d'enrichissements. Même raisonnement que la borne de conversation : un
+plafond en nombre ne borne rien quand le coût unitaire varie du simple au
+quintuple. Valeur de départ **300 000 tokens par jour**, dans le fichier de
+configuration versionné, vérifiée côté serveur, **calculée en sommant les traces
+du jour** — un compteur séparé divergerait à la première écriture ratée.
+
+⚠️ **La notation nocturne n'entre pas dans l'enveloppe.** Son coût est faible et
+prévisible, et surtout : un matin où France Travail renvoie quatre cents offres,
+un plafond ferait **rater des offres** pour économiser vingt centimes. Règle en
+une phrase : *l'enveloppe borne ce que Maxime déclenche, jamais ce que le système
+fait de lui-même chaque nuit.*
+
+**Deux enveloppes, et non une.** La conversation, quand elle viendra, aura la
+sienne. Un plafond commun ferait qu'une matinée d'enrichissement bloquerait toute
+discussion l'après-midi — un blocage que rien n'expliquerait à l'écran. Cette
+enveloppe quotidienne est distincte de la borne des 80 000 tokens **par offre**,
+qui borne le contexte d'une conversation et reste définitive.
+
+### Condition de retour
+
+L'automatique part en **Évolutions prévues** du PRD, pas au hors périmètre : ce
+n'est pas un refus de principe. Il revient quand les deux chiffres qui lui
+manquent existeront — **les seuils calibrés sur deux semaines de données réelles,
+et le coût par enrichissement mesuré**. Les deux sortent de la v1.
+
+Le retour coûterait une phase courte, le mécanisme d'agent étant identique. À deux
+conditions, toutes deux déjà tenues par le plan : conserver **toutes les notes de
+toutes les offres**, y compris sous le seuil, faute de quoi la sélection sera
+incalibrable ; et créer dès la phase 6 la colonne `declenchement`, qui ne se
+rajoute pas rétroactivement sur l'historique.
