@@ -252,7 +252,51 @@ issue, compteurs de consommation bruts — jamais un montant en euros seul), et
 **afficher en permanence la date de la dernière veille réussie**, sans quoi une
 liste vide ne se distingue pas d'un pipeline mort.
 
-## 7. Ce qui reste ouvert
+## 7. Vitrine : publier la méthode de travail
+
+**Décision du 16 août 2026.** Les skills personnels de Maxime (`/amorce`,
+`/interroge`, `/cadre`, `/design`, `/planifie`, `/installe`, `/cloture`,
+`/investigue`) seront publiés dans un **dépôt public séparé**, lié depuis le
+README de ce projet — **une fois que la veille tournera**, pas avant.
+
+**Pourquoi les publier.** Beaucoup de candidats diront « j'utilise Claude Code ».
+Presque aucun ne montrera ses propres outils de méthode. C'est la même thèse que
+celle du projet — *les critères métier sont des données, pas du code* — appliquée
+à la démarche de travail elle-même.
+
+**Pourquoi un dépôt séparé et pas celui-ci.** Les skills ne sont pas propres à la
+veille d'emploi. Les copier ici créerait un second exemplaire qui divergerait de
+celui réellement utilisé en quelques semaines, et une vitrine périmée est pire
+qu'absente. Le dépôt doit **être** `~/.claude/skills/`, versionné sur place :
+un seul exemplaire, celui qui sert tous les jours. Bénéfice secondaire, ce
+dossier n'a aujourd'hui aucune sauvegarde.
+
+**Pourquoi pas maintenant.** Publier une méthode avant d'avoir livré le produit
+envoie le mauvais signal : quelqu'un qui a écrit des processus au lieu de
+construire. Les skills prennent leur valeur *à côté* d'une veille qui tourne.
+
+### ⛔ Ce qui ne doit jamais être publié
+
+**`~/.claude/CLAUDE.md`** — le fichier de consignes de travail personnel — **ne
+va dans aucun dépôt public.** Il décrit franchement la façon de travailler de
+Maxime : construction intégralement assistée, code et documents non relus, niveau
+inégal selon les domaines. Cette franchise est ce qui rend l'assistant utile ;
+elle est écrite **pour lui**, pas pour un lead technique qui évalue une
+embauche. Publiée à côté du projet, elle serait lue avant le code et annulerait
+tout le reste.
+
+### Avant toute publication
+
+1. **Exclure les skills tiers** — `shadcn`, `defuddle`, `obsidian-*`,
+   `json-canvas` ne sont pas de Maxime. Les republier diffuserait le travail
+   d'autrui sous son nom.
+2. **Créditer les dérivés** — `design`, `planifie` et `investigue` portent un
+   fichier `.upstream-SKILL.md` : ils dérivent d'un skill existant. L'attribution
+   est due, et elle est un argument de plus en entretien.
+3. **Relire chaque fichier** — chemin de machine, nom de client, clé oubliée dans
+   un exemple. Un dépôt public est scanné par des robots en continu.
+
+## 8. Ce qui reste ouvert
 
 | Question | Où ça se tranche |
 |---|---|
