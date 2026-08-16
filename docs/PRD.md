@@ -53,10 +53,12 @@ Sur n'importe quelle autre offre, il peut déclencher le même enrichissement d'
 regarder l'agent travailler étape par étape.
 
 Chaque offre porte un statut qu'il change à la lecture — à traiter, candidaté,
-écarté — et un champ de notes personnelles. La liste du matin ne montre que ce
-qui reste à traiter et dépasse le seuil d'intérêt ; tout le reste, y compris les
-offres écartées par le système, reste consultable pour vérifier ce que le filtre
-a jeté et corriger les critères.
+écarté — et un champ de notes personnelles. L'écran d'accueil est un **compte
+rendu** : il ne montre que ce que la collecte de la nuit a ramené au-dessus du
+seuil d'intérêt. Le tri quotidien se fait dans une **vue d'ensemble**, où tout ce
+qui reste à traiter s'accumule, les offres fraîches étiquetées « nouveau » — et
+où les offres candidatées comme celles écartées par le système restent
+consultables, pour vérifier ce que le filtre a jeté et corriger les critères.
 
 ## Utilisateur cible
 
@@ -85,9 +87,10 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
 1. **US-1** — En tant que Maxime, je veux ouvrir le site et voir les offres du
    jour classées par intérêt décroissant, afin de commencer par les plus
    prometteuses sans rien trier moi-même.
-2. **US-2** — En tant que Maxime, je veux distinguer d'un coup d'œil les offres
-   arrivées depuis ma dernière visite de celles que j'ai déjà vues, afin de ne
-   pas relire deux fois la même chose.
+2. **US-2** — En tant que Maxime, je veux distinguer d'un coup d'œil, dans la vue
+   d'ensemble, les offres ramenées par la dernière collecte de celles qui
+   traînent depuis plusieurs jours, afin de ne pas relire deux fois la même
+   chose.
 3. **US-3** — En tant que Maxime, je veux voir sur chaque offre la note d'intérêt
    et la note d'accessibilité présentées séparément, afin de décider en
    connaissant à la fois l'envie et la chance.
@@ -340,24 +343,40 @@ l'est pas, quel que soit le canal.
 ### Rythme et fraîcheur
 
 - Une seule exécution par jour, tôt le matin, heure de Paris.
-- Les offres non traitées des jours précédents restent dans la liste ; seules
-  celles arrivées depuis la dernière visite portent un marqueur « nouveau ».
+- Les offres non traitées des jours précédents restent dans la **vue
+  d'ensemble** ; celles ramenées par la dernière collecte y portent un marqueur
+  « nouveau ». *(Amendé au `/planifie` du 16 août 2026 : le marqueur se calcule
+  par appartenance à la dernière exécution réussie, et non par comparaison à une
+  date de dernière visite — une date de visite stockée viderait la liste sous les
+  yeux de l'utilisateur au rechargement.)*
 - Une offre déjà connue n'est ni recollectée comme nouvelle, ni notée une seconde
   fois. Si son annonce est modifiée à la source, la note initiale est conservée.
 - Un indicateur de dernière veille réussie est visible en permanence. Au-delà de
   36 heures, il passe en alerte visuelle.
 
-### Liste
+### Listes
 
-- La liste principale affiche les offres de statut « à traiter » dont l'intérêt
-  atteint 50, classées par intérêt décroissant.
-- L'accessibilité n'intervient jamais dans ce filtre : une offre très
+Deux écrans distincts, aux rôles opposés — tranché au `/planifie` du 16 août 2026.
+
+**L'écran d'accueil est un compte rendu.** Il affiche **uniquement les offres de
+la dernière collecte réussie** dont le statut est « à traiter » et l'intérêt
+atteint 50, classées par intérêt décroissant. Motif : la page porte la date de la
+collecte en tête ; y mêler des offres de la semaine précédente ferait mentir cet
+entête. Il porte une ligne de passage chiffrée vers la vue d'ensemble — *« 7
+offres plus anciennes attendent encore »* — sans laquelle une offre non tranchée
+sortirait silencieusement du champ de vision.
+
+**La vue d'ensemble est le poste de travail.** C'est là que se fait le tri
+quotidien. Elle donne l'intégralité des offres collectées, écartées comprises,
+avec leurs notes et justifications, et se filtre par statut. Le filtre par défaut
+n'affiche que « à traiter » ; les offres de la dernière collecte y portent le
+marqueur « nouveau ».
+
+- L'accessibilité n'intervient jamais dans le filtre d'intérêt : une offre très
   intéressante mais peu accessible reste affichée.
-- Un accès séparé donne l'intégralité des offres collectées, écartées comprises,
-  avec leurs notes et justifications.
-- État vide de la liste : message explicite distinguant « aucune offre nouvelle
-  aujourd'hui » de « aucune offre ne dépasse le seuil », et rappel de la date de
-  la dernière veille réussie.
+- États vides de l'écran d'accueil : trois messages **distincts** — « la collecte
+  de cette nuit n'a rien ramené », « aucune offre n'atteint le seuil », « tout est
+  traité » — chacun rappelant la date de la dernière veille réussie.
 
 ### Fiche d'offre
 
