@@ -11,7 +11,8 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | API France Travail : authentification, pagination, quota, cas limites | `docs/API_FRANCE_TRAVAIL.md` |
 | API Anthropic : modèles, paramètres, sortie structurée, cache, batches | référence `/claude-api` |
 | Claude Agent SDK : surface d'API | `code.claude.com/docs/en/agent-sdk` |
-| Ce que le produit doit faire · dans quel ordre le construire | `docs/PRD.md` · `docs/PLAN.md` *(à venir)* |
+| Ce que le produit doit faire · ce qu'il refuse de faire | `docs/PRD.md` |
+| Dans quel ordre le construire | `docs/PLAN.md` *(à venir)* |
 
 **Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
 comportement sur *n'importe quelle* tâche du projet. Toute référence propre à un
@@ -37,17 +38,52 @@ de pertinence → présenter un classement dans une interface web.
 - Le README est la première chose lue. Il doit rester à jour quand
   l'architecture bouge.
 
+<!-- produit:start -->
+## Produit — Veille offres emploi IA
+
+**Le problème** : trier à la main des dizaines d'annonces France Travail chaque
+matin pour en garder deux ou trois, rater silencieusement celles dont l'intitulé
+est banal, puis passer un quart d'heure par offre à comprendre à qui on a affaire.
+
+**Pour qui** : un utilisateur unique — Maxime, jeune diplômé ENSEA, six mois en
+cabinet de conseil IA, en recherche active en Île-de-France, qui consulte dix
+minutes le matin et ouvre parfois le site en entretien pour le montrer.
+
+**Hors périmètre, opposable** : mail et notifications · lettre de motivation et
+argumentaire de candidature · candidature automatique · toute source d'offres
+autre que France Travail · toute zone hors Île-de-France · comptes utilisateurs
+et rôles · suivi de candidature avancé (calendrier, relances, CV) · réglage des
+critères depuis l'interface · modification manuelle des notes du modèle · analyse
+du marché de l'emploi (tendances, salaires, graphiques sectoriels) · application
+mobile installable · démo publique à données fictives · traduction et offres hors
+France · import de CV et appariement de compétences.
+
+Le PRD fait autorité sur le périmètre : ce qui figure ici ne se construit pas, même
+si ça semble une bonne idée sur le moment. Une demande qui tombe dedans se signale
+**avant** d'être satisfaite, elle ne se glisse pas dans une phase.
+
+⚠️ Ne pas confondre l'**analyse du marché de l'emploi** (refusée) avec l'**écran de
+suivi d'exploitation** — nombre d'exécutions, taux de réussite, durée, coût — qui
+est une évolution prévue. Cet écran n'est pas construit en v1, mais **les traces qui
+l'alimenteront s'écrivent dès la première exécution** : un historique ne se
+reconstitue pas après coup.
+
+**Cadrage complet** : `docs/PRD.md` — 37 user stories, 13 critères de succès.
+À rouvrir avant toute décision produit.
+<!-- produit:end -->
+
 ## État actuel (au 16 août 2026)
 
 Squelette et documentation de cadrage. **Aucun code n'existe encore** — ni
-Python, ni Next.js. Pas de `docs/PRD.md`, pas de `docs/PLAN.md`.
+Python, ni Next.js.
 
 Le cadrage a avancé le 16 août 2026 : critères de recherche, notation à deux
 axes, forme du livrable, stack et règles de sécurité sont tranchés dans
-`docs/DECISIONS.md`. **Ces décisions sont acquises — ne pas les rouvrir.**
+`docs/DECISIONS.md` ; le périmètre produit l'est dans `docs/PRD.md`.
+**Ces décisions sont acquises — ne pas les rouvrir.**
 
-Prochaine étape : `/cadre` puis `/planifie`. Ne pas écrire de pipeline avant : le
-découpage en phases n'existe pas, et le construire à l'aveugle produit du jetable.
+Prochaine étape : `/planifie`. Ne pas écrire de pipeline avant : le découpage en
+phases n'existe pas, et le construire à l'aveugle produit du jetable.
 
 ## Stack
 
@@ -109,7 +145,8 @@ lead technique qui connaît le SDK le verra. Un agent posé sur une enquête ouv
 exactement ce pour quoi le SDK existe.
 
 Découpage en trois étapes (collecte / notation / enrichissement) : voir le README
-et `docs/DECISIONS.md` § 3. Il reste une recommandation, à valider en `/cadre`.
+et `docs/DECISIONS.md` § 3. **Validé au cadrage du 16 août 2026** — le comportement
+produit de l'enrichissement est fixé dans `docs/PRD.md`.
 
 ⚠️ **Avant d'écrire du code Agent SDK, lire la documentation officielle**
 (`code.claude.com/docs/en/agent-sdk`). La référence `/claude-api` couvre l'API
@@ -142,10 +179,15 @@ Les clés de ce projet donnent accès à un compte facturé et à une base de do
    ne parle jamais directement à Supabase** : tout passe par le serveur.
 5. **Aucun déclenchement d'agent accessible publiquement sans garde-fou.** Un
    bouton en ligne qui lance un agent Claude sans protection est une facture
-   ouverte : un robot qui scanne les URL peut l'actionner en boucle.
+   ouverte : un robot qui scanne les URL peut l'actionner en boucle. Tranché au
+   cadrage : le site entier est derrière un mot de passe unique vérifié **côté
+   serveur**, couvrant les pages *et* les adresses servant des données — protéger
+   la page en laissant l'adresse de données ouverte ne protège rien.
 6. **Pas de données personnelles en base.** Les offres sont publiques ; les
    coordonnées de contact qu'elles contiennent parfois ne le sont pas au sens du
-   RGPD. Ne stocker que ce dont le pipeline a besoin.
+   RGPD. Ne stocker que ce dont le pipeline a besoin. Les notes personnelles
+   ajoutées par Maxime sur une offre échappent à cette règle par nature — ne pas
+   les exposer, ne pas les journaliser, ne pas les faire sortir de la base.
 
 Si un secret a déjà été commité : le révoquer côté France Travail / Anthropic /
 Supabase **avant** de nettoyer l'historique. Le nettoyage seul ne protège rien.

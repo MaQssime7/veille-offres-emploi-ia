@@ -234,15 +234,30 @@ l'expérience exigée serait disponible dans un champ structuré — à confirme
 
 ---
 
-## 6. Ce qui reste ouvert
+## 6. Tranché au cadrage du 16 août 2026 (`/cadre`)
+
+Quatre questions de la liste ouverte sont fermées. Le détail est dans
+`docs/PRD.md` ; seul le verdict est rappelé ici.
+
+| Question | Verdict |
+|---|---|
+| Ce que contient exactement une fiche d'offre à l'écran | Entête, les deux notes avec justification, résumé court, description intégrale repliée, lien d'origine, bloc d'enquête, note personnelle |
+| Heure de la veille, fréquence, comportement un jour sans offre | Une exécution par jour, tôt le matin, heure de Paris. Un jour sans offre est un jour normal : état vide explicite, et aucun enrichissement lancé |
+| Enrichissement automatique, bouton manuel, ou les deux | **Les deux.** Automatique chaque nuit sur au plus deux offres atteignant 50 en intérêt *et* 50 en accessibilité, triées par accessibilité décroissante ; bouton manuel sur toutes les autres. L'**ordre de construction** reste à `/planifie` |
+| Comment éviter qu'un recruteur lise la note d'accessibilité de sa propre entreprise | **Mot de passe unique**, vérifié côté serveur, couvrant pages et adresses de données. Ni comptes, ni rôles. Écarte du même coup le risque de facture ouverte sur le bouton d'enrichissement |
+
+Le cadrage a aussi ajouté deux exigences qui n'étaient dans aucune liste :
+**tracer chaque exécution et chaque enquête dès le premier jour** (durée, volumes,
+issue, compteurs de consommation bruts — jamais un montant en euros seul), et
+**afficher en permanence la date de la dernière veille réussie**, sans quoi une
+liste vide ne se distingue pas d'un pipeline mort.
+
+## 7. Ce qui reste ouvert
 
 | Question | Où ça se tranche |
 |---|---|
-| Enrichissement nocturne automatique, bouton manuel dans l'interface, ou les deux — et dans quel ordre | `/planifie` |
+| Ordre de construction : enrichissement nocturne automatique d'abord, bouton manuel ensuite | `/planifie` |
 | Développement en local d'abord puis bascule vers Supabase, ou Supabase dès le premier jour | `/planifie` |
-| Ce que contient exactement une fiche d'offre à l'écran | `/cadre` |
-| Heure de la veille, fréquence, comportement un jour sans offre | `/cadre` |
-| Si l'interface est publique : comment éviter qu'un recruteur lise la note d'accessibilité de sa propre entreprise — mot de passe, masquage des noms, ou démo à données fictives | À revoir avec Maxime, point non tranché |
 | Modèle utilisé pour la notation en volume | Non tranché. Arbitrage de Maxime, à poser dans la conversation avant d'écrire l'étape de notation |
 | Serveur MCP maison pour exposer France Travail à l'agent | Après les trois étapes de base, comme prévu au `CLAUDE.md` |
 

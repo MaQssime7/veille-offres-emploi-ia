@@ -64,9 +64,13 @@ base. Elle ne doit jamais atteindre le navigateur : ni dans une variable
 
 | Fichier | Contenu |
 |---|---|
+| [`docs/PRD.md`](docs/PRD.md) | Ce que le produit doit faire, et ce qu'il refuse de faire |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Les décisions de cadrage et **leur justification** |
+| [`docs/API_FRANCE_TRAVAIL.md`](docs/API_FRANCE_TRAVAIL.md) | L'API Offres d'emploi v2 vérifiée en conditions réelles |
 | `CLAUDE.md` | Règles de travail et pièges techniques établis |
 
 ## Statut
 
-En cours de cadrage. Le pipeline n'est pas encore écrit.
+Cadrage terminé le 16 août 2026 : le périmètre produit est fixé dans
+[`docs/PRD.md`](docs/PRD.md). Prochaine étape, le découpage en phases de
+construction. Le pipeline n'est pas encore écrit.
