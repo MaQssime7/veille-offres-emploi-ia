@@ -62,11 +62,19 @@ Le PRD fait autorité sur le périmètre : ce qui figure ici ne se construit pas
 si ça semble une bonne idée sur le moment. Une demande qui tombe dedans se signale
 **avant** d'être satisfaite, elle ne se glisse pas dans une phase.
 
-⚠️ Ne pas confondre l'**analyse du marché de l'emploi** (refusée) avec l'**écran de
-suivi d'exploitation** — nombre d'exécutions, taux de réussite, durée, coût — qui
-est une évolution prévue. Cet écran n'est pas construit en v1, mais **les traces qui
-l'alimenteront s'écrivent dès la première exécution** : un historique ne se
-reconstitue pas après coup.
+**Évolutions prévues — ni v1, ni refusées.** Deux items, et chacun **contraint la v1
+dès maintenant** : ne pas construire l'écran n'excuse pas de ne pas capturer sa
+matière.
+
+| Évolution | Ce que ça impose dès la v1 |
+|---|---|
+| Écran de suivi d'exploitation (exécutions, réussite, durée, coût) | Tracer chaque exécution et chaque enquête dès le premier jour, en **compteurs bruts** jamais en euros. Un historique ne se reconstitue pas |
+| Conversation avec le contenu de la base | Fiche d'enquête stockée en **champs séparés**, pas en texte rédigé · identifiant d'offre stable · dates et notes en champs typés |
+
+⚠️ Ne pas confondre l'écran de suivi d'exploitation, prévu, avec l'**analyse du
+marché de l'emploi** (tendances, salaires, graphiques), refusée. Et la conversation
+avec la base ne doit pas devenir la porte de service par laquelle rentre ce que le
+hors périmètre refuse.
 
 **Cadrage complet** : `docs/PRD.md` — 37 user stories, 13 critères de succès.
 À rouvrir avant toute décision produit.

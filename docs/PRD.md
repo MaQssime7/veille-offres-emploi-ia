@@ -279,6 +279,27 @@ paraît bonne sur le moment.
 - **Traduction, offres à l'étranger, offres en anglais hors France.**
 - **Import de CV et appariement automatique de compétences.**
 
+## Évolutions prévues
+
+Ni dans la v1, ni refusées. Ce qui compte ici n'est pas la liste — c'est la
+**troisième colonne** : ce que chaque évolution impose dès la première version.
+Une fonctionnalité repoussée ne coûte rien ; une donnée jamais capturée ou une
+structure mal choisie ne se rattrapent pas.
+
+Rien n'entre dans cette section sans conséquence identifiée sur la v1. Sinon,
+c'est du hors périmètre — ou une idée qui attendra d'être demandée.
+
+| Évolution | Pourquoi pas maintenant | Ce que ça impose **dès la v1** |
+|---|---|---|
+| **Écran de suivi d'exploitation** — nombre d'exécutions, taux de réussite, durée moyenne, volumes traités, coût cumulé | Aucune valeur tant qu'il n'y a pas plusieurs semaines d'exécutions à comparer | Écrire une trace à chaque exécution et à chaque enquête dès le premier jour, avec les **compteurs de consommation bruts** et jamais un montant en euros seul. Un historique ne se reconstitue pas après coup, et un prix mal calculé fige une erreur définitive |
+| **Conversation avec le contenu de la base** — poser des questions en langage naturel sur les offres collectées, leurs notes, leurs statuts | Une conversation sur une base vide ne démontre rien, et le tri automatique répond déjà à 90 % des besoins de fouille quotidiens | Trois choses. **1.** Stocker la fiche d'enquête en **champs séparés** (taille, date de création, chiffre d'affaires, secteur, technique attendue) et pas seulement en texte rédigé : un paragraphe ne se compte pas, et il faudrait relancer toutes les enquêtes pour rattraper. **2.** Conserver un identifiant d'offre stable, jamais renuméroté. **3.** Garder les dates et les notes en champs typés, pas en texte libre |
+
+**Deux frontières à tenir le jour où la conversation sera construite** : elle ne
+doit pas devenir la porte de service par laquelle rentre ce que le hors périmètre
+refuse. Interroger le contenu de la base est dans le périmètre ; produire une
+analyse de tendances du marché de l'emploi ou rédiger un argumentaire de
+candidature ne l'est pas, quel que soit le canal.
+
 ## Décisions d'implémentation
 
 ### Rythme et fraîcheur
@@ -422,8 +443,7 @@ entretien expose l'appréciation portée sur l'entreprise de l'interlocuteur.
 la notation, 0,20 € à 1 € par enquête, soit 12 € à 60 € par mois dans le pire
 cas. À confirmer contre la tarification réelle avant la mise en service.
 
-**Évolution prévue** — Un écran de suivi d'exploitation, réunissant nombre
-d'exécutions, taux de réussite, durée moyenne, volumes traités et coût cumulé.
-Volontairement absent de la première version, mais les données qui l'alimenteront
-sont enregistrées dès le premier jour : c'est un écran à construire, pas un
-historique à reconstituer.
+**Évolutions prévues** — Voir la section dédiée plus haut. Deux items à ce jour :
+l'écran de suivi d'exploitation et la conversation avec le contenu de la base.
+Les deux imposent des contraintes à la v1, ce qui est la seule raison pour
+laquelle ils figurent au PRD au lieu d'attendre d'être demandés.
