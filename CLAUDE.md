@@ -13,7 +13,7 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Claude Agent SDK : surface d'API | `code.claude.com/docs/en/agent-sdk` |
 | Ce que le produit doit faire · ce qu'il refuse de faire | `docs/PRD.md` |
 | Identité visuelle : jetons, contrastes vérifiés, composants propres au produit | `docs/DESIGN.md` |
-| Dans quel ordre le construire | `docs/PLAN.md` *(à venir)* |
+| Dans quel ordre le construire · contenu de test · parcours à repasser | `docs/PLAN.md` |
 
 **Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
 comportement sur *n'importe quelle* tâche du projet. Toute référence propre à un
@@ -116,9 +116,14 @@ veut lire vite le matin, le lead technique en entretien à qui un tableau de bor
 ne fait aucun effet — est tranchée par la direction **éditorial technique** : chaud
 dans la matière, froid dans la précision. Voir la section Design en fin de fichier.
 
-Prochaine étape : **`/planifie`**, puis `/installe`. `/planifie` découpe en tranches
-verticales livrables ; `/installe` pose la stack en exécutant ces décisions, sans les
-rouvrir. Ne pas écrire de pipeline avant que le plan existe.
+`/planifie` est passé le 16 août 2026. Le découpage en huit tranches verticales, les
+décisions architecturales, le contenu de test et les parcours à repasser sont dans
+`docs/PLAN.md`. Deux amendements y sont consignés : l'écran du matin n'affiche que la
+collecte de la nuit (et non plus tout ce qui reste à traiter), et l'enrichissement **manuel
+se construit avant l'automatique**.
+
+Prochaine étape : **`/installe`**, qui pose la stack en exécutant ces décisions sans les
+rouvrir, puis la phase 1. Ne pas écrire de pipeline avant que la stack soit posée.
 
 ## Stack
 
@@ -293,4 +298,48 @@ parti pris. **Recalculer les contrastes à chaque changement de couleur** —
 `docs/design-preview.html` le fait dans la page.
 
 **Détail et justifications** : `docs/DESIGN.md`
+
+<!-- archi:start -->
+## Architecture — Veille offres emploi IA
+
+**Stack** : Python 3.11+ (`pipeline/`) · Next.js + shadcn/ui sur Vercel (`interface/`) ·
+Supabase/Postgres dès le premier jour · GitHub Actions (cron nocturne + déclenchement des
+agents) · mot de passe unique, ni comptes ni rôles · API France Travail v2 ·
+**`claude-sonnet-5`** pour la notation (cache de prompt + Batches) · Claude Agent SDK pour
+l'enrichissement.
+
+**Frontend** : template `next` · moteur des composants **`radix`** · pas de monorepo ·
+icônes lucide — **figés à l'installation**. ⚠️ Vercel doit être réglé sur
+`Root Directory = interface`.
+
+**Routes** : `/` le compte rendu de la nuit · `/offres` le poste de travail (filtre de
+statut dans l'adresse) · `/offres/[identifiant]` la fiche · `/connexion` la porte.
+L'identifiant est celui de France Travail, **validé avant d'atteindre la base**.
+
+**Schéma** : `executions_veille` · `offres` · `enrichissements` · `etapes_enrichissement`.
+Pas d'accents dans les noms. Une offre est rattachée à l'exécution qui l'a trouvée ; elle a
+**au plus un** enrichissement (une relance remplace la fiche). Deux compteurs de tokens sur
+l'offre : `tokens_cumules` et `tokens_conversation`.
+**La colonne qui dit à qui la donnée appartient : aucune, délibérément** — un seul
+utilisateur, une seule porte ; une telle colonne porterait la même valeur partout et
+donnerait l'illusion d'un contrôle.
+
+**Autorisation, opposable** : RLS activé sur toutes les tables, **aucune politique** ; le
+navigateur ne parle jamais à Supabase. Un middleware unique protège **tout par défaut**,
+avec trois exceptions en liste blanche — énumérer les adresses à protéger laisserait toute
+adresse ajoutée plus tard ouverte sans rien signaler. Une seule fonction fait le contrôle,
+tous les accès passent par elle — recopier la vérification garantit qu'un accès finira par
+être oublié. **Un écran qui masque un bouton ne protège rien : le contrôle qui compte est
+côté serveur** (le double clic sur « Enrichir » se bloque en base, pas sur le bouton).
+
+**Secrets** : `.env` local non versionné · secrets GitHub Actions pour le pipeline ·
+variables Vercel pour le site · **rien dans le navigateur, et aucune variable
+`NEXT_PUBLIC_` sur ce projet** — ce préfixe publie la valeur dans le code source de la page
+sans le moindre message d'erreur. Le site ne détient aucune clé de modèle. Un secret
+commité reste dans l'historique git après suppression du fichier : le **révoquer**, pas
+seulement le supprimer.
+
+**Plan, contenu de test et parcours à repasser** : `docs/PLAN.md` — à rouvrir avant de
+démarrer une phase et avant toute mise en ligne.
+<!-- archi:end -->
 <!-- design:end -->

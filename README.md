@@ -66,16 +66,19 @@ base. Elle ne doit jamais atteindre le navigateur : ni dans une variable
 |---|---|
 | [`docs/PRD.md`](docs/PRD.md) | Ce que le produit doit faire, et ce qu'il refuse de faire |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Le système de design : jetons, contrastes vérifiés, composants propres au produit |
+| [`docs/PLAN.md`](docs/PLAN.md) | Le découpage en phases, les décisions architecturales, le contenu de test |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Les décisions de cadrage et **leur justification** |
 | [`docs/API_FRANCE_TRAVAIL.md`](docs/API_FRANCE_TRAVAIL.md) | L'API Offres d'emploi v2 vérifiée en conditions réelles |
 | `CLAUDE.md` | Règles de travail et pièges techniques établis |
 
 ## Statut
 
-Cadrage terminé le 16 août 2026 : le périmètre produit est fixé dans
-[`docs/PRD.md`](docs/PRD.md), le système de design dans
+Cadrage et planification terminés le 16 août 2026 : le périmètre produit est fixé
+dans [`docs/PRD.md`](docs/PRD.md), le système de design dans
 [`docs/DESIGN.md`](docs/DESIGN.md) — avec un aperçu HTML autonome,
-`docs/design-preview.html`, qui recalcule ses contrastes dans la page.
+`docs/design-preview.html`, qui recalcule ses contrastes dans la page — et le
+découpage en huit phases dans [`docs/PLAN.md`](docs/PLAN.md).
 
-Prochaine étape, le découpage en phases de construction. Le pipeline n'est pas
-encore écrit.
+Prochaine étape, l'installation de la stack, puis la phase 1 : la porte, la
+collecte et les premières offres réelles à l'écran. **Aucun code n'est encore
+écrit.**
