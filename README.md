@@ -65,6 +65,7 @@ base. Elle ne doit jamais atteindre le navigateur : ni dans une variable
 | Fichier | Contenu |
 |---|---|
 | [`docs/PRD.md`](docs/PRD.md) | Ce que le produit doit faire, et ce qu'il refuse de faire |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | Le système de design : jetons, contrastes vérifiés, composants propres au produit |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Les décisions de cadrage et **leur justification** |
 | [`docs/API_FRANCE_TRAVAIL.md`](docs/API_FRANCE_TRAVAIL.md) | L'API Offres d'emploi v2 vérifiée en conditions réelles |
 | `CLAUDE.md` | Règles de travail et pièges techniques établis |
@@ -72,5 +73,9 @@ base. Elle ne doit jamais atteindre le navigateur : ni dans une variable
 ## Statut
 
 Cadrage terminé le 16 août 2026 : le périmètre produit est fixé dans
-[`docs/PRD.md`](docs/PRD.md). Prochaine étape, le découpage en phases de
-construction. Le pipeline n'est pas encore écrit.
+[`docs/PRD.md`](docs/PRD.md), le système de design dans
+[`docs/DESIGN.md`](docs/DESIGN.md) — avec un aperçu HTML autonome,
+`docs/design-preview.html`, qui recalcule ses contrastes dans la page.
+
+Prochaine étape, le découpage en phases de construction. Le pipeline n'est pas
+encore écrit.

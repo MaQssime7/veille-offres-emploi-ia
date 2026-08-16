@@ -12,6 +12,7 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | API Anthropic : modèles, paramètres, sortie structurée, cache, batches | référence `/claude-api` |
 | Claude Agent SDK : surface d'API | `code.claude.com/docs/en/agent-sdk` |
 | Ce que le produit doit faire · ce qu'il refuse de faire | `docs/PRD.md` |
+| Identité visuelle : jetons, contrastes vérifiés, composants propres au produit | `docs/DESIGN.md` |
 | Dans quel ordre le construire | `docs/PLAN.md` *(à venir)* |
 
 **Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
@@ -69,12 +70,31 @@ matière.
 | Évolution | Ce que ça impose dès la v1 |
 |---|---|
 | Écran de suivi d'exploitation (exécutions, réussite, durée, coût) | Tracer chaque exécution et chaque enrichissement dès le premier jour, en **compteurs bruts** jamais en euros. Un historique ne se reconstitue pas |
-| Conversation avec le contenu de la base | Fiche d'enrichissement stockée en **champs séparés**, pas en texte rédigé · identifiant d'offre stable · dates et notes en champs typés |
+| Conversation avec l'agent **sur une offre enrichie** — challenger sa fiche | Fiche d'enrichissement stockée en **champs séparés**, pas en texte rédigé · identifiant d'offre stable · enveloppe de consommation par offre en **tokens cumulés**, décidée avant la première table |
 
 ⚠️ Ne pas confondre l'écran de suivi d'exploitation, prévu, avec l'**analyse du
 marché de l'emploi** (tendances, salaires, graphiques), refusée. Et la conversation
-avec la base ne doit pas devenir la porte de service par laquelle rentre ce que le
-hors périmètre refuse.
+ne doit pas devenir la porte de service par laquelle rentre ce que le hors périmètre
+refuse.
+
+⚠️ **Ne jamais nommer cet écran « analytics ».** Le mot recouvre les deux à la fois —
+celui qui est prévu et celui qui est refusé — et c'est par ce glissement qu'un graphe
+de salaires finit par entrer « tant qu'on y est ». Le nom est **écran de suivi
+d'exploitation**, et il ne parle que du système : exécutions, réussite, durée,
+volumes, consommation. Jamais du marché de l'emploi.
+
+⚠️ **La conversation porte sur *une* offre, jamais sur toute la base.** L'agent
+global en page d'accueil a été explicitement refusé le 16 août 2026 et versé au hors
+périmètre : son contexte et son coût ne sont pas bornables. Ne pas le réintroduire.
+
+⚠️ **La borne de conversation se compte en tokens cumulés, jamais en nombre de
+messages.** Le contexte est renvoyé au modèle à chaque tour : la consommation croît
+quadratiquement avec les échanges. À 100 %, la saisie se bloque définitivement sur
+cette offre — pas de bouton de réinitialisation, sinon ce n'est plus une borne.
+
+⚠️ **Vocabulaire figé : « enrichissement », jamais « enquête ».** Le terme couvre
+l'étape du pipeline, l'action dans l'interface et la fiche produite. Deux mots pour
+la même chose finissent en deux tables et deux fonctions.
 
 **Cadrage complet** : `docs/PRD.md` — 37 user stories, 13 critères de succès.
 À rouvrir avant toute décision produit.
@@ -87,20 +107,18 @@ Python, ni Next.js.
 
 Le cadrage a avancé le 16 août 2026 : critères de recherche, notation à deux
 axes, forme du livrable, stack et règles de sécurité sont tranchés dans
-`docs/DECISIONS.md` ; le périmètre produit l'est dans `docs/PRD.md`.
-**Ces décisions sont acquises — ne pas les rouvrir.**
+`docs/DECISIONS.md` ; le périmètre produit l'est dans `docs/PRD.md` ; l'identité
+visuelle dans `docs/DESIGN.md`. **Ces décisions sont acquises — ne pas les
+rouvrir.**
 
-Prochaine étape : **`/design`, puis `/planifie`** — dans cet ordre. `/planifie`
-découpe en tranches verticales livrables, et chaque tranche contient de
-l'interface : découper avant de savoir à quoi ressemble le produit, c'est
-planifier des écrans à l'aveugle. Ne pas écrire de pipeline avant que le plan
-existe.
+`/design` est passé le 16 août 2026. La tension entre les deux publics — Maxime qui
+veut lire vite le matin, le lead technique en entretien à qui un tableau de bord gris
+ne fait aucun effet — est tranchée par la direction **éditorial technique** : chaud
+dans la matière, froid dans la précision. Voir la section Design en fin de fichier.
 
-⚠️ **La tension à trancher en `/design`** : ce produit a deux publics — Maxime le
-matin, qui veut lire vite et décider, ce qui pousse vers un instrument dense et
-sobre ; et un lead technique en entretien, à qui un tableau de bord gris ne fait
-aucun effet. Un outil purement fonctionnel rate la vitrine, un site trop léché
-perd la crédibilité de l'outil qui tourne. Le système doit tenir les deux.
+Prochaine étape : **`/planifie`**, puis `/installe`. `/planifie` découpe en tranches
+verticales livrables ; `/installe` pose la stack en exécutant ces décisions, sans les
+rouvrir. Ne pas écrire de pipeline avant que le plan existe.
 
 ## Stack
 
@@ -217,3 +235,62 @@ Supabase **avant** de nettoyer l'historique. Le nettoyage seul ne protège rien.
   `stockage.py`, `synthese.py` — pas de `main.py` de 400 lignes.
 - Toute fonction qui appelle le réseau gère explicitement l'échec. Pas de
   `try/except` nu qui avale l'erreur.
+
+<!-- design:start -->
+## Design — Veille offres emploi IA
+
+**Ce qu'on retient** : un instrument de décision, pas un tableau de bord. On voit
+tout de suite quoi lire en premier, et pourquoi.
+
+**Direction** : éditorial technique — décoration intentionnelle, mise en page en
+grille stricte, mouvement minimal fonctionnel. Chaud dans la matière (beige papier,
+serif, encre brune), froid dans la précision (densité, chasse fixe, filets).
+
+**Polices** : titrage **Fraunces 700** · texte et interface **Geist** · données et
+libellés **Geist Mono** · code **Geist Mono**. Une seule fonderie, Google Fonts.
+Le serif ne descend jamais sous 20 px — en dessous, Geist.
+
+**Icônes** : **lucide** — figé à l'installation (`shadcn apply --only` accepte
+`theme` et `font`, jamais `icon`). **Ne jamais en mélanger un second.**
+
+**Jetons** : `app/globals.css` — c'est la source de vérité. Jamais de couleur en
+dur, toujours les jetons sémantiques (`bg-primary`, `text-muted-foreground`). Un
+seul `--radius`, les autres en dérivent. Bloc CSS prêt à coller dans
+`docs/DESIGN.md`.
+
+**Quatre teintes de signal, un rôle chacune** : brun-encre = action principale et
+note d'intérêt · ocre = le temporel (« nouveau », enrichissement en cours) ·
+olive = accessibilité et candidaté · brique = erreur et écarté. Une teinte qui sert
+à deux choses ne sert plus à rien.
+
+⚠️ **Trois pièges qui ne se voient pas à l'œil**, détaillés dans `docs/DESIGN.md` :
+`--border` (filet décoratif, sans exigence) n'est pas `--input` (bordure de champ,
+3:1 obligatoire) · `--accent` chez shadcn est la surface de survol, pas une couleur
+vive · l'ocre existe en deux valeurs (`--signal`, `--signal-fort`) parce qu'il doit
+être clair sous un texte foncé et foncé dans une jauge.
+
+⚠️ **shadcn pose des ombres par défaut** sur `Card`, `Popover` et les menus. Les
+retirer : ce produit n'a **aucune ombre**, uniquement des filets. Conséquence, la
+hiérarchie repose entièrement sur la typographie.
+
+⚠️ **Le libellé `INT` / `ACC` devant chaque barre de note ne se retire jamais**,
+même pour gagner de la place : sans lui l'information tient sur la seule couleur.
+
+**À remesurer en phase 1** : les valeurs de mise en page — largeurs, densité, grille
+de colonnes — ont été posées sans écran réel, contre du contenu inventé. Les
+confronter à du contenu long et réaliste dès la première tranche livrée, puis les
+figer. Tout le reste du système est opposable dès maintenant.
+
+**Interdits sur ce projet** : Inter, Roboto, Poppins, Montserrat, Space Grotesk et
+les autres polices sur-utilisées · Instrument Serif (un seul poids, le gras y est
+synthétique) · dégradé violet · boutons en dégradé · trois colonnes d'icônes dans
+des ronds colorés · tout centré · arrondis en bulle · `system-ui` en titrage.
+
+**Plancher d'accessibilité, opposable** : texte 4,5:1 · interface 3:1 · focus
+clavier toujours visible · mouvement coupé sous `prefers-reduced-motion` · jamais
+l'information par la seule couleur. Un choix qui casse ça est un défaut, pas un
+parti pris. **Recalculer les contrastes à chaque changement de couleur** —
+`docs/design-preview.html` le fait dans la page.
+
+**Détail et justifications** : `docs/DESIGN.md`
+<!-- design:end -->

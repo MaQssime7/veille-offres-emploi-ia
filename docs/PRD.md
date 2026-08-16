@@ -278,6 +278,10 @@ paraît bonne sur le moment.
   couvre le besoin.
 - **Traduction, offres à l'étranger, offres en anglais hors France.**
 - **Import de CV et appariement automatique de compétences.**
+- **Conversation globale sur l'ensemble de la base.** Un agent en page d'accueil
+  qui interroge toutes les offres collectées. Figurait en évolution prévue jusqu'au
+  16 août 2026, remplacé par la conversation *par offre* — dont le contexte et le
+  coût sont bornés, ce qu'une conversation sur toute la base n'est pas.
 
 ## Évolutions prévues
 
@@ -292,13 +296,44 @@ c'est du hors périmètre — ou une idée qui attendra d'être demandée.
 | Évolution | Pourquoi pas maintenant | Ce que ça impose **dès la v1** |
 |---|---|---|
 | **Écran de suivi d'exploitation** — nombre d'exécutions, taux de réussite, durée moyenne, volumes traités, coût cumulé | Aucune valeur tant qu'il n'y a pas plusieurs semaines d'exécutions à comparer | Écrire une trace à chaque exécution et à chaque enrichissement dès le premier jour, avec les **compteurs de consommation bruts** et jamais un montant en euros seul. Un historique ne se reconstitue pas après coup, et un prix mal calculé fige une erreur définitive |
-| **Conversation avec le contenu de la base** — poser des questions en langage naturel sur les offres collectées, leurs notes, leurs statuts | Une conversation sur une base vide ne démontre rien, et le tri automatique répond déjà à 90 % des besoins de fouille quotidiens | Trois choses. **1.** Stocker la fiche d'enrichissement en **champs séparés** (taille, date de création, chiffre d'affaires, secteur, technique attendue) et pas seulement en texte rédigé : un paragraphe ne se compte pas, et il faudrait relancer tous les enrichissements pour rattraper. **2.** Conserver un identifiant d'offre stable, jamais renuméroté. **3.** Garder les dates et les notes en champs typés, pas en texte libre |
+| **Conversation avec l'agent sur une offre enrichie** — poser des questions et challenger la fiche d'enrichissement d'une offre précise, l'annonce et la fiche en contexte | La fiche d'enrichissement doit d'abord exister et être jugée utile. Discuter d'une fiche qu'on n'a jamais lue ne démontre rien | Trois choses. **1.** Stocker la fiche d'enrichissement en **champs séparés** (taille, date de création, chiffre d'affaires, secteur, technique attendue) et pas en texte rédigé — voir la justification renforcée ci-dessous. **2.** Conserver un identifiant d'offre stable, jamais renuméroté : la conversation s'y rattache. **3.** Décider **avant la première table** une enveloppe de consommation par offre, comptée en **tokens cumulés (entrée + sortie)** et affichée en pourcentage |
+
+**Pourquoi la fiche en champs séparés, même sans conversation globale.** Cette
+contrainte figurait auparavant sous une autre évolution — un agent conversationnel
+interrogeant *toute* la base — aujourd'hui abandonnée (voir Hors périmètre). Sa
+justification d'origine, « un paragraphe ne se compte pas », a donc disparu. La
+contrainte, elle, reste, pour deux raisons neuves qu'il faut écrire sous peine de la
+voir relâchée un jour :
+
+1. **L'affichage en dépend.** Chaque rubrique de la fiche porte son propre marqueur
+   *vérifié* ou *déduit*. C'est impossible sur un pavé de texte unique.
+2. **L'agent conversationnel reçoit un meilleur contexte.** Une fiche en champs se
+   relit sélectivement ; un paragraphe se renvoie en entier à chaque tour — ce qui
+   fait exactement gonfler le compteur de tokens qu'on cherche à borner.
+
+**Pourquoi la borne se compte en tokens et non en messages.** Dans une conversation,
+le contexte est renvoyé au modèle à chaque tour. La consommation croît donc
+quadratiquement avec le nombre d'échanges, pas linéairement : dix messages peuvent
+coûter plusieurs fois dix fois le premier. Un plafond en nombre de messages ne borne
+rien. Trois règles qui en découlent :
+
+- Compter l'entrée **et** la sortie, ce sont deux tarifs distincts.
+- Poser aussi une borne par réponse, sinon une seule réponse peut vider l'enveloppe.
+- **À 100 %, la saisie se bloque définitivement sur cette offre.** Aucun bouton de
+  réinitialisation : une borne qu'on lève d'un clic n'est plus une borne. Le plafond
+  se relève dans le fichier de configuration versionné, à la main.
+- Le pourcentage mesure la **consommation**, pas la facture — le contexte mis en
+  cache coûte une fraction du prix à la relecture. Cohérent avec la règle des
+  compteurs bruts ci-dessus.
+
+**Valeur de départ à re-régler** : 80 000 tokens par offre. Ce chiffre est une
+estimation, pas une mesure — à confirmer après une vraie conversation.
 
 **Deux frontières à tenir le jour où la conversation sera construite** : elle ne
 doit pas devenir la porte de service par laquelle rentre ce que le hors périmètre
-refuse. Interroger le contenu de la base est dans le périmètre ; produire une
-analyse de tendances du marché de l'emploi ou rédiger un argumentaire de
-candidature ne l'est pas, quel que soit le canal.
+refuse. Interroger la fiche d'une offre est dans le périmètre ; produire une analyse
+de tendances du marché de l'emploi ou rédiger un argumentaire de candidature ne
+l'est pas, quel que soit le canal.
 
 ## Décisions d'implémentation
 
@@ -444,6 +479,11 @@ la notation, 0,20 € à 1 € par enrichissement, soit 12 € à 60 € par moi
 cas. À confirmer contre la tarification réelle avant la mise en service.
 
 **Évolutions prévues** — Voir la section dédiée plus haut. Deux items à ce jour :
-l'écran de suivi d'exploitation et la conversation avec le contenu de la base.
-Les deux imposent des contraintes à la v1, ce qui est la seule raison pour
-laquelle ils figurent au PRD au lieu d'attendre d'être demandés.
+l'écran de suivi d'exploitation et la conversation avec l'agent **sur une offre
+enrichie**. Les deux imposent des contraintes à la v1, ce qui est la seule raison
+pour laquelle ils figurent au PRD au lieu d'attendre d'être demandés.
+
+**Identité visuelle** — Le système de design est fixé dans `docs/DESIGN.md` depuis le
+16 août 2026, avec un aperçu vérifiable dans `docs/design-preview.html`. Les valeurs
+de mise en page y sont marquées comme hypothèses : elles ont été posées contre du
+contenu inventé et se confirment sur la première tranche livrée.

@@ -1,0 +1,1469 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Système de design — Veille offres emploi IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Une seule fonderie : Google Fonts. Les trois polices du système y vivent. -->
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..900&family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   JETONS — source de vérité de l'aperçu.
+   Ces valeurs sont celles qui partiront dans app/globals.css.
+   ============================================================ */
+:root {
+  --background:            oklch(0.968 0.013 84);
+  --foreground:            oklch(0.245 0.028 52);
+  --card:                  oklch(0.988 0.007 84);
+  --card-foreground:       oklch(0.245 0.028 52);
+  --popover:               oklch(0.988 0.007 84);
+  --popover-foreground:    oklch(0.245 0.028 52);
+  --primary:               oklch(0.340 0.045 48);
+  --primary-foreground:    oklch(0.975 0.012 84);
+  --secondary:             oklch(0.925 0.018 82);
+  --secondary-foreground:  oklch(0.300 0.035 50);
+  --muted:                 oklch(0.938 0.015 84);
+  --muted-foreground:      oklch(0.470 0.028 58);
+  --accent:                oklch(0.925 0.022 78);
+  --accent-foreground:     oklch(0.300 0.035 50);
+  --destructive:           oklch(0.505 0.155 32);
+  --destructive-foreground:oklch(0.980 0.010 84);
+  --border:                oklch(0.790 0.022 76);
+  --input:                 oklch(0.575 0.030 70);
+  --ring:                  oklch(0.520 0.100 58);
+
+  /* Propres au produit — shadcn ne les fournit pas.
+     --accent est une surface de survol chez shadcn, jamais une couleur vive :
+     le signal ocre a donc sa propre variable. */
+  --signal:                oklch(0.620 0.135 68);
+  --signal-foreground:     oklch(0.205 0.040 60);
+  /* Variante foncée de l'ocre, réservée aux remplissages de jauge sur fond clair.
+     L'ocre de --signal est trop clair pour atteindre 3:1 contre la piste : sur la
+     pastille « nouveau » il porte du texte foncé, ici il doit se détacher d'un fond
+     clair. Deux contraintes opposées, donc deux valeurs. */
+  --signal-fort:           oklch(0.498 0.108 62);
+  --success:               oklch(0.480 0.075 138);
+  --success-foreground:    oklch(0.980 0.010 84);
+
+  --chart-1: oklch(0.620 0.135 68);
+  --chart-2: oklch(0.505 0.155 32);
+  --chart-3: oklch(0.480 0.075 138);
+  --chart-4: oklch(0.400 0.045 48);
+  --chart-5: oklch(0.720 0.055 82);
+
+  --radius: 0.25rem;
+
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "Geist", ui-sans-serif, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+}
+
+.dark {
+  --background:            oklch(0.180 0.012 62);
+  --foreground:            oklch(0.930 0.016 84);
+  --card:                  oklch(0.218 0.014 62);
+  --card-foreground:       oklch(0.930 0.016 84);
+  --popover:               oklch(0.218 0.014 62);
+  --popover-foreground:    oklch(0.930 0.016 84);
+  --primary:               oklch(0.870 0.040 82);
+  --primary-foreground:    oklch(0.220 0.030 52);
+  --secondary:             oklch(0.278 0.018 66);
+  --secondary-foreground:  oklch(0.930 0.016 84);
+  --muted:                 oklch(0.262 0.016 66);
+  --muted-foreground:      oklch(0.735 0.022 80);
+  --accent:                oklch(0.290 0.022 70);
+  --accent-foreground:     oklch(0.930 0.016 84);
+  --destructive:           oklch(0.640 0.150 32);
+  --destructive-foreground:oklch(0.180 0.030 40);
+  --border:                oklch(0.340 0.018 68);
+  --input:                 oklch(0.530 0.026 70);
+  --ring:                  oklch(0.680 0.100 70);
+
+  --signal:                oklch(0.760 0.130 72);
+  --signal-foreground:     oklch(0.200 0.040 62);
+  /* En sombre, la piste est foncée : l'ocre clair s'y détache déjà. Même valeur. */
+  --signal-fort:           oklch(0.760 0.130 72);
+  --success:               oklch(0.700 0.090 140);
+  --success-foreground:    oklch(0.180 0.030 140);
+
+  --chart-1: oklch(0.760 0.130 72);
+  --chart-2: oklch(0.640 0.150 32);
+  --chart-3: oklch(0.700 0.090 140);
+  --chart-4: oklch(0.870 0.040 82);
+  --chart-5: oklch(0.560 0.045 78);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  font-feature-settings: "cv01", "ss03";
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.015em; line-height: 1.12; margin: 0; }
+p { margin: 0 0 1em; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: var(--radius); }
+
+.mono { font-family: var(--font-mono); }
+.etiquette {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.enveloppe { max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+
+/* ---- barre du haut ---- */
+.barre-haut {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 24px;
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+}
+.barre-haut .titre { font-family: var(--font-display); font-weight: 700; font-size: 19px; }
+.barre-haut .pouce { flex: 1; }
+
+.bouton {
+  font-family: var(--font-sans);
+  font-size: 13px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 13px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: var(--primary); color: var(--primary-foreground);
+  cursor: pointer;
+  transition: opacity 150ms ease-out, background-color 150ms ease-out;
+}
+.bouton:hover { opacity: 0.88; }
+.bouton.secondaire { background: var(--secondary); color: var(--secondary-foreground); border-color: var(--border); }
+.bouton.contour { background: transparent; color: var(--foreground); border-color: var(--input); }
+.bouton.contour:hover { background: var(--accent); color: var(--accent-foreground); opacity: 1; }
+.bouton.discret { background: transparent; color: var(--muted-foreground); }
+.bouton.discret:hover { background: var(--accent); color: var(--accent-foreground); opacity: 1; }
+/* Les deux actions de statut, seules colorées : candidaté = olive, écarté = brique.
+   L'orange franc est refusé ici — il se confondrait avec l'ocre du marqueur « nouveau ». */
+.bouton.candidate { background: var(--success); color: var(--success-foreground); }
+.bouton.ecarte { background: var(--destructive); color: var(--destructive-foreground); }
+.bouton[disabled] { opacity: 0.45; cursor: not-allowed; }
+.bouton svg { width: 15px; height: 15px; }
+
+/* ---- sections ---- */
+section { padding-top: 56px; }
+.tete-section { display: flex; align-items: baseline; gap: 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 28px; }
+.tete-section h2 { font-size: 30px; }
+.tete-section .num { font-family: var(--font-mono); font-size: 12px; color: var(--muted-foreground); }
+.sous-titre { color: var(--muted-foreground); font-size: 14px; max-width: 68ch; margin-bottom: 28px; }
+
+.bloc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 22px; }
+.grille2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+
+/* ---- spécimen ---- */
+.specimen-titre { font-family: var(--font-display); font-weight: 700; font-size: clamp(38px, 7vw, 66px); line-height: 1.03; letter-spacing: -0.025em; }
+.specimen-titre em { font-style: italic; color: var(--muted-foreground); }
+/* minmax(0, 1fr) et min-width: 0 : sans eux, un enfant large (ici le tableau)
+   impose sa largeur a la grille et fait deborder toute la page a 375 px. */
+.roles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; margin-top: 26px; }
+.role { border-top: 1px solid var(--border); padding-top: 14px; min-width: 0; }
+.role .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+
+/* Tout contenu large defile dans son propre cadre, jamais la page. */
+.defilable { overflow-x: auto; }
+
+table.donnees { width: 100%; min-width: 460px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+table.donnees th { text-align: left; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); font-weight: 500; padding: 0 12px 8px 0; border-bottom: 1px solid var(--border); }
+table.donnees td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+table.donnees td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+pre.code { font-family: var(--font-mono); font-size: 13px; background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; overflow-x: auto; margin: 0; line-height: 1.6; }
+pre.code .cle { color: var(--destructive); }
+pre.code .txt { color: var(--success); }
+pre.code .com { color: var(--muted-foreground); }
+
+/* ---- échelle de titrage ---- */
+.echelle { display: grid; gap: 14px; }
+.echelle .cran { display: flex; align-items: baseline; gap: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+.echelle .taille { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--muted-foreground); width: 78px; flex: none; }
+.echelle .ex { font-family: var(--font-display); font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; min-width: 0; }
+
+/* ---- palette ---- */
+.palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+.pastille { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.pastille .aplat { height: 62px; }
+.pastille .infos { padding: 8px 10px; background: var(--card); }
+.pastille .nom { font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+.pastille .val { font-family: var(--font-mono); font-size: 10px; color: var(--muted-foreground); word-break: break-all; }
+
+.rangee { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+.champ { display: block; margin-bottom: 16px; }
+.champ .lib { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; }
+.champ input, .champ textarea {
+  width: 100%; font-family: var(--font-sans); font-size: 14px;
+  padding: 8px 11px; border-radius: var(--radius);
+  border: 1px solid var(--input); background: var(--card); color: var(--foreground);
+}
+.champ input::placeholder { color: var(--muted-foreground); }
+.champ.erreur input { border-color: var(--destructive); border-width: 1.5px; }
+.champ .aide { font-size: 12px; color: var(--muted-foreground); margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+.champ.erreur .aide { color: var(--destructive); }
+.champ .aide svg { width: 13px; height: 13px; flex: none; }
+
+.message { display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border-radius: var(--radius); border: 1px solid; font-size: 13.5px; margin-bottom: 10px; background: var(--card); }
+.message svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.message.succes { border-color: var(--success); color: var(--success); }
+.message.alerte { border-color: var(--signal); color: var(--signal); }
+.message.erreur { border-color: var(--destructive); color: var(--destructive); }
+.message.info { border-color: var(--border); color: var(--muted-foreground); }
+.message strong { color: var(--foreground); font-weight: 600; }
+
+/* ============================================================
+   LES DEUX NOTES — barres continues de même longueur, deux couleurs.
+   Le libellé INT / ACC porte l'information ; la couleur la renforce.
+   Sans ce libellé, l'écart ne tiendrait que sur la teinte — ce que
+   le plancher d'accessibilité interdit.
+   ============================================================ */
+.notes { display: flex; flex-direction: column; gap: 6px; }
+.note { display: flex; align-items: center; gap: 8px; }
+.note .lib { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--muted-foreground); width: 25px; flex: none; }
+.note .barre { width: 88px; height: 8px; flex: none; background: var(--muted); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+.note .barre i { display: block; height: 100%; }
+.note.int .barre i { background: var(--primary); }
+.note.acc .barre i { background: var(--success); }
+.note .val { font-family: var(--font-mono); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; width: 24px; text-align: right; }
+
+.notes.grandes .note .barre { width: 150px; height: 12px; }
+.notes.grandes .note .val { font-size: 26px; width: 42px; }
+.notes.grandes { gap: 12px; }
+
+/* ---- cartouches de métadonnées ---- */
+.cartouches { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.cart {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em;
+  padding: 2px 7px; border-radius: 2px;
+  background: var(--secondary); color: var(--secondary-foreground);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+/* Le salaire ressort par la graisse, pas par une teinte de plus :
+   une couleur par métadonnée donnerait vingt-cinq taches sur un écran de cinq offres. */
+.cart.fort { font-weight: 600; }
+.cart.absent { background: transparent; color: var(--muted-foreground); font-style: italic; }
+
+/* ---- maquettes ---- */
+.maquette { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--background); }
+.maq-corps { display: grid; grid-template-columns: 208px 1fr 316px; min-height: 560px; }
+
+.maq-lat { border-right: 1px solid var(--border); background: var(--muted); padding: 16px 0; }
+.maq-marque { font-family: var(--font-display); font-weight: 700; font-size: 18px; padding: 0 16px 14px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.maq-nav { display: flex; flex-direction: column; }
+.maq-nav a { display: flex; align-items: center; gap: 9px; padding: 7px 16px; font-size: 13.5px; text-decoration: none; color: var(--muted-foreground); border-left: 2px solid transparent; }
+.maq-nav a svg { width: 15px; height: 15px; }
+.maq-nav a.actif { color: var(--foreground); font-weight: 500; background: var(--accent); border-left-color: var(--primary); }
+.maq-nav a .compte { margin-left: auto; font-family: var(--font-mono); font-size: 11px; }
+.maq-veille { margin: 18px 16px 0; padding-top: 14px; border-top: 1px solid var(--border); }
+.maq-veille .ligne { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted-foreground); }
+.maq-veille .ligne svg { width: 13px; height: 13px; color: var(--success); flex: none; }
+.maq-veille .heure { font-family: var(--font-mono); font-size: 12.5px; color: var(--foreground); margin-top: 3px; }
+
+.maq-centre { border-right: 1px solid var(--border); min-width: 0; }
+.maq-tete { padding: 18px 22px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.maq-tete h3 { font-size: 26px; }
+.maq-tete .compte-jour { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted-foreground); padding-bottom: 4px; }
+
+/* ---- une ligne d'offre ---- */
+.offre { display: block; padding: 14px 22px; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; transition: background-color 120ms ease-out; }
+.offre:hover { background: var(--accent); }
+.offre.selectionnee { background: var(--accent); box-shadow: inset 3px 0 0 var(--primary); }
+
+/* L'entreprise passe en tête, au-dessus du titre, avec le marqueur « nouveau »
+   à côté d'elle : à droite, il se cognait aux barres de notes. */
+.tete-offre { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
+.tete-offre .entreprise {
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--foreground);
+}
+.tete-offre .neuf {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em;
+  background: var(--signal); color: var(--signal-foreground);
+  padding: 2px 6px; border-radius: 2px; text-transform: uppercase;
+}
+
+.offre .haut { display: flex; gap: 18px; align-items: flex-start; }
+.offre .corps { min-width: 0; flex: 1; }
+.offre .intitule { font-size: 15.5px; font-weight: 600; line-height: 1.3; }
+.offre .justif { font-size: 13px; color: var(--muted-foreground); margin-top: 8px; line-height: 1.45; }
+.offre .justif b { color: var(--foreground); font-weight: 500; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; }
+.offre .etat { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; margin-top: 8px; color: var(--muted-foreground); }
+.offre .etat svg { width: 13px; height: 13px; }
+.offre .etat.encours { color: var(--signal); }
+.offre .etat.prete { color: var(--success); }
+
+.maq-panneau { padding: 18px; background: var(--card); min-width: 0; }
+.panneau-tete { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.panneau-tete svg { width: 15px; height: 15px; color: var(--signal); }
+.panneau-tete .t { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; }
+.panneau-cible { font-size: 13px; font-weight: 600; margin-bottom: 16px; line-height: 1.3; }
+
+.etapes { list-style: none; padding: 0; margin: 0; }
+.etapes li { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; line-height: 1.45; }
+.etapes li:last-child { border-bottom: 0; }
+.etapes .marque { flex: none; width: 15px; height: 15px; margin-top: 2px; }
+.etapes .marque svg { width: 15px; height: 15px; }
+.etapes .faite .marque svg { color: var(--success); }
+.etapes .courante .marque svg { color: var(--signal); }
+.etapes .avenir { color: var(--muted-foreground); }
+.etapes .avenir .marque svg { color: var(--border); }
+.etapes .detail { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted-foreground); display: block; margin-top: 2px; }
+
+.etapes li.anime { opacity: 0; transform: translateY(4px); animation: entree 320ms ease-out forwards; }
+@keyframes entree { to { opacity: 1; transform: none; } }
+
+.pulse { animation: pulse 1400ms ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.fiche-extrait { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.fiche-extrait dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 12.5px; }
+.fiche-extrait dt { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted-foreground); padding-top: 2px; }
+.fiche-extrait dd { margin: 0; }
+.marqueur { display: inline-flex; align-items: center; gap: 3px; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 4px; border-radius: 2px; border: 1px solid var(--border); color: var(--muted-foreground); vertical-align: 1px; }
+.marqueur svg { width: 10px; height: 10px; }
+.marqueur.verifie { color: var(--success); border-color: var(--success); }
+.marqueur.deduit { color: var(--signal); border-color: var(--signal); }
+
+/* ---- maquette 2 : la fiche d'offre ---- */
+.fiche { padding: 0; }
+.fiche-tete { padding: 22px 26px 18px; border-bottom: 1px solid var(--border); }
+.fiche-tete h3 { font-size: 28px; margin: 6px 0 0; }
+.fiche-colonnes { display: grid; grid-template-columns: 1fr 404px; min-height: 400px; }
+.fiche-gauche { padding: 22px 26px; border-right: 1px solid var(--border); min-width: 0; }
+.fiche-droite { padding: 22px; background: var(--card); min-width: 0; }
+
+.notes-fiche { display: flex; flex-wrap: wrap; gap: 26px; padding: 18px 26px; border-bottom: 1px solid var(--border); background: var(--muted); }
+.note-detail { min-width: 250px; flex: 1; }
+.note-detail .phrase { font-size: 13px; color: var(--muted-foreground); margin: 8px 0 0; line-height: 1.45; }
+
+.fiche-titre-bloc { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted-foreground); margin-bottom: 9px; }
+.resume { font-size: 14.5px; line-height: 1.6; margin: 0 0 18px; }
+.repli { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.repli summary { cursor: pointer; padding: 10px 14px; font-size: 13px; font-weight: 500; background: var(--secondary); list-style: none; display: flex; align-items: center; gap: 8px; }
+.repli summary::-webkit-details-marker { display: none; }
+.repli summary svg { width: 14px; height: 14px; transition: transform 150ms ease-out; }
+.repli[open] summary svg { transform: rotate(90deg); }
+.repli .contenu { padding: 16px 14px; font-size: 14px; line-height: 1.65; border-top: 1px solid var(--border); }
+.repli .contenu p:last-child { margin-bottom: 0; }
+
+.zone-note { margin-top: 20px; }
+.zone-note textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
+
+/* ---- les trois états du bloc d'enrichissement ---- */
+.etats3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(272px, 1fr)); gap: 16px; margin-bottom: 30px; }
+.etat-carte { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 17px; min-width: 0; }
+.etat-carte .titre-etat { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted-foreground); margin-bottom: 12px; }
+.etat-carte .vide { font-size: 13px; color: var(--muted-foreground); line-height: 1.5; margin: 0 0 14px; }
+
+/* ---- conversation contextuelle sur une offre ---- */
+.dialogue { padding: 20px 26px 24px; border-top: 1px solid var(--border); background: var(--muted); }
+/* Largeur de lecture bornée : une réponse d'agent sur 130 caractères de ligne
+   est aussi illisible que sur 45. */
+.fil { display: flex; flex-direction: column; gap: 14px; margin: 14px 0 16px; max-width: 74ch; }
+.saisie { max-width: 74ch; }
+.msg { font-size: 13.5px; line-height: 1.6; }
+.msg .qui { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted-foreground); display: block; margin-bottom: 4px; }
+/* Cartouche à angles nets pour l'un, liseré pour l'autre — pas de bulles de
+   messagerie arrondies : elles appartiennent à un autre registre que celui-ci. */
+.msg.moi .texte { background: var(--secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 11px; }
+.msg.agent .texte { border-left: 2px solid var(--signal); padding-left: 12px; }
+.msg .texte p { margin: 0 0 8px; }
+.msg .texte p:last-child { margin-bottom: 0; }
+.msg .source { font-family: var(--font-mono); font-size: 10px; color: var(--muted-foreground); display: block; margin-top: 6px; }
+.saisie { display: flex; gap: 8px; align-items: flex-end; max-width: 74ch; }
+.saisie textarea {
+  flex: 1; min-width: 0; min-height: 40px; resize: vertical;
+  font-family: var(--font-sans); font-size: 13px; line-height: 1.45;
+  padding: 9px 11px; border-radius: var(--radius);
+  border: 1px solid var(--input); background: var(--card); color: var(--foreground);
+}
+.saisie textarea::placeholder { color: var(--muted-foreground); }
+/* ---- budget de conversation ----
+   Borné en tokens cumulés, jamais en nombre de messages : le contexte est
+   renvoyé à chaque tour, donc la consommation croît quadratiquement avec le
+   nombre d'échanges. Dix messages ne bornent rien.
+   Forme volontairement distincte des barres de notes — 3 px pleine largeur
+   contre 8 px sur largeur fixe — pour qu'on ne confonde pas une mesure de
+   l'offre avec une mesure de la consommation. */
+.budget { max-width: 74ch; margin-top: 13px; }
+.budget-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.budget-lib { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
+.budget-val { font-family: var(--font-mono); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.budget-barre { height: 3px; background: var(--border); border-radius: 1px; margin: 6px 0 5px; overflow: hidden; }
+.budget-barre i { display: block; height: 100%; background: var(--muted-foreground); }
+.budget-detail { font-family: var(--font-mono); font-size: 10px; color: var(--muted-foreground); line-height: 1.5; }
+.budget.tendu .budget-barre i { background: var(--signal-fort); }
+.budget.tendu .budget-val { color: var(--signal-fort); }
+.budget.epuise .budget-barre i { background: var(--destructive); }
+.budget.epuise .budget-val { color: var(--destructive); }
+.saisie.close textarea { opacity: 0.5; }
+
+/* ---- contrastes ---- */
+table.contrastes { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.contrastes th { text-align: left; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted-foreground); font-weight: 500; padding: 0 10px 9px 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.contrastes td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--border); }
+table.contrastes td.r { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+table.contrastes .v { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; }
+table.contrastes .v.ok { color: var(--success); }
+table.contrastes .v.ko { color: var(--destructive); font-weight: 600; }
+.bilan { margin-top: 16px; font-family: var(--font-mono); font-size: 13px; padding: 11px 14px; border-radius: var(--radius); border: 1px solid var(--success); color: var(--success); display: inline-flex; align-items: center; gap: 8px; }
+.bilan.ko { border-color: var(--destructive); color: var(--destructive); }
+.bilan svg { width: 16px; height: 16px; }
+
+/* ---- adaptatif ---- */
+@media (max-width: 1000px) {
+  .maq-corps { grid-template-columns: 1fr; }
+  .maq-lat { border-right: 0; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 12px 16px; }
+  .maq-marque { border-bottom: 0; padding: 0 12px 0 0; margin: 0; }
+  .maq-nav { flex-direction: row; flex-wrap: wrap; }
+  .maq-nav a { border-left: 0; border-bottom: 2px solid transparent; padding: 5px 10px; }
+  .maq-nav a.actif { border-left: 0; border-bottom-color: var(--primary); }
+  .maq-veille { margin: 0 0 0 auto; padding-top: 0; border-top: 0; }
+  .maq-centre { border-right: 0; border-bottom: 1px solid var(--border); }
+  .fiche-colonnes { grid-template-columns: 1fr; }
+  .fiche-gauche { border-right: 0; border-bottom: 1px solid var(--border); }
+}
+@media (max-width: 560px) {
+  .enveloppe { padding: 0 16px 72px; }
+  .barre-haut { padding: 10px 16px; }
+  .offre .haut { flex-direction: column; gap: 12px; }
+  .maq-veille { margin-left: 0; width: 100%; }
+  .barre-haut .etiquette { display: none; }
+  .barre-haut .titre { font-size: 17px; }
+  .fiche-tete, .fiche-gauche { padding-left: 18px; padding-right: 18px; }
+  /* Empilées, pas côte à côte : deux colonnes de 160 px donnent une vingtaine de
+     caractères par ligne, ce qui rend la justification illisible. */
+  .notes-fiche { padding-left: 18px; padding-right: 18px; gap: 18px; flex-direction: column; }
+  .note-detail { min-width: 0; }
+  /* La barre large de la fiche est fixe (150 px) et déborderait d'un conteneur
+     réduit à 144 px — coupée par l'overflow de la maquette, donc le chiffre
+     disparaîtrait. En mobile elle prend l'espace restant au lieu de l'imposer.
+     Les barres de la liste, elles, restent fixes : leur alignement d'une offre
+     à l'autre est ce qui permet de les comparer d'un coup d'œil. */
+  .notes.grandes .note { width: 100%; }
+  .notes.grandes .note .barre { width: auto; flex: 1 1 auto; min-width: 40px; }
+  .dialogue { padding-left: 18px; padding-right: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .etapes li.anime { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ====== icônes lucide, en un seul jeu, jamais un second ====== -->
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-liste" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></symbol>
+  <symbol id="i-boite" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+  <symbol id="i-envoi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></symbol>
+  <symbol id="i-ecarte" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="m9.5 17 5-5"/><path d="m9.5 12 5 5"/></symbol>
+  <symbol id="i-loupe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-coche" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-coche-cercle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-cercle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></symbol>
+  <symbol id="i-doute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-alerte" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+  <symbol id="i-croix-cercle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol>
+  <symbol id="i-horloge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="i-lien" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-soleil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+  <symbol id="i-lune" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9"/></symbol>
+  <symbol id="i-relance" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-crayon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></symbol>
+  <symbol id="i-message" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></symbol>
+</svg>
+
+<div class="barre-haut">
+  <span class="titre">Veille offres emploi IA</span>
+  <span class="etiquette">système de design</span>
+  <span class="pouce"></span>
+  <button class="bouton contour" id="bascule" type="button" aria-pressed="false">
+    <svg id="icone-mode"><use href="#i-lune"></use></svg>
+    <span id="libelle-mode">Mode sombre</span>
+  </button>
+</div>
+
+<div class="enveloppe">
+
+<!-- ============================================================
+     1 — SPÉCIMEN TYPOGRAPHIQUE
+     ============================================================ -->
+<section id="typo">
+  <div class="tete-section">
+    <span class="num">01</span>
+    <h2>Typographie</h2>
+  </div>
+  <p class="sous-titre">
+    Trois polices, trois rôles, aucun recouvrement, une seule fonderie. Le titrage est en
+    graisse massive : Instrument Serif, envisagé au départ, ne connaît qu'un seul poids —
+    le mettre en gras aurait produit un faux gras synthétique, où le navigateur épaissit
+    les traits lui-même. Il fallait changer de police, pas de réglage.
+  </p>
+
+  <div class="specimen-titre">Veille offres<br>emploi <em>IA</em></div>
+
+  <div class="roles">
+    <div class="role">
+      <div class="meta">
+        <span class="etiquette">titrage</span>
+        <span class="etiquette">Fraunces 700 · Google Fonts</span>
+      </div>
+      <div class="echelle">
+        <div class="cran"><span class="taille">44 / 700</span><span class="ex" style="font-size:44px">La fiche d'une offre</span></div>
+        <div class="cran"><span class="taille">28 / 700</span><span class="ex" style="font-size:28px">Ingénieur IA générative — LLMOps</span></div>
+        <div class="cran"><span class="taille">20 / 700</span><span class="ex" style="font-size:20px">Groupe Sorel Ingénierie</span></div>
+      </div>
+      <p style="font-size:12.5px; color:var(--muted-foreground); margin:14px 0 0">
+        Serif variable, graisse jusqu'à 900, utilisé ici en 700. En dessous de 20 px, on
+        repasse en Geist : un serif à fort contraste perd ses déliés en petit corps, et la
+        liste du matin se lit à 13 px.
+      </p>
+    </div>
+    <div class="role">
+      <div class="meta">
+        <span class="etiquette">texte courant</span>
+        <span class="etiquette">Geist · Google Fonts</span>
+      </div>
+      <p style="max-width:66ch; margin-bottom:0;">
+        Le poste s'inscrit dans une équipe de six personnes chargée de l'industrialisation
+        des systèmes à base de modèles de langage. L'annonce mentionne l'orchestration
+        d'agents, la mise en production sur une infrastructure interne, et le suivi de la
+        consommation par requête. Aucune mention de séniorité ni de doctorat : deux ans
+        d'expérience sont demandés, ce qui reste dans ta portée.
+      </p>
+    </div>
+
+    <div class="role">
+      <div class="meta">
+        <span class="etiquette">données</span>
+        <span class="etiquette">Geist Mono · chiffres tabulaires</span>
+      </div>
+      <div class="defilable">
+      <table class="donnees">
+        <thead>
+          <tr><th>Date</th><th>Reçues</th><th>Nouvelles</th><th>Notées</th><th>Enrichies</th><th>Durée</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">2026-08-16</td><td class="num">47</td><td class="num">12</td><td class="num">12</td><td class="num">2</td><td class="num">3 m 41 s</td></tr>
+          <tr><td class="num">2026-08-15</td><td class="num">38</td><td class="num">9</td><td class="num">9</td><td class="num">2</td><td class="num">3 m 08 s</td></tr>
+          <tr><td class="num">2026-08-14</td><td class="num">51</td><td class="num">4</td><td class="num">4</td><td class="num">0</td><td class="num">1 m 52 s</td></tr>
+          <tr><td class="num">2026-08-13</td><td class="num">44</td><td class="num">17</td><td class="num">17</td><td class="num">2</td><td class="num">4 m 27 s</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="role">
+      <div class="meta">
+        <span class="etiquette">code</span>
+        <span class="etiquette">Geist Mono</span>
+      </div>
+<pre class="code"><span class="com"># evaluation.py — une offre, deux notes, jamais une moyenne</span>
+def noter_offre(offre: Offre) -> Notation:
+    reponse = client.messages.create(
+        model=<span class="txt">"claude-sonnet-5"</span>,
+        max_tokens=<span class="cle">1024</span>,
+        tools=[SCHEMA_NOTATION],
+        messages=[{<span class="txt">"role"</span>: <span class="txt">"user"</span>, <span class="txt">"content"</span>: offre.description}],
+    )
+    <span class="com"># les deux axes restent séparés jusqu'à l'affichage</span>
+    return Notation(interet=..., accessibilite=...)</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     2 — PALETTE ET COMPOSANTS
+     ============================================================ -->
+<section id="couleur">
+  <div class="tete-section">
+    <span class="num">02</span>
+    <h2>Couleur</h2>
+  </div>
+  <p class="sous-titre">
+    Beige papier, encre brun-noir, et quatre teintes de signal. Chacune a un rôle et un
+    seul : <b>ocre</b> pour le temporel — nouveau, enrichissement en cours ; <b>olive</b>
+    pour l'accessibilité et le statut candidaté ; <b>brique</b> pour l'erreur et le statut
+    écarté ; <b>brun-encre</b> pour l'action principale et la note d'intérêt.
+  </p>
+
+  <div class="palette" id="palette"></div>
+
+  <div style="height:34px"></div>
+  <div class="grille2">
+    <div class="bloc">
+      <div class="etiquette" style="margin-bottom:14px">Boutons</div>
+      <div class="rangee">
+        <button class="bouton" type="button">Lancer l'enrichissement</button>
+        <button class="bouton secondaire" type="button">Voir l'annonce</button>
+      </div>
+      <div class="rangee" style="margin-top:12px">
+        <button class="bouton candidate" type="button"><svg><use href="#i-envoi"></use></svg> Candidaté</button>
+        <button class="bouton ecarte" type="button"><svg><use href="#i-ecarte"></use></svg> Écarter</button>
+      </div>
+      <div class="rangee" style="margin-top:12px">
+        <button class="bouton" type="button" disabled>
+          <svg class="pulse"><use href="#i-loupe"></use></svg> Enrichissement en cours…
+        </button>
+      </div>
+      <p style="font-size:12.5px; color:var(--muted-foreground); margin:14px 0 0">
+        Écarter est en <b>brique</b> et non en orange franc : l'orange se confondrait avec
+        l'ocre du marqueur « nouveau », et une même teinte ne peut pas vouloir dire
+        « regarde ça » et « jette ça » dans la même liste.
+      </p>
+    </div>
+
+    <div class="bloc">
+      <div class="etiquette" style="margin-bottom:14px">Champs</div>
+      <label class="champ">
+        <span class="lib">Note personnelle</span>
+        <input type="text" value="Contacter Élodie via l'ancien collègue de promo">
+        <span class="aide"><svg><use href="#i-coche"></use></svg> Enregistré à 07 h 42</span>
+      </label>
+      <label class="champ">
+        <span class="lib">Mot de passe</span>
+        <input type="password" placeholder="Saisir le mot de passe">
+      </label>
+      <label class="champ erreur">
+        <span class="lib">Note personnelle</span>
+        <input type="text" value="Relancer lundi, RH absente jusqu'au 20">
+        <span class="aide"><svg><use href="#i-alerte"></use></svg> Non enregistré — le texte saisi est conservé</span>
+      </label>
+    </div>
+
+    <div class="bloc">
+      <div class="etiquette" style="margin-bottom:14px">Messages</div>
+      <div class="message succes"><svg><use href="#i-coche-cercle"></use></svg><div><strong>Veille du 16 août réussie.</strong> 47 offres reçues, 12 nouvelles, 2 enrichissements lancés.</div></div>
+      <div class="message alerte"><svg><use href="#i-alerte"></use></svg><div><strong>Aucune veille depuis 41 heures.</strong> Le déclencheur quotidien n'a pas abouti.</div></div>
+      <div class="message erreur"><svg><use href="#i-croix-cercle"></use></svg><div><strong>L'enrichissement a échoué</strong> après 4 min 12 s — limite de durée atteinte.</div></div>
+      <div class="message info" style="margin-bottom:0"><svg><use href="#i-info"></use></svg><div>Aucune offre nouvelle ne dépasse le seuil aujourd'hui. Dernière veille : ce matin à 06 h 12.</div></div>
+    </div>
+
+    <div class="bloc">
+      <div class="etiquette" style="margin-bottom:14px">Les deux notes</div>
+      <div class="notes grandes" style="margin-bottom:16px">
+        <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:87%"></i></div><span class="val">87</span></div>
+        <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:71%"></i></div><span class="val">71</span></div>
+      </div>
+      <p style="font-size:12.5px; color:var(--muted-foreground); margin:0">
+        Deux barres de même longueur, deux couleurs. Le libellé <b>INT</b> / <b>ACC</b>
+        devant chaque barre n'est pas décoratif : sans lui, la distinction ne tiendrait que
+        sur la teinte — invisible pour un daltonien, et perdue sur un partage d'écran
+        compressé. Avec le libellé, la couleur devient un renfort, pas le seul porteur.
+      </p>
+    </div>
+
+    <div class="bloc">
+      <div class="etiquette" style="margin-bottom:14px">Cartouches de métadonnées</div>
+      <div class="cartouches" style="margin-top:0">
+        <span class="cart">Paris 15e</span>
+        <span class="cart">CDI</span>
+        <span class="cart fort">42–48 k€</span>
+        <span class="cart">Publiée il y a 2 j</span>
+      </div>
+      <div class="cartouches" style="margin-top:10px">
+        <span class="cart">Boulogne-Billancourt</span>
+        <span class="cart">CDI</span>
+        <span class="cart absent">Salaire non précisé</span>
+        <span class="cart">Publiée hier</span>
+      </div>
+      <p style="font-size:12.5px; color:var(--muted-foreground); margin:14px 0 0">
+        Une teinte unique pour tous les cartouches. Ils ressortent par la <b>forme</b>, pas
+        par la couleur : cinq offres × cinq informations feraient vingt-cinq taches
+        colorées à l'écran, et plus rien ne signalerait rien. Le salaire se distingue par
+        la graisse, parce que c'est celui qu'on cherche en premier.
+      </p>
+    </div>
+
+    <div class="bloc">
+      <div class="etiquette" style="margin-bottom:14px">Budget de conversation — les trois états</div>
+
+      <div class="budget" style="margin-top:0">
+        <div class="budget-tete"><span class="budget-lib">Confortable</span><span class="budget-val">18 %</span></div>
+        <div class="budget-barre"><i style="width:18%"></i></div>
+        <div class="budget-detail">14 240 / 80 000 tokens</div>
+      </div>
+
+      <div class="budget tendu">
+        <div class="budget-tete"><span class="budget-lib">Bientôt épuisé</span><span class="budget-val">86 %</span></div>
+        <div class="budget-barre"><i style="width:86%"></i></div>
+        <div class="budget-detail">68 800 / 80 000 tokens — encore deux ou trois questions</div>
+      </div>
+
+      <div class="budget epuise">
+        <div class="budget-tete"><span class="budget-lib">Épuisé</span><span class="budget-val">100 %</span></div>
+        <div class="budget-barre"><i style="width:100%"></i></div>
+        <div class="budget-detail">80 000 / 80 000 tokens</div>
+      </div>
+
+      <div class="saisie close" style="margin-top:12px">
+        <textarea placeholder="Budget épuisé — conversation close sur cette offre" disabled></textarea>
+        <button class="bouton" type="button" disabled aria-label="Envoyer"><svg><use href="#i-envoi"></use></svg></button>
+      </div>
+
+      <p style="font-size:12.5px; color:var(--muted-foreground); margin:14px 0 0">
+        À 100 %, la saisie se bloque <b>définitivement</b> sur cette offre. Pas de bouton
+        pour réinitialiser : une borne qu'on peut lever d'un clic n'est plus une borne. Le
+        plafond se relève dans le fichier de configuration versionné, à la main.
+      </p>
+      <p style="font-size:12.5px; color:var(--muted-foreground); margin:10px 0 0">
+        Le pourcentage mesure la <b>consommation</b>, pas la facture : avec le contexte mis
+        en cache, les tokens relus coûtent une fraction du prix. C'est pourquoi la base
+        stocke les compteurs bruts et calcule le coût à part, contre une grille tarifaire
+        tenue à jour à la main.
+      </p>
+    </div>
+
+    <div class="bloc">
+      <div class="etiquette" style="margin-bottom:14px">Statuts</div>
+      <div class="rangee">
+        <span class="cart" style="background:var(--signal); color:var(--signal-foreground); border-color:var(--signal); font-weight:600">Nouveau</span>
+        <span class="cart">À traiter</span>
+        <span class="cart" style="border-color:var(--success); color:var(--success)">✓ Candidaté</span>
+        <span class="cart" style="border-color:var(--destructive); color:var(--destructive)">✕ Écarté</span>
+      </div>
+      <p style="font-size:12.5px; color:var(--muted-foreground); margin:14px 0 0">
+        Chaque statut porte une icône ou un symbole en plus de sa couleur. Olive sert à la
+        fois à la note d'accessibilité et au statut candidaté — les deux ne se croisent
+        jamais dans la même ligne, puisqu'une offre candidatée quitte la liste du matin.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     3 — CONTRASTES
+     ============================================================ -->
+<section id="contrastes">
+  <div class="tete-section">
+    <span class="num">03</span>
+    <h2>Contrastes</h2>
+  </div>
+  <p class="sous-titre">
+    Calculés dans cette page, sur les couleurs réellement résolues par le navigateur,
+    dans les deux modes. Texte courant : 4,5:1 minimum. Éléments d'interface et focus
+    clavier : 3:1 minimum.
+  </p>
+
+  <div class="defilable">
+    <table class="contrastes">
+      <thead>
+        <tr>
+          <th>Paire</th><th>Exigé</th>
+          <th style="text-align:right">Clair</th><th></th>
+          <th style="text-align:right">Sombre</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="corps-contrastes"></tbody>
+    </table>
+  </div>
+  <div id="bilan-contrastes"></div>
+
+  <p style="font-size:12.5px; color:var(--muted-foreground); margin-top:20px; max-width:72ch">
+    <b>Une mesure hors exigence</b>, donnée pour information et volontairement exclue du
+    bilan : <span id="indicatif"></span>
+    Aucun critère WCAG n'impose un contraste minimal entre deux indicateurs distincts et
+    non adjacents. Les deux barres sont empilées, séparées par du fond, et chacune est
+    identifiée par son libellé <code class="mono">INT</code> /
+    <code class="mono">ACC</code>. Elles se distinguent par la <b>teinte</b> — brun chaud
+    contre vert froid — pas par la clarté : c'est pourquoi ce chiffre est bas alors que
+    l'écart se voit parfaitement à l'œil. La compter comme un échec inventerait un défaut.
+  </p>
+
+  <p style="font-size:12.5px; color:var(--muted-foreground); margin-top:16px; max-width:72ch">
+    <code class="mono">--border</code> n'est pas dans ce tableau : c'est un filet
+    décoratif, pas un composant d'interface, et le WCAG ne lui impose rien.
+    <code class="mono">--input</code>, lui, dessine la bordure des champs de saisie et
+    des boutons à contour — il doit tenir 3:1, et il le tient. Confondre les deux est
+    l'erreur classique sur un thème shadcn.
+  </p>
+</section>
+
+<!-- ============================================================
+     4 — MAQUETTE A : la liste du matin
+     ============================================================ -->
+<section id="maquette">
+  <div class="tete-section">
+    <span class="num">04</span>
+    <h2>L'écran du matin</h2>
+  </div>
+  <p class="sous-titre">
+    L'entreprise passe en tête de chaque offre, avec le marqueur « nouveau » à côté d'elle
+    plutôt qu'à droite, où il se cognait aux barres de notes. Pas de bandeau de chiffres
+    clés : le seul indicateur global est la dernière veille réussie.
+  </p>
+
+  <div class="maquette">
+    <div class="maq-corps">
+
+      <aside class="maq-lat">
+        <div class="maq-marque">Veille IA</div>
+        <nav class="maq-nav">
+          <a href="#maquette" class="actif"><svg><use href="#i-liste"></use></svg> À traiter <span class="compte">5</span></a>
+          <a href="#maquette"><svg><use href="#i-boite"></use></svg> Toutes <span class="compte">418</span></a>
+          <a href="#maquette"><svg><use href="#i-envoi"></use></svg> Candidatées <span class="compte">23</span></a>
+          <a href="#maquette"><svg><use href="#i-ecarte"></use></svg> Écartées <span class="compte">390</span></a>
+        </nav>
+        <div class="maq-veille">
+          <div class="ligne"><svg><use href="#i-coche-cercle"></use></svg> Dernière veille réussie</div>
+          <div class="heure">aujourd'hui · 06:12</div>
+        </div>
+      </aside>
+
+      <main class="maq-centre">
+        <div class="maq-tete">
+          <h3>Dimanche 16 août</h3>
+          <span class="compte-jour">12 NOUVELLES · 5 AU-DESSUS DU SEUIL</span>
+        </div>
+
+        <a class="offre selectionnee" href="#maquette">
+          <div class="tete-offre">
+            <span class="entreprise">Groupe Sorel Ingénierie</span>
+            <span class="neuf">Nouveau</span>
+          </div>
+          <div class="haut">
+            <div class="corps">
+              <div class="intitule">Ingénieur études et développement IA générative et agents conversationnels (H/F)</div>
+              <div class="cartouches">
+                <span class="cart">Paris 15e</span>
+                <span class="cart">CDI</span>
+                <span class="cart fort">42–48 k€</span>
+                <span class="cart">Publiée il y a 2 j</span>
+              </div>
+              <div class="justif"><b>INT</b> L'annonce décrit l'orchestration d'agents en production ; l'intitulé générique masque un poste central sur le sujet.</div>
+              <div class="justif"><b>ACC</b> Deux ans demandés, aucun intitulé de séniorité, pile technique proche de ton expérience.</div>
+            </div>
+            <div class="notes">
+              <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:87%"></i></div><span class="val">87</span></div>
+              <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:71%"></i></div><span class="val">71</span></div>
+            </div>
+          </div>
+        </a>
+
+        <a class="offre" href="#maquette">
+          <div class="tete-offre">
+            <span class="entreprise">Meridiem Data</span>
+            <span class="neuf">Nouveau</span>
+          </div>
+          <div class="haut">
+            <div class="corps">
+              <div class="intitule">Ingénieur IA générative — LLMOps</div>
+              <div class="cartouches">
+                <span class="cart">Levallois-Perret</span>
+                <span class="cart">CDI</span>
+                <span class="cart absent">Salaire non précisé</span>
+                <span class="cart">Publiée hier</span>
+              </div>
+              <div class="justif"><b>INT</b> Mise en production de modèles de langage, supervision de la consommation — le cœur du sujet.</div>
+              <div class="etat encours"><svg class="pulse"><use href="#i-loupe"></use></svg> Enrichissement en cours — étape 4 sur 6</div>
+            </div>
+            <div class="notes">
+              <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:79%"></i></div><span class="val">79</span></div>
+              <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:58%"></i></div><span class="val">58</span></div>
+            </div>
+          </div>
+        </a>
+
+        <a class="offre" href="#maquette">
+          <div class="tete-offre">
+            <span class="entreprise">Volt Conseil</span>
+          </div>
+          <div class="haut">
+            <div class="corps">
+              <div class="intitule">Consultant IA &amp; automatisation des processus</div>
+              <div class="cartouches">
+                <span class="cart">Paris 8e</span>
+                <span class="cart">CDI</span>
+                <span class="cart fort">40–45 k€</span>
+                <span class="cart">Publiée il y a 3 j</span>
+              </div>
+              <div class="justif"><b>ACC</b> Profil jeune diplômé explicitement accepté, mission d'avant-vente proche de ton expérience en cabinet.</div>
+              <div class="etat prete"><svg><use href="#i-coche-cercle"></use></svg> Fiche d'enrichissement disponible</div>
+            </div>
+            <div class="notes">
+              <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:74%"></i></div><span class="val">74</span></div>
+              <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:83%"></i></div><span class="val">83</span></div>
+            </div>
+          </div>
+        </a>
+
+        <a class="offre" href="#maquette">
+          <div class="tete-offre">
+            <span class="entreprise">Ateliers Numériques du Nord</span>
+          </div>
+          <div class="haut">
+            <div class="corps">
+              <div class="intitule">Développeur Python / intégration de modèles de langage</div>
+              <div class="cartouches">
+                <span class="cart">Saint-Denis</span>
+                <span class="cart">CDI</span>
+                <span class="cart fort">38–44 k€</span>
+                <span class="cart">Publiée il y a 5 j</span>
+              </div>
+              <div class="justif"><b>INT</b> Intégration d'une brique conversationnelle sur une base documentaire — utile, mais loin de l'orchestration d'agents.</div>
+            </div>
+            <div class="notes">
+              <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:63%"></i></div><span class="val">63</span></div>
+              <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:45%"></i></div><span class="val">45</span></div>
+            </div>
+          </div>
+        </a>
+
+        <a class="offre" href="#maquette" style="border-bottom:0">
+          <div class="tete-offre">
+            <span class="entreprise">Cabinet Verlaine</span>
+          </div>
+          <div class="haut">
+            <div class="corps">
+              <div class="intitule">Chef de projet data &amp; intelligence artificielle</div>
+              <div class="cartouches">
+                <span class="cart">Boulogne-Billancourt</span>
+                <span class="cart">CDI</span>
+                <span class="cart absent">Salaire non précisé</span>
+                <span class="cart">Publiée il y a 6 j</span>
+              </div>
+              <div class="justif"><b>INT</b> Pilotage plus que construction ; l'IA y est un périmètre, pas une pratique.</div>
+            </div>
+            <div class="notes">
+              <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:51%"></i></div><span class="val">51</span></div>
+              <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:66%"></i></div><span class="val">66</span></div>
+            </div>
+          </div>
+        </a>
+      </main>
+
+      <aside class="maq-panneau">
+        <div class="panneau-tete">
+          <svg class="pulse"><use href="#i-loupe"></use></svg>
+          <span class="t">Enrichissement en cours</span>
+        </div>
+        <div class="panneau-cible">Meridiem Data — Ingénieur IA générative, LLMOps</div>
+
+        <ul class="etapes" id="etapes">
+          <li class="faite"><span class="marque"><svg><use href="#i-coche-cercle"></use></svg></span>
+            <div>Identification de l'entreprise<span class="detail">SIREN 892 431 067 · correspondance certaine</span></div></li>
+          <li class="faite"><span class="marque"><svg><use href="#i-coche-cercle"></use></svg></span>
+            <div>Consultation du registre public<span class="detail">créée en 2019 · 20 à 49 salariés · PME</span></div></li>
+          <li class="faite"><span class="marque"><svg><use href="#i-coche-cercle"></use></svg></span>
+            <div>Lecture du site officiel<span class="detail">meridiem-data.fr · 6 pages lues</span></div></li>
+          <li class="courante"><span class="marque"><svg class="pulse"><use href="#i-cercle"></use></svg></span>
+            <div>Recherche des publications techniques<span class="detail">en cours · 38 s écoulées</span></div></li>
+          <li class="avenir"><span class="marque"><svg><use href="#i-cercle"></use></svg></span>
+            <div>Recoupement du chiffre d'affaires</div></li>
+          <li class="avenir"><span class="marque"><svg><use href="#i-cercle"></use></svg></span>
+            <div>Rédaction de la fiche</div></li>
+        </ul>
+
+        <div class="rangee" style="margin-top:14px">
+          <button class="bouton discret" type="button" id="rejouer">
+            <svg><use href="#i-relance"></use></svg> Rejouer
+          </button>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     5 — MAQUETTE B : la fiche d'offre
+     ============================================================ -->
+<section id="fiche">
+  <div class="tete-section">
+    <span class="num">05</span>
+    <h2>La fiche d'une offre</h2>
+  </div>
+  <p class="sous-titre">
+    Le second écran, celui qui manquait. La description intégrale y vit — repliée derrière
+    un bouton, comme le prévoit le cadrage — précédée d'un résumé court. C'est ici que les
+    deux notes s'affichent en grand, chacune avec sa phrase de justification.
+  </p>
+
+  <div class="etiquette" style="margin-bottom:12px">Les trois états du bloc d'enrichissement</div>
+  <div class="etats3">
+    <div class="etat-carte">
+      <div class="titre-etat">1 · pas encore lancé</div>
+      <p class="vide">
+        Aucun enrichissement sur cette offre. L'agent cherchera l'entreprise, lira son
+        site, croisera le registre public et rédigera une fiche.
+      </p>
+      <button class="bouton" type="button"><svg><use href="#i-loupe"></use></svg> Enrichir cette offre</button>
+      <p style="font-size:11.5px; color:var(--muted-foreground); margin:12px 0 0">
+        Le bouton se désactive dès le premier clic et pendant toute la durée — un double
+        clic ne doit jamais lancer deux enrichissements payants.
+      </p>
+    </div>
+
+    <div class="etat-carte">
+      <div class="titre-etat">2 · en cours</div>
+      <ul class="etapes">
+        <li class="faite"><span class="marque"><svg><use href="#i-coche-cercle"></use></svg></span>
+          <div>Identification de l'entreprise<span class="detail">SIREN 892 431 067</span></div></li>
+        <li class="courante"><span class="marque"><svg class="pulse"><use href="#i-cercle"></use></svg></span>
+          <div>Consultation du registre public<span class="detail">en cours · 12 s</span></div></li>
+        <li class="avenir"><span class="marque"><svg><use href="#i-cercle"></use></svg></span>
+          <div>Lecture du site officiel</div></li>
+      </ul>
+      <button class="bouton" type="button" disabled style="margin-top:12px">
+        <svg class="pulse"><use href="#i-loupe"></use></svg> Enrichissement en cours…
+      </button>
+    </div>
+
+    <div class="etat-carte">
+      <div class="titre-etat">3 · échoué</div>
+      <div class="message erreur" style="margin-bottom:14px">
+        <svg><use href="#i-croix-cercle"></use></svg>
+        <div><strong>Échec après 4 min 12 s</strong> — limite de durée atteinte. Aucune fiche produite.</div>
+      </div>
+      <button class="bouton" type="button"><svg><use href="#i-relance"></use></svg> Relancer</button>
+      <p style="font-size:11.5px; color:var(--muted-foreground); margin:12px 0 0">
+        Un échec s'affiche et se relance. Il ne laisse jamais une fiche vide sans
+        explication.
+      </p>
+    </div>
+  </div>
+
+  <div class="maquette fiche">
+    <div class="fiche-tete">
+      <div class="tete-offre">
+        <span class="entreprise">Groupe Sorel Ingénierie</span>
+        <span class="neuf">Nouveau</span>
+      </div>
+      <h3>Ingénieur études et développement IA générative et agents conversationnels (H/F)</h3>
+      <div class="cartouches">
+        <span class="cart">Paris 15e</span>
+        <span class="cart">CDI</span>
+        <span class="cart fort">42–48 k€</span>
+        <span class="cart">Publiée le 14 août 2026</span>
+        <span class="cart">Temps plein</span>
+      </div>
+      <div class="rangee" style="margin-top:14px">
+        <button class="bouton candidate" type="button"><svg><use href="#i-envoi"></use></svg> Candidaté</button>
+        <button class="bouton ecarte" type="button"><svg><use href="#i-ecarte"></use></svg> Écarter</button>
+        <button class="bouton secondaire" type="button"><svg><use href="#i-lien"></use></svg> Annonce d'origine</button>
+      </div>
+    </div>
+
+    <div class="notes-fiche">
+      <div class="note-detail">
+        <div class="notes grandes">
+          <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:87%"></i></div><span class="val">87</span></div>
+        </div>
+        <p class="phrase">L'annonce décrit l'orchestration d'agents en production, avec supervision de la consommation par requête. L'intitulé générique masque un poste central sur le sujet.</p>
+      </div>
+      <div class="note-detail">
+        <div class="notes grandes">
+          <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:71%"></i></div><span class="val">71</span></div>
+        </div>
+        <p class="phrase">Deux ans d'expérience demandés, aucun intitulé de séniorité, pile technique proche de la tienne. La mention d'une équipe déjà constituée réduit un peu la marge.</p>
+      </div>
+    </div>
+
+    <div class="fiche-colonnes">
+      <div class="fiche-gauche">
+        <div class="fiche-titre-bloc">Résumé</div>
+        <p class="resume">
+          Poste au sein d'une équipe de six personnes chargée de l'industrialisation des
+          systèmes à base de modèles de langage. Orchestration d'agents, mise en production
+          sur infrastructure interne, suivi de la consommation par requête.
+        </p>
+
+        <details class="repli">
+          <summary><svg><use href="#i-chevron"></use></svg> Description intégrale de l'annonce</summary>
+          <div class="contenu">
+            <p>
+              Dans le cadre du renforcement de notre pôle Innovation, nous recherchons un
+              ingénieur études et développement pour rejoindre une équipe de six personnes
+              dédiée à l'industrialisation de nos systèmes à base de modèles de langage.
+            </p>
+            <p>
+              <b>Vos missions.</b> Concevoir et mettre en production des chaînes
+              d'orchestration d'agents pour nos clients grands comptes. Assurer le suivi de
+              la consommation et des coûts par requête. Participer à la définition des
+              schémas de données et à la mise en place des garde-fous de sécurité.
+              Documenter les choix d'architecture à destination des équipes internes.
+            </p>
+            <p>
+              <b>Profil recherché.</b> Formation d'ingénieur ou équivalent, deux ans
+              d'expérience minimum sur des projets impliquant des modèles de langage.
+              Maîtrise de Python. Une première expérience de mise en production est
+              attendue. La connaissance des environnements infonuagiques est un plus.
+            </p>
+            <p>
+              <b>Conditions.</b> CDI, temps plein, poste basé à Paris 15e avec deux jours de
+              télétravail hebdomadaire. Rémunération selon profil, entre 42 et 48 k€ annuels
+              bruts.
+            </p>
+          </div>
+        </details>
+
+        <div class="zone-note">
+          <label class="champ" style="margin-bottom:0">
+            <span class="lib"><svg style="width:13px;height:13px;vertical-align:-2px"><use href="#i-crayon"></use></svg> Ma note personnelle</span>
+            <textarea>Élodie de la promo 2021 y travaille — lui écrire avant de postuler. Vérifier si le poste est ouvert depuis longtemps.</textarea>
+            <span class="aide"><svg><use href="#i-coche"></use></svg> Enregistré automatiquement à 07 h 42</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="fiche-droite">
+        <div class="panneau-tete">
+          <svg style="color:var(--success)"><use href="#i-coche-cercle"></use></svg>
+          <span class="t">Fiche d'enrichissement</span>
+        </div>
+        <div class="panneau-cible">Groupe Sorel Ingénierie</div>
+
+        <div class="fiche-extrait" style="margin-top:0; padding-top:0; border-top:0">
+          <dl>
+            <dt>Identité</dt><dd>Groupe Sorel Ingénierie SAS · SIREN 412 908 337 <span class="marqueur verifie"><svg><use href="#i-coche"></use></svg> vérifié</span></dd>
+            <dt>Création</dt><dd>2011 <span class="marqueur verifie"><svg><use href="#i-coche"></use></svg> vérifié</span></dd>
+            <dt>Taille</dt><dd>ETI · 250 à 499 salariés <span class="marqueur verifie"><svg><use href="#i-coche"></use></svg> vérifié</span></dd>
+            <dt>CA</dt><dd>non disponible — comptes déposés avec demande de confidentialité au greffe</dd>
+            <dt>Site</dt><dd>sorel-ingenierie.fr <span class="marqueur verifie"><svg><use href="#i-coche"></use></svg> vérifié</span></dd>
+            <dt>Vend</dt><dd>
+              Ingénierie logicielle sur mesure et infogérance, en régie comme au forfait.
+              Clientèle industrielle : deux opérateurs d'énergie, un équipementier
+              ferroviaire, plusieurs collectivités. Pas de produit propre, pas de licence.
+              <span class="marqueur deduit"><svg><use href="#i-doute"></use></svg> déduit</span>
+            </dd>
+            <dt>En IA</dt><dd>
+              Pôle Innovation créé début 2024, six personnes selon les profils publics.
+              Deux références citées sur le site : un agent de recherche documentaire pour
+              un opérateur d'énergie, et un assistant de rédaction de réponses aux appels
+              d'offres.
+              <br><br>
+              Aucune publication de recherche, aucun modèle entraîné en interne : l'activité
+              porte sur l'<b>intégration et la mise en production de modèles existants</b>,
+              pas sur leur conception. C'est cohérent avec le poste.
+              <span class="marqueur deduit"><svg><use href="#i-doute"></use></svg> déduit</span>
+            </dd>
+            <dt>Technique</dt><dd>
+              Python, orchestration d'agents, environnement infonuagique. L'annonce mentionne
+              explicitement le suivi de la consommation par requête — cela suppose une
+              instrumentation déjà en place en production, donc une équipe qui a dépassé le
+              stade de la preuve de concept.
+              <br><br>
+              Aucun cadriciel nommé. Deux offres antérieures de la même entreprise
+              mentionnaient Docker et Kubernetes.
+              <span class="marqueur verifie"><svg><use href="#i-coche"></use></svg> vérifié</span>
+            </dd>
+          </dl>
+        </div>
+
+        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border)">
+          <div class="fiche-titre-bloc">Sources consultées</div>
+          <div style="font-family:var(--font-mono); font-size:10.5px; color:var(--muted-foreground); line-height:1.9">
+            registre public des entreprises<br>
+            sorel-ingenierie.fr — 8 pages<br>
+            2 publications techniques<br>
+            2 offres antérieures du même employeur
+          </div>
+        </div>
+
+        <div class="rangee" style="margin-top:16px">
+          <button class="bouton discret" type="button"><svg><use href="#i-relance"></use></svg> Relancer l'enrichissement</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         Conversation contextuelle — hors périmètre v1 à ce jour.
+         Dessinée ici pour que la fiche lui garde sa place, pas pour
+         qu'elle entre dans une phase sans passer par le PRD.
+
+         En pleine largeur et non dans la colonne de droite : une réponse
+         d'agent y tenait sur 45 caractères de ligne, et la colonne de
+         gauche restait vide sur toute la hauteur du fil.
+         ============================================================ -->
+    <div class="dialogue">
+      <div class="panneau-tete">
+        <svg><use href="#i-message"></use></svg>
+        <span class="t">Approfondir avec l'agent</span>
+      </div>
+      <p style="font-size:12px; color:var(--muted-foreground); margin:6px 0 0">
+        L'agent garde le contexte de cette offre : l'annonce, la fiche ci-dessus et ses
+        sources. Il ne sort pas de cette offre.
+      </p>
+
+      <div class="fil">
+        <div class="msg moi">
+          <span class="qui">Moi</span>
+          <div class="texte">Le pôle Innovation, c'est du vrai ou de l'affichage ? Six personnes sur trois cents, ça peut n'être qu'une vitrine commerciale.</div>
+        </div>
+        <div class="msg agent">
+          <span class="qui">Agent</span>
+          <div class="texte">
+            <p>
+              Trois indices penchent vers du réel. Les deux références citées sont datées et
+              nommées, pas anonymisées. L'annonce parle de suivi de consommation par requête
+              — on n'instrumente pas ce qui ne tourne pas. Et l'équipe recrute son troisième
+              profil sur ce périmètre en dix-huit mois.
+            </p>
+            <p>
+              Le doute que je garde : aucune de ces références n'est vérifiable en dehors de
+              leur propre site. Je n'ai trouvé ni communiqué du client, ni publication
+              technique indépendante.
+            </p>
+            <span class="source">sources : sorel-ingenierie.fr/references · 2 offres antérieures du même employeur</span>
+          </div>
+        </div>
+        <div class="msg moi">
+          <span class="qui">Moi</span>
+          <div class="texte">Qu'est-ce que je devrais leur demander en entretien pour vérifier ça sans les vexer ?</div>
+        </div>
+      </div>
+
+      <div class="saisie">
+        <textarea placeholder="Poser une question sur cette offre…"></textarea>
+        <button class="bouton" type="button" aria-label="Envoyer"><svg><use href="#i-envoi"></use></svg></button>
+      </div>
+      <div class="budget">
+        <div class="budget-tete">
+          <span class="budget-lib">Budget de conversation sur cette offre</span>
+          <span class="budget-val">18 %</span>
+        </div>
+        <div class="budget-barre"><i style="width:18%"></i></div>
+        <div class="budget-detail">
+          14 240 / 80 000 tokens cumulés — entrée et sortie. Le contexte de l'offre est
+          renvoyé à chaque tour : c'est ce qui fait monter le compteur, pas le nombre de
+          messages.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:12.5px; color:var(--muted-foreground); margin-top:16px; max-width:72ch">
+    Rétrécis la fenêtre à 375 px : la fiche passe sur une colonne, les cartouches se
+    replient, les barres de notes restent lisibles. Le titre de l'offre fait 78 caractères
+    — c'est volontaire, c'est là que les mises en page cassent.
+  </p>
+</section>
+
+</div><!-- /enveloppe -->
+
+<script>
+/* ============================================================
+   Palette — pastilles générées depuis les jetons réels
+   ============================================================ */
+var JETONS = [
+  'background', 'foreground', 'card', 'primary', 'primary-foreground',
+  'secondary', 'muted', 'muted-foreground', 'accent', 'border', 'input',
+  'ring', 'signal', 'signal-fort', 'success', 'destructive'
+];
+
+function valeurJeton(nom) {
+  return getComputedStyle(document.documentElement).getPropertyValue('--' + nom).trim();
+}
+
+function dessinerPalette() {
+  var html = '';
+  JETONS.forEach(function (nom) {
+    html += '<div class="pastille">' +
+      '<div class="aplat" style="background:var(--' + nom + ')"></div>' +
+      '<div class="infos"><div class="nom">--' + nom + '</div>' +
+      '<div class="val">' + valeurJeton(nom) + '</div></div></div>';
+  });
+  document.getElementById('palette').innerHTML = html;
+}
+
+/* ============================================================
+   Contrastes — résolus par le navigateur via un canvas 1×1,
+   puis rapport WCAG calculé sur la luminance relative.
+   ============================================================ */
+var toile = document.createElement('canvas');
+toile.width = toile.height = 1;
+var pinceau = toile.getContext('2d', { willReadFrequently: true });
+
+function enRVB(couleurCss) {
+  pinceau.clearRect(0, 0, 1, 1);
+  pinceau.fillStyle = '#000';
+  pinceau.fillStyle = couleurCss;
+  pinceau.fillRect(0, 0, 1, 1);
+  var d = pinceau.getImageData(0, 0, 1, 1).data;
+  return [d[0], d[1], d[2]];
+}
+
+function luminance(rvb) {
+  var c = rvb.map(function (v) {
+    v = v / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+
+function rapport(a, b) {
+  var l1 = luminance(enRVB(a)), l2 = luminance(enRVB(b));
+  var haut = Math.max(l1, l2), bas = Math.min(l1, l2);
+  return (haut + 0.05) / (bas + 0.05);
+}
+
+var PAIRES = [
+  ['foreground', 'background', 4.5, 'Texte courant sur la page'],
+  ['muted-foreground', 'background', 4.5, 'Texte atténué sur la page'],
+  ['foreground', 'card', 4.5, 'Texte sur une carte'],
+  ['muted-foreground', 'card', 4.5, 'Texte atténué sur une carte'],
+  ['primary-foreground', 'primary', 4.5, 'Texte du bouton principal'],
+  ['secondary-foreground', 'secondary', 4.5, 'Texte d\'un cartouche de métadonnée'],
+  ['accent-foreground', 'accent', 4.5, 'Texte sur surface de survol'],
+  ['destructive-foreground', 'destructive', 4.5, 'Texte du bouton « écarter »'],
+  ['success-foreground', 'success', 4.5, 'Texte du bouton « candidaté »'],
+  ['destructive', 'background', 4.5, 'Texte d\'erreur sur la page'],
+  ['success', 'background', 4.5, 'Texte de succès sur la page'],
+  ['signal-foreground', 'signal', 4.5, 'Texte de la pastille « nouveau »'],
+  ['input', 'background', 3.0, 'Bordure de champ sur la page'],
+  ['input', 'card', 3.0, 'Bordure de champ sur une carte'],
+  ['ring', 'background', 3.0, 'Focus clavier sur la page'],
+  ['ring', 'card', 3.0, 'Focus clavier sur une carte'],
+  ['signal', 'background', 3.0, 'Pastille ocre comme élément d\'interface'],
+  ['primary', 'muted', 3.0, 'Barre de la note d\'intérêt'],
+  ['success', 'muted', 3.0, 'Barre de la note d\'accessibilité'],
+  ['muted-foreground', 'border', 3.0, 'Jauge de budget — état confortable'],
+  ['signal-fort', 'border', 3.0, 'Jauge de budget — bientôt épuisé'],
+  ['signal-fort', 'background', 4.5, 'Texte « 86 % » sur la page'],
+  ['destructive', 'border', 3.0, 'Jauge de budget — épuisé']
+];
+
+/* Mesuré et affiché à part, PAS dans le tableau des exigences : aucun critère WCAG
+   n'impose un contraste entre deux indicateurs distincts et non adjacents. Ces deux
+   barres sont empilées et séparées par du fond, chacune est identifiée par son
+   libellé. Les compter comme un échec inventerait un défaut. */
+var PAIRE_INDICATIVE = ['primary', 'success', 'Écart de luminance entre les deux barres'];
+
+function mesurer() {
+  var etaitSombre = document.documentElement.classList.contains('dark');
+  var resultats = {};
+
+  ['clair', 'sombre'].forEach(function (mode) {
+    document.documentElement.classList.toggle('dark', mode === 'sombre');
+    void getComputedStyle(document.documentElement).getPropertyValue('--background');
+    resultats[mode] = PAIRES.map(function (p) {
+      return rapport(valeurJeton(p[0]), valeurJeton(p[1]));
+    });
+  });
+
+  document.documentElement.classList.toggle('dark', etaitSombre);
+  return resultats;
+}
+
+function dessinerContrastes() {
+  var r = mesurer();
+  var html = '';
+  var echecs = 0;
+
+  PAIRES.forEach(function (p, i) {
+    var rc = r.clair[i], rs = r.sombre[i], seuil = p[2];
+    var okc = rc >= seuil, oks = rs >= seuil;
+    if (!okc) echecs++;
+    if (!oks) echecs++;
+    html += '<tr>' +
+      '<td>' + p[3] + '</td>' +
+      '<td class="r">' + seuil.toFixed(1) + ':1</td>' +
+      '<td class="r">' + rc.toFixed(2) + ':1</td>' +
+      '<td class="v ' + (okc ? 'ok' : 'ko') + '">' + (okc ? 'conforme' : 'insuffisant') + '</td>' +
+      '<td class="r">' + rs.toFixed(2) + ':1</td>' +
+      '<td class="v ' + (oks ? 'ok' : 'ko') + '">' + (oks ? 'conforme' : 'insuffisant') + '</td>' +
+      '</tr>';
+  });
+
+  document.getElementById('corps-contrastes').innerHTML = html;
+
+  var total = PAIRES.length * 2;
+  var bilan = document.getElementById('bilan-contrastes');
+  bilan.innerHTML = '<div class="bilan' + (echecs ? ' ko' : '') + '">' +
+    '<svg><use href="#' + (echecs ? 'i-alerte' : 'i-coche-cercle') + '"></use></svg>' +
+    (total - echecs) + ' / ' + total + ' paires conformes' +
+    (echecs ? ' — ' + echecs + ' à corriger' : ' — les deux modes tiennent le plancher') +
+    '</div>';
+
+  // Mesure indicative, hors exigence.
+  var etaitSombre = document.documentElement.classList.contains('dark');
+  var mesures = {};
+  ['clair', 'sombre'].forEach(function (mode) {
+    document.documentElement.classList.toggle('dark', mode === 'sombre');
+    void getComputedStyle(document.documentElement).getPropertyValue('--background');
+    mesures[mode] = rapport(valeurJeton(PAIRE_INDICATIVE[0]), valeurJeton(PAIRE_INDICATIVE[1]));
+  });
+  document.documentElement.classList.toggle('dark', etaitSombre);
+
+  document.getElementById('indicatif').innerHTML =
+    PAIRE_INDICATIVE[2] + ' : <b>' + mesures.clair.toFixed(2) + ':1</b> en clair, <b>' +
+    mesures.sombre.toFixed(2) + ':1</b> en sombre.';
+}
+
+/* ============================================================
+   Bascule clair / sombre
+   ============================================================ */
+var bascule = document.getElementById('bascule');
+bascule.addEventListener('click', function () {
+  var sombre = document.documentElement.classList.toggle('dark');
+  bascule.setAttribute('aria-pressed', String(sombre));
+  document.getElementById('icone-mode').innerHTML =
+    '<use href="#' + (sombre ? 'i-soleil' : 'i-lune') + '"></use>';
+  document.getElementById('libelle-mode').textContent = sombre ? 'Mode clair' : 'Mode sombre';
+  dessinerPalette();
+});
+
+/* ============================================================
+   Démonstration du flux d'étapes — jamais en boucle,
+   et neutralisée sous prefers-reduced-motion.
+   ============================================================ */
+var moinsDeMouvement = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+function jouerEtapes() {
+  if (moinsDeMouvement.matches) return;
+  var items = document.querySelectorAll('#etapes li');
+  items.forEach(function (li, i) {
+    li.classList.remove('anime');
+    void li.offsetWidth;
+    li.style.animationDelay = (i * 130) + 'ms';
+    li.classList.add('anime');
+  });
+}
+
+document.getElementById('rejouer').addEventListener('click', jouerEtapes);
+
+/* Les barres portent leur valeur pour les lecteurs d'écran. */
+document.querySelectorAll('.note').forEach(function (note) {
+  var val = note.querySelector('.val').textContent.trim();
+  var lib = note.classList.contains('int') ? 'Intérêt' : 'Accessibilité';
+  var barre = note.querySelector('.barre');
+  barre.setAttribute('role', 'img');
+  barre.setAttribute('aria-label', lib + ' : ' + val + ' sur 100');
+});
+
+dessinerPalette();
+dessinerContrastes();
+jouerEtapes();
+</script>
+</body>
+</html>
