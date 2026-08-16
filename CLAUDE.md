@@ -68,8 +68,8 @@ matière.
 
 | Évolution | Ce que ça impose dès la v1 |
 |---|---|
-| Écran de suivi d'exploitation (exécutions, réussite, durée, coût) | Tracer chaque exécution et chaque enquête dès le premier jour, en **compteurs bruts** jamais en euros. Un historique ne se reconstitue pas |
-| Conversation avec le contenu de la base | Fiche d'enquête stockée en **champs séparés**, pas en texte rédigé · identifiant d'offre stable · dates et notes en champs typés |
+| Écran de suivi d'exploitation (exécutions, réussite, durée, coût) | Tracer chaque exécution et chaque enrichissement dès le premier jour, en **compteurs bruts** jamais en euros. Un historique ne se reconstitue pas |
+| Conversation avec le contenu de la base | Fiche d'enrichissement stockée en **champs séparés**, pas en texte rédigé · identifiant d'offre stable · dates et notes en champs typés |
 
 ⚠️ Ne pas confondre l'écran de suivi d'exploitation, prévu, avec l'**analyse du
 marché de l'emploi** (tendances, salaires, graphiques), refusée. Et la conversation
@@ -151,13 +151,13 @@ commettre :
 
 | | Ce que c'est | Ce qu'il fait ici |
 |---|---|---|
-| `claude-agent-sdk` | Claude Code en bibliothèque : boucle d'agent, outils Read/Write/Edit/Bash/Glob/Grep/WebSearch/WebFetch, MCP, sous-agents, permissions | L'enquête ouverte : enrichir les offres retenues |
+| `claude-agent-sdk` | Claude Code en bibliothèque : boucle d'agent, outils Read/Write/Edit/Bash/Glob/Grep/WebSearch/WebFetch, MCP, sous-agents, permissions | L'enrichissement : une tâche ouverte et multi-étapes sur les offres retenues |
 | `anthropic` (API Messages) | Un appel, une réponse structurée | La notation en volume : une offre → deux notes |
 
 **Le placement de cette frontière est l'argument d'entretien le plus fort du
 projet.** Un agent posé sur une classification — une entrée, une sortie, aucune
 exploration — est plus lent, plus cher et non déterministe pour aucun gain, et un
-lead technique qui connaît le SDK le verra. Un agent posé sur une enquête ouverte
+lead technique qui connaît le SDK le verra. Un agent posé sur une tâche ouverte
 — chercher l'entreprise, lire son site, croiser, rédiger une fiche — est
 exactement ce pour quoi le SDK existe.
 

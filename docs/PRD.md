@@ -45,11 +45,11 @@ Un site personnel, protégé par mot de passe, que Maxime ouvre le matin. Il y
 trouve les offres du jour déjà collectées et jugées, classées, chacune avec deux
 notes séparées et la phrase qui explique chaque note. Les deux offres les plus
 accessibles parmi celles qui l'intéressent ont déjà reçu, pendant la nuit, une
-fiche d'enquête sur l'entreprise : taille, âge, ce qu'elle vend et à qui, ce
+fiche d'enrichissement sur l'entreprise : taille, âge, ce qu'elle vend et à qui, ce
 qu'elle fait réellement en IA, la technique attendue sur ce poste, et les sources
 consultées.
 
-Sur n'importe quelle autre offre, il peut déclencher la même enquête d'un clic et
+Sur n'importe quelle autre offre, il peut déclencher le même enrichissement d'un clic et
 regarder l'agent travailler étape par étape.
 
 Chaque offre porte un statut qu'il change à la lecture — à traiter, candidaté,
@@ -118,16 +118,16 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
 13. **US-13** — En tant que Maxime, je veux voir clairement si ma note n'a pas pu
     être enregistrée, afin de ne pas croire à tort qu'elle est sauvegardée.
 
-### Enquête sur l'entreprise
+### Enrichissement de l'entreprise
 
-14. **US-14** — En tant que Maxime, je veux trouver le matin une fiche d'enquête
+14. **US-14** — En tant que Maxime, je veux trouver le matin une fiche d'enrichissement
     déjà complète sur les deux offres les plus accessibles parmi celles qui
     m'intéressent, afin de pouvoir postuler immédiatement.
-15. **US-15** — En tant que Maxime, je veux déclencher l'enquête moi-même sur
+15. **US-15** — En tant que Maxime, je veux déclencher l'enrichissement moi-même sur
     n'importe quelle autre offre, afin de creuser celles que le tri automatique
     n'a pas retenues.
-16. **US-16** — En tant que Maxime, je veux voir les étapes de l'enquête défiler
-    pendant qu'elle tourne, afin de savoir que ça avance et de pouvoir le montrer
+16. **US-16** — En tant que Maxime, je veux voir les étapes de l'enrichissement défiler
+    pendant qu'il tourne, afin de savoir que ça avance et de pouvoir le montrer
     en entretien.
 17. **US-17** — En tant que Maxime, je veux lire dans la fiche la taille de
     l'entreprise, sa date de création, son site officiel, ce qu'elle vend et à
@@ -141,7 +141,7 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
 20. **US-20** — En tant que Maxime, je veux voir le chiffre d'affaires quand il
     est public, afin de situer la solidité de l'entreprise.
 21. **US-21** — En tant que Maxime, je veux voir les sources consultées par
-    l'enquête et ce qui est déduit plutôt que vérifié, afin de ne pas prendre une
+    l'enrichissement et ce qui est déduit plutôt que vérifié, afin de ne pas prendre une
     supposition pour un fait en entretien.
 
 ### Régler mes critères
@@ -163,7 +163,7 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
     semaine d'offres.
 26. **US-26** — En tant que Maxime, je veux entrer un mot de passe pour accéder
     au site, afin que mes notes personnelles et les notes d'accessibilité restent
-    privées et que personne ne puisse déclencher d'enquête à mes frais.
+    privées et que personne ne puisse déclencher d'enrichissement à mes frais.
 
 ### États vides, erreurs et cas limites
 
@@ -171,16 +171,16 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
     offre nouvelle ne dépasse le seuil, afin de comprendre que la journée est
     simplement calme.
 28. **US-28** — En tant que Maxime, je veux que le système n'enrichisse rien les
-    jours où aucune offre n'atteint le seuil, afin de ne pas payer une enquête
+    jours où aucune offre n'atteint le seuil, afin de ne pas payer un enrichissement
     sur une offre qui ne m'intéresse pas.
-29. **US-29** — En tant que Maxime, je veux voir un message clair quand une
-    enquête échoue, et pouvoir la relancer, afin de ne pas rester devant une
+29. **US-29** — En tant que Maxime, je veux voir un message clair quand un
+    enrichissement échoue, et pouvoir le relancer, afin de ne pas rester devant une
     fiche vide sans explication.
-30. **US-30** — En tant que Maxime, je veux que l'enquête me dise « employeur
+30. **US-30** — En tant que Maxime, je veux que l'enrichissement me dise « employeur
     final non identifié » quand l'annonce vient d'un intermédiaire, afin de ne
     pas lire une fiche sur un cabinet de recrutement en croyant que c'est
     l'employeur.
-31. **US-31** — En tant que Maxime, je veux que l'enquête signale son doute quand
+31. **US-31** — En tant que Maxime, je veux que l'enrichissement signale son doute quand
     elle n'a pas pu identifier l'entreprise avec certitude, afin de ne pas me
     fier à une fiche construite sur une homonyme.
 32. **US-32** — En tant que Maxime, je veux que l'offre s'affiche correctement
@@ -193,15 +193,15 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
     réapparaisse pas comme nouvelle et ne soit pas notée une seconde fois, afin
     d'éviter les doublons et les dépenses inutiles.
 35. **US-35** — En tant que Maxime, je veux qu'un double clic sur « enrichir » ne
-    lance qu'une seule enquête, afin de ne pas payer deux fois la même chose.
-36. **US-36** — En tant que Maxime, je veux que l'enquête s'arrête d'elle-même au
+    lance qu'un seul enrichissement, afin de ne pas payer deux fois la même chose.
+36. **US-36** — En tant que Maxime, je veux que l'enrichissement s'arrête de lui-même au
     bout d'un temps borné, afin qu'un agent parti trop loin ne fasse pas exploser
     la facture.
 
 ### Mesure de l'exploitation
 
 37. **US-37** — En tant que Maxime, je veux que chaque exécution de la veille et
-    chaque enquête laissent une trace enregistrée — horodatage, durée, volumes
+    chaque enrichissement laissent une trace enregistrée — horodatage, durée, volumes
     traités, issue, consommation — afin de pouvoir construire plus tard un écran
     de suivi sans avoir perdu l'historique des semaines précédentes.
 
@@ -211,10 +211,10 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
    chacune portant deux notes chiffrées et deux justifications non vides.
 2. Le site affiche en permanence la date et l'heure de la dernière veille
    réussie, et signale visuellement toute veille datant de plus de 36 heures.
-3. Au plus deux enquêtes automatiques sont lancées par nuit ; zéro les jours où
+3. Au plus deux enrichissements automatiques sont lancés par nuit ; zéro les jours où
    aucune offre n'atteint 50 en intérêt **et** 50 en accessibilité — vérifiable
    en comptant les fiches produites contre les notes du jour.
-4. Une enquête déclenchée manuellement affiche sa première étape en moins de dix
+4. Un enrichissement déclenché manuellement affiche sa première étape en moins de dix
    secondes et se conclut — fiche produite ou échec signalé — en moins de cinq
    minutes.
 5. Sans le mot de passe, aucune page du site et aucune adresse servant des
@@ -235,10 +235,10 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
 11. Le code source de la page envoyé au navigateur ne contient aucune clé d'accès
     à la base ni aucune clé d'API — vérifiable en cherchant les préfixes de clés
     dans la source de la page publiée.
-12. Sur une fiche d'enquête produite à partir d'une annonce d'intermédiaire, la
+12. Sur une fiche d'enrichissement produite à partir d'une annonce d'intermédiaire, la
     fiche indique explicitement que l'employeur final n'est pas identifié plutôt
     que de décrire l'intermédiaire.
-13. Chaque exécution de la veille et chaque enquête laissent une trace
+13. Chaque exécution de la veille et chaque enrichissement laissent une trace
     consultable comportant au minimum : horodatage de début et de fin, durée,
     nombre d'éléments traités, issue (réussite ou échec avec son motif), et
     compteurs de consommation bruts. Vérifiable en comptant les traces
@@ -291,8 +291,8 @@ c'est du hors périmètre — ou une idée qui attendra d'être demandée.
 
 | Évolution | Pourquoi pas maintenant | Ce que ça impose **dès la v1** |
 |---|---|---|
-| **Écran de suivi d'exploitation** — nombre d'exécutions, taux de réussite, durée moyenne, volumes traités, coût cumulé | Aucune valeur tant qu'il n'y a pas plusieurs semaines d'exécutions à comparer | Écrire une trace à chaque exécution et à chaque enquête dès le premier jour, avec les **compteurs de consommation bruts** et jamais un montant en euros seul. Un historique ne se reconstitue pas après coup, et un prix mal calculé fige une erreur définitive |
-| **Conversation avec le contenu de la base** — poser des questions en langage naturel sur les offres collectées, leurs notes, leurs statuts | Une conversation sur une base vide ne démontre rien, et le tri automatique répond déjà à 90 % des besoins de fouille quotidiens | Trois choses. **1.** Stocker la fiche d'enquête en **champs séparés** (taille, date de création, chiffre d'affaires, secteur, technique attendue) et pas seulement en texte rédigé : un paragraphe ne se compte pas, et il faudrait relancer toutes les enquêtes pour rattraper. **2.** Conserver un identifiant d'offre stable, jamais renuméroté. **3.** Garder les dates et les notes en champs typés, pas en texte libre |
+| **Écran de suivi d'exploitation** — nombre d'exécutions, taux de réussite, durée moyenne, volumes traités, coût cumulé | Aucune valeur tant qu'il n'y a pas plusieurs semaines d'exécutions à comparer | Écrire une trace à chaque exécution et à chaque enrichissement dès le premier jour, avec les **compteurs de consommation bruts** et jamais un montant en euros seul. Un historique ne se reconstitue pas après coup, et un prix mal calculé fige une erreur définitive |
+| **Conversation avec le contenu de la base** — poser des questions en langage naturel sur les offres collectées, leurs notes, leurs statuts | Une conversation sur une base vide ne démontre rien, et le tri automatique répond déjà à 90 % des besoins de fouille quotidiens | Trois choses. **1.** Stocker la fiche d'enrichissement en **champs séparés** (taille, date de création, chiffre d'affaires, secteur, technique attendue) et pas seulement en texte rédigé : un paragraphe ne se compte pas, et il faudrait relancer tous les enrichissements pour rattraper. **2.** Conserver un identifiant d'offre stable, jamais renuméroté. **3.** Garder les dates et les notes en champs typés, pas en texte libre |
 
 **Deux frontières à tenir le jour où la conversation sera construite** : elle ne
 doit pas devenir la porte de service par laquelle rentre ce que le hors périmètre
@@ -331,8 +331,8 @@ candidature ne l'est pas, quel que soit le canal.
 - Les deux notes côte à côte, chacune avec une phrase de justification.
 - Un résumé court de l'offre, puis la description intégrale repliée derrière un
   bouton.
-- Le bloc d'enquête, vide et accompagné d'un bouton tant que l'enquête n'a pas
-  été lancée.
+- Le bloc d'enrichissement, vide et accompagné d'un bouton tant que l'enrichissement
+  n'a pas été lancé.
 - Le champ de notes personnelles en bas de fiche.
 - Salaire : affiché tel que l'annonce l'exprime, ramené à un montant annuel quand
   c'est possible, et « non précisé » quand l'annonce est muette.
@@ -349,17 +349,17 @@ candidature ne l'est pas, quel que soit le canal.
   d'enregistrement. En cas d'échec, un message visible apparaît et le texte saisi
   n'est pas effacé.
 
-### Enquête sur l'entreprise
+### Enrichissement de l'entreprise
 
 - **Automatique**, chaque nuit : au plus deux offres, choisies parmi celles de la
   collecte du jour dont l'intérêt **et** l'accessibilité atteignent 50, classées
   par accessibilité décroissante, l'intérêt départageant les ex æquo. Si une
-  seule offre passe le seuil, une seule est enrichie. Si aucune, aucune enquête
+  seule offre passe le seuil, une seule est enrichie. Si aucune, aucun enrichissement
   n'est lancée.
 - **Manuelle** : un bouton sur chaque offre non encore enrichie. Le bouton se
-  désactive dès le premier clic et pendant toute la durée de l'enquête.
-- Les étapes de l'enquête s'affichent au fil de l'eau pendant qu'elle tourne.
-- L'enquête est bornée en nombre d'étapes et en durée. Au-delà, elle s'arrête et
+  désactive dès le premier clic et pendant toute la durée de l'enrichissement.
+- Les étapes de l'enrichissement s'affichent au fil de l'eau pendant qu'il tourne.
+- L'enrichissement est borné en nombre d'étapes et en durée. Au-delà, elle s'arrête et
   rend ce qu'elle a trouvé.
 - Contenu de la fiche produite :
   - identité — nom officiel, date de création, site officiel ;
@@ -373,10 +373,10 @@ candidature ne l'est pas, quel que soit le canal.
   information disponible affiche « non disponible » plutôt que d'être remplie par
   supposition.
 - Quand l'annonce émane d'un intermédiaire sans employeur final nommé, la fiche
-  l'indique et l'enquête ne se rabat pas sur l'intermédiaire.
+  l'indique et l'enrichissement ne se rabat pas sur l'intermédiaire.
 - Quand l'entreprise ne peut pas être identifiée avec certitude, la fiche le
   signale explicitement au lieu de trancher.
-- Une enquête échouée affiche son échec et peut être relancée.
+- Un enrichissement échoué affiche son échec et peut être relancé.
 
 ### Accès
 
@@ -389,7 +389,7 @@ candidature ne l'est pas, quel que soit le canal.
 - Chaque exécution de la veille enregistre une trace : horodatage de début et de
   fin, durée, nombre d'offres reçues, nombre de nouvelles offres retenues, nombre
   d'offres notées, issue et motif d'échec le cas échéant.
-- Chaque enquête enregistre une trace : offre concernée, déclenchement
+- Chaque enrichissement enregistre une trace : offre concernée, déclenchement
   automatique ou manuel, horodatage, durée, nombre d'étapes effectuées, issue,
   motif d'échec le cas échéant.
 - Toute opération consommant le modèle enregistre ses **compteurs de consommation
@@ -407,11 +407,11 @@ candidature ne l'est pas, quel que soit le canal.
 
 **Dépendances externes** — API France Travail (quota d'appels, plafond de
 pagination, disponibilité). Compte facturé chez le fournisseur du modèle.
-Registre public des entreprises pour la fiche d'enquête. Hébergement du site et
+Registre public des entreprises pour la fiche d'enrichissement. Hébergement du site et
 de la base sur des offres gratuites dont les conditions peuvent changer.
 
 **Hypothèse non vérifiée** — Le volume réel d'offres pertinentes par jour en
-Île-de-France est inconnu. Le dimensionnement retenu — deux enquêtes par nuit,
+Île-de-France est inconnu. Le dimensionnement retenu — deux enrichissements par nuit,
 seuil à 50 — repose sur une estimation d'environ quarante offres collectées
 quotidiennement. Ces chiffres sont à re-régler après deux semaines de données
 réelles.
@@ -440,7 +440,7 @@ d'accessibilité sont visibles par quiconque détient le mot de passe. Le donner
 entretien expose l'appréciation portée sur l'entreprise de l'interlocuteur.
 
 **Coût estimé** — Ordre de grandeur non vérifié : quelques centimes par jour pour
-la notation, 0,20 € à 1 € par enquête, soit 12 € à 60 € par mois dans le pire
+la notation, 0,20 € à 1 € par enrichissement, soit 12 € à 60 € par mois dans le pire
 cas. À confirmer contre la tarification réelle avant la mise en service.
 
 **Évolutions prévues** — Voir la section dédiée plus haut. Deux items à ce jour :

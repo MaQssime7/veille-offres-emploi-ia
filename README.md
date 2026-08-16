@@ -24,7 +24,7 @@ décision d'architecture centrale du projet :
 |---|---|---|
 | **Collecte** | Python, sans IA | Un appel d'API et une écriture en base n'ont besoin d'aucun modèle |
 | **Notation** | API Messages (`anthropic`), sortie structurée | Une entrée, une sortie, aucune exploration : un agent y serait plus lent, plus cher et non déterministe pour aucun gain |
-| **Enrichissement** | Claude Agent SDK | Enquête ouverte et multi-étapes sur l'entreprise : c'est exactement ce pour quoi un agent existe |
+| **Enrichissement** | Claude Agent SDK | Tâche ouverte et multi-étapes sur l'entreprise : c'est exactement ce pour quoi un agent existe |
 
 ## Stack
 

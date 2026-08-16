@@ -241,13 +241,13 @@ Quatre questions de la liste ouverte sont fermées. Le détail est dans
 
 | Question | Verdict |
 |---|---|
-| Ce que contient exactement une fiche d'offre à l'écran | Entête, les deux notes avec justification, résumé court, description intégrale repliée, lien d'origine, bloc d'enquête, note personnelle |
+| Ce que contient exactement une fiche d'offre à l'écran | Entête, les deux notes avec justification, résumé court, description intégrale repliée, lien d'origine, bloc d'enrichissement, note personnelle |
 | Heure de la veille, fréquence, comportement un jour sans offre | Une exécution par jour, tôt le matin, heure de Paris. Un jour sans offre est un jour normal : état vide explicite, et aucun enrichissement lancé |
 | Enrichissement automatique, bouton manuel, ou les deux | **Les deux.** Automatique chaque nuit sur au plus deux offres atteignant 50 en intérêt *et* 50 en accessibilité, triées par accessibilité décroissante ; bouton manuel sur toutes les autres. L'**ordre de construction** reste à `/planifie` |
 | Comment éviter qu'un recruteur lise la note d'accessibilité de sa propre entreprise | **Mot de passe unique**, vérifié côté serveur, couvrant pages et adresses de données. Ni comptes, ni rôles. Écarte du même coup le risque de facture ouverte sur le bouton d'enrichissement |
 
 Le cadrage a aussi ajouté deux exigences qui n'étaient dans aucune liste :
-**tracer chaque exécution et chaque enquête dès le premier jour** (durée, volumes,
+**tracer chaque exécution et chaque enrichissement dès le premier jour** (durée, volumes,
 issue, compteurs de consommation bruts — jamais un montant en euros seul), et
 **afficher en permanence la date de la dernière veille réussie**, sans quoi une
 liste vide ne se distingue pas d'un pipeline mort.
