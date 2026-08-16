@@ -90,8 +90,17 @@ axes, forme du livrable, stack et règles de sécurité sont tranchés dans
 `docs/DECISIONS.md` ; le périmètre produit l'est dans `docs/PRD.md`.
 **Ces décisions sont acquises — ne pas les rouvrir.**
 
-Prochaine étape : `/planifie`. Ne pas écrire de pipeline avant : le découpage en
-phases n'existe pas, et le construire à l'aveugle produit du jetable.
+Prochaine étape : **`/design`, puis `/planifie`** — dans cet ordre. `/planifie`
+découpe en tranches verticales livrables, et chaque tranche contient de
+l'interface : découper avant de savoir à quoi ressemble le produit, c'est
+planifier des écrans à l'aveugle. Ne pas écrire de pipeline avant que le plan
+existe.
+
+⚠️ **La tension à trancher en `/design`** : ce produit a deux publics — Maxime le
+matin, qui veut lire vite et décider, ce qui pousse vers un instrument dense et
+sobre ; et un lead technique en entretien, à qui un tableau de bord gris ne fait
+aucun effet. Un outil purement fonctionnel rate la vitrine, un site trop léché
+perd la crédibilité de l'outil qui tourne. Le système doit tenir les deux.
 
 ## Stack
 
