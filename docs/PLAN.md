@@ -148,6 +148,27 @@ qui contourne toute la sécurité de la base, **sans le moindre message d'erreur
 ⚠️ Un secret commité reste dans l'historique git après suppression du fichier. Le
 rattraper impose de **révoquer la clé**, pas seulement de nettoyer.
 
+### Enveloppe quotidienne de tokens
+
+**300 000 tokens par jour pour les enrichissements**, dans le fichier de configuration
+versionné, **vérifiée côté serveur**. Elle se calcule en **sommant les traces du jour**
+plutôt que dans un compteur séparé, qui divergerait à la première écriture ratée. Valeur de
+départ estimée, à re-régler en phase 7 sur la mesure réelle.
+
+Elle remplace « au plus deux enrichissements par nuit », qui était le seul plafond de
+dépense du système avant que l'automatique soit retiré — et elle borne mieux : des euros,
+plutôt qu'un nombre de clics dont le coût varie du simple au quintuple.
+
+⚠️ **La notation nocturne n'entre pas dans l'enveloppe.** Un matin où France Travail
+renvoie quatre cents offres, un plafond ferait **rater des offres** pour économiser vingt
+centimes. Règle en une phrase : *l'enveloppe borne ce que l'utilisateur déclenche, jamais
+ce que le système fait de lui-même chaque nuit.*
+
+La conversation, quand elle viendra, aura **sa propre enveloppe quotidienne, séparée**.
+Deux fonctionnalités qui partagent un plafond se volent leur budget : une matinée
+d'enrichissement bloquerait toute discussion l'après-midi, sans que rien ne l'explique à
+l'écran.
+
 ### Frontières des services tiers
 
 L'enrichissement est **découplé de l'interface** : une fonction Vercel dure de l'ordre de
@@ -351,7 +372,7 @@ Phases 2 et 4.
 ## Phase 6 : L'enrichissement à la demande, et l'identité de l'entreprise
 
 **User stories** : US-15, US-16, US-17 *(identité, taille)*, US-20, US-29, US-30, US-31,
-US-35, US-36, US-37 *(enrichissement)*
+US-35, US-36, US-37 *(enrichissement)*, **US-38** *(enveloppe quotidienne)*
 
 ### Ce qu'on livre
 
@@ -360,15 +381,20 @@ l'identité vérifiable de l'entreprise : nom officiel, âge, taille, chiffre d'
 il est public.
 
 **C'est la phase qui contient tout le mécanisme** — l'agent, le déclenchement, le flux
-d'étapes, les quatre états du bloc. Tranche volontairement étroite sur le contenu : elle
-isole le **risque d'appariement** identifié au PRD, le rapprochement par nom qui ramène une
-homonyme et produit une fiche fausse d'apparence rigoureuse.
+d'étapes, les quatre états du bloc, et l'enveloppe quotidienne de tokens. Tranche
+volontairement étroite sur le contenu : elle isole le **risque d'appariement** identifié au
+PRD, le rapprochement par nom qui ramène une homonyme et produit une fiche fausse
+d'apparence rigoureuse.
 
-⚠️ **Ordre inversé par rapport à `docs/DECISIONS.md` § 8** : le déclenchement manuel vient
-**avant** l'automatique. Motif : tant que le bouton n'existe pas, chaque itération sur la
-qualité des fiches coûte une nuit d'attente. L'argument d'origine (« le bouton sans
-l'automatique donne une démo mais aucune veille ») supposait qu'on construisait
-l'enrichissement tôt ; avec ce découpage, la veille est complète dès la phase 5.
+⚠️ **L'enrichissement est exclusivement manuel** — décision du 16 août 2026, qui amende
+`docs/DECISIONS.md` § 6 (« les deux »). L'automatique nocturne aurait produit une
+soixantaine de fiches par mois, lues ou non, sur une sélection reposant sur des seuils que
+la v1 n'a pas encore calibrés. Il part en Évolutions prévues avec sa condition de retour.
+
+⚠️ **En retirant l'automatique, on retire le seul plafond de dépense du système** — « au
+plus deux par nuit » n'était pas qu'une règle de sélection. L'enveloppe quotidienne de
+tokens le remplace, et le remplace mieux : elle borne des euros, pas un nombre de clics
+dont le coût varie du simple au quintuple.
 
 ### Critères d'acceptation
 
@@ -387,7 +413,14 @@ l'enrichissement tôt ; avec ce découpage, la veille est complète dès la phas
 - [ ] Entreprise non identifiable avec certitude : la fiche le **signale** au lieu de trancher
 - [ ] Un enrichissement échoué affiche **son motif** et un bouton « Relancer » ; la relance remplace la fiche précédente
 - [ ] Chaque enrichissement écrit sa trace : offre, déclenchement, horodatages, durée, étapes effectuées, issue, motif, **modèle**, compteurs bruts
+- [ ] La colonne `declenchement` existe et vaut « manuel » — elle ne se rajoute pas rétroactivement sur l'historique le jour où l'automatique reviendra
 - [ ] Les compteurs alimentent `tokens_cumules`, **sans toucher** à `tokens_conversation`
+- [ ] **L'enveloppe quotidienne vit dans le fichier de configuration versionné**, valeur de départ **300 000 tokens**, et elle est **vérifiée côté serveur** — pas seulement affichée
+- [ ] L'enveloppe consommée se **calcule en sommant les traces du jour**, jamais depuis un compteur séparé qui divergerait à la première écriture ratée
+- [ ] Au-delà de l'enveloppe, le bouton indique « plafond du jour atteint » et **aucun enrichissement ne part** — vérifiable en envoyant la requête sans passer par le navigateur
+- [ ] Le compte **repart de zéro** le lendemain, à minuit heure de Paris
+- [ ] **La notation nocturne n'entre pas dans l'enveloppe** — vérifiable en constatant qu'une nuit à 400 offres notées ne consomme rien du plafond du lendemain
+- [ ] **Aucune trace ne porte un déclenchement automatique** — critère de succès n° 3
 - [ ] Les rubriques **acceptent plusieurs paragraphes** — une rubrique dimensionnée pour une ligne invite l'agent à répondre en une ligne
 - [ ] **États du bloc d'enrichissement** — les quatre du `DESIGN.md`, plus le débordement : pas encore lancé *(vide)* · en cours *(chargement et action en cours)* · terminé · échoué *(erreur)* · **un enrichissement de 40 étapes qui défile sans faire déborder le panneau ni la page**
 - [ ] 375 px, mode sombre, focus clavier visible, console propre
@@ -415,7 +448,8 @@ sources consultées.
 - [ ] **Les sources consultées sont listées**, chacune avec son adresse
 - [ ] Un site officiel injoignable **ne fait pas échouer l'enrichissement** : la fiche se rend partielle, les rubriques manquantes en « non disponible »
 - [ ] La borne de durée et d'étapes tient **malgré l'exploration** — c'est la phase qui la met à l'épreuve
-- [ ] Le **coût réel** d'un enrichissement est mesuré et comparé à l'estimation du PRD (0,20 € à 1 €) ; l'écart est consigné
+- [ ] Le **coût réel** d'un enrichissement est mesuré, en euros **et en tokens**, et comparé aux deux estimations du PRD (0,20 € à 1 € · 100 000 à 150 000 tokens) ; l'écart est consigné
+- [ ] **L'enveloppe quotidienne de 300 000 tokens est re-réglée sur cette mesure** — c'est le seul moment du plan où l'on dispose du chiffre réel, et une enveloppe laissée sur une estimation ne borne rien de connu
 - [ ] Une fiche dont toutes les rubriques sont longues s'affiche sans casser la mise en page à 375 px
 - [ ] Une fiche dont **toutes** les rubriques sont « non disponible » reste lisible et ne ressemble pas à un bogue
 - [ ] **États** : fiche complète · fiche partielle · toutes rubriques non disponibles
@@ -427,35 +461,28 @@ Phase 6.
 
 ---
 
-## Phase 8 : L'enrichissement automatique, chaque nuit
+## Phase retirée : l'enrichissement automatique nocturne
 
-**User stories** : US-14, US-28
+Le plan comptait huit phases jusqu'au 16 août 2026. La huitième — *l'enrichissement
+automatique, chaque nuit* — a été retirée le jour même de l'écriture du plan, avant tout
+développement.
 
-### Ce qu'on livre
+**Motif** : elle aurait produit une soixantaine de fiches par mois, lues ou non, à raison
+de 0,20 € à 1 € pièce, sur une sélection reposant sur des seuils que le PRD marque
+lui-même « à re-régler après deux semaines de données réelles ». On aurait payé pour des
+fiches choisies par une heuristique pendant exactement la période où elle est la moins
+fiable. Le bon déclencheur d'un enrichissement est la lecture d'une offre qui accroche.
 
-Le matin, les deux offres les plus accessibles parmi celles qui intéressent portent déjà
-leur fiche. Phase courte : elle pose une **règle de sélection** sur un mécanisme déjà
-éprouvé aux phases 6 et 7.
+**Ce qui l'a remplacée** : l'enveloppe quotidienne de tokens en phase 6. Retirer
+l'automatique retirait aussi « au plus deux par nuit », qui était le seul plafond de
+dépense du système — l'enveloppe le remplace et borne mieux, en euros plutôt qu'en clics.
 
-**Cette phase ne livre aucun écran** — elle n'ajoute que du comportement au pipeline
-nocturne. Il n'y a donc pas d'états d'écran à vérifier ici ; les états du bloc
-d'enrichissement ont été livrés en phase 6 et restent couverts par les parcours à repasser.
-
-### Critères d'acceptation
-
-- [ ] Après la notation, la sélection retient **au plus deux offres** de la collecte du jour dont l'intérêt **et** l'accessibilité atteignent 50
-- [ ] Tri par **accessibilité décroissante**, l'intérêt départageant les ex æquo
-- [ ] Une seule offre au-dessus des deux seuils → un seul enrichissement lancé
-- [ ] **Aucune offre au-dessus des seuils → zéro enrichissement** — critère de succès n° 3, vérifiable en comptant les fiches produites contre les notes du jour
-- [ ] Une offre déjà enrichie n'est jamais ré-enrichie automatiquement
-- [ ] Les traces distinguent **déclenchement automatique et manuel**
-- [ ] Un enrichissement nocturne qui échoue **ne fait pas échouer la veille** : collecte et notation restent réussies, l'échec est tracé isolément
-- [ ] Les fiches sont disponibles **avant 8 h** — critère de succès n° 1
-- [ ] Le coût mensuel réel est relevé après une semaine et comparé à l'estimation du PRD
-
-### Bloquée par
-
-Phase 6.
+Elle figure en **Évolutions prévues** du PRD avec sa condition de retour : *quand les
+seuils auront été calibrés sur des données réelles et que le coût par enrichissement aura
+été mesuré.* Les deux chiffres sortent de la v1. La remettre coûterait une phase courte —
+le mécanisme d'agent est identique, seule la règle de sélection change — à condition que la
+phase 1 ait bien conservé **toutes les notes de toutes les offres**, y compris sous le
+seuil, et que la phase 6 ait bien créé la colonne `declenchement`.
 
 ---
 
@@ -526,16 +553,13 @@ régressions tant qu'il n'y a pas de tests automatisés.
 - [ ] Cliquer sur « Enrichir », voir la première étape en moins d'une seconde, puis les étapes de l'agent défiler
 - [ ] Double-cliquer sur « Enrichir » et vérifier qu'**un seul** enrichissement part
 - [ ] Relancer un enrichissement échoué
+- [ ] **Saturer l'enveloppe du jour et constater que le bouton refuse de partir**, puis vérifier qu'il repart le lendemain
+- [ ] Constater après une nuit de veille que **le plafond du jour est intact** — la notation n'y touche pas
 
 **Après la phase 7**
 
 - [ ] Lire une fiche complète et **distinguer d'un coup d'œil ce qui est vérifié de ce qui est déduit**
 - [ ] Ouvrir une source citée et vérifier qu'elle dit bien ce que la fiche affirme
-
-**Après la phase 8**
-
-- [ ] Le matin, constater que les deux offres les plus accessibles portent déjà leur fiche
-- [ ] Un jour creux, constater que **zéro enrichissement** a été lancé
 
 **À chaque mise en ligne**
 

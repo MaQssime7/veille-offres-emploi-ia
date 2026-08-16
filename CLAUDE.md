@@ -332,6 +332,13 @@ tous les accès passent par elle — recopier la vérification garantit qu'un ac
 être oublié. **Un écran qui masque un bouton ne protège rien : le contrôle qui compte est
 côté serveur** (le double clic sur « Enrichir » se bloque en base, pas sur le bouton).
 
+**Enrichissement** : **exclusivement manuel** — rien ne s'enrichit sans un clic, et
+l'automatique nocturne est en Évolutions prévues, pas au hors périmètre. Une **enveloppe
+quotidienne de 300 000 tokens** borne la dépense : fichier de configuration versionné,
+**vérifiée côté serveur**, calculée en sommant les traces du jour et non dans un compteur
+qui divergerait. **La notation nocturne n'y entre pas** — la borner ferait rater des offres
+un matin de forte collecte.
+
 **Secrets** : `.env` local non versionné · secrets GitHub Actions pour le pipeline ·
 variables Vercel pour le site · **rien dans le navigateur, et aucune variable
 `NEXT_PUBLIC_` sur ce projet** — ce préfixe publie la valeur dans le code source de la page
