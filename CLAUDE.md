@@ -100,10 +100,18 @@ la même chose finissent en deux tables et deux fonctions.
 À rouvrir avant toute décision produit.
 <!-- produit:end -->
 
-## État actuel (au 16 août 2026)
+## État actuel (au 17 août 2026)
 
-Squelette et documentation de cadrage. **Aucun code n'existe encore** — ni
-Python, ni Next.js.
+**La stack est posée, le pipeline n'existe pas encore.** `interface/` contient
+Next.js 16, React 19, TypeScript, Tailwind v4 et shadcn/ui sur le moteur
+`radix`, avec les jetons, les trois polices et le rayon de bordure du
+`DESIGN.md` déjà appliqués. `pipeline/` **n'existe pas** : aucune ligne de
+Python n'est écrite.
+
+⚠️ La page d'accueil de `interface/` est une **page de contrôle temporaire**
+posée par `/installe` — elle affiche les polices et les jetons pour prouver que
+la chaîne fonctionne. Ce n'est pas un écran du produit : la phase 1 la remplace
+par le compte rendu de la nuit. Ne pas construire dessus.
 
 Le cadrage a avancé le 16 août 2026 : critères de recherche, notation à deux
 axes, forme du livrable, stack et règles de sécurité sont tranchés dans
@@ -116,14 +124,40 @@ veut lire vite le matin, le lead technique en entretien à qui un tableau de bor
 ne fait aucun effet — est tranchée par la direction **éditorial technique** : chaud
 dans la matière, froid dans la précision. Voir la section Design en fin de fichier.
 
-`/planifie` est passé le 16 août 2026. Le découpage en huit tranches verticales, les
+`/planifie` est passé le 16 août 2026. Le découpage en **sept** tranches verticales, les
 décisions architecturales, le contenu de test et les parcours à repasser sont dans
 `docs/PLAN.md`. Deux amendements y sont consignés : l'écran du matin n'affiche que la
 collecte de la nuit (et non plus tout ce qui reste à traiter), et l'enrichissement **manuel
 se construit avant l'automatique**.
 
-Prochaine étape : **`/installe`**, qui pose la stack en exécutant ces décisions sans les
-rouvrir, puis la phase 1. Ne pas écrire de pipeline avant que la stack soit posée.
+`/installe` est passé le 17 août 2026, sur la branche `installation-stack` (deux commits,
+non poussés). Le preset `nova` avait écrasé plusieurs décisions du `DESIGN.md` — palette
+grise à la place de la palette chaude, Fraunces absente, `--font-heading` pointé vers la
+police sans-serif, `--radius` à 0.625rem — **toutes rétablies et vérifiées par commande**.
+Les cinq jetons propres au produit (`signal`, `signal-fort`, `success` et leurs textes)
+sont déclarés dans `:root` **et** exposés dans `@theme inline` : sans le second, `bg-signal`
+n'existe pas comme classe et l'élément reste sans fond, **sans aucune erreur**.
+
+Prochaine étape : la **phase 1** — la porte, la collecte, les premières offres réelles à
+l'écran.
+
+⚠️ **Deux choses restent à faire hors code**, et leur oubli se voit tard : pousser la
+branche et la fusionner · régler Vercel sur `Root Directory = interface`, sans quoi le
+déploiement échoue en cherchant un `package.json` à la racine.
+
+**On travaille directement sur `main` par défaut.** Décidé le 17 août 2026, après avoir
+fait le geste complet une fois sur `installation-stack` : seul sur le dépôt, une demande de
+fusion qu'on s'adresse à soi-même n'apporte aucune relecture et ralentit sans rien
+protéger. Ne pas reproposer de brancher par principe.
+
+⚠️ **Deux exceptions, où l'on branche quand même** — et là je le propose sans attendre
+qu'on me le demande :
+
+- **une migration de schéma** ou tout changement qui touche des données déjà en base ;
+- **un chantier qu'on peut vouloir jeter en entier** (essai d'architecture, refonte).
+
+La branche n'y sert pas de rituel : elle sert de **filet**. Sans elle, revenir en arrière
+suppose de savoir manier `git revert` et `git reset` — ce qui n'est pas acquis.
 
 ## Stack
 
@@ -258,7 +292,7 @@ Le serif ne descend jamais sous 20 px — en dessous, Geist.
 **Icônes** : **lucide** — figé à l'installation (`shadcn apply --only` accepte
 `theme` et `font`, jamais `icon`). **Ne jamais en mélanger un second.**
 
-**Jetons** : `app/globals.css` — c'est la source de vérité. Jamais de couleur en
+**Jetons** : `interface/app/globals.css` — c'est la source de vérité. Jamais de couleur en
 dur, toujours les jetons sémantiques (`bg-primary`, `text-muted-foreground`). Un
 seul `--radius`, les autres en dérivent. Bloc CSS prêt à coller dans
 `docs/DESIGN.md`.
