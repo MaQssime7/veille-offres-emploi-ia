@@ -145,10 +145,19 @@ l'écran.
 branche et la fusionner · régler Vercel sur `Root Directory = interface`, sans quoi le
 déploiement échoue en cherchant un `package.json` à la racine.
 
-**Chaque tranche se développe sur sa propre branche, fusionnée par une demande de fusion**
-— y compris en travaillant seul. C'est le geste répété qui compte : brancher, développer,
-demander la fusion, résoudre les conflits. Ne pas proposer de réglage d'administration du
-dépôt à la place : en entreprise, il est déjà posé, et ce n'est pas lui qui s'apprend.
+**On travaille directement sur `main` par défaut.** Décidé le 17 août 2026, après avoir
+fait le geste complet une fois sur `installation-stack` : seul sur le dépôt, une demande de
+fusion qu'on s'adresse à soi-même n'apporte aucune relecture et ralentit sans rien
+protéger. Ne pas reproposer de brancher par principe.
+
+⚠️ **Deux exceptions, où l'on branche quand même** — et là je le propose sans attendre
+qu'on me le demande :
+
+- **une migration de schéma** ou tout changement qui touche des données déjà en base ;
+- **un chantier qu'on peut vouloir jeter en entier** (essai d'architecture, refonte).
+
+La branche n'y sert pas de rituel : elle sert de **filet**. Sans elle, revenir en arrière
+suppose de savoir manier `git revert` et `git reset` — ce qui n'est pas acquis.
 
 ## Stack
 
