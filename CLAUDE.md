@@ -141,10 +141,14 @@ n'existe pas comme classe et l'élément reste sans fond, **sans aucune erreur**
 Prochaine étape : la **phase 1** — la porte, la collecte, les premières offres réelles à
 l'écran.
 
-⚠️ **Trois choses restent à faire hors code**, et leur oubli se voit tard :
-protéger `main` sur GitHub · pousser la branche et la fusionner · régler Vercel sur
-`Root Directory = interface`, sans quoi le déploiement échoue en cherchant un
-`package.json` à la racine.
+⚠️ **Deux choses restent à faire hors code**, et leur oubli se voit tard : pousser la
+branche et la fusionner · régler Vercel sur `Root Directory = interface`, sans quoi le
+déploiement échoue en cherchant un `package.json` à la racine.
+
+**Chaque tranche se développe sur sa propre branche, fusionnée par une demande de fusion**
+— y compris en travaillant seul. C'est le geste répété qui compte : brancher, développer,
+demander la fusion, résoudre les conflits. Ne pas proposer de réglage d'administration du
+dépôt à la place : en entreprise, il est déjà posé, et ce n'est pas lui qui s'apprend.
 
 ## Stack
 
