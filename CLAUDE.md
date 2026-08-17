@@ -246,11 +246,17 @@ Les clés de ce projet donnent accès à un compte facturé et à une base de do
    de clés commitées et les exploitent en minutes, aux frais du propriétaire. Une
    clé poussée par erreur reste dans l'historique Git même après suppression du
    fichier : la **révoquer**, pas seulement la supprimer.
-4. **Supabase : deux clés, deux rôles opposés.** La clé **anon** est publique par
-   conception. La clé **service_role** contourne *toutes* les règles de sécurité
-   de la base — jamais dans une variable `NEXT_PUBLIC_*`, jamais dans un composant
-   client, jamais commitée. RLS activé sur toutes les tables, et **le navigateur
-   ne parle jamais directement à Supabase** : tout passe par le serveur.
+4. **Supabase : deux clés, deux rôles opposés.** La clé **publiable**
+   (`sb_publishable_…`) est publique par conception — **inutilisée ici**, puisque le
+   navigateur ne parle jamais à la base. La clé **secrète** (`sb_secret_…`, variable
+   `SUPABASE_SECRET_KEY`) contourne *toutes* les règles de sécurité — jamais dans une
+   variable `NEXT_PUBLIC_*`, jamais dans un composant client, jamais commitée. RLS
+   activé sur toutes les tables, et **le navigateur ne parle jamais directement à
+   Supabase** : tout passe par le serveur.
+   ⚠️ Les anciennes clés `anon` / `service_role` sont l'ancienne génération, **dépréciée
+   fin 2026**. Elles restent actives en parallèle tant qu'on ne les désactive pas
+   explicitement : quatre accès valides pour deux utilisés. À désactiver dans
+   `Settings > API Keys` une fois le pipeline en service.
 5. **Aucun déclenchement d'agent accessible publiquement sans garde-fou.** Un
    bouton en ligne qui lance un agent Claude sans protection est une facture
    ouverte : un robot qui scanne les URL peut l'actionner en boucle. Tranché au

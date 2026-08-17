@@ -131,8 +131,8 @@ refaire à chaque nouvelle adresse de données.**
 | Endroit | Secrets |
 |---|---|
 | `.env` local, **non versionné** | Tous |
-| Secrets GitHub Actions | `FT_CLIENT_ID` · `FT_CLIENT_SECRET` · `ANTHROPIC_API_KEY` · `SUPABASE_URL` · `SUPABASE_SERVICE_ROLE_KEY` |
-| Variables Vercel | `SUPABASE_URL` · `SUPABASE_SERVICE_ROLE_KEY` · `MOT_DE_PASSE_SITE` · le jeton GitHub de déclenchement |
+| Secrets GitHub Actions | `FT_CLIENT_ID` · `FT_CLIENT_SECRET` · `ANTHROPIC_API_KEY` · `SUPABASE_URL` · `SUPABASE_SECRET_KEY` |
+| Variables Vercel | `SUPABASE_URL` · `SUPABASE_SECRET_KEY` · `MOT_DE_PASSE_SITE` · le jeton GitHub de déclenchement |
 | Le navigateur | **Rien. Aucune exception.** |
 
 **Le site ne détient aucune clé de modèle** — conséquence du découplage : Next.js écrit une
@@ -141,7 +141,7 @@ ligne en base, il ne parle jamais à Anthropic ni à France Travail.
 ⚠️ **Avec Next.js, c'est une convention de nommage qui décide si une variable part dans le
 navigateur.** Tout ce qui est préfixé `NEXT_PUBLIC_` est envoyé au navigateur et lisible
 par n'importe quel visiteur dans le code source de la page. Renommer
-`SUPABASE_SERVICE_ROLE_KEY` en `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY` publierait la clé
+`SUPABASE_SECRET_KEY` en `NEXT_PUBLIC_SUPABASE_SECRET_KEY` publierait la clé
 qui contourne toute la sécurité de la base, **sans le moindre message d'erreur**.
 **Aucune variable de ce projet ne porte ce préfixe.**
 

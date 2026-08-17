@@ -64,13 +64,18 @@ Les variables attendues :
 | `FT_CLIENT_SECRET` | Clé secrète de l'API France Travail |
 | `ANTHROPIC_API_KEY` | Clé d'API Anthropic |
 | `SUPABASE_URL` | URL du projet Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clé d'accès serveur à la base |
+| `SUPABASE_SECRET_KEY` | Clé secrète (`sb_secret_…`) — accès serveur à la base |
 
 Le fichier `.env` n'est jamais commité — il est exclu par le `.gitignore`.
 
-⚠️ `SUPABASE_SERVICE_ROLE_KEY` contourne toutes les règles de sécurité de la
-base. Elle ne doit jamais atteindre le navigateur : ni dans une variable
-`NEXT_PUBLIC_*`, ni dans un composant client, ni dans ce dépôt.
+⚠️ `SUPABASE_SECRET_KEY` contourne toutes les règles de sécurité de la base. Elle
+ne doit jamais atteindre le navigateur : ni dans une variable `NEXT_PUBLIC_*`, ni
+dans un composant client, ni dans ce dépôt.
+
+La clé **publiable** (`sb_publishable_…`) n'est volontairement pas utilisée : elle
+existe pour qu'un navigateur interroge la base directement, ce que ce projet
+s'interdit. Les anciennes clés `anon` et `service_role`, dépréciées fin 2026, sont
+à désactiver une fois le pipeline en service.
 
 Ce `.env` sert au pipeline en local. En production, les secrets vivent ailleurs
 et jamais dans le dépôt : **secrets GitHub Actions** pour le pipeline, **variables
