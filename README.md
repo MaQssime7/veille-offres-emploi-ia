@@ -1,5 +1,7 @@
 # Veille offres emploi IA
 
+**En ligne** : https://veille-offres-emploi-ia.vercel.app
+
 Agent de veille quotidienne sur les offres d'emploi dans l'IA. Récupère les
 offres via l'API France Travail, les évalue selon des critères de pertinence
 définis, et présente un classement dans une interface web.
@@ -121,14 +123,20 @@ dans [`docs/PRD.md`](docs/PRD.md), le système de design dans
 `docs/design-preview.html`, qui recalcule ses contrastes dans la page — et le
 découpage en sept phases dans [`docs/PLAN.md`](docs/PLAN.md).
 
-**La stack est posée** (17 août 2026) : Next.js 16, React 19, TypeScript,
-Tailwind v4 et shadcn/ui sur le moteur `radix`, dans `interface/`. Les jetons de
-couleur, les trois polices et le rayon de bordure du `DESIGN.md` sont appliqués —
-le preset d'installation avait posé une palette grise et omis le serif de
-titrage.
+**La stack est posée et les hébergements sont en place** (17 août 2026).
+
+- `interface/` : Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui sur le
+  moteur `radix`. Les jetons de couleur, les trois polices et le rayon de bordure
+  du `DESIGN.md` sont appliqués — le preset d'installation avait posé une palette
+  grise et omis le serif de titrage.
+- **Supabase** : projet créé en région Paris, RLS activé par défaut sur les
+  nouvelles tables. **Aucune table n'existe encore** : le schéma se conçoit en
+  phase 1.
+- **Vercel** : déployé, `Root Directory = interface`, fonctions en région Paris.
 
 La page d'accueil actuelle est une **page de contrôle temporaire** : elle prouve
-que la chaîne fonctionne et sera remplacée en phase 1.
+que la chaîne fonctionne — trois polices, jetons de couleur, mode sombre — et sera
+remplacée en phase 1.
 
 Prochaine étape, la **phase 1** : la porte, la collecte, et les premières offres
 réelles à l'écran. Le pipeline Python n'est pas encore écrit.

@@ -140,7 +140,7 @@ GitHub Actions (cron quotidien)  →  pipeline Python  →  Supabase (Postgres)
 |---|---|---|
 | Base de données | **Supabase** (Postgres hébergé) | Une interface hébergée ne peut pas lire un SQLite posé sur le Mac de Maxime |
 | Interface | **Next.js + shadcn/ui sur Vercel** | Décidé pour l'apprentissage (intégrer un agent dans une interface) et pour la vitrine d'entretien |
-| Pipeline | **Python**, déclenché par **GitHub Actions** | Vercel est un environnement JavaScript ; le cron GitHub est gratuit sur dépôt public, gère les secrets, et le workflow se voit dans le dépôt |
+| Pipeline | **Python**, déclenché par **GitHub Actions** | 6 h de durée par exécution contre 300 s chez Vercel ; gratuit et illimité sur dépôt public ; secrets gérés ; le workflow est versionné, donc visible d'un recruteur |
 
 ### Notation : deux réglages dictés par l'usage, pas par principe
 
@@ -157,10 +157,9 @@ référence `/claude-api`, pas d'ici.
 
 ### L'enrichissement par agent est découplé de l'interface
 
-Une fonction serverless Vercel a une durée maximale de l'ordre de la minute
-(limite non revérifiée récemment — elle change souvent). Un agent qui explore le
-site d'une entreprise dépasse facilement. Plutôt que de contourner la limite, on
-l'évite :
+Une fonction Vercel a une durée maximale de **300 s** en offre gratuite (800 s en
+Pro, 1800 s en bêta — vérifié le 17 août 2026). Un agent qui explore le site d'une
+entreprise peut dépasser. Plutôt que de contourner la limite, on l'évite :
 
 1. Le clic sur « enrichir » fait écrire au serveur Next.js une ligne « à traiter »
    dans Supabase, et rend la main **immédiatement**.

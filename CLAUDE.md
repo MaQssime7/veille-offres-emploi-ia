@@ -130,20 +130,42 @@ décisions architecturales, le contenu de test et les parcours à repasser sont 
 collecte de la nuit (et non plus tout ce qui reste à traiter), et l'enrichissement **manuel
 se construit avant l'automatique**.
 
-`/installe` est passé le 17 août 2026, sur la branche `installation-stack` (deux commits,
-non poussés). Le preset `nova` avait écrasé plusieurs décisions du `DESIGN.md` — palette
+`/installe` est passé le 17 août 2026 (branche `installation-stack`, fusionnée dans
+`main`). Le preset `nova` avait écrasé plusieurs décisions du `DESIGN.md` — palette
 grise à la place de la palette chaude, Fraunces absente, `--font-heading` pointé vers la
 police sans-serif, `--radius` à 0.625rem — **toutes rétablies et vérifiées par commande**.
 Les cinq jetons propres au produit (`signal`, `signal-fort`, `success` et leurs textes)
 sont déclarés dans `:root` **et** exposés dans `@theme inline` : sans le second, `bg-signal`
 n'existe pas comme classe et l'élément reste sans fond, **sans aucune erreur**.
 
+**Les hébergements sont en place** (soir du 17 août 2026) :
+
+| Service | État |
+|---|---|
+| **Supabase** | Projet `veille-offres-emploi-ia`, région **Paris**. Connexion vérifiée en HTTP 200 avec la clé secrète. ⚠️ **Aucune table créée** — le schéma se conçoit avec Maxime en phase 1, pas avant |
+| **Vercel** | Déployé sur https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région **cdg1 (Paris)**, effective au prochain déploiement · Fluid Compute activé |
+
+Réglages Supabase retenus à la création : **RLS automatique activé**, **exposition
+automatique des nouvelles tables désactivée**. Deux verrous indépendants, pour qu'un oubli
+ne suffise pas à ouvrir une table au monde.
+
+⚠️ **Le site est en ligne et public, sans mot de passe.** Sans conséquence aujourd'hui : la
+page ne montre aucune donnée et ne détient aucune clé. **La porte doit exister avant la
+première offre affichée**, pas après — un robot qui scanne les adresses `.vercel.app` la
+trouvera.
+
+⚠️ **Trois points en attente, à traiter en phase 1** :
+
+- `ANTHROPIC_API_KEY` du `.env` est **invalide** (16 caractères, refusée en 401). Une vraie
+  clé commence par `sk-ant-api03-`. Ne sert qu'à partir de la phase 2.
+- Les **clés Supabase legacy** (`anon`, `service_role`) restent actives en parallèle des
+  nouvelles : quatre accès valides pour deux utilisés. À désactiver une fois le pipeline en
+  service.
+- Les **variables d'environnement Vercel** ne sont pas renseignées — volontaire, la page
+  actuelle n'en lit aucune. À poser quand le code les lira.
+
 Prochaine étape : la **phase 1** — la porte, la collecte, les premières offres réelles à
 l'écran.
-
-⚠️ **Deux choses restent à faire hors code**, et leur oubli se voit tard : pousser la
-branche et la fusionner · régler Vercel sur `Root Directory = interface`, sans quoi le
-déploiement échoue en cherchant un `package.json` à la racine.
 
 **On travaille directement sur `main` par défaut.** Décidé le 17 août 2026, après avoir
 fait le geste complet une fois sur `installation-stack` : seul sur le dépôt, une demande de
@@ -167,8 +189,13 @@ Tranchée le 16 août 2026. Justifications dans `docs/DECISIONS.md` § 3.
 - **Supabase** (Postgres hébergé) pour la persistance. **Pas SQLite** : une
   interface hébergée ne peut pas lire un fichier posé sur le Mac de Maxime.
 - **Next.js + shadcn/ui sur Vercel** pour l'interface.
-- **GitHub Actions** (cron) pour le déclenchement quotidien — Vercel est un
-  environnement JavaScript, il n'héberge pas un processus Python long.
+- **GitHub Actions** (cron) pour le déclenchement quotidien — 6 h de durée par
+  exécution contre 300 s chez Vercel, gratuit et illimité sur dépôt public, et le
+  workflow est versionné donc visible d'un recruteur.
+  ⚠️ **Ne pas justifier ce choix par « Vercel ne fait pas de Python » : c'est faux.**
+  Vercel exécute du Python et propose des sandboxes conçus pour les agents, démarrant
+  en millisecondes. Ce qu'on laisse sur la table, c'est la latence au clic sur
+  « Enrichir » — un arbitrage assumé, pas une impossibilité technique.
 - **API France Travail** Offres d'emploi v2 · **API Anthropic** pour l'évaluation.
 
 ## Commandes
