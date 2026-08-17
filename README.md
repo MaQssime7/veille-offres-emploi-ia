@@ -17,6 +17,18 @@ GitHub Actions (cron quotidien)  →  pipeline Python  →  Supabase (Postgres)
                                     Vercel + Next.js + shadcn/ui (lecture serveur)
 ```
 
+Les deux moitiés ne se parlent jamais directement : le pipeline écrit dans la
+base, l'interface y lit. C'est ce découplage qui leur permet de tourner dans deux
+langages, sur deux hébergements, à deux moments différents.
+
+```
+veille-offres-emploi-ia/
+├── pipeline/     Python — collecte, notation, enrichissement
+├── interface/    Next.js + shadcn/ui — le site
+├── docs/         PRD, DESIGN, PLAN, DECISIONS, API France Travail
+└── .github/      le cron quotidien et le déclenchement des agents
+```
+
 Le pipeline se découpe en trois étapes, et la frontière entre elles est la
 décision d'architecture centrale du projet :
 
@@ -60,6 +72,31 @@ Le fichier `.env` n'est jamais commité — il est exclu par le `.gitignore`.
 base. Elle ne doit jamais atteindre le navigateur : ni dans une variable
 `NEXT_PUBLIC_*`, ni dans un composant client, ni dans ce dépôt.
 
+Ce `.env` sert au pipeline en local. En production, les secrets vivent ailleurs
+et jamais dans le dépôt : **secrets GitHub Actions** pour le pipeline, **variables
+d'environnement Vercel** pour l'interface. Le site ne détient aucune clé de
+modèle — il lit la base côté serveur, rien de plus.
+
+## Développement local
+
+Le pipeline et l'interface se lancent séparément.
+
+```bash
+# Pipeline — Python
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+which python                 # doit pointer vers .venv, pas vers /opt/anaconda3
+
+# Interface — Next.js
+cd interface
+npm install
+npm run dev                  # http://localhost:3000
+```
+
+⚠️ **Vercel doit être réglé sur `Root Directory = interface`.** Sans ce réglage,
+il cherche un `package.json` à la racine, n'en trouve pas, et le déploiement
+échoue.
+
 ## Documentation
 
 | Fichier | Contenu |
@@ -77,8 +114,16 @@ Cadrage et planification terminés le 16 août 2026 : le périmètre produit est
 dans [`docs/PRD.md`](docs/PRD.md), le système de design dans
 [`docs/DESIGN.md`](docs/DESIGN.md) — avec un aperçu HTML autonome,
 `docs/design-preview.html`, qui recalcule ses contrastes dans la page — et le
-découpage en huit phases dans [`docs/PLAN.md`](docs/PLAN.md).
+découpage en sept phases dans [`docs/PLAN.md`](docs/PLAN.md).
 
-Prochaine étape, l'installation de la stack, puis la phase 1 : la porte, la
-collecte et les premières offres réelles à l'écran. **Aucun code n'est encore
-écrit.**
+**La stack est posée** (17 août 2026) : Next.js 16, React 19, TypeScript,
+Tailwind v4 et shadcn/ui sur le moteur `radix`, dans `interface/`. Les jetons de
+couleur, les trois polices et le rayon de bordure du `DESIGN.md` sont appliqués —
+le preset d'installation avait posé une palette grise et omis le serif de
+titrage.
+
+La page d'accueil actuelle est une **page de contrôle temporaire** : elle prouve
+que la chaîne fonctionne et sera remplacée en phase 1.
+
+Prochaine étape, la **phase 1** : la porte, la collecte, et les premières offres
+réelles à l'écran. Le pipeline Python n'est pas encore écrit.
