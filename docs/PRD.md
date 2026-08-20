@@ -353,6 +353,41 @@ l'est pas, quel que soit le canal.
 
 ## Décisions d'implémentation
 
+### Données personnelles — périmètre restreint et explicite
+
+*Tranché le 20 août 2026, sur mesure et non sur intuition. Remplace la règle
+absolue « pas de données personnelles en base ».*
+
+Les offres sont publiques ; les coordonnées de contact qu'elles contiennent
+parfois ne le sont pas au sens du RGPD. **Deux champs seulement sont conservés**,
+parce qu'ils servent directement à candidater :
+
+| Champ conservé | Présence réelle | Nature |
+|---|---|---|
+| `contact.nom` | 22/235 offres (9 %) | Nomme une personne dans 8 cas sur 235 (3 %), sinon une agence ou un service |
+| `contact.urlPostulation` | 16/235 offres (7 %) | Un lien de candidature — **aucune donnée personnelle** |
+
+**Écartés à la collecte**, avant toute écriture : `coordonnees1/2/3` (adresses
+postales, 14 %), `courriel`, et tout autre élément d'identification. ⚠️ Écartés à
+la collecte, **jamais filtrés à l'affichage** : un champ filtré à l'affichage est
+quand même en base, dans les sauvegardes et dans les journaux.
+
+**Quatre garde-fous, opposables :**
+
+1. **Colonnes nommées, jamais dans l'archive JSON brute.** Une colonne se
+   cherche, s'exclut d'un export, se vide d'une requête. Noyée dans un bloc JSON,
+   la donnée voyage partout où le bloc voyage — export, débogage, copier-coller.
+2. **Ne sortent pas de la base** : ni journal d'exécution, ni export, ni page
+   publique.
+3. **Le site entier est derrière mot de passe**, donc ces champs ne sont
+   accessibles qu'à l'utilisateur unique.
+4. Les **notes personnelles** ajoutées par Maxime relèvent de la même règle.
+
+**Pourquoi la règle absolue précédente était mauvaise** : elle interdisait aussi
+`urlPostulation`, qui n'est pas une donnée personnelle et qui porte l'essentiel
+de la valeur d'usage. Une règle absolue qu'on contourne en silence protège moins
+qu'une règle précise qu'on respecte.
+
 ### Rythme et fraîcheur
 
 - Une seule exécution par jour, tôt le matin, heure de Paris.

@@ -407,3 +407,52 @@ conditions, toutes deux déjà tenues par le plan : conserver **toutes les notes
 toutes les offres**, y compris sous le seuil, faute de quoi la sélection sera
 incalibrable ; et créer dès la phase 6 la colonne `declenchement`, qui ne se
 rajoute pas rétroactivement sur l'historique.
+
+---
+
+## 10. Données personnelles — la règle absolue remplacée par une règle mesurée
+
+**20 août 2026, en séance de conception du schéma.**
+
+La règle en vigueur disait « pas de données personnelles en base ». Maxime a
+demandé à conserver les contacts des offres, jugeant utile d'avoir un nom et une
+adresse pour candidater. Plutôt que d'arbitrer sur des principes, le champ
+`contact` a été mesuré sur **235 offres réelles**.
+
+**Ce que la mesure a montré :**
+
+| Sous-champ | Présence | Contenu réel |
+|---|---|---|
+| `courriel` | 12/235 | **Zéro adresse.** Le champ porte une phrase : « Pour postuler, utiliser le lien suivant : https://… » |
+| `nom` | 22/235 (9 %) | Nomme une personne dans 8 cas (3 %) ; sinon une agence France Travail ou un service |
+| `coordonnees1/2/3` | 33/235 (14 %) | Adresses postales |
+| `urlPostulation` | 16/235 (7 %) | Lien de candidature — **pas une donnée personnelle** |
+
+**Décision** : conserver `contact.nom` et `contact.urlPostulation`, écarter le
+reste **à la collecte**. Détail et garde-fous dans `docs/PRD.md` §
+« Données personnelles ».
+
+**Trois raisons de ne pas s'en tenir à la règle absolue :**
+
+1. Elle interdisait `urlPostulation`, qui porte l'essentiel de la valeur d'usage
+   et n'est pas une donnée personnelle. Une règle qui range dans le même sac un
+   lien public et une adresse postale n'est pas une règle de sécurité, c'est un
+   raccourci.
+2. Le besoin exprimé — des noms, des courriels — **n'existe quasiment pas** :
+   zéro courriel, 3 % de noms de personnes. Débattre du principe aurait coûté
+   plus cher que mesurer.
+3. Une règle absolue qu'on contourne en silence protège moins qu'une règle
+   précise qu'on respecte. Le contournement, lui, ne laisse aucune trace écrite.
+
+**Le garde-fou qui compte, et qui n'est pas cosmétique** : ces deux champs vont
+en **colonnes nommées, jamais dans l'archive JSON brute**. Une colonne se
+cherche, s'exclut d'un export, se vide d'une requête. Dans un bloc JSON, la
+donnée devient invisible et voyage avec le bloc — export, session de débogage,
+copier-coller dans un terminal. C'est ainsi que les données personnelles fuitent
+en pratique : jamais par une décision, toujours par un oubli.
+
+**Argument transférable en entreprise** : à la question « et les données
+personnelles ? », « il n'y en a pas » est une réponse faible. « J'ai mesuré ce
+qu'il y avait, gardé les deux champs utiles, écarté le reste avant écriture, et
+mis ce qui reste en colonnes nommées pour pouvoir le supprimer d'une requête »
+en est une forte.
