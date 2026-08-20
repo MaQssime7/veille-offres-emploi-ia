@@ -361,6 +361,19 @@ Supabase **avant** de nettoyer l'historique. Le nettoyage seul ne protège rien.
 - Toute fonction qui appelle le réseau gère explicitement l'échec. Pas de
   `try/except` nu qui avale l'erreur.
 
+### Capitaliser les notions apprises
+
+Quand Maxime demande de noter une notion technique comprise en séance, elle va dans
+**`~/Documents/Coffre Obsidian/Maxime M/Apprentissage/`**, un fichier `.md` par notion.
+Pas dans `docs/` : `docs/` porte le projet, ce dossier porte le savoir transférable.
+
+**Concises**, il en aura beaucoup. Frontmatter `title` / `tags` / `aliases` · un callout
+`> [!tip] En une phrase` en tête · tableaux et blocs de code plutôt que des paragraphes ·
+un `> [!danger] Le piège` à la fin · wikilinks vers les autres notes du dossier.
+
+La version *projet* de la même notion (pourquoi **ce** projet a tranché ainsi) reste dans
+`docs/DECISIONS.md`. Les deux se complètent, aucune ne remplace l'autre.
+
 <!-- design:start -->
 ## Design — Veille offres emploi IA
 
