@@ -172,6 +172,18 @@ fait le geste complet une fois sur `installation-stack` : seul sur le dépôt, u
 fusion qu'on s'adresse à soi-même n'apporte aucune relecture et ralentit sans rien
 protéger. Ne pas reproposer de brancher par principe.
 
+**Déploiement : chaque `push` sur `main` met le site en ligne à jour, automatiquement.**
+Une branche poussée obtient une **adresse d'aperçu** séparée, sans toucher à la production.
+Une compilation qui échoue ne remplace pas la version en ligne — l'ancienne continue de
+tourner. En cas d'incident, `Deployments → Promote to Production` sur un déploiement
+antérieur rétablit le site en quelques secondes.
+
+⚠️ **Vercel isole le code, jamais les données : un aperçu parle à la *même* base
+Supabase que la production.** Une branche qui écrit, supprime ou migre touche les vraies
+données. Le mot « aperçu » donne un faux sentiment de bac à sable. Ne jamais essayer une
+opération destructive sur un aperçu — c'est une raison de plus de traiter les migrations en
+local d'abord.
+
 ⚠️ **Deux exceptions, où l'on branche quand même** — et là je le propose sans attendre
 qu'on me le demande :
 
