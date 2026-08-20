@@ -222,3 +222,47 @@ Base laissée vide après nettoyage.
 sans aucune politique, *et* tous droits retirés à `anon` et `authenticated`. Un
 seul suffirait en théorie. Deux font qu'une politique ajoutée par erreur un jour
 n'ouvre toujours rien, parce qu'il n'y a aucun droit dessous.
+
+## 20 août 2026 — Méthode : capitaliser les notions, et qui écrit quoi
+
+**Un dossier `Apprentissage/` est ouvert dans le coffre Obsidian de Maxime**, avec un
+sous-dossier par sujet. Les notions techniques comprises en séance y vont, une par fichier,
+courtes. Quatre notes déposées : clés primaires et étrangères · migrations · CLI et MCP ·
+accès aux données serveur ou navigateur.
+
+Distinct de `docs/`, et les deux se complètent : `docs/DECISIONS.md` dit pourquoi **ce**
+projet a tranché ainsi, `Apprentissage/` dit **comment ça marche en général**. Motif : il ne
+relit ni le code ni les `.md` du dépôt, mais il rouvre son coffre quand il a un doute ou
+qu'il prépare un entretien.
+
+**Erreur corrigée en séance** : la première note groupait « CLI, MCP et migrations ».
+Maxime a fait remarquer qu'une migration est une notion de base de données et n'a rien à
+voir avec CLI/MCP. Découpée en deux. La règle en découle — **une notion, un fichier** ; ne
+jamais grouper deux sujets parce qu'ils sont tombés dans la même conversation, ils ne se
+relisent pas au même moment.
+
+### Qui écrit le code — position de Maxime, et ce qu'elle impose
+
+**Il n'écrira pas les requêtes.** Argument : écrire du code est dévalué puisque l'IA écrit ;
+ce qui compte est de savoir que la chose existe, à quoi elle sert et comment elle casse,
+pour localiser une panne et savoir quoi demander.
+
+**L'argument tient — à une substitution près, qui a été posée explicitement : écrire est
+dévalué, lire ne l'est pas.** Localiser une panne demande d'ouvrir le fichier et de suivre
+le fil. Savoir que « la pagination existe » ne dit pas qu'une ligne teste `== 200` au lieu
+de `in (200, 206)` et rate une page sur deux, silencieusement.
+
+**Deuxième compétence, non nommée par lui et ajoutée au marché** : reconnaître une vraie
+preuve. La migration du jour était validée par l'analyseur officiel de PostgreSQL et
+créait pourtant des tables illisibles par le serveur. Son seul garde-fou est de pouvoir
+demander « tu l'as lancé, ou tu l'as juste relu ? ».
+
+**Signalé une fois, sans y revenir** : beaucoup d'entretiens techniques comportent encore un
+exercice en direct. On peut avoir raison sur l'évolution du métier et échouer au filtre.
+C'est son arbitrage.
+
+**Accord retenu** : j'écris les requêtes · une note de diagnostic en fin de phase (les
+formes de code du projet, ce que chacune dit en français, comment elle casse, le symptôme à
+l'écran) · trois questions à la fin de chaque module · une lecture de module à voix haute
+par phase.
+

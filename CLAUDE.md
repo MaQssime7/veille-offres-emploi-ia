@@ -382,6 +382,28 @@ serveur et le navigateur. Un dossier par sujet principal, plusieurs tags par not
 La version *projet* de la même notion (pourquoi **ce** projet a tranché ainsi) reste dans
 `docs/DECISIONS.md`. Les deux se complètent, aucune ne remplace l'autre.
 
+### Répartition du travail — tranché le 20 août 2026
+
+Maxime **n'écrit pas le code**, et c'est une position argumentée, pas un renoncement :
+écrire est dévalué puisque l'IA écrit, ce qui compte est de savoir **que ça existe, à quoi
+ça sert et comment ça casse**, pour localiser une panne et savoir quoi demander.
+
+Ce que ça m'impose, et qui n'est pas négociable :
+
+1. **Une note de diagnostic à la fin de chaque phase**, dans `Apprentissage/`. Pas une
+   explication ligne par ligne — il ne la rouvrirait jamais. Les quelques **formes** de
+   code que le projet utilise vraiment · **la phrase française** que chacune dit · **comment
+   chacune casse** · **le symptôme à l'écran** de chaque panne.
+2. **Trois questions à la fin de chaque module.** S'il bloque sur une, la lecture manque là,
+   et il faut le savoir avant l'entretien.
+3. ⚠️ **Écrire est dévalué, lire ne l'est pas** — c'est *plus* important qu'avant, puisqu'il
+   produit dix fois plus de code. Son propre critère (« savoir où est le problème ») repose
+   entièrement dessus. Une lecture d'un module à voix haute par phase.
+4. ⚠️ **Ne jamais annoncer qu'une chose marche sans l'avoir lancée.** Son seul garde-fou est
+   de pouvoir demander « tu l'as lancé, ou tu l'as juste relu ? ». Le 20 août, une migration
+   validée par l'analyseur officiel de PostgreSQL a créé deux tables illisibles par le
+   serveur : le défaut n'est apparu qu'en essayant d'écrire.
+
 <!-- design:start -->
 ## Design — Veille offres emploi IA
 
