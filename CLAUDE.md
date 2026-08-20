@@ -364,12 +364,20 @@ Supabase **avant** de nettoyer l'historique. Le nettoyage seul ne protège rien.
 ### Capitaliser les notions apprises
 
 Quand Maxime demande de noter une notion technique comprise en séance, elle va dans
-**`~/Documents/Coffre Obsidian/Maxime M/Apprentissage/`**, un fichier `.md` par notion.
+**`~/Documents/Coffre Obsidian/Maxime M/Apprentissage/`**, **dans le sous-dossier du sujet**
+(`Supabase/`, `Outillage/`… — lister le dossier avant d'écrire, il en crée au fil de l'eau).
 Pas dans `docs/` : `docs/` porte le projet, ce dossier porte le savoir transférable.
+
+**Une notion = un fichier.** Ne jamais grouper deux sujets parce qu'ils sont tombés dans la
+même conversation : ils ne se relisent pas au même moment. *(Erreur commise le 20 août avec
+« CLI, MCP et migrations », découpée en deux à sa demande.)*
 
 **Concises**, il en aura beaucoup. Frontmatter `title` / `tags` / `aliases` · un callout
 `> [!tip] En une phrase` en tête · tableaux et blocs de code plutôt que des paragraphes ·
-un `> [!danger] Le piège` à la fin · wikilinks vers les autres notes du dossier.
+un `> [!danger] Le piège` à la fin · wikilinks vers les autres notes.
+
+**Les tags portent ce que les dossiers ne peuvent pas** — la sécurité traverse la base, le
+serveur et le navigateur. Un dossier par sujet principal, plusieurs tags par note.
 
 La version *projet* de la même notion (pourquoi **ce** projet a tranché ainsi) reste dans
 `docs/DECISIONS.md`. Les deux se complètent, aucune ne remplace l'autre.
