@@ -177,6 +177,34 @@ streaming synchrone.
 
 Tout accès aux données passe par le serveur Next.js. Voir section 4.
 
+**Ce que ce choix écarte, nommé correctement — précisé le 20 août 2026.** Il existe
+exactement deux façons de faire arriver des données jusqu'à un écran, et elles se
+distinguent par **où vit l'autorisation** :
+
+| | **Trois tiers** *(retenu)* | **BaaS + RLS** *(le défaut Supabase)* |
+|---|---|---|
+| Chemin | navigateur → serveur → base | navigateur → base, directement |
+| Autorisation | dans le code du serveur | dans la base, par politiques RLS |
+| Ce que la base voit | toujours `service_role`, tout-puissant | l'identité réelle de la personne |
+| Si la vérification est oubliée | **tout est exposé, aucun filet** | la base refuse quand même |
+| Si le mot de passe fuite | l'attaquant voit ce que les pages affichent | l'attaquant compose ses propres requêtes |
+
+**Pourquoi les trois tiers ici** : un seul utilisateur — une politique RLS dirait
+« tout le monde voit tout », donc n'écarterait personne · un serveur est de toute
+façon nécessaire (mot de passe, déclenchement GitHub, clé du modèle) · une fois
+qu'il existe, un seul endroit de vérification est plus simple à défendre que des
+politiques réparties sur chaque table.
+
+⚠️ **La contrepartie dicte deux règles du `PLAN.md`, et explique pourquoi elles ne sont
+pas négociables** : dans ce modèle il n'y a **aucun second filet**. D'où le `proxy.ts`
+unique qui protège tout par défaut, et la fonction de contrôle **unique** par laquelle
+tous les accès passent. Recopier la vérification garantit qu'un accès finira par être
+oublié — et rien, en dessous, ne le rattrapera.
+
+*Un troisième chemin existe, non retenu : le serveur transmet à Supabase le jeton de
+l'utilisateur, si bien que RLS s'applique en plus. Deux filets au lieu d'un. Sans objet
+ici, puisqu'il n'y a personne à distinguer de qui que ce soit.*
+
 **Tranché au `/planifie` du 16 août 2026 : Supabase Realtime est écarté, le flux
 passe par une route serveur sondée toutes les 1,5 seconde.** Realtime écoute
 depuis le **navigateur**, avec la clé publique, ce qui obligerait à ouvrir une
