@@ -440,7 +440,7 @@ icônes lucide — **figés à l'installation**. ⚠️ Vercel doit être régl�
 statut dans l'adresse) · `/offres/[identifiant]` la fiche · `/connexion` la porte.
 L'identifiant est celui de France Travail, **validé avant d'atteindre la base**.
 
-**Schéma** : `executions_veille` · `offres` · `enrichissements` · `etapes_enrichissement`.
+**Schéma, cible à terme** : `executions_veille` · `offres` · `enrichissements` · `etapes_enrichissement`. ⚠️ **Seules les deux premières existent** — voir § « Base de données », et `supabase/migrations/` pour ce qui est réellement en base.
 Pas d'accents dans les noms. Une offre est rattachée à l'exécution qui l'a trouvée ; elle a
 **au plus un** enrichissement (une relance remplace la fiche). Deux compteurs de tokens sur
 l'offre : `tokens_cumules` et `tokens_conversation`.
