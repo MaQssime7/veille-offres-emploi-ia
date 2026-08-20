@@ -111,7 +111,7 @@ Ce qui la remplace :
 1. **RLS activé sur toutes les tables, aucune politique.** La base refuse tout accès
    direct ; seul le serveur, avec la clé `service_role`, passe. Le navigateur ne parle
    jamais à Supabase.
-2. **Un middleware unique protège tout par défaut**, avec exactement trois exceptions en
+2. **Un `proxy.ts` unique protège tout par défaut** (le middleware de Next 16), avec exactement trois exceptions en
    **liste blanche** : la page de connexion, l'action qui vérifie le mot de passe, les
    fichiers statiques. L'inverse — énumérer les adresses à protéger — laisserait toute
    adresse ajoutée plus tard ouverte, **sans rien signaler**.

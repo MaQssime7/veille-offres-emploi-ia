@@ -14,6 +14,8 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Ce que le produit doit faire · ce qu'il refuse de faire | `docs/PRD.md` |
 | Identité visuelle : jetons, contrastes vérifiés, composants propres au produit | `docs/DESIGN.md` |
 | Dans quel ordre le construire · contenu de test · parcours à repasser | `docs/PLAN.md` |
+| Ce qui s'est passé et pourquoi, dans l'ordre | `docs/JOURNAL.md` |
+| Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` (`.agents/skills/`) |
 
 **Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
 comportement sur *n'importe quelle* tâche du projet. Toute référence propre à un
@@ -100,99 +102,45 @@ la même chose finissent en deux tables et deux fonctions.
 À rouvrir avant toute décision produit.
 <!-- produit:end -->
 
-## État actuel (au 17 août 2026)
+## État actuel (au 20 août 2026)
 
-**La stack est posée, le pipeline n'existe pas encore.** `interface/` contient
-Next.js 16, React 19, TypeScript, Tailwind v4 et shadcn/ui sur le moteur
-`radix`, avec les jetons, les trois polices et le rayon de bordure du
-`DESIGN.md` déjà appliqués. `pipeline/` **n'existe pas** : aucune ligne de
-Python n'est écrite.
+**La stack est posée et hébergée, le pipeline n'existe pas.**
 
-⚠️ La page d'accueil de `interface/` est une **page de contrôle temporaire**
-posée par `/installe` — elle affiche les polices et les jetons pour prouver que
-la chaîne fonctionne. Ce n'est pas un écran du produit : la phase 1 la remplace
-par le compte rendu de la nuit. Ne pas construire dessus.
-
-Le cadrage a avancé le 16 août 2026 : critères de recherche, notation à deux
-axes, forme du livrable, stack et règles de sécurité sont tranchés dans
-`docs/DECISIONS.md` ; le périmètre produit l'est dans `docs/PRD.md` ; l'identité
-visuelle dans `docs/DESIGN.md`. **Ces décisions sont acquises — ne pas les
-rouvrir.**
-
-`/design` est passé le 16 août 2026. La tension entre les deux publics — Maxime qui
-veut lire vite le matin, le lead technique en entretien à qui un tableau de bord gris
-ne fait aucun effet — est tranchée par la direction **éditorial technique** : chaud
-dans la matière, froid dans la précision. Voir la section Design en fin de fichier.
-
-`/planifie` est passé le 16 août 2026. Le découpage en **sept** tranches verticales, les
-décisions architecturales, le contenu de test et les parcours à repasser sont dans
-`docs/PLAN.md`. Deux amendements y sont consignés : l'écran du matin n'affiche que la
-collecte de la nuit (et non plus tout ce qui reste à traiter), et l'enrichissement **manuel
-se construit avant l'automatique**.
-
-`/installe` est passé le 17 août 2026 (branche `installation-stack`, fusionnée dans
-`main`). Le preset `nova` avait écrasé plusieurs décisions du `DESIGN.md` — palette
-grise à la place de la palette chaude, Fraunces absente, `--font-heading` pointé vers la
-police sans-serif, `--radius` à 0.625rem — **toutes rétablies et vérifiées par commande**.
-Les cinq jetons propres au produit (`signal`, `signal-fort`, `success` et leurs textes)
-sont déclarés dans `:root` **et** exposés dans `@theme inline` : sans le second, `bg-signal`
-n'existe pas comme classe et l'élément reste sans fond, **sans aucune erreur**.
-
-**Les hébergements sont en place** (soir du 17 août 2026) :
-
-| Service | État |
+| Brique | État |
 |---|---|
-| **Supabase** | Projet `veille-offres-emploi-ia`, région **Paris**. Connexion vérifiée en HTTP 200 avec la clé secrète. ⚠️ **Aucune table créée** — le schéma se conçoit avec Maxime en phase 1, pas avant |
-| **Vercel** | Déployé sur https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région **cdg1 (Paris)**, effective au prochain déploiement · Fluid Compute activé |
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. Jetons, polices et rayon du `DESIGN.md` appliqués |
+| Supabase | Projet en région Paris, connexion vérifiée. **Aucune table** |
+| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · fonctions en région Paris |
+| `pipeline/` | **N'existe pas.** Aucune ligne de Python |
 
-Réglages Supabase retenus à la création : **RLS automatique activé**, **exposition
-automatique des nouvelles tables désactivée**. Deux verrous indépendants, pour qu'un oubli
-ne suffise pas à ouvrir une table au monde.
+⚠️ **Quatre pièges actifs :**
 
-⚠️ **Le site est en ligne et public, sans mot de passe.** Sans conséquence aujourd'hui : la
-page ne montre aucune donnée et ne détient aucune clé. **La porte doit exister avant la
-première offre affichée**, pas après — un robot qui scanne les adresses `.vercel.app` la
-trouvera.
+1. La page d'accueil est une **page de contrôle temporaire** posée par `/installe` —
+   pas un écran du produit. La phase 1 la remplace. Ne pas construire dessus.
+2. **Le site est en ligne et public, sans mot de passe.** Sans conséquence aujourd'hui —
+   aucune donnée, aucune clé. **La porte doit exister avant la première offre affichée.**
+3. **Aucune table n'existe, et c'est voulu** : le schéma se conçoit **avec** Maxime en
+   phase 1, clé étrangère par clé étrangère. Ne pas le poser à sa place.
+4. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le code,
+   jamais les données : une branche qui migre ou supprime touche les vraies données.
 
-⚠️ **Trois points en attente, à traiter en phase 1** :
+**En attente, à traiter en phase 1 :** `ANTHROPIC_API_KEY` du `.env` est invalide (ne sert
+qu'en phase 2) · les clés Supabase legacy restent actives en parallèle des nouvelles · les
+variables d'environnement Vercel ne sont pas posées, la page actuelle n'en lit aucune.
 
-- `ANTHROPIC_API_KEY` du `.env` est **invalide** (16 caractères, refusée en 401). Une vraie
-  clé commence par `sk-ant-api03-`. Ne sert qu'à partir de la phase 2.
-- Les **clés Supabase legacy** (`anon`, `service_role`) restent actives en parallèle des
-  nouvelles : quatre accès valides pour deux utilisés. À désactiver une fois le pipeline en
-  service.
-- Les **variables d'environnement Vercel** ne sont pas renseignées — volontaire, la page
-  actuelle n'en lit aucune. À poser quand le code les lira.
+**Les décisions de cadrage, de design et de plan sont acquises — ne pas les rouvrir.**
+Elles sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoire et
+les arbitrages en chemin sont dans **`docs/JOURNAL.md`**.
 
-Prochaine étape : la **phase 1** — la porte, la collecte, les premières offres réelles à
-l'écran.
+Prochaine étape : la **phase 1** — la porte, la collecte, les premières offres à l'écran.
 
-**On travaille directement sur `main` par défaut.** Décidé le 17 août 2026, après avoir
-fait le geste complet une fois sur `installation-stack` : seul sur le dépôt, une demande de
-fusion qu'on s'adresse à soi-même n'apporte aucune relecture et ralentit sans rien
-protéger. Ne pas reproposer de brancher par principe.
+**On travaille directement sur `main` par défaut.** Le geste complet (brancher, développer,
+demander la fusion) a été fait une fois le 17 août 2026 ; seul sur le dépôt, le répéter
+n'apporte aucune relecture. Ne pas reproposer de brancher par principe.
 
-**Déploiement : chaque `push` sur `main` met le site en ligne à jour, automatiquement.**
-Une branche poussée obtient une **adresse d'aperçu** séparée, sans toucher à la production.
-Une compilation qui échoue ne remplace pas la version en ligne — l'ancienne continue de
-tourner. En cas d'incident, `Deployments → Promote to Production` sur un déploiement
-antérieur rétablit le site en quelques secondes.
-
-⚠️ **Vercel isole le code, jamais les données : un aperçu parle à la *même* base
-Supabase que la production.** Une branche qui écrit, supprime ou migre touche les vraies
-données. Le mot « aperçu » donne un faux sentiment de bac à sable. Ne jamais essayer une
-opération destructive sur un aperçu — c'est une raison de plus de traiter les migrations en
-local d'abord.
-
-⚠️ **Deux exceptions, où l'on branche quand même** — et là je le propose sans attendre
-qu'on me le demande :
-
-- **une migration de schéma** ou tout changement qui touche des données déjà en base ;
-- **un chantier qu'on peut vouloir jeter en entier** (essai d'architecture, refonte).
-
-La branche n'y sert pas de rituel : elle sert de **filet**. Sans elle, revenir en arrière
-suppose de savoir manier `git revert` et `git reset` — ce qui n'est pas acquis.
-
+⚠️ **Deux exceptions, où je propose de brancher sans qu'on me le demande** : une
+**migration de schéma** ou tout changement touchant des données déjà en base · un
+**chantier qu'on peut vouloir jeter en entier**. La branche y sert de filet, pas de rituel.
 ## Stack
 
 Tranchée le 16 août 2026. Justifications dans `docs/DECISIONS.md` § 3.
@@ -387,6 +335,10 @@ agents) · mot de passe unique, ni comptes ni rôles · API France Travail v2 ·
 **`claude-sonnet-5`** pour la notation (cache de prompt + Batches) · Claude Agent SDK pour
 l'enrichissement.
 
+⚠️ **Next 16 a renommé `middleware.ts` en `proxy.ts`** (et `config` en `proxyConfig`).
+Plus largement, ses conventions ont bougé : **avant d'écrire du Next.js, s'appuyer sur la
+skill `next-best-practices`** plutôt que sur des réflexes de Next 14.
+
 **Frontend** : template `next` · moteur des composants **`radix`** · pas de monorepo ·
 icônes lucide — **figés à l'installation**. ⚠️ Vercel doit être réglé sur
 `Root Directory = interface`.
@@ -404,7 +356,7 @@ utilisateur, une seule porte ; une telle colonne porterait la même valeur parto
 donnerait l'illusion d'un contrôle.
 
 **Autorisation, opposable** : RLS activé sur toutes les tables, **aucune politique** ; le
-navigateur ne parle jamais à Supabase. Un middleware unique protège **tout par défaut**,
+navigateur ne parle jamais à Supabase. Un **`proxy.ts`** unique protège **tout par défaut**,
 avec trois exceptions en liste blanche — énumérer les adresses à protéger laisserait toute
 adresse ajoutée plus tard ouverte sans rien signaler. Une seule fonction fait le contrôle,
 tous les accès passent par elle — recopier la vérification garantit qu'un accès finira par

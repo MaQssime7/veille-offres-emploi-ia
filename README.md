@@ -112,6 +112,7 @@ il cherche un `package.json` à la racine, n'en trouve pas, et le déploiement
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Le système de design : jetons, contrastes vérifiés, composants propres au produit |
 | [`docs/PLAN.md`](docs/PLAN.md) | Le découpage en phases, les décisions architecturales, le contenu de test |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Les décisions de cadrage et **leur justification** |
+| [`docs/JOURNAL.md`](docs/JOURNAL.md) | Ce qui s'est passé, dans l'ordre, et les arbitrages en chemin |
 | [`docs/API_FRANCE_TRAVAIL.md`](docs/API_FRANCE_TRAVAIL.md) | L'API Offres d'emploi v2 vérifiée en conditions réelles |
 | `CLAUDE.md` | Règles de travail et pièges techniques établis |
 
