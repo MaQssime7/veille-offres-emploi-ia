@@ -8,6 +8,7 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Sujet | Où |
 |---|---|
 | **Pourquoi** une décision de cadrage est ce qu'elle est · questions encore ouvertes | `docs/DECISIONS.md` |
+| **Schéma de la base** : tables, colonnes, contraintes, et le *pourquoi* de chacune | `supabase/migrations/` — **seule source de vérité, jamais recopiée ailleurs** |
 | API France Travail : authentification, pagination, quota, cas limites | `docs/API_FRANCE_TRAVAIL.md` |
 | API Anthropic : modèles, paramètres, sortie structurée, cache, batches | référence `/claude-api` |
 | Claude Agent SDK : surface d'API | `code.claude.com/docs/en/agent-sdk` |
@@ -102,37 +103,43 @@ la même chose finissent en deux tables et deux fonctions.
 À rouvrir avant toute décision produit.
 <!-- produit:end -->
 
-## État actuel (au 20 août 2026)
+## État actuel (au 20 août 2026, fin de séance)
 
-**La stack est posée et hébergée, le pipeline n'existe pas.**
+**La stack est posée et hébergée. Le schéma est en base. Le pipeline n'existe pas.**
 
 | Brique | État |
 |---|---|
-| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. Jetons, polices et rayon du `DESIGN.md` appliqués |
-| Supabase | Projet en région Paris, connexion vérifiée. **Aucune table** |
-| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · fonctions en région Paris |
-| `pipeline/` | **N'existe pas.** Aucune ligne de Python |
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. Jetons, polices et rayon du `DESIGN.md` appliqués. **Aucun écran du produit** |
+| Supabase | Projet en région Paris. **`executions_veille` et `offres` créées**, RLS activé, droits vérifiés par 18 contrôles |
+| Migrations | `supabase/migrations/`, appliquées via `npx supabase` — voir Commandes |
+| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · fonctions en région Paris. **Aucune variable d'environnement posée** |
+| `pipeline/` | **N'existe pas.** Aucune ligne de Python. C'est la prochaine étape |
+| `.venv/` | Créé à la racine. `requests`, `python-dotenv`, `pglast` installés |
 
 ⚠️ **Quatre pièges actifs :**
 
 1. La page d'accueil est une **page de contrôle temporaire** posée par `/installe` —
    pas un écran du produit. La phase 1 la remplace. Ne pas construire dessus.
 2. **Le site est en ligne et public, sans mot de passe.** Sans conséquence aujourd'hui —
-   aucune donnée, aucune clé. **La porte doit exister avant la première offre affichée.**
-3. **Aucune table n'existe, et c'est voulu** : le schéma se conçoit **avec** Maxime en
-   phase 1, clé étrangère par clé étrangère. Ne pas le poser à sa place.
-4. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le code,
+   la base est vide et le site ne la lit pas. **La porte doit exister avant la première
+   offre affichée.**
+3. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le code,
    jamais les données : une branche qui migre ou supprime touche les vraies données.
+4. **Les tables d'enrichissement n'existent pas, et c'est une décision** — voir
+   « Base de données » ci-dessous. Ne pas les créer avant la phase 6.
 
-**En attente, à traiter en phase 1 :** `ANTHROPIC_API_KEY` du `.env` est invalide (ne sert
-qu'en phase 2) · les clés Supabase legacy restent actives en parallèle des nouvelles · les
-variables d'environnement Vercel ne sont pas posées, la page actuelle n'en lit aucune.
+**En attente :** `ANTHROPIC_API_KEY` du `.env` contient un texte d'exemple, pas une vraie
+clé (ne sert qu'en phase 2) · les clés Supabase legacy restent actives en parallèle des
+nouvelles, à désactiver une fois le pipeline en service · les variables d'environnement
+Vercel ne sont pas posées.
 
 **Les décisions de cadrage, de design et de plan sont acquises — ne pas les rouvrir.**
 Elles sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoire et
 les arbitrages en chemin sont dans **`docs/JOURNAL.md`**.
 
-Prochaine étape : la **phase 1** — la porte, la collecte, les premières offres à l'écran.
+**Prochaine étape : le pipeline Python de collecte** (`pipeline/`) — étape 2 sur 6 de la
+phase 1. Reste ensuite : la porte (`/connexion` + `proxy.ts`), l'écran `/offres`, la mise
+en ligne avec le cron GitHub Actions, la remesure de la mise en page.
 
 **On travaille directement sur `main` par défaut.** Le geste complet (brancher, développer,
 demander la fusion) a été fait une fois le 17 août 2026 ; seul sur le dépôt, le répéter
@@ -141,6 +148,47 @@ n'apporte aucune relecture. Ne pas reproposer de brancher par principe.
 ⚠️ **Deux exceptions, où je propose de brancher sans qu'on me le demande** : une
 **migration de schéma** ou tout changement touchant des données déjà en base · un
 **chantier qu'on peut vouloir jeter en entier**. La branche y sert de filet, pas de rituel.
+
+## Base de données — ce qui change mon comportement
+
+**Source de vérité du schéma : `supabase/migrations/`.** Les fichiers sont abondamment
+commentés — chaque décision y est expliquée. **Ne jamais recopier le schéma dans un autre
+document** : deux descriptions du même schéma divergent toujours.
+
+⚠️ **Une migration déjà appliquée ne se modifie jamais.** Elle est dans la base : la
+réécrire ne défait rien et fait diverger git de la réalité. On corrige par une migration
+suivante. C'est arrivé le 20 août — voir `docs/JOURNAL.md`.
+
+**Deux tables sur quatre existent** : `executions_veille`, `offres`.
+`enrichissements` et `etapes_enrichissement` sont **reportées à la phase 6** — entorse
+assumée au critère d'acceptation du `PLAN.md`, validée en séance : leur forme dépend de ce
+que l'agent produira réellement, et rien ne les alimente d'ici là.
+
+**Six règles opposables, toutes déjà appliquées :**
+
+1. **`timestamptz` partout, jamais `timestamp`.** GitHub Actions tourne en UTC, le
+   navigateur est à Paris : sans fuseau, une collecte de 4 h s'affiche « 02:00 » en été.
+2. **Ce qui se calcule ne se stocke pas.** Pas de colonne `duree` (`terminee_a -
+   demarree_a`), pas de date de collecte sur l'offre (le lien vers l'exécution la porte).
+3. **`NULL` ≠ `false`.** `NULL` veut dire « non renseigné », `false` veut dire « renseigné
+   à non ». Un `default false` sur un champ souvent absent fabrique de la donnée qui
+   n'existe pas.
+4. **La ligne d'`executions_veille` s'écrit au démarrage** (`issue = 'en_cours'`), se
+   complète à la fin. Une ligne restée `en_cours` est une exécution tuée net : le pipeline
+   les referme en `echec` à son démarrage suivant, et **un `en_cours` ne compte jamais
+   comme une réussite** côté interface.
+5. **`offres.charge_brute` est une archive, jamais lue pour afficher.** Elle existe parce
+   que France Travail dépublie ses offres. Les colonnes extraites sont les seules valeurs
+   de travail.
+6. **`contact_nom` et `contact_url_postulation` sont en colonnes nommées**, jamais dans
+   `charge_brute` — pour rester repérables et supprimables. Tout le reste du champ
+   `contact` est **écarté à la collecte**, avant écriture. Voir `docs/PRD.md`
+   § « Données personnelles ».
+
+**Autorisation — deux verrous indépendants, vérifiés :** RLS activé sans aucune politique,
+*et* tous droits retirés à `anon` et `authenticated`. Une politique ajoutée par erreur
+n'ouvrirait donc toujours rien. Seul `service_role` (la clé `sb_secret_…`) a des droits.
+
 ## Stack
 
 Tranchée le 16 août 2026. Justifications dans `docs/DECISIONS.md` § 3.
@@ -174,6 +222,37 @@ which python                   # doit afficher .../veille-offres-emploi-ia/.venv
 Si `which python` pointe vers `/opt/anaconda3`, l'environnement n'est pas activé
 et toute installation partira au mauvais endroit. `.venv/` est exclu par le
 `.gitignore`.
+
+### Migrations Supabase
+
+**Le CLI passe par `npx`, pas par Homebrew** — les Command Line Tools de la machine
+datent de 2023 et Homebrew refuse de compiler. `npx` évite la mise à jour et épingle la
+version dans le dépôt.
+
+```bash
+set -a; source .env; set +a          # charge SUPABASE_DB_PASSWORD et le reste
+npx supabase@2.115.0 migration new <nom_en_francais>
+npx supabase@2.115.0 db push --yes   # applique ce qui n'est pas encore appliqué
+npx supabase@2.115.0 migration list  # ce qui est local vs ce qui est en base
+```
+
+⚠️ **Ne jamais passer le mot de passe en argument** (`--password …`) : il devient visible
+dans la liste des processus de la machine. Le CLI lit `SUPABASE_DB_PASSWORD` depuis
+l'environnement.
+
+⚠️ **Sans `set -a; source .env`, la commande attend une saisie qui n'arrivera jamais** et
+reste bloquée jusqu'au délai d'expiration.
+
+**Valider une migration avant de la pousser**, avec le vrai analyseur de PostgreSQL :
+
+```bash
+.venv/bin/python -c "from pglast import parse_sql; import pathlib; \
+  print(len(parse_sql(pathlib.Path('supabase/migrations/<fichier>.sql').read_text())), 'instructions')"
+```
+
+⚠️ **Syntaxe valide ne veut pas dire « ça marche ».** Le 20 août, une migration
+syntaxiquement irréprochable a créé deux tables que le serveur ne pouvait pas lire.
+**Après chaque migration : tenter de lire, d'écrire, et de violer chaque contrainte.**
 
 ## API France Travail
 
@@ -250,11 +329,25 @@ Les clés de ce projet donnent accès à un compte facturé et à une base de do
    cadrage : le site entier est derrière un mot de passe unique vérifié **côté
    serveur**, couvrant les pages *et* les adresses servant des données — protéger
    la page en laissant l'adresse de données ouverte ne protège rien.
-6. **Pas de données personnelles en base.** Les offres sont publiques ; les
-   coordonnées de contact qu'elles contiennent parfois ne le sont pas au sens du
-   RGPD. Ne stocker que ce dont le pipeline a besoin. Les notes personnelles
-   ajoutées par Maxime sur une offre échappent à cette règle par nature — ne pas
-   les exposer, ne pas les journaliser, ne pas les faire sortir de la base.
+6. **Données personnelles : périmètre restreint et explicite.** Les offres sont
+   publiques ; les coordonnées de contact qu'elles contiennent parfois ne le sont
+   pas au sens du RGPD. **Deux champs seulement sont conservés**, parce qu'ils
+   servent directement à candidater : `contact.nom` et `contact.urlPostulation`.
+   Adresses postales (`coordonnees1/2/3`), courriels et tout autre élément
+   d'identification sont **écartés à la collecte, avant écriture** — jamais
+   filtrés à l'affichage : filtré à l'affichage, un champ est quand même en base
+   et dans les journaux. Ces deux champs vivent en **colonnes nommées, jamais
+   dans l'archive JSON brute** — une colonne se cherche, s'exclut d'un export et
+   se vide d'une requête ; noyée dans un bloc JSON, la donnée voyage partout où
+   le bloc voyage. Ils ne sortent pas de la base : ni journal, ni export, ni page
+   publique. Les notes personnelles ajoutées par Maxime sur une offre relèvent de
+   la même règle — ne pas les exposer, ne pas les journaliser, ne pas les faire
+   sortir de la base.
+   ⚠️ **Tranché le 20 août 2026 sur mesure, pas sur intuition** : sur 235 offres
+   réelles, `contact.courriel` ne contient **aucune adresse** (le champ porte une
+   phrase), `contact.nom` est présent sur 9 % des offres et ne nomme une personne
+   que dans 3 % des cas. La règle absolue précédente (« pas de données
+   personnelles ») interdisait aussi `urlPostulation`, qui n'en est pas une.
 
 Si un secret a déjà été commité : le révoquer côté France Travail / Anthropic /
 Supabase **avant** de nettoyer l'historique. Le nettoyage seul ne protège rien.

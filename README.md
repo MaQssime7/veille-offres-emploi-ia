@@ -104,6 +104,23 @@ npm run dev                  # http://localhost:3000
 il cherche un `package.json` à la racine, n'en trouve pas, et le déploiement
 échoue.
 
+### Migrations de la base
+
+Le schéma vit dans `supabase/migrations/`, en fichiers SQL numérotés et commités.
+Chaque fichier ne contient que le **changement** qu'il apporte, et **ne se modifie
+plus une fois appliqué** : on corrige par une migration suivante, sinon git et la
+base divergent en silence.
+
+```bash
+set -a; source .env; set +a               # charge SUPABASE_DB_PASSWORD
+npx supabase@2.115.0 db push --yes        # applique ce qui manque
+npx supabase@2.115.0 migration list       # local vs distant
+```
+
+⚠️ Ne jamais passer le mot de passe en argument (`--password …`) : il devient
+visible dans la liste des processus. Le CLI lit `SUPABASE_DB_PASSWORD` depuis
+l'environnement.
+
 ## Documentation
 
 | Fichier | Contenu |
@@ -114,6 +131,7 @@ il cherche un `package.json` à la racine, n'en trouve pas, et le déploiement
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Les décisions de cadrage et **leur justification** |
 | [`docs/JOURNAL.md`](docs/JOURNAL.md) | Ce qui s'est passé, dans l'ordre, et les arbitrages en chemin |
 | [`docs/API_FRANCE_TRAVAIL.md`](docs/API_FRANCE_TRAVAIL.md) | L'API Offres d'emploi v2 vérifiée en conditions réelles |
+| [`supabase/migrations/`](supabase/migrations/) | **Le schéma de la base**, migration par migration, avec le *pourquoi* de chaque décision en commentaire |
 | `CLAUDE.md` | Règles de travail et pièges techniques établis |
 
 ## Statut
@@ -130,14 +148,37 @@ découpage en sept phases dans [`docs/PLAN.md`](docs/PLAN.md).
   moteur `radix`. Les jetons de couleur, les trois polices et le rayon de bordure
   du `DESIGN.md` sont appliqués — le preset d'installation avait posé une palette
   grise et omis le serif de titrage.
-- **Supabase** : projet créé en région Paris, RLS activé par défaut sur les
-  nouvelles tables. **Aucune table n'existe encore** : le schéma se conçoit en
-  phase 1.
+- **Supabase** : projet créé en région Paris.
 - **Vercel** : déployé, `Root Directory = interface`, fonctions en région Paris.
 
 La page d'accueil actuelle est une **page de contrôle temporaire** : elle prouve
 que la chaîne fonctionne — trois polices, jetons de couleur, mode sombre — et sera
 remplacée en phase 1.
+
+**Phase 1 en cours — le schéma est en base** (20 août 2026).
+
+Avant de figer une seule table, l'API France Travail a été interrogée sur 235
+offres réelles. La mesure a invalidé deux hypothèses du plan et fermé une question
+laissée ouverte : la description est plafonnée à 5 000 caractères et l'endpoint de
+détail n'apporte rien de plus · 44 % des offres ne nomment pas l'entreprise et
+54 % n'indiquent aucun salaire · le champ structuré `experienceExige` existe bien,
+ce qui évite de faire déduire l'expérience par le modèle. Tout est consigné dans
+[`docs/API_FRANCE_TRAVAIL.md`](docs/API_FRANCE_TRAVAIL.md).
+
+Deux tables sont créées — `executions_veille` et `offres` — en deux migrations
+versionnées. Les deux autres sont **délibérément reportées à la phase 6** : la
+forme d'une fiche d'enrichissement dépend de ce que l'agent produira, et rien ne
+l'alimente d'ici là.
+
+Le schéma n'a pas été relu, il a été **attaqué** : 18 contrôles vérifient qu'une
+clé publique ne peut rien lire ni écrire (HTTP 401), qu'un échec sans motif est
+refusé, qu'un identifiant mal formé est rejeté, qu'une offre ne peut pas être
+rattachée à une exécution inexistante, qu'une double insertion ne crée qu'une
+ligne, et qu'une exécution portant des offres ne peut pas être supprimée. Ce test
+a d'ailleurs révélé un vrai défaut invisible à la relecture — le serveur n'avait
+aucun droit sur ses propres tables — corrigé par une migration suivante.
+
+**Prochaine étape** : le pipeline Python de collecte.
 
 Prochaine étape, la **phase 1** : la porte, la collecte, et les premières offres
 réelles à l'écran. Le pipeline Python n'est pas encore écrit.

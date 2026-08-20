@@ -65,8 +65,24 @@ venue de la barre d'adresse est écrite par l'extérieur, jamais de confiance.
 
 ### Schéma
 
-Quatre tables. **Pas d'accents dans les noms** — Postgres les accepte mais exige alors des
-guillemets dans chaque requête, et l'oubli d'un seul produit une erreur incompréhensible.
+Quatre tables **à terme**. **Pas d'accents dans les noms** — Postgres les accepte mais exige
+alors des guillemets dans chaque requête, et l'oubli d'un seul produit une erreur
+incompréhensible.
+
+> ⚠️ **État au 20 août 2026 — deux tables sur quatre existent.** `executions_veille` et
+> `offres` sont en base ; `enrichissements` et `etapes_enrichissement` sont reportées à la
+> **phase 6**. La description ci-dessous reste la cible ; **la source de vérité de ce qui
+> existe réellement est `supabase/migrations/`**, jamais ce tableau. Deux descriptions du
+> même schéma finissent toujours par diverger.
+>
+> Écarts déjà connus entre la cible ci-dessous et ce qui est en base, tous décidés en
+> séance : **pas de colonne `duree`** (elle se calcule) · **pas de compteurs de tokens ni
+> de modèle** avant la phase 2 (rien ne les alimente) · **pas de date de collecte sur
+> l'offre** (le lien vers l'exécution la porte) · **deux colonnes de contact ajoutées**
+> (`contact_nom`, `contact_url_postulation`) et une **archive `charge_brute`** · **six
+> colonnes de signaux ajoutées** après mesure de l'API (`code_naf`,
+> `secteur_activite_libelle`, `tranche_effectif`, `qualification_libelle`,
+> `appellation_libelle`, `manque_candidats`, `langues`, `formations`).
 
 | Table | Contenu |
 |---|---|
@@ -195,6 +211,23 @@ cesse d'agir.
 
 **User stories** : US-8, US-22, US-23, US-26, US-33, US-34, US-37 *(partiel)*
 
+> **Avancement au 20 août 2026 — étape 1 sur 6 terminée.**
+>
+> | # | Étape | État |
+> |---|---|---|
+> | 0 | Collecte à blanc contre l'API France Travail | ✅ faite — résultats dans `docs/API_FRANCE_TRAVAIL.md` |
+> | 1 | Le schéma en base, migrations versionnées | ✅ **fait** — 18 contrôles au vert |
+> | 2 | Le pipeline Python de collecte (`pipeline/`) | ⬅️ **prochaine étape** |
+> | 3 | La porte : `/connexion` + `proxy.ts` + session | à faire |
+> | 4 | L'écran `/offres` et ses quatre états | à faire |
+> | 5 | Mise en ligne : variables Vercel + cron GitHub Actions | à faire |
+> | 6 | Remesure de la mise en page contre le contenu réel, puis `/cloture` | à faire |
+>
+> ⚠️ **Une étape 0 a été ajoutée au plan initial** : interroger l'API *avant* de figer le
+> schéma. Elle a invalidé deux hypothèses écrites (longueur des descriptions, taux de
+> remplissage du nom d'entreprise) et fermé la question ouverte sur `experienceExige`.
+> Concevoir une table après avoir vu les données, jamais avant.
+
 ### Ce qu'on livre
 
 L'utilisateur ouvre l'adresse du site, tombe sur un champ de mot de passe, le tape, et voit
@@ -210,7 +243,8 @@ et à quoi ressemble une description France Travail complète.
 
 ### Critères d'acceptation
 
-- [ ] Les quatre tables existent dans Supabase, RLS activé sur chacune, **aucune politique définie** — vérifiable en interrogeant la base avec la clé anon : tout doit être refusé
+- [x] ~~Les **quatre** tables existent~~ → **deux** tables (`executions_veille`, `offres`), RLS activé, **aucune politique**, et **tous droits retirés à `anon`** en second verrou. Vérifié le 20 août 2026 : lecture *et* écriture avec la clé publiable renvoient **HTTP 401**.
+      ⚠️ **Entorse assumée, validée en séance** : `enrichissements` et `etapes_enrichissement` sont reportées à la **phase 6**. Leur forme dépend de ce que l'agent produira réellement, rien ne les alimente d'ici là, et la collecte à blanc a montré que France Travail fournit déjà gratuitement plusieurs informations que l'enrichissement devait aller chercher (`tranche_effectif`, `code_naf`, `secteur_activite_libelle`). Le critère qui compte — *tout accès direct refusé* — se prouve aussi bien sur deux tables que sur quatre.
 - [ ] Le client France Travail s'authentifie avec le scope exact `api_offresdemploiv2 o2dsoffre`, identifiants **dans le corps** de la requête et non en en-tête Basic
 - [ ] La pagination est pilotée par l'en-tête `Content-Range` de la réponse, **pas par une constante**, et traite le **HTTP 206** comme un succès
 - [ ] Une offre déjà en base n'est pas réinsérée — déduplication sur l'identifiant France Travail, jamais sur l'intitulé
@@ -493,8 +527,8 @@ une fois, réutilisé à chaque phase. **Sans lui, tout se testera avec trois li
 tout tiendra toujours.**
 
 - [ ] L'intitulé le plus long que France Travail puisse renvoyer — environ **150 caractères**, du type *« Ingénieur / Ingénieure études et développement en intelligence artificielle et systèmes multi-agents (H/F) »*
-- [ ] La description France Travail la plus longue observée sur une collecte réelle — de l'ordre de **20 000 caractères**
-- [ ] L'offre au minimum de champs remplis : pas de salaire, entreprise non communiquée, contrat imprécis — celle qui teste les replis d'affichage
+- [ ] La description France Travail la plus longue possible — **5 000 caractères**, le plafond de l'API, vérifié le 20 août 2026 : au-delà le texte est coupé en plein mot et `GET /offres/{id}` renvoie la même troncature
+- [ ] L'offre au minimum de champs remplis : pas de salaire, entreprise non communiquée, contrat imprécis — celle qui teste les replis d'affichage. ⚠️ **Ce n'est pas un cas limite** : sur 50 offres réelles, 44 % ne nomment pas l'entreprise et 54 % n'indiquent aucun salaire
 - [ ] Les cinq formes de salaire observées : `Annuel de 38000,00 Euros sur 12 mois` · `Mensuel de 3500 Euros` · `Selon profil` · `À négocier` · **absent**
 - [ ] **200 offres** dans la vue d'ensemble — cinq jours de collecte, le volume qui fait apparaître le défilement
 - [ ] Les valeurs extrêmes de notes, dans les deux sens : une offre **100 / 0** et une offre **0 / 100**
