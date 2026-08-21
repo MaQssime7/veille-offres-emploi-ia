@@ -109,10 +109,10 @@ la même chose finissent en deux tables et deux fonctions.
 
 | Brique | État |
 |---|---|
-| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. Jetons, polices et rayon du `DESIGN.md` appliqués. **Aucun écran du produit** |
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. Jetons, polices et rayon du `DESIGN.md` appliqués. **La porte est posée** (`/connexion`, `proxy.ts`, session signée) ; mode sombre branché sur la préférence système. Aucun écran de données |
 | Supabase | Projet en région Paris. **`executions_veille` et `offres` créées et alimentées** — 189 offres, 8 exécutions tracées. RLS activé, droits vérifiés par 18 contrôles |
 | Migrations | **4** dans `supabase/migrations/`, toutes appliquées via `npx supabase` — voir Commandes |
-| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · fonctions en région Paris. **Aucune variable d'environnement posée** |
+| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · fonctions en région Paris. **Aucune variable d'environnement posée** — donc le code de la porte est écrit mais **pas encore en ligne** |
 | `pipeline/` | **Collecte livrée et exécutée.** 5 modules, 1 métier chacun. Critères éditables dans `mots_cles.txt` et `codes_rome.txt`. Notation et enrichissement : phases 2 et 6 |
 | `.venv/` | Créé à la racine, `requirements.txt` versionné |
 
@@ -120,13 +120,14 @@ la même chose finissent en deux tables et deux fonctions.
 
 1. La page d'accueil est une **page de contrôle temporaire** posée par `/installe` —
    pas un écran du produit. La phase 1 la remplace. Ne pas construire dessus.
-2. ⚠️ **Le site est en ligne et public, sans mot de passe — et la base n'est plus vide.**
-   Depuis le 21 août elle contient 189 offres réelles, dont quelques `contact_nom` et une
-   URL de postulation. Ce qui protège encore : le site ne lit toujours pas la base, et
-   Supabase refuse tout accès direct (RLS + droits retirés, vérifié HTTP 401). **La porte
-   (`/connexion` + `proxy.ts`) est l'étape 3 et elle doit être posée AVANT le premier
-   écran qui lit la base.** Aucune ligne de code ne doit lire `offres` tant qu'elle
-   n'existe pas.
+2. ⚠️ **La porte est écrite, elle n'est pas encore en ligne.** Le site déployé sur Vercel
+   n'a toujours **aucun mot de passe**, parce que les variables `MOT_DE_PASSE_SITE` et
+   `SECRET_SESSION` n'y sont pas posées — c'est l'étape 5. Ce qui protège en attendant :
+   le site ne lit toujours pas la base, et Supabase refuse tout accès direct (RLS +
+   droits retirés, vérifié HTTP 401). **Aucune ligne de code ne doit lire `offres` avant
+   que les variables soient chez Vercel et le déploiement refait.**
+   ⚠️ Sans `SECRET_SESSION`, la porte se ferme au lieu de s'ouvrir (vérifié) — mais elle
+   affiche alors un écran de connexion où aucun mot de passe ne marchera jamais.
 3. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le code,
    jamais les données : une branche qui migre ou supprime touche les vraies données.
 4. **Les tables d'enrichissement n'existent pas, et c'est une décision** — voir
@@ -149,9 +150,12 @@ partiel remonte dans le motif d'échec. À rouvrir si le cas se produit vraiment
 Elles sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoire et
 les arbitrages en chemin sont dans **`docs/JOURNAL.md`**.
 
-**Prochaine étape : la porte** (`/connexion` + `proxy.ts` + session) — étape 3 sur 6 de la
-phase 1. Reste ensuite : l'écran `/offres`, la mise en ligne avec le cron GitHub Actions,
-la remesure de la mise en page.
+**Prochaine étape : l'écran `/offres`** et ses quatre états — étape 4 sur 6 de la phase 1.
+Reste ensuite : la mise en ligne (variables Vercel + cron GitHub Actions), la remesure de
+la mise en page contre le contenu réel.
+
+⚠️ **La coquille de l'étape 4 doit porter le bouton de déconnexion**, laissé de côté à
+l'étape 3 faute d'en-tête de page où le loger.
 
 **On travaille directement sur `main` par défaut.** Le geste complet (brancher, développer,
 demander la fusion) a été fait une fois le 17 août 2026 ; seul sur le dépôt, le répéter
@@ -383,6 +387,33 @@ Les clés de ce projet donnent accès à un compte facturé et à une base de do
    cadrage : le site entier est derrière un mot de passe unique vérifié **côté
    serveur**, couvrant les pages *et* les adresses servant des données — protéger
    la page en laissant l'adresse de données ouverte ne protège rien.
+   ⚠️ **Posé le 21 août, trois règles opposables :**
+   - **Toute page et toute action serveur appelle `exigerSession()`
+     (`interface/lib/acces.ts`) en première ligne** — seule exception, `connecter()`
+     qui *est* la porte. Le proxy est la commodité, `exigerSession()` est la serrure.
+     ⚠️ **La raison la plus concrète n'est pas la CVE-2025-29927** : une action
+     serveur s'invoque par un `POST` avec en-tête `Next-Action` sur une route, et
+     `/connexion` est la seule que le proxy laisse passer sans cookie. Une action
+     déclarée là s'exécuterait sans session, **sans rien contourner**.
+     **Mesuré le 21 août** : Next 16 refuse d'exécuter sur `/connexion` une action
+     déclarée dans une autre route (manifeste par route) — mais ça se rouvre dès
+     qu'un composant partagé rendu par `/connexion` importera une action sensible,
+     et ce cloisonnement n'est pas un contrat de sécurité documenté.
+   - **Ne jamais ajouter de `matcher` à `proxy.ts`.** Il protège *tout* par défaut ;
+     les trois exceptions sont dans le code. Un matcher rouvrirait la question à
+     chaque adresse ajoutée.
+   - **Un `POST` d'action serveur ne se redirige jamais** : le proxy lui répond
+     **401**. Redirigé, le navigateur suit jusqu'à `/connexion`, reçoit un corps
+     vide, et le bouton cliqué ne fait *rien du tout* — sans erreur ni renvoi vers
+     la porte. Cas réel : session expirée la nuit, onglet resté ouvert.
+   - **`import "server-only"` en tête de tout module qui lit un secret.** Sans lui,
+     un composant client peut importer le module et tirer `node:crypto` dans le
+     graphe du navigateur ; la panne est alors incompréhensible.
+   - **Les secrets du site vivent dans `interface/.env.local`**, pas dans le `.env`
+     de la racine, qui appartient au pipeline Python. Deux périmètres, deux fichiers.
+     ⚠️ **Un agent de revue qui lance l'app écrit dans ce fichier** — c'est arrivé le
+     21 août, les secrets ont dû être régénérés. Ne jamais y laisser l'unique copie
+     d'une valeur.
 6. **Données personnelles : périmètre restreint et explicite.** Les offres sont
    publiques ; les coordonnées de contact qu'elles contiennent parfois ne le sont
    pas au sens du RGPD. **Deux champs seulement sont conservés**, parce qu'ils

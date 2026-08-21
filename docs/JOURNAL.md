@@ -521,3 +521,250 @@ cas normal · CDI 149, CDD 10, intérim 18.
 phase 1. C'est la première brique dont un défaut laisse le site ouvert.
 
 **Non commité** : tout le travail du 21 août est sur disque, pas dans git.
+
+---
+
+## 21 août 2026 — La porte
+
+Étape 3 sur 6 de la phase 1. Première brique de l'interface dont un défaut
+laisse le site ouvert : le site est en ligne depuis le 17 août, et la base
+contient désormais 189 offres réelles.
+
+### Ce qui a été construit
+
+| Fichier | Métier |
+|---|---|
+| `interface/lib/session.ts` | Fabriquer le cookie, le relire, vérifier le mot de passe. **Sans aucune dépendance à Next.js**, pour être importable par le proxy comme par les pages |
+| `interface/lib/acces.ts` | `sessionOuverte()` et `exigerSession()` — la serrure, côté page |
+| `interface/proxy.ts` | La porte au niveau du réseau |
+| `interface/app/connexion/` | L'écran, son action serveur, son état |
+
+### Une session sans base de données
+
+Le cookie contient sa propre échéance et une signature HMAC-SHA256 calculée
+avec un secret serveur : `échéance.signature`. Le serveur ne stocke rien — il
+recalcule la signature et refuse si elle ne colle pas.
+
+L'alternative, un jeton en base, aurait coûté une table et une requête à chaque
+page pour un seul utilisateur qu'on n'a jamais besoin de déconnecter à
+distance. Rien d'autre ne voyage dans le cookie : il n'y a pas d'identité à
+transporter.
+
+**Session glissante** : le critère dit « 30 jours **d'inactivité** ». Le proxy
+réémet le cookie dès qu'il a plus d'un jour. Sans ça, les 30 jours auraient
+compté depuis la connexion, et une session utilisée tous les matins aurait
+quand même expiré au trentième jour.
+
+### Deux décisions prises contre la documentation
+
+**1. Aucun `matcher` dans `proxy.ts`.** La documentation officielle de Next 16
+montre `export const config` dans `proxy.ts`, là où notre `CLAUDE.md` et la
+skill `next-best-practices` annoncent `proxyConfig`. Impossible de trancher
+sans essayer — alors on n'a pas parié : sans matcher, le proxy s'exécute sur
+*toutes* les requêtes et c'est le code qui écarte les exceptions.
+
+Se tromper de nom de constante devient alors sans conséquence. Avec une liste
+blanche d'adresses protégées, la même erreur aurait ouvert le site en silence.
+Bénéfice observé immédiatement : `curl` sur `/api/enrichissements/190MTLR/etapes`,
+une adresse qui **n'existe pas encore**, renvoie déjà 307 vers la porte.
+
+**2. `node:crypto` et non Web Crypto.** Le proxy de Next 16 tourne en runtime
+Node.js et **cela n'est pas configurable** — c'est `middleware.ts` qui tournait
+en Edge. Le plan de séance annonçait Web Crypto par prudence ; vérification
+faite dans la documentation, c'était inutile.
+
+### La serrure n'est pas dans le proxy
+
+`proxy.ts` redirige joliment, mais un middleware Next.js a déjà été
+contournable par un simple en-tête HTTP (CVE-2025-29927, corrigée depuis). La
+vérification qui compte est donc `exigerSession()`, appelée **dans** la page,
+au plus près de ce qui s'affiche. `app/page.tsx` a été rebasculée en composant
+serveur pour pouvoir l'appeler ; la page de contrôle de `/installe` est
+descendue dans `app/_controle/`, un dossier privé hors routage.
+
+### Le vrai vecteur d'attaque, et il n'est pas celui qu'on croit
+
+En relisant, la justification « le proxy peut être contourné par un en-tête »
+(CVE-2025-29927) est vraie mais faible : la faille est corrigée. La raison
+concrète est ailleurs, et elle est structurelle.
+
+**Une action serveur ne s'invoque pas par son adresse à elle**, mais par un
+`POST` portant un en-tête `Next-Action` sur une route. Or `/connexion` est la
+seule route que le proxy laisse passer sans cookie.
+
+**Mesuré plutôt que supposé** — j'avais d'abord écrit que n'importe quelle
+action serait appelable depuis n'importe quelle route. Le test dit autre chose :
+
+| Requête | Résultat |
+|---|---|
+| Action de `/zztest` postée sur `/zztest`, sans session | **307** — le proxy bloque |
+| Action de `/zztest` postée sur **`/connexion`**, sans session | **200, action non exécutée** |
+| Action de `/zztest` postée sur `/`, sans session | **307** |
+| Action de `/zztest` postée sur `/zztest`, **avec** session | 200, action exécutée |
+
+Next 16 porte un **manifeste d'actions par route** : une action déclarée
+ailleurs ne s'exécute pas sur `/connexion`. La surface est plus étroite que
+craint.
+
+⚠️ **Elle se rouvre dans deux cas**, et c'est pour ça que la règle tient quand
+même : dès qu'un composant partagé rendu par `/connexion` — un en-tête commun,
+demain — importera une action sensible, celle-ci entrera dans le manifeste de
+`/connexion` · et ce cloisonnement est un détail d'implémentation de Next, pas
+un contrat de sécurité documenté sur lequel s'appuyer.
+
+Aucune action sensible n'existe encore — `connecter()` *est* la porte. Mais le
+jour où « Enrichir cette offre » sera écrit, une action sans `exigerSession()`
+en première ligne sera **déclenchable par un robot, aux frais de Maxime**.
+Règle inscrite dans `CLAUDE.md` et dans l'en-tête de `lib/acces.ts`.
+
+### Le bug que seule une capture d'écran a révélé
+
+Le champ de mot de passe s'affichait **encadré de rouge dès le chargement**,
+sans qu'aucune erreur ne soit survenue.
+
+Cause : `app/connexion/actions.ts` porte la directive `"use server"`, qui
+transforme **tout** ce que le fichier exporte en référence appelable à
+distance — y compris une constante. `ETAT_CONNEXION_INITIAL` n'arrivait donc
+pas au navigateur avec sa valeur, `etat.erreur` valait `undefined` au lieu de
+`null`, et l'attribut `aria-invalid` était émis.
+
+**Ni TypeScript ni `next build` ne l'ont signalé.** Correction : le type et la
+constante vivent maintenant dans `app/connexion/etat.ts`, un fichier ordinaire.
+
+Second piège dans la même ligne : le variant `aria-invalid:` de Tailwind réagit
+à la **présence** de l'attribut, pas à sa valeur. `aria-invalid={false}` aurait
+donc quand même déclenché le style d'erreur — d'où le `|| undefined`.
+
+**Leçon transférable** : une directive de frontière (`"use server"`,
+`"use client"`) change la nature de *tout* ce que le fichier exporte, pas
+seulement des fonctions qu'on avait en tête en l'écrivant.
+
+### Vérifié comment
+
+**Cryptographie du cookie** — 7 cas, script Python qui forge des jetons avec le
+vrai secret :
+
+| Cas | Résultat |
+|---|---|
+| Jeton légitime | HTTP 200 |
+| Un caractère changé dans la signature | 307 |
+| Échéance repoussée à 10 ans, signature d'origine | 307 |
+| Jeton bien signé mais expiré hier | 307 |
+| Cookie vide · sans séparateur · échéance non numérique | 307 |
+
+**Parcours au navigateur**, joué en développement **et** sur le build de
+production (`next start`) :
+
+- `/offres?statut=candidate` sans cookie → `/connexion?suite=%2Foffres%3Fstatut%3Dcandidate`
+- Mauvais mot de passe → message affiché, **aucun cookie posé**, champ vidé
+- Cinq tentatives ratées : 1362 / 1367 / 1376 / 1387 / 1384 ms
+- Bon mot de passe → atterrissage sur `/offres?statut=candidate`, la destination mémorisée
+- Cookie : `httpOnly` · `SameSite=Lax` · `path=/` · **`secure=true` en production**, `false` en développement · échéance à 30 jours · **invisible au JavaScript de la page** (vérifié via `document.cookie`)
+- `?suite=https://exemple-pirate.test/vol` → atterrit sur `/`, la redirection ouverte est neutralisée
+- Session glissante : cookie de 12 h non renouvelé, de 2 jours et de 25 jours renouvelés
+
+**Trois moments de clic**, parce qu'un formulaire ne se soumet pas de la même
+façon selon l'état du JavaScript :
+
+| Moment | Résultat |
+|---|---|
+| **JavaScript désactivé** (repli progressif de React) | Message affiché, **aucun cookie posé** — la porte tient |
+| Clic **avant** l'hydratation | `POST 200`, message affiché, aucun cookie |
+| Clic après hydratation | Message affiché sans rechargement de page |
+
+⚠️ Une première mesure de ce cas a donné un faux négatif : le navigateur avait
+atterri sur un **second serveur Next du même projet**, laissé ouvert sur le port
+3999 par une autre session. Vérifier l'hôte *et* le port d'une URL de test avant
+de conclure à un défaut.
+
+**Secrets manquants** (le cas « variable oubliée chez Vercel ») — serveur de
+production relancé avec `.env.local` mis de côté : `/` renvoie toujours 307. La
+porte se ferme, elle ne s'entrouvre pas. En isolation, `motDePasseCorrect()`
+lève `ConfigurationManquante` sur un mot de passe absent, vide, ou de moins de
+16 caractères — sans ce plancher, une variable oubliée aurait ouvert le site
+**sur un champ vide**.
+
+**Accessibilité et rendu**, à 375 px et en 1280 px, mode clair et mode sombre :
+
+- Aucun débordement horizontal (`scrollWidth` = `innerWidth` = 375)
+- Contrastes recalculés dans la page, sur canvas parce que les couleurs
+  calculées sortent en `oklab` : message d'erreur **6,15:1** en clair et
+  **4,85:1** en sombre · libellé 15,76 / 14,13 · texte d'aide 6,67 / 7,40 ·
+  bordure de champ 6,15 / 4,83 (exigé 3:1) · bouton 11,07 / 11,67
+- Focus clavier visible sur le champ et sur le bouton
+- État de chargement : bouton désactivé, « Vérification… », champ figé sans
+  perdre la saisie
+- Console : **aucune erreur** sur `/connexion` ni sur `/`. La seule erreur
+  observée est un 404 sur `/offres`, qui n'existe pas encore
+
+### Deux à-côtés, tranchés en passant
+
+**Le mode sombre n'avait aucun mécanisme** : la palette existait sous une classe
+`.dark` que rien ne posait. Il suit désormais la préférence du système, par un
+script de six lignes exécuté avant la peinture — sans lui, l'écran clignoterait
+en clair avant de basculer. Pas de bascule manuelle : le PRD n'en demande pas.
+
+**Un champ d'identifiant masqué** a été ajouté au formulaire. Chrome se
+plaignait en console, et sans lui les gestionnaires de mots de passe
+enregistrent une fiche bancale.
+
+### `/code-review` — quatre défauts, tous corrigés
+
+**1. Le focus clavier retombait sur `<body>` après une tentative ratée.** Le
+champ portait `disabled={enAttente}` : React vide le formulaire, le champ
+désactivé perd le focus, et plus rien n'est sélectionné. Il fallait re-cliquer
+pour réessayer — et sur téléphone le clavier se referme. Corrigé : `readOnly`
+au lieu de `disabled` (le champ reste dans l'ordre de tabulation, le bouton
+désactivé suffit à empêcher une double soumission) et un effet qui ramène le
+focus dans le champ. Vérifié : focus dans le champ pendant *et* après la
+vérification, et la frappe reprend sans re-cliquer.
+
+**2. Un `POST` d'action serveur sans session était redirigé en 307 — donc perdu.**
+Le navigateur suivait la redirection jusqu'à `/connexion`, qui répondait `200`
+avec un corps vide : le bouton cliqué ne faisait **rien du tout**, sans erreur
+ni renvoi vers la porte. Le cas est réel : session expirée pendant la nuit,
+onglet resté ouvert, clic le lendemain matin. Corrigé : le proxy répond
+désormais **401** aux requêtes portant `Next-Action`, et ne redirige que les
+navigations. Vérifié : `POST` avec `Next-Action` → `401 {"erreur":"session_absente"}`,
+`GET` → toujours `307` vers la porte.
+
+**3. `SECRET_SESSION` oublié = le bon mot de passe accepté, puis un 500 opaque.**
+`lireJeton` ne lève pas quand il n'y a pas de cookie, donc la porte s'affichait
+normalement et le mot de passe était validé — c'est `fabriquerJeton()` qui
+échouait ensuite. La porte se fermait, mais au pire moment et sans rien
+d'exploitable, **juste avant l'étape 5 qui consiste précisément à poser ces
+variables chez Vercel**. Corrigé par `verifierConfiguration()` appelée en tête
+de `connecter()`. Vérifié en lançant la production avec `SECRET_SESSION` vide :
+message « Le site n'est pas configuré. Variable(s) d'environnement absente(s)
+ou trop courte(s) : SECRET_SESSION. », aucun cookie posé.
+
+**4. « Ce fichier ne s'exécute que sur le serveur » n'était qu'un commentaire.**
+`destinationSure` est un utilitaire pur qu'un futur composant client aurait pu
+importer, tirant tout le module et `node:crypto` dans le graphe du navigateur.
+Corrigé par `import "server-only"` en tête de `session.ts` et `acces.ts`.
+Vérifié en fabriquant exprès un composant client qui importe le module : le
+build échoue avec *« 'server-only' cannot be imported from a Client Component
+module »*.
+
+⚠️ **La revue a écrasé `interface/.env.local`** avec ses propres valeurs de test
+pour pouvoir lancer le site. Les deux secrets ont été **régénérés** ; aucune
+conséquence en production, rien n'étant déployé. Enseignement pour les
+prochaines revues : un agent qui a besoin de lancer l'app écrira dans les
+fichiers de configuration locaux — ne pas y laisser une valeur qu'on n'a notée
+nulle part ailleurs.
+
+### Ce qui n'est pas fait, et pourquoi
+
+**Pas de déconnexion** : il n'existe aucun en-tête de page où loger le bouton.
+Elle viendra avec la coquille de l'étape 4.
+
+**Pas de compteur de tentatives**, seulement le délai d'une seconde. En mémoire
+il ne survivrait pas à l'hébergement sans état de Vercel ; en base il coûterait
+une table pour un seul utilisateur. Ce qui protège réellement est la longueur
+du mot de passe : 24 caractères tirés au hasard sont hors de portée d'un
+forçage brut même sans aucun délai.
+
+**Les deux secrets ne sont pas encore chez Vercel** — c'est l'étape 5.
+`MOT_DE_PASSE_SITE` et `SECRET_SESSION` vivent dans `interface/.env.local`, que
+Next lit et que git ignore. ⚠️ Ce fichier est distinct du `.env` de la racine,
+qui appartient au pipeline Python : deux périmètres de secrets, deux fichiers.

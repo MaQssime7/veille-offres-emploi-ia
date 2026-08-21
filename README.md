@@ -84,6 +84,28 @@ et jamais dans le dépôt : **secrets GitHub Actions** pour le pipeline, **varia
 d'environnement Vercel** pour l'interface. Le site ne détient aucune clé de
 modèle — il lit la base côté serveur, rien de plus.
 
+### Les secrets du site, à part
+
+Next.js lit son propre fichier, `interface/.env.local` — pas le `.env` de la
+racine. Deux périmètres, deux fichiers :
+
+```bash
+cp interface/.env.example interface/.env.local
+```
+
+| Variable | Rôle |
+|---|---|
+| `MOT_DE_PASSE_SITE` | La porte. Tiré au hasard, jamais choisi de tête |
+| `SECRET_SESSION` | Signe le cookie de session |
+
+⚠️ `SECRET_SESSION` vaut exactement autant que le mot de passe : qui la détient
+peut fabriquer un cookie valide **sans connaître le mot de passe**. La changer
+déconnecte immédiatement toutes les sessions ouvertes.
+
+⚠️ **Aucune variable de ce projet ne porte le préfixe `NEXT_PUBLIC_`.** Ce préfixe
+publie la valeur dans le code source de la page servie au navigateur, sans le
+moindre message d'erreur.
+
 ## Développement local
 
 Le pipeline et l'interface se lancent séparément.
@@ -207,7 +229,25 @@ tous corrigés — dont une fuite de donnée personnelle vers un journal public,
 comparaison entre deux horloges différentes qui aurait fait échouer toute nuit sans
 nouvelles offres.
 
-**Prochaine étape** : la porte — mot de passe, `proxy.ts`, session.
+### La porte est posée
 
-Reste de la **phase 1** : la porte (`/connexion` + `proxy.ts`), l'écran `/offres`,
-et la mise en ligne avec le cron GitHub Actions. La collecte, elle, tourne.
+Le site entier est derrière un mot de passe unique vérifié côté serveur (21 août
+2026). La session tient dans un cookie signé en HMAC-SHA256 — **rien en base** :
+le serveur recalcule la signature et refuse si elle ne colle pas.
+
+Deux partis pris qui se défendent :
+
+- **`proxy.ts` n'a aucun `matcher`** : il protège toute adresse par défaut, y
+  compris celles qui n'existent pas encore. Énumérer les adresses à protéger
+  laisserait ouverte la prochaine qu'on ajoute.
+- **La serrure n'est pas dans le proxy.** Un middleware Next.js a déjà été
+  contournable par un simple en-tête HTTP (CVE-2025-29927) : la vérification qui
+  compte est `exigerSession()`, appelée dans la page elle-même.
+
+⚠️ Le code de la porte n'est **pas encore en ligne** : les deux variables
+d'environnement ne sont pas posées chez Vercel.
+
+**Prochaine étape** : l'écran `/offres` et ses quatre états.
+
+Reste de la **phase 1** : `/offres`, la mise en ligne avec le cron GitHub Actions,
+et la remesure de la mise en page contre le contenu réel. La collecte, elle, tourne.

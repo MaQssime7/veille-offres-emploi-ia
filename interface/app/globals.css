@@ -158,6 +158,14 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Barres de défilement, champs natifs et menus déroulants du navigateur :
+     sans ce jeton, ils restent blancs au milieu d'une page sombre. */
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
   body {
     @apply bg-background text-foreground;
     /* Réglage de Geist : chiffres et lettres alternatives. */

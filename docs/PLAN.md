@@ -211,15 +211,15 @@ cesse d'agir.
 
 **User stories** : US-8, US-22, US-23, US-26, US-33, US-34, US-37 *(partiel)*
 
-> **Avancement au 21 août 2026 — étapes 1 et 2 sur 6 terminées.**
+> **Avancement au 21 août 2026 — étapes 1 à 3 sur 6 terminées.**
 >
 > | # | Étape | État |
 > |---|---|---|
 > | 0 | Collecte à blanc contre l'API France Travail | ✅ faite — résultats dans `docs/API_FRANCE_TRAVAIL.md` |
 > | 1 | Le schéma en base, migrations versionnées | ✅ **fait** — 18 contrôles au vert |
 > | 2 | Le pipeline Python de collecte (`pipeline/`) | ✅ **fait** — 189 offres réelles en base, 15 défauts corrigés après `/code-review` |
-> | 3 | La porte : `/connexion` + `proxy.ts` + session | ⬅️ **prochaine étape** |
-> | 4 | L'écran `/offres` et ses quatre états | à faire |
+> | 3 | La porte : `/connexion` + `proxy.ts` + session | ✅ **fait** — parcours vérifié en développement *et* sur le build de production |
+> | 4 | L'écran `/offres` et ses quatre états | ⬅️ **prochaine étape** |
 > | 5 | Mise en ligne : variables Vercel + cron GitHub Actions | à faire |
 > | 6 | Remesure de la mise en page contre le contenu réel, puis `/cloture` | à faire |
 >
@@ -252,10 +252,11 @@ et à quoi ressemble une description France Travail complète.
 - [x] Réponse vide traitée comme un jour normal — HTTP 204 à corps vide intercepté **avant** tout `.json()`, vérifié sur une fenêtre de 5 minutes
 - [x] Quota d'appels dépassé : `QuotaDepasse` levée sur HTTP 429, et 0,25 s imposé entre deux appels. ⚠️ **Non déclenché en réel** — la temporisation l'empêche
 - [x] Chaque exécution écrit sa ligne dans `executions_veille` — vérifié dans les deux sens : réussite (43 reçues / 43 nouvelles) et échec (identifiants faussés → `echec` motivé, code de sortie 1, aucun `en_cours` orphelin)
-- [ ] Sans mot de passe, `/` et `/offres` renvoient vers `/connexion`
-- [ ] **Sans mot de passe, une adresse de données appelée en dehors du navigateur ne renvoie aucune offre** — critère de succès n° 5
-- [ ] Une session ouverte survit à un rechargement et à la fermeture du navigateur, et expire après 30 jours d'inactivité
-- [ ] Cinq tentatives de mot de passe erronées prennent chacune au moins une seconde
+- [x] Sans mot de passe, `/` et `/offres` renvoient vers `/connexion` — HTTP 307 vérifié en curl et au navigateur, avec la destination mémorisée dans `?suite=`
+- [~] **Sans mot de passe, une adresse de données appelée en dehors du navigateur ne renvoie aucune offre** — critère de succès n° 5.
+      **Mécanisme en place et vérifié sur le principe** : `proxy.ts` n'a *aucun* `matcher`, donc il protège toute adresse, y compris celles qui n'existent pas encore — `curl` sur `/api/enrichissements/190MTLR/etapes` renvoie déjà 307. ⚠️ **À re-vérifier quand la première adresse de données existera vraiment** (phase 6) : ce contrôle-ci porte sur une adresse vide.
+- [x] Une session ouverte survit à un rechargement et à la fermeture du navigateur, et expire après 30 jours d'inactivité — cookie **persistant** (échéance à 30 jours, pas un cookie de session), et **glissant** : trois cas mesurés (cookie de 12 h non renouvelé, de 2 jours et de 25 jours renouvelés)
+- [x] Cinq tentatives de mot de passe erronées prennent chacune au moins une seconde — mesuré sur le build de production : 1362 / 1367 / 1376 / 1387 / 1384 ms
 - [ ] `/offres` affiche les offres collectées avec intitulé, entreprise, lieu, contrat, date
 - [ ] **États de `/offres`** : aucune offre en base · en chargement · Supabase injoignable · 200 offres affichées sans débordement horizontal
 - [ ] Le site est **déployé sur Vercel** et le **cron GitHub tourne**, tous deux vérifiés en conditions réelles
