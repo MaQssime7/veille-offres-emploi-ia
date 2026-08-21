@@ -107,14 +107,15 @@ la même chose finissent en deux tables et deux fonctions.
 ## État actuel (au 21 août 2026, fin de séance)
 
 **La stack est posée. Le schéma est en base. Le pipeline collecte pour de vrai — 189 offres
-réelles en base. Le site est fermé par un mot de passe. Aucun écran qui lit les offres.**
+réelles en base. La porte est EN LIGNE et vérifiée. L'écran `/offres` lit la base et affiche
+les 189 offres.**
 
 | Brique | État |
 |---|---|
 | `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. Jetons, polices et rayon du `DESIGN.md` appliqués. **La porte est posée** (`/connexion`, `proxy.ts`, session signée) ; mode sombre branché sur la préférence système. Aucun écran de données |
 | Supabase | Projet en région Paris. **`executions_veille` et `offres` créées et alimentées** — 189 offres, 8 exécutions tracées. RLS activé, droits vérifiés par 18 contrôles |
 | Migrations | **4** dans `supabase/migrations/`, toutes appliquées via `npx supabase` — voir Commandes |
-| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · fonctions en région Paris. **Aucune variable d'environnement posée** — donc le code de la porte est écrit mais **pas encore en ligne** |
+| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · fonctions en région Paris. **Les 4 variables sont posées** (Production + Preview, marquées *Sensitive*) et **la porte est en ligne, testée le 21 août** : `/` renvoie 307 vers `/connexion`, le mot de passe ouvre, la session survit au rechargement. CLI lié depuis `interface/` (`.vercel/`, ignoré par git) |
 | `pipeline/` | **Collecte livrée et exécutée.** 5 modules, 1 métier chacun. Critères éditables dans `mots_cles.txt` et `codes_rome.txt`. Notation et enrichissement : phases 2 et 6 |
 | `.venv/` | Créé à la racine, `requirements.txt` versionné |
 
@@ -122,17 +123,25 @@ réelles en base. Le site est fermé par un mot de passe. Aucun écran qui lit l
 
 1. La page d'accueil est une **page de contrôle temporaire** posée par `/installe` —
    pas un écran du produit. L'étape 4 la remplace. Ne pas construire dessus.
-   ⚠️ `app/page.tsx` est désormais un **composant serveur** qui appelle `exigerSession()`
-   puis rend `app/_controle/page-de-controle.tsx`. En la remplaçant, **garder la première
-   ligne** : c'est elle qui referme la porte.
-2. ⚠️ **La porte est écrite, elle n'est pas encore en ligne.** Le site déployé sur Vercel
-   n'a toujours **aucun mot de passe**, parce que les variables `MOT_DE_PASSE_SITE` et
-   `SECRET_SESSION` n'y sont pas posées — c'est l'étape 5. Ce qui protège en attendant :
-   le site ne lit toujours pas la base, et Supabase refuse tout accès direct (RLS +
-   droits retirés, vérifié HTTP 401). **Aucune ligne de code ne doit lire `offres` avant
-   que les variables soient chez Vercel et le déploiement refait.**
-   ⚠️ Sans `SECRET_SESSION`, la porte se ferme au lieu de s'ouvrir (vérifié) — mais elle
-   affiche alors un écran de connexion où aucun mot de passe ne marchera jamais.
+   ⚠️ Elle vit maintenant dans `app/(site)/page.tsx` — un **composant serveur** qui appelle
+   `exigerSession()` puis rend `app/(site)/_controle/page-de-controle.tsx`. En la
+   remplaçant, **garder la première ligne** : c'est elle qui referme la porte.
+   ⚠️ **Le groupe `(site)` n'est pas de l'organisation, c'est une serrure.** `/connexion`
+   est délibérément *hors* du groupe : une action serveur s'invoque par un `POST` sur une
+   route, et `/connexion` est la seule que le proxy laisse passer sans cookie. Un
+   composant rendu par la porte et important une action sensible la ferait entrer dans son
+   manifeste, donc déclenchable sans session. Ne jamais déplacer `/connexion` dans le
+   groupe, ni faire rendre l'en-tête par elle.
+2. ⚠️ **Poser une variable chez Vercel ne suffit pas : il faut redéployer.** Elles ne
+   s'appliquent qu'aux déploiements *suivants*, jamais à celui déjà en ligne.
+   ⚠️ **Et un code non poussé n'est pas en ligne, même si les variables y sont.** Le
+   21 août, les 3 commits portant la porte étaient restés en local pendant que les
+   variables étaient posées : le site public répondait 200 sur `/`, sans mot de passe,
+   et `/connexion` renvoyait 404. Vérifier `git log origin/main..main` avant de conclure
+   qu'une protection est active.
+   ⚠️ Les variables marquées *Sensitive* ne sont **pas relisibles**, même par le CLI :
+   `vercel env pull` renvoie `[REDACTED]`. On ne peut donc pas comparer la valeur posée à
+   la valeur locale — le seul test possible est de se connecter au site déployé.
 3. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le code,
    jamais les données : une branche qui migre ou supprime touche les vraies données.
 4. **Les tables d'enrichissement n'existent pas, et c'est une décision** — voir
@@ -142,10 +151,15 @@ réelles en base. Le site est fermé par un mot de passe. Aucun écran qui lit l
 clé — **bloquant pour la phase 2**, et il empêche déjà de compter les tokens exactement
 (les estimations de coût du 21 août sont à ±30 %) · les clés Supabase legacy restent
 actives en parallèle des nouvelles, à désactiver maintenant que le pipeline tourne · les
-variables d'environnement Vercel ne sont pas posées — il en faut désormais **quatre** :
-`SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `MOT_DE_PASSE_SITE` et `SECRET_SESSION` · les secrets
-GitHub Actions non plus, et le cron n'est pas allumé — **le pipeline ne tourne encore qu'à
-la main.**
+secrets GitHub Actions ne sont pas posés et le cron n'est pas allumé — **le pipeline ne
+tourne encore qu'à la main.**
+
+⚠️ **Chez Vercel, exactement 4 variables et pas une de plus** : `SUPABASE_URL`,
+`SUPABASE_SECRET_KEY`, `MOT_DE_PASSE_SITE`, `SECRET_SESSION`. `ANTHROPIC_API_KEY`,
+`FT_CLIENT_ID` et `FT_CLIENT_SECRET` y avaient été posées le 17 août et ont été **retirées
+le 21 août** : le pipeline Python tourne chez GitHub Actions, aucune ligne du site ne les
+lit, et les garder offrait la clé Anthropic — qui est facturée — à qui entrerait dans le
+compte Vercel. Ne pas les y remettre.
 
 ⚠️ **`interface/.env.local` détient l'unique copie des deux secrets du site.** Il n'est pas
 versionné et n'existe nulle part ailleurs tant qu'ils ne sont pas chez Vercel. Le supprimer
@@ -162,12 +176,14 @@ partiel remonte dans le motif d'échec. À rouvrir si le cas se produit vraiment
 Elles sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoire et
 les arbitrages en chemin sont dans **`docs/JOURNAL.md`**.
 
-**Prochaine étape : l'écran `/offres`** et ses quatre états — étape 4 sur 6 de la phase 1.
-Reste ensuite : la mise en ligne (variables Vercel + cron GitHub Actions), la remesure de
-la mise en page contre le contenu réel.
+**Prochaine étape : le cron GitHub Actions**, puis la remesure de la mise en page contre le
+contenu réel et `/cloture` — étape 6 sur 6 de la phase 1. Les étapes 1 à 5 sont faites.
 
-⚠️ **La coquille de l'étape 4 doit porter le bouton de déconnexion**, laissé de côté à
-l'étape 3 faute d'en-tête de page où le loger.
+⚠️ **Le bouton de déconnexion est un composant client** (`_coquille/formulaire-deconnexion.tsx`),
+et ce n'est pas un choix de confort : quand la session est tombée, le proxy répond **401** au
+`POST` de l'action, et **un `error.tsx` ne rattrape pas cet échec** — mesuré le 21 août, le
+routeur le traite au-dessus des frontières d'erreur, qui ne sont jamais consultées. Sans ce
+composant, l'utilisateur tombait sur l'écran de secours de Next, en anglais et sans issue.
 
 **On travaille directement sur `main` par défaut.** Le geste complet (brancher, développer,
 demander la fusion) a été fait une fois le 17 août 2026 ; seul sur le dépôt, le répéter

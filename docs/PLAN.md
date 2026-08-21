@@ -228,7 +228,8 @@ cesse d'agir.
 
 **User stories** : US-8, US-22, US-23, US-26, US-33, US-34, US-37 *(partiel)*
 
-> **Avancement au 21 août 2026 — étapes 1 à 3 sur 6 terminées.**
+> **Avancement au 21 août 2026 — étapes 1 à 4 terminées, étape 5 à moitié (le cron
+> GitHub Actions n'est pas allumé).**
 >
 > | # | Étape | État |
 > |---|---|---|
@@ -236,9 +237,15 @@ cesse d'agir.
 > | 1 | Le schéma en base, migrations versionnées | ✅ **fait** — 18 contrôles au vert |
 > | 2 | Le pipeline Python de collecte (`pipeline/`) | ✅ **fait** — 189 offres réelles en base, 15 défauts corrigés après `/code-review` |
 > | 3 | La porte : `/connexion` + `proxy.ts` + session | ✅ **fait** — parcours vérifié en développement *et* sur le build de production |
-> | 4 | L'écran `/offres` et ses quatre états | ⬅️ **prochaine étape** |
-> | 5 | Mise en ligne : variables Vercel + cron GitHub Actions | à faire |
-> | 6 | Remesure de la mise en page contre le contenu réel, puis `/cloture` | à faire |
+> | 4 | L'écran `/offres` et ses quatre états | ✅ **fait** — 5 états atteints et regardés, 14 défauts corrigés après `/code-review` |
+> | 5 | Mise en ligne : variables Vercel + cron GitHub Actions | ⚠️ **à moitié** — les 4 variables sont posées et **la porte est en ligne, testée** ; le cron GitHub Actions reste à allumer |
+> | 6 | Remesure de la mise en page contre le contenu réel, puis `/cloture` | ⬅️ **prochaine étape** |
+>
+> ⚠️ **Ce que l'étape 5 a révélé, et qui vaut pour toute mise en ligne future** : les
+> variables étaient posées mais **les 3 commits portant la porte n'avaient jamais été
+> poussés**. Le site public répondait 200 sans mot de passe et `/connexion` renvoyait 404,
+> alors que tout semblait fait côté Vercel. Vérifier `git log origin/main..main`, pas
+> seulement le tableau de bord de l'hébergeur.
 >
 > ⚠️ **Une étape 0 a été ajoutée au plan initial** : interroger l'API *avant* de figer le
 > schéma. Elle a invalidé deux hypothèses écrites (longueur des descriptions, taux de
@@ -274,13 +281,14 @@ et à quoi ressemble une description France Travail complète.
       **Mécanisme en place et vérifié sur le principe** : `proxy.ts` n'a *aucun* `matcher`, donc il protège toute adresse, y compris celles qui n'existent pas encore — `curl` sur `/api/enrichissements/190MTLR/etapes` renvoie déjà 307. ⚠️ **À re-vérifier quand la première adresse de données existera vraiment** (phase 6) : ce contrôle-ci porte sur une adresse vide.
 - [x] Une session ouverte survit à un rechargement et à la fermeture du navigateur, et expire après 30 jours d'inactivité — cookie **persistant** (échéance à 30 jours, pas un cookie de session), et **glissant** : trois cas mesurés (cookie de 12 h non renouvelé, de 2 jours et de 25 jours renouvelés)
 - [x] Cinq tentatives de mot de passe erronées prennent chacune au moins une seconde — mesuré sur le build de production : 1362 / 1367 / 1376 / 1387 / 1384 ms
-- [ ] `/offres` affiche les offres collectées avec intitulé, entreprise, lieu, contrat, date
-- [ ] **États de `/offres`** : aucune offre en base · en chargement · Supabase injoignable · 200 offres affichées sans débordement horizontal
-- [ ] Le site est **déployé sur Vercel** et le **cron GitHub tourne**, tous deux vérifiés en conditions réelles
-- [~] À 375 px et en mode sombre : aucun débordement horizontal, **aucune erreur en console**
-      **Fait pour `/connexion`** (375 px et bureau, clair et sombre, focus clavier, contrastes recalculés dans la page, console vide). Reste dû pour `/offres`.
-- [~] Aucune variable `NEXT_PUBLIC_` dans le code source de la page publiée
-      **Vérifié sur `/connexion`** : ni mot de passe, ni secret de session, ni occurrence de `NEXT_PUBLIC_` dans le HTML servi ni dans les fichiers JavaScript. ⚠️ **À refaire une fois le site déployé**, sur la page réellement publiée.
+- [x] `/offres` affiche les offres collectées avec intitulé, entreprise, lieu, contrat, date — **189 offres réelles**, salaire compris (brut : la normalisation est en phase 2)
+- [x] **États de `/offres`** : les quatre sont atteints et regardés, **plus un cinquième** (« le site n'est pas configuré », variable absente). Base vide obtenue par filtre temporaire, chargement par ralentissement temporaire, injoignable par adresse Supabase invalide, et 189 offres à 375 px **sans débordement horizontal** (0 élément sur 189 lignes, mesuré au DOM)
+- [~] Le site est **déployé sur Vercel** ✅ et le **cron GitHub tourne** ❌.
+      **Déploiement vérifié en conditions réelles le 21 août** sur l'URL publique : `/` → 307 vers `/connexion?suite=%2F`, `/connexion` → 200, le mot de passe ouvre, la session survit au rechargement. ⚠️ Une adresse **jamais écrite dans le code** (`/api/enrichissements/190MTLR/etapes`) renvoie elle aussi 307 : le proxy sans `matcher` protège bien les adresses qui n'existent pas encore. **Le cron reste à allumer.**
+- [x] À 375 px et en mode sombre : aucun débordement horizontal, **aucune erreur en console**
+      **Fait pour `/connexion` et pour `/offres`** — les 4 combinaisons (375 px / 1280 px × clair / sombre), 0 élément débordant sur 189 lignes, console vide sur chacune et sur tout le parcours. Les 7 couleurs de la ligne d'offre recalculées dans le navigateur : toutes au-dessus du plancher de 4,5:1 dans les deux thèmes.
+- [x] Aucune variable `NEXT_PUBLIC_` dans le code source de la page publiée
+      **Vérifié le 21 août sur la page RÉELLEMENT PUBLIÉE** (945 Ko de HTML et de JavaScript analysés sur l'URL de production, après connexion) : ni le mot de passe, ni le secret de session, ni la clé Supabase, ni l'adresse du projet Supabase, ni aucune occurrence de `NEXT_PUBLIC_`, ni aucun motif de clé (`sb_secret_`, `sk-ant-`).
 - [ ] Les valeurs de mise en page de `docs/DESIGN.md`, posées contre du contenu inventé, sont **remesurées contre le contenu réel** puis figées
 
 ### Bloquée par
