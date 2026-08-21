@@ -127,15 +127,32 @@ Ce qui la remplace :
 1. **RLS activé sur toutes les tables, aucune politique.** La base refuse tout accès
    direct ; seul le serveur, avec la clé `service_role`, passe. Le navigateur ne parle
    jamais à Supabase.
-2. **Un `proxy.ts` unique protège tout par défaut** (le middleware de Next 16), avec exactement trois exceptions en
-   **liste blanche** : la page de connexion, l'action qui vérifie le mot de passe, les
-   fichiers statiques. L'inverse — énumérer les adresses à protéger — laisserait toute
-   adresse ajoutée plus tard ouverte, **sans rien signaler**.
-3. **Session** : cookie signé, `HttpOnly` + `Secure` + `SameSite=Lax`, **30 jours
-   glissants**. Aucune table de sessions.
-4. **Mot de passe** : 32 caractères aléatoires, **comparaison à temps constant** (une
-   comparaison ordinaire s'arrête au premier caractère différent et se devine au
-   chronomètre), **délai d'une seconde** imposé à chaque tentative.
+2. **Un `proxy.ts` unique protège tout par défaut** (le middleware de Next 16), avec une
+   **liste blanche** d'exceptions. L'inverse — énumérer les adresses à protéger —
+   laisserait toute adresse ajoutée plus tard ouverte, **sans rien signaler**.
+   > **Livré le 21 août, deux écarts avec ce qui était prévu ici** — décidés à
+   > l'implémentation, sur mesure :
+   > · **Aucun `matcher` n'est déclaré**, alors que le réflexe est d'en poser un. La
+   > documentation Next 16 montre `export const config` là où d'autres sources annoncent
+   > `proxyConfig` ; sans matcher, se tromper de nom est sans conséquence puisque le proxy
+   > s'exécute partout, tandis qu'avec une liste d'adresses protégées la même erreur aurait
+   > ouvert le site en silence.
+   > · **Deux exceptions et non trois** : `/connexion` et les ressources de chargement
+   > (`/_next/*`, `favicon.ico`, `robots.txt`). L'action qui vérifie le mot de passe n'en
+   > est pas une — une action serveur n'a pas d'adresse à elle, elle s'invoque **sur** une
+   > route, en l'occurrence `/connexion`, déjà en liste blanche.
+   > · **Un `POST` d'action serveur reçoit `401`, jamais une redirection** : redirigé, le
+   > navigateur suivrait jusqu'à la porte, recevrait un corps vide, et le bouton cliqué ne
+   > ferait *rien du tout*.
+3. **Session** : cookie signé HMAC-SHA256, `HttpOnly` + `Secure` + `SameSite=Lax`,
+   **30 jours glissants**. Aucune table de sessions. *(Livré le 21 août.)*
+4. **Mot de passe** : **comparaison à temps constant** (une comparaison ordinaire s'arrête
+   au premier caractère différent et se devine au chronomètre), **délai d'une seconde**
+   imposé à chaque tentative.
+   > **Livré à 24 caractères aléatoires et non 32**, sur un alphabet de 32 symboles sans
+   > caractère confondable (ni `l`, ni `1`, ni `0`, ni `o`) : **120 bits d'entropie**, déjà
+   > très au-delà de ce qu'un forçage brut atteint, et il se tape au téléphone — US-8. Le
+   > chiffre de 32 était posé sans mesure ; c'est l'entropie qui compte, pas la longueur.
 
 **Le test que Maxime peut faire lui-même, sans lire de code** : ouvrir un onglet de
 navigation privée et appeler directement `…/api/enrichissements/190MTLR/etapes`. Si des
