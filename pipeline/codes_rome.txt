@@ -1,0 +1,20 @@
+# Familles de métiers collectées chaque nuit, en plus des mots-clés.
+#
+# POURQUOI ce second filet. La recherche par mots-clés ne lit pas la description
+# de l'annonce : une offre intitulée « Ingénieur études et développement », dont
+# l'IA n'apparaît que dans le corps du texte, lui est totalement invisible.
+#
+# Le code ROME est un filtre STRUCTUREL, posé par France Travail sur le métier
+# et non sur les mots de l'annonce. Il attrape ces offres-là ; le modèle lit
+# ensuite leur description — ce que l'API, elle, ne sait pas faire.
+#
+# Coût mesuré le 21 août 2026 : environ 19 offres par jour, ~2 $ par mois de
+# notation. Sur la semaine testée, ce filet n'a trouvé aucune offre IA que les
+# mots-clés rataient : c'est une assurance, pas un gain démontré.
+
+M1805  # Études et développement informatique
+M1802  # Expertise et support en systèmes d'information
+M1803  # Direction études et développement informatique
+M1810  # Production et exploitation de systèmes d'information
+H1206  # Management et ingénierie études, recherche et développement industriel
+M1403  # Études et prospectives socio-économiques

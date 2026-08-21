@@ -1,0 +1,5 @@
+# Dépendances du pipeline Python. Installer dans .venv, jamais dans Anaconda —
+# voir la section « Commandes » du CLAUDE.md.
+requests==2.34.2       # appels HTTP : France Travail et l'API REST de Supabase
+python-dotenv==1.2.3   # lecture du .env en local (en CI, les secrets sont déjà dans l'environnement)
+pglast==8.4            # validation des migrations SQL avec l'analyseur officiel de PostgreSQL

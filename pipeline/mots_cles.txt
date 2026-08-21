@@ -1,0 +1,23 @@
+# Recherches lancées chaque nuit contre l'API France Travail — une par ligne.
+#
+# ⚠️ Ce que la recherche par mots-clés sait faire, et ne sait pas faire.
+# Mesuré le 21 août 2026 sur les vraies données (voir docs/API_FRANCE_TRAVAIL.md) :
+#
+#   · Elle N'INDEXE PAS la description. Un mot pris dans le corps d'une annonce
+#     ne la retrouve pas. Elle porte sur l'intitulé, le libellé ROME et les
+#     compétences normalisées.
+#   · Le vocabulaire est FERMÉ et FRANÇAIS. « IA générative », « agent IA »,
+#     « POC IA », « LLM », « chatbot », « GenAI », « MLOps » renvoient tous
+#     ZÉRO offre. Ce ne sont pas des termes que France Travail connaît.
+#   · Les expressions à plusieurs mots sont dangereuses : « avant-vente »
+#     ramène 299 postes de conseiller de vente, le moteur ayant matché « vente ».
+#
+# Donc : des termes COURTS, en FRANÇAIS, et on vérifie ce qu'ils ramènent avant
+# de les ajouter. Les codes ROME de codes_rome.txt couvrent ce que les mots-clés
+# ratent — les annonces dont l'intitulé ne nomme pas l'IA.
+
+intelligence artificielle
+IA
+automatisation
+RPA
+deploiement
