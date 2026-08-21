@@ -142,6 +142,16 @@ les 189 offres.**
    ⚠️ Les variables marquées *Sensitive* ne sont **pas relisibles**, même par le CLI :
    `vercel env pull` renvoie `[REDACTED]`. On ne peut donc pas comparer la valeur posée à
    la valeur locale — le seul test possible est de se connecter au site déployé.
+   ⚠️ **Une variable listée chez Vercel n'est pas une variable qui marche.** Le 21 août,
+   `SUPABASE_URL` et `SUPABASE_SECRET_KEY` apparaissaient dans `vercel env ls` depuis
+   quatre jours — posées à la main dans l'interface — et le site déployé répondait
+   pourtant « Variable d'environnement absente : SUPABASE_URL ». Les reposer depuis
+   `interface/.env.local` via le CLI a tout réglé. Comme *Sensitive* interdit de relire la
+   valeur, ce genre de défaut ne se voit **que** sur le site en ligne : après toute
+   modification de variable, ouvrir la page et regarder, jamais se fier à la liste.
+   ⚠️ Et une variable modifiée ne prend effet qu'au **redéploiement** :
+   `npx vercel@59.3.0 redeploy <url-du-dernier-déploiement>` (sans `--yes`, l'option
+   n'existe pas sur cette commande).
 3. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le code,
    jamais les données : une branche qui migre ou supprime touche les vraies données.
 4. **Les tables d'enrichissement n'existent pas, et c'est une décision** — voir
