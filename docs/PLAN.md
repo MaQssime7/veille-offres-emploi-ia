@@ -260,8 +260,10 @@ et à quoi ressemble une description France Travail complète.
 - [ ] `/offres` affiche les offres collectées avec intitulé, entreprise, lieu, contrat, date
 - [ ] **États de `/offres`** : aucune offre en base · en chargement · Supabase injoignable · 200 offres affichées sans débordement horizontal
 - [ ] Le site est **déployé sur Vercel** et le **cron GitHub tourne**, tous deux vérifiés en conditions réelles
-- [ ] À 375 px et en mode sombre : aucun débordement horizontal, **aucune erreur en console**
-- [ ] Aucune variable `NEXT_PUBLIC_` dans le code source de la page publiée
+- [~] À 375 px et en mode sombre : aucun débordement horizontal, **aucune erreur en console**
+      **Fait pour `/connexion`** (375 px et bureau, clair et sombre, focus clavier, contrastes recalculés dans la page, console vide). Reste dû pour `/offres`.
+- [~] Aucune variable `NEXT_PUBLIC_` dans le code source de la page publiée
+      **Vérifié sur `/connexion`** : ni mot de passe, ni secret de session, ni occurrence de `NEXT_PUBLIC_` dans le HTML servi ni dans les fichiers JavaScript. ⚠️ **À refaire une fois le site déployé**, sur la page réellement publiée.
 - [ ] Les valeurs de mise en page de `docs/DESIGN.md`, posées contre du contenu inventé, sont **remesurées contre le contenu réel** puis figées
 
 ### Bloquée par

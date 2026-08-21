@@ -17,6 +17,7 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Dans quel ordre le construire · contenu de test · parcours à repasser | `docs/PLAN.md` |
 | Ce qui s'est passé et pourquoi, dans l'ordre | `docs/JOURNAL.md` |
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` (`.agents/skills/`) |
+| **Comment le site est protégé** : cookie de session, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts` — abondamment commentés, **seule source de vérité** |
 
 **Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
 comportement sur *n'importe quelle* tâche du projet. Toute référence propre à un
@@ -105,7 +106,8 @@ la même chose finissent en deux tables et deux fonctions.
 
 ## État actuel (au 21 août 2026, fin de séance)
 
-**La stack est posée. Le schéma est en base. Le pipeline collecte pour de vrai — 189 offres réelles en base. Aucun écran du produit.**
+**La stack est posée. Le schéma est en base. Le pipeline collecte pour de vrai — 189 offres
+réelles en base. Le site est fermé par un mot de passe. Aucun écran qui lit les offres.**
 
 | Brique | État |
 |---|---|
@@ -119,7 +121,10 @@ la même chose finissent en deux tables et deux fonctions.
 ⚠️ **Quatre pièges actifs :**
 
 1. La page d'accueil est une **page de contrôle temporaire** posée par `/installe` —
-   pas un écran du produit. La phase 1 la remplace. Ne pas construire dessus.
+   pas un écran du produit. L'étape 4 la remplace. Ne pas construire dessus.
+   ⚠️ `app/page.tsx` est désormais un **composant serveur** qui appelle `exigerSession()`
+   puis rend `app/_controle/page-de-controle.tsx`. En la remplaçant, **garder la première
+   ligne** : c'est elle qui referme la porte.
 2. ⚠️ **La porte est écrite, elle n'est pas encore en ligne.** Le site déployé sur Vercel
    n'a toujours **aucun mot de passe**, parce que les variables `MOT_DE_PASSE_SITE` et
    `SECRET_SESSION` n'y sont pas posées — c'est l'étape 5. Ce qui protège en attendant :
@@ -137,8 +142,15 @@ la même chose finissent en deux tables et deux fonctions.
 clé — **bloquant pour la phase 2**, et il empêche déjà de compter les tokens exactement
 (les estimations de coût du 21 août sont à ±30 %) · les clés Supabase legacy restent
 actives en parallèle des nouvelles, à désactiver maintenant que le pipeline tourne · les
-variables d'environnement Vercel ne sont pas posées · les secrets GitHub Actions non plus,
-et le cron n'est pas allumé — **le pipeline ne tourne encore qu'à la main.**
+variables d'environnement Vercel ne sont pas posées — il en faut désormais **quatre** :
+`SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `MOT_DE_PASSE_SITE` et `SECRET_SESSION` · les secrets
+GitHub Actions non plus, et le cron n'est pas allumé — **le pipeline ne tourne encore qu'à
+la main.**
+
+⚠️ **`interface/.env.local` détient l'unique copie des deux secrets du site.** Il n'est pas
+versionné et n'existe nulle part ailleurs tant qu'ils ne sont pas chez Vercel. Le supprimer
+ou l'écraser oblige à tout régénérer — c'est arrivé le 21 août, un agent de revue l'ayant
+écrasé pour lancer l'app.
 
 ⚠️ **Un défaut connu, laissé ouvert faute de correctif propre** : l'écriture des offres se
 fait par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de transaction. Si

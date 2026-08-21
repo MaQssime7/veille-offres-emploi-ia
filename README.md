@@ -123,8 +123,13 @@ python -m pipeline.collecte --depuis-jours 7  # remplissage manuel
 # Interface — Next.js
 cd interface
 npm install
+cp .env.example .env.local   # puis remplir les deux secrets, voir Configuration
 npm run dev                  # http://localhost:3000
 ```
+
+⚠️ **Sans `interface/.env.local`, le site démarre mais personne ne peut entrer** :
+la porte refuse tout le monde plutôt que de s'ouvrir, et l'écran de connexion
+nomme la variable manquante.
 
 ⚠️ **Vercel doit être réglé sur `Root Directory = interface`.** Sans ce réglage,
 il cherche un `package.json` à la racine, n'en trouve pas, et le déploiement
@@ -179,7 +184,8 @@ découpage en sept phases dans [`docs/PLAN.md`](docs/PLAN.md).
 
 La page d'accueil actuelle est une **page de contrôle temporaire** : elle prouve
 que la chaîne fonctionne — trois polices, jetons de couleur, mode sombre — et sera
-remplacée en phase 1.
+remplacée en phase 1. Depuis le 21 août, elle est derrière la porte comme le
+reste du site.
 
 **Phase 1 en cours — le schéma est en base** (20 août 2026).
 

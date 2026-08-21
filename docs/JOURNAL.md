@@ -512,7 +512,7 @@ page à 375 px contre l'intitulé le plus long *réellement observé*.
 l'absence · **34 % des offres sans nom d'entreprise, 69 % sans salaire** — le vide est le
 cas normal · CDI 149, CDD 10, intérim 18.
 
-### Où en est le projet au soir du 21 août
+### Où en est le projet à ce moment de la journée
 
 **Fait** : le schéma (2 tables, 4 migrations), le pipeline de collecte (5 modules,
 1 166 lignes), 189 offres réelles en base, 8 exécutions tracées.
@@ -520,7 +520,8 @@ cas normal · CDI 149, CDD 10, intérim 18.
 **Prochaine étape** : la porte — `/connexion`, `proxy.ts`, session. Étape 3 sur 6 de la
 phase 1. C'est la première brique dont un défaut laisse le site ouvert.
 
-**Non commité** : tout le travail du 21 août est sur disque, pas dans git.
+*(Le travail ci-dessus était encore sur disque à cet instant. Il a été commité dans la
+foulée — voir l'entrée suivante, écrite le même jour.)*
 
 ---
 
@@ -768,3 +769,25 @@ forçage brut même sans aucun délai.
 `MOT_DE_PASSE_SITE` et `SECRET_SESSION` vivent dans `interface/.env.local`, que
 Next lit et que git ignore. ⚠️ Ce fichier est distinct du `.env` de la racine,
 qui appartient au pipeline Python : deux périmètres de secrets, deux fichiers.
+
+### Où en est le projet à la fin de la séance du 21 août
+
+| | État |
+|---|---|
+| Schéma | 2 tables sur 4, 4 migrations appliquées. `enrichissements` et `etapes_enrichissement` reportées en phase 6 |
+| Pipeline | Collecte livrée, 189 offres réelles, 8 exécutions tracées. **Ne tourne encore qu'à la main** |
+| Interface | La porte (`/connexion`, `proxy.ts`, session signée) + la page de contrôle de `/installe`, désormais protégée. **Aucun écran qui lit les offres** |
+| En ligne | Vercel déploie, mais **sans aucune variable d'environnement** — le site public n'a donc toujours pas de mot de passe |
+
+**Phase 1, étapes 1 à 3 sur 6 terminées.** Prochaine : l'écran `/offres` et ses quatre
+états — le premier qui lit vraiment la base. La coquille qu'il pose devra porter le
+bouton de déconnexion.
+
+⚠️ **Trois choses à ne pas redécouvrir en ouvrant la prochaine séance :**
+
+1. **Rien ne doit lire `offres` tant que les variables ne sont pas chez Vercel.** Le code
+   de la porte existe, il n'est pas en service. Il en faut quatre : `SUPABASE_URL`,
+   `SUPABASE_SECRET_KEY`, `MOT_DE_PASSE_SITE`, `SECRET_SESSION`.
+2. **`interface/.env.local` détient l'unique copie des deux secrets du site.** Non
+   versionné, nulle part ailleurs.
+3. **`ANTHROPIC_API_KEY` est toujours un texte d'exemple** — bloquant pour la phase 2.
