@@ -157,6 +157,16 @@ les 189 offres.**
 4. **Les tables d'enrichissement n'existent pas, et c'est une décision** — voir
    « Base de données » ci-dessous. Ne pas les créer avant la phase 6.
 
+⚠️ **DETTE OUVERTE — `MOT_DE_PASSE_SITE` a fuité le 21 août 2026** dans une conversation,
+par une sélection dans l'éditeur (voir § Sécurité). Il n'est ni public, ni dans git, ni
+dans un journal, mais il est sorti de son périmètre : **il doit être régénéré.** Décision
+de Maxime le 21 août : plus tard, il partait. **À faire à la reprise, et impérativement
+avant la phase 4** (notes personnelles) **et la phase 6** (bouton « Enrichir », qui engage
+une dépense). La procédure : nouveau mot de passe de 24 caractères par groupes de 4 sans
+caractère confondable → `interface/.env.local` → `vercel env rm` puis `env add` sur
+Production *et* Preview → `vercel redeploy` → dépôt dans le presse-papiers, jamais à
+l'écran.
+
 **En attente :** `ANTHROPIC_API_KEY` du `.env` contient un texte d'exemple, pas une vraie
 clé — **bloquant pour la phase 2**, et il empêche déjà de compter les tokens exactement
 (les estimations de coût du 21 août sont à ±30 %) · les clés Supabase legacy restent
@@ -404,6 +414,15 @@ Les clés de ce projet donnent accès à un compte facturé et à une base de do
 2. **Aucune clé dans la conversation, les logs ou un message d'erreur.** Un
    `print(config)` qui affiche le jeton finit dans un terminal, une capture
    d'écran, un dépôt public.
+   ⚠️ **Y compris par la sélection dans l'éditeur.** Quand un fichier est ouvert dans
+   l'IDE, **le texte sélectionné m'est transmis automatiquement**. Le 21 août 2026, une
+   sélection dans `interface/.env.local` a fait entrer `MOT_DE_PASSE_SITE` dans la
+   conversation. Ce n'est pas une faute d'inattention, c'est le fonctionnement normal de
+   l'intégration — donc la parade est une habitude, pas de la vigilance :
+   **ne jamais demander à Maxime d'ouvrir un fichier de secrets, ni de recopier une
+   valeur.** Quand il lui en faut une, la déposer dans son presse-papiers
+   (`grep '^NOM=' fichier | cut -d= -f2- | tr -d '\n' | pbcopy`) : rien ne s'affiche,
+   rien ne transite.
 3. **Le dépôt est public.** Des robots scannent GitHub en continu à la recherche
    de clés commitées et les exploitent en minutes, aux frais du propriétaire. Une
    clé poussée par erreur reste dans l'historique Git même après suppression du
