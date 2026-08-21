@@ -266,3 +266,258 @@ formes de code du projet, ce que chacune dit en français, comment elle casse, l
 l'écran) · trois questions à la fin de chaque module · une lecture de module à voix haute
 par phase.
 
+
+## 21 août 2026 — Le pipeline de collecte, et ce que l'API cachait
+
+**Étape 2 sur 6 de la phase 1 livrée.** `pipeline/` existe, tourne contre les
+vraies API, et 43 offres réelles sont en base.
+
+### La mesure qui a tout réorienté
+
+Maxime a posé une question de fond avant qu'on code : *si on oublie un mot-clé,
+on rate des offres — pourquoi ne pas tout faire lire par le modèle ?* La réponse
+demandait des chiffres, pas un avis. Quatre séries de mesures contre l'API réelle
+plus tard, trois découvertes, dont une qui invalidait une décision écrite.
+
+**1. `motsCles` n'indexe pas la description.** Test : prendre un mot dans le corps
+d'une annonce et le chercher. L'annonce ne remonte pas — 4 fois sur 4.
+« polytechnique », présent noir sur blanc, renvoie zéro offre. La recherche porte
+sur l'intitulé, le libellé ROME et un champ `competences` qu'on ne connaissait
+pas.
+
+Conséquence : `docs/DECISIONS.md` affirmait « la requête API reste large mais
+bornée, et le tri est fait par le modèle ». **Faux tel quel** — le modèle ne peut
+trier que ce que la requête a ramené, et la requête est aveugle au texte. Corrigé
+dans le document, avec la mesure à l'appui.
+
+**2. Le vocabulaire de France Travail est fermé, et français.** Les termes que
+Maxime proposait — `IA générative`, `IA agentique`, `agent IA`, `POC IA`,
+`intégration IA`, `LLM` — renvoient **tous zéro offre**. `chatbot`, `GenAI`,
+`MLOps`, `OpenAI`, `ChatGPT`, `copilot` aussi. Seuls des termes courts et
+courants répondent.
+
+**3. `avant-vente` est un piège.** 299 offres — des postes de *Conseiller de
+vente*, *Vendeur en animalerie*, *Réceptionnaire Après-Vente Automobile*. Le
+moteur coupe le terme et matche « vente ». **Un mot-clé ne s'ajoute jamais sans
+mesurer ce qu'il ramène.**
+
+### Correction de cadrage de Maxime
+
+Ma première proposition de mots-clés — `machine learning`, `deep learning`,
+`data scientist`, `NLP`, `MLOps` — désignait des postes de **modélisation**. Il
+vise les postes qui **branchent un modèle existant chez un client** : Forward
+Deployed Engineer, AI Solutions Engineer, consultant IA, ingénieur
+d'intégration. Ce n'est pas le même métier ni les mêmes entreprises. Liste
+refaite.
+
+### La décision, chiffrée
+
+Trois largeurs de collecte, mesurées sur 7 jours réels :
+
+| | Offres/jour | Notation | Ce qu'on rate |
+|---|---|---|---|
+| A — mots-clés seuls | 9 | ~0,80 $/mois | Les intitulés banals |
+| **B — + familles ROME** (retenu) | ~28 | ~3 $/mois | Ce qui sort des familles informatiques |
+| C — tout l'Île-de-France | 1 925 | **~173 $/mois** | Rien |
+
+**B retenu.** Le code ROME est un filtre *structurel* : il attrape « Ingénieur
+études et développement » sans dépendre des mots de l'annonce, et le modèle lit
+ensuite la description — le travail que la recherche ne sait pas faire.
+
+⚠️ **Honnêteté sur la mesure** : sur la semaine testée, B n'aurait trouvé aucune
+offre IA que A ratait. C'est une assurance à 2 $, pas un gain démontré. À
+réévaluer quand la veille aura deux semaines d'historique.
+
+### Ce qui a été construit
+
+Cinq modules, un métier chacun : `config.py` (trousseau de clés, échoue au
+démarrage jamais au milieu) · `client_france_travail.py` (le seul qui téléphone
+à France Travail) · `normalisation.py` (le seul qui jette les données
+personnelles) · `stockage.py` (le seul qui écrit en base) · `collecte.py` (le
+chef d'orchestre). Plus deux fichiers de critères versionnés et éditables sans
+toucher au code.
+
+**Accès à Supabase par l'API REST, pas par connexion Postgres directe** : le
+pipeline tournera chez GitHub, et l'accès direct réclamerait en plus le mot de
+passe du schéma. Un secret de moins en circulation.
+
+**Fenêtre de collecte auto-cicatrisante** : elle repart de la dernière exécution
+*réussie* moins une heure de recouvrement, plafonnée à 30 jours. Trois jours de
+panne se rattrapent au lieu de se perdre.
+
+### Une fuite de donnée personnelle trouvée et fermée
+
+Quand Postgres refuse une ligne, PostgREST recopie **la ligne entière** dans le
+champ `details` de son erreur :
+
+```
+"Failing row contains (mauvais, 7, X, …, Mme Caroline COQUET, https://…, …)"
+```
+
+Le journal de GitHub Actions est **public** sur ce dépôt. Une erreur d'insertion
+journalisée telle quelle y publierait le nom d'une personne. `stockage.py` ne
+garde que le `code` et le `message` ; jamais `details` ni `hint`. **Vérifié en
+provoquant la violation** : le message rendu ne contient rien de personnel.
+
+### Migration `competences`
+
+Colonne ajoutée par une migration suivante — la première n'a pas été retouchée.
+⚠️ Le champ n'est rempli que sur **6 %** des offres (3 sur 43). Utile quand il
+est là, jamais une valeur sur laquelle compter. Il justifie surtout une chose :
+il explique *pourquoi* la recherche se comporte comme elle se comporte.
+
+### Vérifié comment
+
+Pas relu — **attaqué**, méthode du 20 août :
+
+| Ce qu'on a tenté | Réponse |
+|---|---|
+| Collecte réelle contre les deux API | 43 offres reçues, 43 écrites |
+| La relancer immédiatement | 0 nouvelle — déduplication par le moteur |
+| Identifiant mal formé, description vide, date absente | Écartés à la normalisation, la nuit continue |
+| Clé étrangère inexistante | HTTP 409, message sans donnée personnelle |
+| `echec` sans motif · issue inventée | Refusés |
+| Identifiants France Travail faussés | `echec` motivé, code 1, aucun `en_cours` |
+| Exécution laissée `en_cours` | Refermée au démarrage suivant |
+| Lecture des offres avec la clé publiable | **HTTP 401** |
+| `contact` dans une archive `charge_brute` | **0 sur 43** — ni courriel, ni adresse, ni téléphone |
+
+**Non vérifié en conditions réelles, et dit comme tel** : le renouvellement de
+jeton en milieu de pagination (le jeton dure 25 min, aucune collecte n'y arrive)
+et le HTTP 429 (la temporisation de 0,25 s l'empêche). Les deux sont écrits et
+relus, pas déclenchés.
+
+### `/code-review` — 15 défauts, dont un que je venais d'introduire
+
+Le module a été relu par un agent de revue. **Rien n'a été annoncé avant.**
+Sept défauts touchaient la correction ou la sécurité :
+
+| Défaut | Ce qui serait arrivé |
+|---|---|
+| **Journal d'une offre brute** (que je venais d'ajouter en « corrigeant » autre chose) | Une offre sans identifiant faisait journaliser le dict brut — `contact` non encore retiré. **Nom et courriel publiés dans un journal GitHub Actions public.** Remplacé par un compteur |
+| **HTTP 204 en milieu de pagination** | Page 1 rend 150 offres, page 2 rend 204 (offres dépubliées entre deux appels) → `return []` jetait les 150. Le journal disait « aucune offre », indistinguable d'une nuit calme |
+| **`--sans-ecrire` écrivait** | Il appelait `refermer_executions_orphelines`, un PATCH. Lancé pendant la collecte nocturne, il marquait l'exécution vivante en `echec` — puis concluait « Rien n'a été écrit » |
+| **Plafond de pagination testé sur le mauvais compteur** | Le plafond porte sur l'index demandé, pas sur les offres reçues. Dès qu'une page rendait moins de 150 résultats, un `range` au-delà de 1149 partait → HTTP 400 → **toute l'exécution en échec**, les 10 autres critères perdus |
+| **Refermage des orphelines sans seuil d'âge** | Un lancement manuel pendant le cron déclarait `echec` une exécution vivante, avec un motif mensonger. Seuil posé à 6 h |
+| **`_erreur_assainie` plantait sur un corps non-objet** | Un 502 dont le corps est `["gateway error"]` levait une `AttributeError` **depuis le gestionnaire d'erreur**, effaçant la panne d'origine |
+| **`fermer_execution` ne vérifiait rien** | Un PATCH qui ne touche aucune ligne renvoie 204 — succès apparent. Job GitHub au vert, aucune trace en base |
+
+Quatre autres corrigés : HTTP 429 sans réessai (un 429 sur le 9ᵉ critère jetait
+les 8 déjà collectés) · `Content-Range` absent qui tronquait en silence ·
+`--depuis-jours` négatif ou nul non validé · horloge murale au lieu de
+monotone dans la temporisation.
+
+Deux relevaient de la conception, corrigés aussi : le garde-fou `NEXT_PUBLIC_`
+était posé dans le pipeline, qui ne rend aucune page — il ne protégeait rien et
+pouvait annuler la collecte pour une variable étrangère au projet ; les délais
+réseau et la région étaient dupliqués entre modules.
+
+**Une migration en plus** : `offres_rejetees`. Les motifs de rejet étaient
+calculés puis jetés (`lignes, _ = normaliser_lot(...)`). Une nuit à 12 rejets
+sur 40 enregistrait un écart indistinguable de 12 doublons. Le commentaire de
+`offres_recues` a été précisé au passage : ce sont les offres **distinctes**,
+après union des critères.
+
+**Un défaut reste, sans correctif propre** : l'écriture par lots de 50 n'est pas
+atomique, et l'API REST n'expose pas de transaction. Si le lot 3 échoue, les
+lots 1 et 2 sont écrits et rattachés à une exécution marquée `echec` — ces
+offres ne seront jamais « nouvelles » sur aucun écran. Le compte partiel est
+désormais remonté dans le motif d'échec, faute de mieux. À rouvrir si le cas se
+produit.
+
+**Corriger a introduit un bug de plus, trouvé en exécutant** : le `+` de
+`+00:00` dans une chaîne de requête est interprété comme une espace, et Postgres
+refusait la date du seuil d'ancienneté. Invisible à la relecture. Et mon premier
+correctif du plafond de pagination était lui-même faux — il demandait encore
+l'index 1199. Vérifié sur trois tailles de page avant d'être déclaré bon.
+
+**État final** : 67 offres réelles en base, 4 exécutions tracées, compteurs
+justes.
+
+### Le recollage des offres orphelines — et un bug d'horloge trouvé en le testant
+
+**Décidé avec Maxime le 21 août 2026.** Le défaut « écriture par lots non
+atomique » laissé sans correctif est refermé.
+
+**Le problème, reformulé.** Une nuit écrit 100 offres puis échoue. Les 100 sont
+en base, rattachées à une exécution `echec`. Or « Nouveau » se définit par
+l'appartenance à la dernière exécution *réussie* : ces offres n'apparaissent sur
+aucun écran du matin, et la nuit suivante ne les réécrit pas
+(`on conflict do nothing`). **Invisibles pour toujours.**
+
+**La piste écartée, proposée par Maxime** : définir « Nouveau » par une date
+plutôt que par le lien. Écartée pour les raisons déjà écrites au `PLAN.md` —
+deux exécutions le même jour mélangeraient une collecte ratée avec une réussie,
+et une offre cesserait d'être nouvelle toute seule au bout de 24 h, même jamais
+regardée. L'offre ne porte d'ailleurs aucune date de collecte : c'est le lien
+vers l'exécution qui la porte.
+
+**Le correctif retenu** : `recoller_offres_orphelines()`. Au terme d'une
+collecte aboutie, les offres pointant vers une exécution `echec` sont rattachées
+à l'exécution en cours. Elles apparaissent le lendemain, avec un jour de retard.
+Idempotent — une fois recollées, elles pointent vers une réussite et ne sont
+plus reprises.
+
+⚠️ **Contrepartie assumée** : on réécrit l'histoire. L'offre a été *trouvée* par
+l'exécution ratée, on note qu'elle l'a été par la suivante. Le lien sert à
+décider ce qui s'affiche le matin, pas à établir une chronologie ; l'archive
+`charge_brute` garde la réponse d'origine.
+
+**Les deux mécanismes se composent** : une exécution tuée net reste `en_cours`,
+`refermer_executions_orphelines` la passe en `echec` au bout de 6 h, et le
+recollage la ramasse la nuit d'après.
+
+#### Le bug d'horloge, trouvé en écrivant le test
+
+Le test du recollage a fait sauter la contrainte `terminee_apres_demarree`.
+Cause : `demarree_a` a pour valeur par défaut le `now()` de **Postgres**, et
+`terminee_a` était posé avec `datetime.now()` de **la machine locale**. Mesure du
+21 août : cette machine est **186 ms derrière** le serveur Supabase.
+
+Conséquence en production, pas seulement en test : **toute exécution bouclée en
+moins de 186 ms** — une nuit calme sans nouvelles offres — voyait sa fin
+précéder son début et se faisait refuser. La collecte partait en échec pour une
+nuit parfaitement normale.
+
+Corrigé en confiant les deux horodatages au serveur : la chaîne `'now'` est une
+valeur spéciale que Postgres résout lui-même à l'heure de la transaction.
+
+**Leçon transférable** : comparer deux horodatages venus de deux horloges
+différentes est un bug, même quand les deux horloges sont « à l'heure ».
+Invisible à la relecture, invisible en développement quand la collecte dure
+plusieurs secondes, et il ne se serait manifesté qu'une nuit sans offres — la
+nuit où on aurait justement conclu « rien n'est arrivé ».
+
+### Remplissage manuel sur 7 jours, et un cas de test retiré
+
+**189 offres réelles en base** après `--depuis-jours 7`. Maxime a préféré 7 jours à 30,
+pour deux raisons dont une seule tient à la mesure.
+
+*Son argument sur les offres périmées n'est pas confirmé* : l'API ne renvoie que les
+offres encore actives, et les annonces de six jours reviennent en nombre (35, autant
+qu'aujourd'hui). Trente jours auraient donné ~800 offres, toutes vivantes.
+
+*Son argument de coût tient, mais il est petit* : noter 189 offres coûtera ~0,60 $ contre
+~2,40 $ pour 800. Le vrai bénéfice est ailleurs — **relire 189 notes pour juger si le
+modèle note juste, c'est quatre fois plus rapide que 800.**
+
+**Un cas du contenu de test retiré, sur décision de Maxime** : « l'intitulé le plus long
+que France Travail puisse renvoyer, environ 150 caractères ». Il n'existe pas. Maximum
+mesuré : **99 caractères** sur 235 offres le 20 août, **79** sur 189 le 21 août. Ne pas
+fabriquer un cas que la source ne produira jamais. Ce qui reste dû : vérifier la mise en
+page à 375 px contre l'intitulé le plus long *réellement observé*.
+
+**Contenu de test acquis, mesuré, à ne pas rechercher** : 5 descriptions à exactement
+5 000 caractères (le plafond de l'API) · la plus courte à 419 · 6 formes de salaire plus
+l'absence · **34 % des offres sans nom d'entreprise, 69 % sans salaire** — le vide est le
+cas normal · CDI 149, CDD 10, intérim 18.
+
+### Où en est le projet au soir du 21 août
+
+**Fait** : le schéma (2 tables, 4 migrations), le pipeline de collecte (5 modules,
+1 166 lignes), 189 offres réelles en base, 8 exécutions tracées.
+
+**Prochaine étape** : la porte — `/connexion`, `proxy.ts`, session. Étape 3 sur 6 de la
+phase 1. C'est la première brique dont un défaut laisse le site ouvert.
+
+**Non commité** : tout le travail du 21 août est sur disque, pas dans git.

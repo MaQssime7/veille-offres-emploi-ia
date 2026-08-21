@@ -94,6 +94,10 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 which python                 # doit pointer vers .venv, pas vers /opt/anaconda3
 
+python -m pipeline.collecte                   # une collecte : fenêtre automatique
+python -m pipeline.collecte --sans-ecrire     # tout sauf l'écriture
+python -m pipeline.collecte --depuis-jours 7  # remplissage manuel
+
 # Interface — Next.js
 cd interface
 npm install
@@ -178,7 +182,32 @@ ligne, et qu'une exécution portant des offres ne peut pas être supprimée. Ce 
 a d'ailleurs révélé un vrai défaut invisible à la relecture — le serveur n'avait
 aucun droit sur ses propres tables — corrigé par une migration suivante.
 
-**Prochaine étape** : le pipeline Python de collecte.
+### La collecte tourne
 
-Prochaine étape, la **phase 1** : la porte, la collecte, et les premières offres
-réelles à l'écran. Le pipeline Python n'est pas encore écrit.
+Le pipeline Python collecte pour de vrai depuis le 21 août 2026 : **189 offres
+réelles en base**, 8 exécutions tracées. Cinq modules, une responsabilité chacun —
+le trousseau de clés, le client France Travail, la normalisation, le stockage,
+l'orchestration. Aucun ne connaît le métier des autres : quand une nuit échoue, le
+motif enregistré en base dit lequel a lâché.
+
+Trois faits ont été **mesurés contre l'API réelle avant d'écrire une ligne**, et
+deux ont invalidé des hypothèses déjà écrites :
+
+- **La recherche France Travail n'indexe pas la description d'une annonce.** Un mot
+  pris dans le corps d'une offre ne la retrouve pas. La collecte a donc deux filets :
+  des mots-clés, et un filtre par famille de métier — structurel, indépendant des
+  mots employés — dont le modèle lira ensuite les descriptions.
+- **Son vocabulaire est fermé et français.** « IA générative », « agent IA »,
+  « LLM », « chatbot », « MLOps » renvoient tous zéro offre.
+- **Trois largeurs de collecte ont été chiffrées** avant d'en choisir une : 0,80 $,
+  3 $ ou 173 $ par mois selon qu'on ratisse étroit, moyen ou tout l'Île-de-France.
+
+Le code a ensuite été relu par une revue automatisée qui a trouvé **15 défauts**,
+tous corrigés — dont une fuite de donnée personnelle vers un journal public, et une
+comparaison entre deux horloges différentes qui aurait fait échouer toute nuit sans
+nouvelles offres.
+
+**Prochaine étape** : la porte — mot de passe, `proxy.ts`, session.
+
+Reste de la **phase 1** : la porte (`/connexion` + `proxy.ts`), l'écran `/offres`,
+et la mise en ligne avec le cron GitHub Actions. La collecte, elle, tourne.

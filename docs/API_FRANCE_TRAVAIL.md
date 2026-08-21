@@ -72,6 +72,66 @@ qui dimensionnent la collecte quotidienne :
 Le régime quotidien se compte donc en **unités, pas en centaines**. Le plafond de
 pagination n'est jamais approché avec une fenêtre de 24 h.
 
+## ⚠️ Ce que `motsCles` cherche vraiment — mesuré le 21 août 2026
+
+**La description N'EST PAS indexée.** C'est le fait le plus important de ce
+document, et il commande toute la stratégie de collecte.
+
+Test : prendre un mot dans le corps d'une annonce, le chercher, vérifier que
+l'annonce remonte. **Échec 4 fois sur 4.** « polytechnique », présent noir sur
+blanc dans une description, renvoie **zéro offre**.
+
+La recherche porte sur **l'intitulé, le libellé ROME, l'appellation, et le champ
+`competences`** — des phrases normalisées par France Travail du type
+« Documenter les processus et les architectures d'IA », « Python, PyTorch,
+Scikit-Learn ».
+
+**Conséquence opposable** : une offre intitulée « Ingénieur études et
+développement », dont l'IA n'apparaît que dans la description, est **invisible à
+toute requête par mots-clés**, quelle que soit la liste. Le seul recours est un
+filtre structurel — `codeROME` — suivi d'une lecture de la description par le
+modèle. C'est le rôle de `pipeline/codes_rome.txt`.
+
+### Le vocabulaire est fermé, et français
+
+Volumes sur 7 jours en Île-de-France :
+
+| Terme | Offres |
+|---|---|
+| conseil · consultant | 581 · 570 |
+| avant-vente | 299 |
+| transformation | 214 |
+| data · integration | 80 · 60 |
+| intelligence artificielle | 39 |
+| IA | 18 |
+| digital · deploiement · automatisation · RPA | 13 · 8 · 6 · 2 |
+
+**Renvoient ZÉRO offre** : `IA générative` · `IA agentique` · `agent IA` ·
+`POC IA` · `intégration IA` · `solution IA` · `chef de projet IA` · `LLM` ·
+`GenAI` · `chatbot` · `agent conversationnel` · `MLOps` · `no-code` · `prompt` ·
+`OpenAI` · `ChatGPT` · `copilot` · `assistant virtuel`.
+
+⚠️ **Les expressions à plusieurs mots sont dangereuses.** `avant-vente` ramène
+299 postes de *Conseiller de vente*, *Vendeur en animalerie* et *Réceptionnaire
+Après-Vente Automobile* : le moteur a coupé le terme et matché « vente ». Un
+mot-clé ne s'ajoute jamais sans mesurer ce qu'il ramène.
+
+⚠️ **La correspondance est élargie, pas littérale.** Sur les 39 offres de
+« intelligence artificielle », 10 portent la phrase exacte et 28 ne contiennent
+ni « intelligence » ni « artificiel » nulle part — dont *Ingénieur IA junior*,
+que le moteur a su rapprocher. Élargi dans les deux sens : il ramène aussi des
+offres de logiciel embarqué sans rapport.
+
+## Champs supplémentaires relevés le 21 août 2026
+
+`competences` (liste de phrases normalisées — **c'est ce que la recherche
+indexe**) · `qualitesProfessionnelles` · `contexteTravail` · `nombrePostes` ·
+`agence` · `entrepriseAdaptee` · `employeurHandiEngage` ·
+`dureeTravailLibelle` / `dureeTravailLibelleConverti`.
+
+⚠️ `competences` n'est rempli que sur **6 %** des offres collectées le 21 août
+(3 sur 43). Utile quand il est là, jamais une valeur sur laquelle compter.
+
 ## Pièges de pagination — le point qui casse en pratique
 
 Le paramètre `range` prend la forme `0-149` :
@@ -152,15 +212,35 @@ Euros` · variantes avec `sur 12.0 mois` · commentaire libre seul · absent.
 (`https://candidat.francetravail.fr/offres/recherche/detail/212PTDC`), jamais un
 lien générique.
 
-### ⛔ `contact` ne doit jamais être stocké
+### `contact` — deux champs conservés, le reste écarté à la collecte
 
-Le champ est présent sur 50/50 et contient des **données personnelles au sens du
-RGPD** : nom de personne physique (`SCES COMMUNS IMT BUSINESS SCHOOL TELECOM -
-Mme Caroline COQUET`), adresse postale, courriel, URL de postulation nominative.
+Le champ est présent sur 50/50 et contient des **données personnelles au sens
+du RGPD** : nom de personne physique (`SCES COMMUNS IMT BUSINESS SCHOOL TELECOM
+- Mme Caroline COQUET`), adresse postale, courriel, URL de postulation.
 
-Le `CLAUDE.md` l'interdit explicitement. Ce champ est **écarté à la collecte**,
-avant toute écriture — pas filtré à l'affichage. Il ne doit apparaître ni en
-base, ni dans une charge brute conservée, ni dans un journal.
+⚠️ **Tranché le 20 août 2026 sur mesure, pas sur intuition.** Sur 235 offres
+réelles : `contact.courriel` ne contient **aucune adresse** (le champ porte une
+phrase), `contact.nom` est présent sur 9 % des offres et ne nomme une personne
+que dans 3 % des cas.
+
+**Deux champs seulement sont conservés**, parce qu'ils servent directement à
+candidater : `contact.nom` et `contact.urlPostulation`. Ils vivent en
+**colonnes nommées**, jamais dans l'archive `charge_brute` — une colonne se
+cherche, s'exclut d'un export et se vide d'une requête ; noyée dans un bloc
+JSON, la donnée voyage partout où le bloc voyage.
+
+**Tout le reste du champ `contact` est retiré à la collecte, avant écriture** —
+pas filtré à l'affichage : filtré à l'affichage, un champ est quand même en
+base et dans les journaux. Vérifié le 21 août sur les 189 offres réellement
+collectées : aucune archive ne contient `contact`, ni `courriel`, ni
+`coordonnees1/2/3`, ni `telephone`.
+
+⚠️ **Le piège inverse, mesuré le 21 août** : quand Postgres refuse une ligne,
+PostgREST recopie la ligne fautive dans le champ `details` de son erreur —
+`"Failing row contains (…, Mme Caroline COQUET, https://…, …)"`. Le journal de
+GitHub Actions étant **public** sur ce dépôt, une erreur d'insertion
+journalisée telle quelle y publierait le nom. `pipeline/stockage.py` ne garde
+que le `code` et le `message` ; jamais `details` ni `hint`.
 
 ## Cas limites à gérer dès la première version
 

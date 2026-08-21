@@ -211,14 +211,14 @@ cesse d'agir.
 
 **User stories** : US-8, US-22, US-23, US-26, US-33, US-34, US-37 *(partiel)*
 
-> **Avancement au 20 août 2026 — étape 1 sur 6 terminée.**
+> **Avancement au 21 août 2026 — étapes 1 et 2 sur 6 terminées.**
 >
 > | # | Étape | État |
 > |---|---|---|
 > | 0 | Collecte à blanc contre l'API France Travail | ✅ faite — résultats dans `docs/API_FRANCE_TRAVAIL.md` |
 > | 1 | Le schéma en base, migrations versionnées | ✅ **fait** — 18 contrôles au vert |
-> | 2 | Le pipeline Python de collecte (`pipeline/`) | ⬅️ **prochaine étape** |
-> | 3 | La porte : `/connexion` + `proxy.ts` + session | à faire |
+> | 2 | Le pipeline Python de collecte (`pipeline/`) | ✅ **fait** — 189 offres réelles en base, 15 défauts corrigés après `/code-review` |
+> | 3 | La porte : `/connexion` + `proxy.ts` + session | ⬅️ **prochaine étape** |
 > | 4 | L'écran `/offres` et ses quatre états | à faire |
 > | 5 | Mise en ligne : variables Vercel + cron GitHub Actions | à faire |
 > | 6 | Remesure de la mise en page contre le contenu réel, puis `/cloture` | à faire |
@@ -245,13 +245,13 @@ et à quoi ressemble une description France Travail complète.
 
 - [x] ~~Les **quatre** tables existent~~ → **deux** tables (`executions_veille`, `offres`), RLS activé, **aucune politique**, et **tous droits retirés à `anon`** en second verrou. Vérifié le 20 août 2026 : lecture *et* écriture avec la clé publiable renvoient **HTTP 401**.
       ⚠️ **Entorse assumée, validée en séance** : `enrichissements` et `etapes_enrichissement` sont reportées à la **phase 6**. Leur forme dépend de ce que l'agent produira réellement, rien ne les alimente d'ici là, et la collecte à blanc a montré que France Travail fournit déjà gratuitement plusieurs informations que l'enrichissement devait aller chercher (`tranche_effectif`, `code_naf`, `secteur_activite_libelle`). Le critère qui compte — *tout accès direct refusé* — se prouve aussi bien sur deux tables que sur quatre.
-- [ ] Le client France Travail s'authentifie avec le scope exact `api_offresdemploiv2 o2dsoffre`, identifiants **dans le corps** de la requête et non en en-tête Basic
-- [ ] La pagination est pilotée par l'en-tête `Content-Range` de la réponse, **pas par une constante**, et traite le **HTTP 206** comme un succès
-- [ ] Une offre déjà en base n'est pas réinsérée — déduplication sur l'identifiant France Travail, jamais sur l'intitulé
-- [ ] Jeton expiré en milieu de pagination : renouvelé, la collecte reprend au lieu de planter
-- [ ] Réponse vide traitée comme un jour normal, pas comme une erreur
-- [ ] Quota d'appels dépassé : géré explicitement, pas avalé par un `try/except` nu
-- [ ] Chaque exécution écrit sa ligne dans `executions_veille` : début, fin, durée, offres reçues, nouvelles retenues, issue, motif d'échec
+- [x] Le client France Travail s'authentifie avec le scope exact `api_offresdemploiv2 o2dsoffre`, identifiants **dans le corps** de la requête et non en en-tête Basic — vérifié le 21 août, jeton obtenu contre les vrais identifiants
+- [x] La pagination est pilotée par l'en-tête `Content-Range` de la réponse, **pas par une constante**, et traite le **HTTP 206** comme un succès — `_total_disponible()` dans `client_france_travail.py`
+- [x] Une offre déjà en base n'est pas réinsérée — vérifié : deuxième insertion du même lot → **0 nouvelle**, `on conflict do nothing` sur la clé primaire
+- [x] Jeton expiré en milieu de pagination : renouvelé, la collecte reprend — HTTP 401 intercepté, jeton vidé, appel rejoué une fois. ⚠️ **Écrit et relu, pas déclenché en conditions réelles** : le jeton dure 25 min et aucune collecte n'est allée jusque-là
+- [x] Réponse vide traitée comme un jour normal — HTTP 204 à corps vide intercepté **avant** tout `.json()`, vérifié sur une fenêtre de 5 minutes
+- [x] Quota d'appels dépassé : `QuotaDepasse` levée sur HTTP 429, et 0,25 s imposé entre deux appels. ⚠️ **Non déclenché en réel** — la temporisation l'empêche
+- [x] Chaque exécution écrit sa ligne dans `executions_veille` — vérifié dans les deux sens : réussite (43 reçues / 43 nouvelles) et échec (identifiants faussés → `echec` motivé, code de sortie 1, aucun `en_cours` orphelin)
 - [ ] Sans mot de passe, `/` et `/offres` renvoient vers `/connexion`
 - [ ] **Sans mot de passe, une adresse de données appelée en dehors du navigateur ne renvoie aucune offre** — critère de succès n° 5
 - [ ] Une session ouverte survit à un rechargement et à la fermeture du navigateur, et expire après 30 jours d'inactivité
@@ -526,11 +526,11 @@ Le jeu de données minimal sans lequel les critères ci-dessus ne sont pas véri
 une fois, réutilisé à chaque phase. **Sans lui, tout se testera avec trois lignes courtes et
 tout tiendra toujours.**
 
-- [ ] L'intitulé le plus long que France Travail puisse renvoyer — environ **150 caractères**, du type *« Ingénieur / Ingénieure études et développement en intelligence artificielle et systèmes multi-agents (H/F) »*
-- [ ] La description France Travail la plus longue possible — **5 000 caractères**, le plafond de l'API, vérifié le 20 août 2026 : au-delà le texte est coupé en plein mot et `GET /offres/{id}` renvoie la même troncature
-- [ ] L'offre au minimum de champs remplis : pas de salaire, entreprise non communiquée, contrat imprécis — celle qui teste les replis d'affichage. ⚠️ **Ce n'est pas un cas limite** : sur 50 offres réelles, 44 % ne nomment pas l'entreprise et 54 % n'indiquent aucun salaire
-- [ ] Les cinq formes de salaire observées : `Annuel de 38000,00 Euros sur 12 mois` · `Mensuel de 3500 Euros` · `Selon profil` · `À négocier` · **absent**
-- [ ] **200 offres** dans la vue d'ensemble — cinq jours de collecte, le volume qui fait apparaître le défilement
+- [x] ~~L'intitulé le plus long — environ **150 caractères**~~ → **retiré le 21 août 2026 : ça n'existe pas.** Mesuré deux fois sur des données réelles — **99 caractères** au maximum sur 235 offres le 20 août, **79** sur 189 offres le 21 août. Les intitulés France Travail sont courts. Décision de Maxime : ne pas fabriquer un cas que la source ne produira jamais. ⚠️ **Ce qui reste vrai** : il faut quand même vérifier la mise en page à 375 px contre l'intitulé le plus long **réellement observé**, pas contre trois lignes de démo
+- [x] La description France Travail la plus longue possible — **5 000 caractères**, le plafond de l'API, vérifié le 20 août 2026 : au-delà le texte est coupé en plein mot et `GET /offres/{id}` renvoie la même troncature. ✅ **5 offres à exactement 5 000 caractères sont en base** (la plus courte fait 419)
+- [x] L'offre au minimum de champs remplis : pas de salaire, entreprise non communiquée, contrat imprécis — celle qui teste les replis d'affichage. ⚠️ **Ce n'est pas un cas limite** : sur les 189 offres en base au 21 août, **34 % ne nomment pas l'entreprise et 69 % n'indiquent aucun salaire**
+- [x] Les formes de salaire — **6 observées en base au 21 août**, l'absence comprise : `Annuel de N Euros à N Euros` (32) · `Annuel de N Euros à N Euros sur N mois` (17) · `Mensuel de N Euros à N Euros` (3) · `Mensuel de N Euros à N Euros sur N mois` (2) · `Annuel de N Euros sur N mois` (1) · `Mensuel de N Euros sur N mois` (1) · **absent (131)**
+- [x] **200 offres** dans la vue d'ensemble — ✅ **189 en base au 21 août** (remplissage manuel sur 7 jours, `--depuis-jours 7`). Le volume grandit d'environ 25 offres par jour avec le cron
 - [ ] Les valeurs extrêmes de notes, dans les deux sens : une offre **100 / 0** et une offre **0 / 100**
 - [ ] Une note personnelle de **5 000 caractères**
 - [ ] Une justification de note anormalement longue — le modèle peut déraper, l'écran doit tenir

@@ -103,43 +103,55 @@ la même chose finissent en deux tables et deux fonctions.
 À rouvrir avant toute décision produit.
 <!-- produit:end -->
 
-## État actuel (au 20 août 2026, fin de séance)
+## État actuel (au 21 août 2026, fin de séance)
 
-**La stack est posée et hébergée. Le schéma est en base. Le pipeline n'existe pas.**
+**La stack est posée. Le schéma est en base. Le pipeline collecte pour de vrai — 189 offres réelles en base. Aucun écran du produit.**
 
 | Brique | État |
 |---|---|
 | `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. Jetons, polices et rayon du `DESIGN.md` appliqués. **Aucun écran du produit** |
-| Supabase | Projet en région Paris. **`executions_veille` et `offres` créées**, RLS activé, droits vérifiés par 18 contrôles |
-| Migrations | `supabase/migrations/`, appliquées via `npx supabase` — voir Commandes |
+| Supabase | Projet en région Paris. **`executions_veille` et `offres` créées et alimentées** — 189 offres, 8 exécutions tracées. RLS activé, droits vérifiés par 18 contrôles |
+| Migrations | **4** dans `supabase/migrations/`, toutes appliquées via `npx supabase` — voir Commandes |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · fonctions en région Paris. **Aucune variable d'environnement posée** |
-| `pipeline/` | **N'existe pas.** Aucune ligne de Python. C'est la prochaine étape |
-| `.venv/` | Créé à la racine. `requests`, `python-dotenv`, `pglast` installés |
+| `pipeline/` | **Collecte livrée et exécutée.** 5 modules, 1 métier chacun. Critères éditables dans `mots_cles.txt` et `codes_rome.txt`. Notation et enrichissement : phases 2 et 6 |
+| `.venv/` | Créé à la racine, `requirements.txt` versionné |
 
 ⚠️ **Quatre pièges actifs :**
 
 1. La page d'accueil est une **page de contrôle temporaire** posée par `/installe` —
    pas un écran du produit. La phase 1 la remplace. Ne pas construire dessus.
-2. **Le site est en ligne et public, sans mot de passe.** Sans conséquence aujourd'hui —
-   la base est vide et le site ne la lit pas. **La porte doit exister avant la première
-   offre affichée.**
+2. ⚠️ **Le site est en ligne et public, sans mot de passe — et la base n'est plus vide.**
+   Depuis le 21 août elle contient 189 offres réelles, dont quelques `contact_nom` et une
+   URL de postulation. Ce qui protège encore : le site ne lit toujours pas la base, et
+   Supabase refuse tout accès direct (RLS + droits retirés, vérifié HTTP 401). **La porte
+   (`/connexion` + `proxy.ts`) est l'étape 3 et elle doit être posée AVANT le premier
+   écran qui lit la base.** Aucune ligne de code ne doit lire `offres` tant qu'elle
+   n'existe pas.
 3. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le code,
    jamais les données : une branche qui migre ou supprime touche les vraies données.
 4. **Les tables d'enrichissement n'existent pas, et c'est une décision** — voir
    « Base de données » ci-dessous. Ne pas les créer avant la phase 6.
 
 **En attente :** `ANTHROPIC_API_KEY` du `.env` contient un texte d'exemple, pas une vraie
-clé (ne sert qu'en phase 2) · les clés Supabase legacy restent actives en parallèle des
-nouvelles, à désactiver une fois le pipeline en service · les variables d'environnement
-Vercel ne sont pas posées.
+clé — **bloquant pour la phase 2**, et il empêche déjà de compter les tokens exactement
+(les estimations de coût du 21 août sont à ±30 %) · les clés Supabase legacy restent
+actives en parallèle des nouvelles, à désactiver maintenant que le pipeline tourne · les
+variables d'environnement Vercel ne sont pas posées · les secrets GitHub Actions non plus,
+et le cron n'est pas allumé — **le pipeline ne tourne encore qu'à la main.**
+
+⚠️ **Un défaut connu, laissé ouvert faute de correctif propre** : l'écriture des offres se
+fait par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de transaction. Si
+un lot échoue, les précédents sont écrits et rattachés à une exécution marquée `echec`. Le
+recollage (`recoller_offres_orphelines`) les récupère la nuit suivante, et le compte
+partiel remonte dans le motif d'échec. À rouvrir si le cas se produit vraiment.
 
 **Les décisions de cadrage, de design et de plan sont acquises — ne pas les rouvrir.**
 Elles sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoire et
 les arbitrages en chemin sont dans **`docs/JOURNAL.md`**.
 
-**Prochaine étape : le pipeline Python de collecte** (`pipeline/`) — étape 2 sur 6 de la
-phase 1. Reste ensuite : la porte (`/connexion` + `proxy.ts`), l'écran `/offres`, la mise
-en ligne avec le cron GitHub Actions, la remesure de la mise en page.
+**Prochaine étape : la porte** (`/connexion` + `proxy.ts` + session) — étape 3 sur 6 de la
+phase 1. Reste ensuite : l'écran `/offres`, la mise en ligne avec le cron GitHub Actions,
+la remesure de la mise en page.
 
 **On travaille directement sur `main` par défaut.** Le geste complet (brancher, développer,
 demander la fusion) a été fait une fois le 17 août 2026 ; seul sur le dépôt, le répéter
@@ -148,6 +160,32 @@ n'apporte aucune relecture. Ne pas reproposer de brancher par principe.
 ⚠️ **Deux exceptions, où je propose de brancher sans qu'on me le demande** : une
 **migration de schéma** ou tout changement touchant des données déjà en base · un
 **chantier qu'on peut vouloir jeter en entier**. La branche y sert de filet, pas de rituel.
+
+## Collecte — trois faits mesurés, opposables
+
+Mesurés contre l'API réelle le 21 août 2026. Détail et méthode dans
+`docs/API_FRANCE_TRAVAIL.md`. **Ne pas les redécouvrir, ne pas les contredire de
+mémoire.**
+
+1. **La recherche France Travail n'indexe PAS la description.** Un mot pris dans le
+   corps d'une annonce ne la retrouve pas. Elle porte sur l'intitulé, le libellé ROME
+   et le champ `competences`. Conséquence directe : une offre au titre banal dont l'IA
+   n'apparaît que dans le texte est invisible à **toute** liste de mots-clés. C'est
+   pour ça que `codes_rome.txt` existe — un filtre structurel que le lexique ne peut
+   pas remplacer.
+2. **Le vocabulaire est fermé et français.** `IA générative`, `agent IA`, `POC IA`,
+   `LLM`, `GenAI`, `chatbot`, `MLOps`, `ChatGPT` renvoient **zéro offre**. Les
+   expressions à plusieurs mots sont pires qu'inutiles : `avant-vente` ramène 299
+   postes de vendeur en magasin, le moteur ayant matché « vente ».
+3. ⚠️ **Un mot-clé ne s'ajoute jamais sans mesurer ce qu'il ramène.** Ni au flair, ni
+   par analogie avec l'anglais. Le script de mesure tient en vingt lignes ; l'erreur,
+   elle, pollue la base en silence.
+
+**Les postes visés** sont ceux qui *branchent* un modèle chez un client — Forward
+Deployed Engineer, AI Solutions Engineer, consultant IA, ingénieur d'intégration.
+**Pas** les postes de modélisation (`machine learning`, `data scientist`, `deep
+learning`) : autre métier, autres entreprises. Corrigé par Maxime le 21 août après
+que je me sois trompé de cible.
 
 ## Base de données — ce qui change mon comportement
 
@@ -222,6 +260,22 @@ which python                   # doit afficher .../veille-offres-emploi-ia/.venv
 Si `which python` pointe vers `/opt/anaconda3`, l'environnement n'est pas activé
 et toute installation partira au mauvais endroit. `.venv/` est exclu par le
 `.gitignore`.
+
+### Lancer le pipeline
+
+```bash
+source .venv/bin/activate
+python -m pipeline.collecte                   # la collecte nocturne : fenêtre automatique
+python -m pipeline.collecte --sans-ecrire     # tout sauf l'écriture, pour vérifier sans risque
+python -m pipeline.collecte --depuis-jours 7  # remplissage manuel, N strictement positif
+```
+
+Code de sortie **0** = réussite, **1** = échec — c'est lui qui fera rougir le job GitHub
+Actions. La trace part en base dans `executions_veille`, dans les deux cas.
+
+⚠️ **Les critères de collecte sont des données, pas du code** : `pipeline/mots_cles.txt` et
+`pipeline/codes_rome.txt`. Ils s'éditent sans toucher aux modules — mais **jamais sans
+mesurer d'abord ce que le nouveau terme ramène** (voir § Collecte).
 
 ### Migrations Supabase
 
@@ -443,6 +497,16 @@ hiérarchie repose entièrement sur la typographie.
 
 ⚠️ **Le libellé `INT` / `ACC` devant chaque barre de note ne se retire jamais**,
 même pour gagner de la place : sans lui l'information tient sur la seule couleur.
+
+⚠️ **Contenu de test réel disponible en base (mesuré le 21 août 2026)** — à utiliser
+plutôt qu'à réinventer : 189 offres · 5 descriptions à exactement 5 000 caractères (le
+plafond de l'API) · 6 formes de salaire + l'absence · **34 % sans nom d'entreprise, 69 %
+sans salaire** — le vide est le cas normal, pas le cas limite.
+
+⚠️ **Le cas « intitulé très long » a été retiré du contenu de test le 21 août : il
+n'existe pas.** Maximum observé **99 caractères** sur 235 offres, **79** sur 189. Ne pas
+fabriquer un cas que France Travail ne produira jamais — mais vérifier quand même la mise
+en page à 375 px contre l'intitulé le plus long *réellement observé*.
 
 **À remesurer en phase 1** : les valeurs de mise en page — largeurs, densité, grille
 de colonnes — ont été posées sans écran réel, contre du contenu inventé. Les

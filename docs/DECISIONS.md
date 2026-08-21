@@ -126,6 +126,31 @@ description. Un filtre serré sur le titre la rate **silencieusement**. La requ�
 API reste donc large mais bornée (mots-clés + zone géographique), et le tri est
 fait par le modèle.
 
+⚠️ **Corrigé le 21 août 2026 après mesure.** Le raisonnement ci-dessus supposait
+que la requête API pouvait voir la description. **Elle ne le peut pas** : la
+recherche par mots-clés n'indexe que l'intitulé, le libellé ROME et les
+compétences normalisées (voir `docs/API_FRANCE_TRAVAIL.md`). Le tri par le
+modèle ne peut trier que ce que la requête a ramené — et la requête est aveugle
+au texte de l'annonce.
+
+**Ce qui a été décidé à la place, le 21 août 2026** : la collecte a **deux
+filets**, et le second existe précisément pour combler ce trou.
+
+| Filet | Ce qu'il attrape | Volume mesuré |
+|---|---|---|
+| `pipeline/mots_cles.txt` | Ce que France Travail a étiqueté « IA » | ~9 offres/jour |
+| `pipeline/codes_rome.txt` | Les annonces dont l'intitulé ne dit rien — filtre **structurel**, indépendant des mots employés | ~19 offres/jour |
+
+Le modèle lit ensuite la description des unes comme des autres : il fait le
+travail que la recherche ne sait pas faire.
+
+**Les deux options écartées, avec leur chiffre** (mesuré sur 7 jours réels) :
+collecter les seuls mots-clés coûte ~0,80 $/mois mais rate structurellement les
+intitulés banals ; collecter **tout** l'Île-de-France (1 925 offres/jour) et
+tout faire lire au modèle coûte **~173 $/mois** et ne rate rien. L'écart de 170 $
+achète une couverture dont la semaine testée n'a montré aucun gain — arbitrage
+validé en séance, révisable si la veille rate visiblement des offres.
+
 ---
 
 ## 3. Architecture retenue
