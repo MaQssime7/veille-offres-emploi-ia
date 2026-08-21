@@ -99,6 +99,13 @@
 
   --radius: 0.25rem;
 
+  /* Largeur maximale du contenu (DESIGN.md § Mise en page).
+     ⚠️ Elle vit ICI parce que le DESIGN.md la donne encore pour une hypothèse,
+     à remesurer contre du contenu réel puis à figer. Recopiée dans chaque
+     écran, cette remesure se ferait à trois endroits et l'en-tête finirait
+     désaligné du contenu qu'il surplombe. */
+  --largeur-page: 1180px;
+
   /* Dérivés de la palette ci-dessus : shadcn référence ces jetons,
      les laisser vides produirait des surfaces transparentes. */
   --sidebar:                    oklch(0.988 0.007 84);
@@ -152,6 +159,21 @@
   --sidebar-accent-foreground:  oklch(0.930 0.016 84);
   --sidebar-border:             oklch(0.340 0.018 68);
   --sidebar-ring:               oklch(0.680 0.100 70);
+}
+
+/* Le « libellé » du DESIGN.md : chasse fixe, capitales, interlettrage large.
+   Il porte les sur-titres, le nom de l'entreprise et les cartouches — six
+   endroits au moment où il est écrit. Recopié à la main, il dérive : une taille
+   à 0.6875rem ici, à 0.75rem là, et la grille typographique ne tient plus.
+   ⚠️ Il ne fixe PAS la couleur : elle change avec le rôle (texte plein pour un
+   nom d'entreprise, atténué pour un sur-titre), et l'imposer ici obligerait
+   chaque appelant à la contredire. */
+@utility libelle-mono {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 @layer base {
