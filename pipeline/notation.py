@@ -394,6 +394,7 @@ def executer(
     *, limite: int | None, modele: str, effort: str,
     en_lot: bool = False, sans_ecrire: bool = False, renoter: bool = False,
     rome: str | None = None, au_hasard: bool = False, collecte: int | None = None,
+    derniere_collecte: bool = False,
 ) -> int:
     """Note les offres en attente. Rend 0 en réussite, 1 en échec.
 
@@ -405,12 +406,36 @@ def executer(
     stockage = Stockage(reglages.supabase_url, reglages.supabase_secret_key)
     client = anthropic.Anthropic()
 
+    if derniere_collecte:
+        collecte = stockage.derniere_collecte_reussie_id()
+        if collecte is None:
+            # Aucune collecte n'a jamais réussi : il n'y a rien de neuf à noter.
+            # On sort en RÉUSSITE, pas en échec — le job du soir n'a pas planté,
+            # il n'avait simplement rien à faire.
+            _journal.info("Aucune collecte réussie en base : rien à noter.")
+            return 0
+        _journal.info("Notation restreinte à la collecte #%d.", collecte)
+
     offres = stockage.offres_a_noter(limite, max_tentatives=MAX_TENTATIVES, renoter=renoter,
                                      rome=rome, au_hasard=au_hasard,
                                      collecte=collecte)
     if not offres:
         _journal.info("Aucune offre en attente de note. Rien à faire.")
         return 0
+
+    # ⚠️ Une limite qui mord doit se VOIR dans les journaux. Le cron nocturne en
+    # porte une comme garde-fou de facturation ; le jour où une collecte ramène
+    # plus que prévu, des offres restent sans note — et avec `--derniere-collecte`
+    # elles ne repasseront JAMAIS, la nuit suivante se restreignant à SA propre
+    # collecte. Sans cet avertissement, le job serait vert et les offres
+    # manquantes invisibles. Ce n'est pas une erreur, c'est une décision qui doit
+    # laisser une trace.
+    if limite is not None and len(offres) == limite:
+        _journal.warning(
+            "La limite de %d est atteinte : d'autres offres peuvent rester sans note. "
+            "Avec --derniere-collecte elles ne seront pas reprises automatiquement.",
+            limite,
+        )
 
     systeme = construire_systeme(charger_criteres())
     execution_id = stockage.ouvrir_execution(etape="notation")
@@ -494,18 +519,38 @@ def executer(
 # Relevé en revue de code le 26 août 2026. Jamais déclenché : 0 échec sur 97 appels.
 
 
-def apercevoir(*, limite: int, modele: str, renoter: bool = False) -> int:
+def apercevoir(
+    *, limite: int, modele: str, renoter: bool = False,
+    rome: str | None = None, au_hasard: bool = False, collecte: int | None = None,
+    derniere_collecte: bool = False,
+) -> int:
     """Affiche le prompt exact et compte ses tokens SANS rien facturer.
 
     `count_tokens` est gratuit. Ce mode existe pour vérifier le prompt, la
     taille du préfixe et le franchissement du plancher de cache avant de
     dépenser le premier centime.
+
+    ⚠️ **Il reçoit exactement les mêmes filtres de sélection qu'`executer()`, et
+    ce n'est pas de la symétrie décorative.** Jusqu'au 26 août 2026 il n'en
+    acceptait aucun : `--sans-appeler --rome H1206` affichait le prompt d'une
+    offre **quelconque**, sans le moindre avertissement. Un aperçu qui ne montre
+    pas l'offre qui sera réellement notée est pire que pas d'aperçu du tout —
+    c'est un piège de mesure, puisqu'on croit vérifier ce qu'on s'apprête à
+    envoyer.
     """
     reglages = configuration.charger_notation()
     stockage = Stockage(reglages.supabase_url, reglages.supabase_secret_key)
     client = anthropic.Anthropic()
 
-    offres = stockage.offres_a_noter(limite, max_tentatives=MAX_TENTATIVES, renoter=renoter)
+    if derniere_collecte:
+        collecte = stockage.derniere_collecte_reussie_id()
+        if collecte is None:
+            print("Aucune collecte réussie en base : rien à apercevoir.")
+            return 0
+        print(f"→ Aperçu restreint à la collecte #{collecte}.")
+
+    offres = stockage.offres_a_noter(limite, max_tentatives=MAX_TENTATIVES, renoter=renoter,
+                                     rome=rome, au_hasard=au_hasard, collecte=collecte)
     if not offres:
         print("Aucune offre en attente de note.")
         return 0
@@ -565,6 +610,10 @@ def main() -> int:
                            help="reprendre les offres DÉJÀ notées, les plus récentes d'abord "
                                 "— outil d'étalonnage MIS DE CÔTÉ, voir la note ci-dessous. "
                                 "Chaque offre est repayée")
+    analyseur.add_argument("--derniere-collecte", action="store_true",
+                           help="ne noter que les offres trouvées par la dernière collecte "
+                                "RÉUSSIE — c'est le mode du cron nocturne, celui qui borne "
+                                "la dépense à ce qui vient d'arriver")
     arguments = analyseur.parse_args()
 
     logging.basicConfig(
@@ -576,15 +625,32 @@ def main() -> int:
     if arguments.limite is not None and arguments.limite <= 0:
         analyseur.error("--limite doit être strictement positif.")
 
+    # Les deux désignent un lot d'offres, l'un par son numéro, l'autre « la
+    # dernière ». Les accepter ensemble obligerait à décider lequel gagne, et
+    # ce choix serait invisible dans les journaux du cron.
+    if arguments.derniere_collecte and arguments.collecte is not None:
+        analyseur.error("--derniere-collecte et --collecte s'excluent : "
+                        "choisir la dernière collecte, ou en désigner une par son numéro.")
+
+    # ⚠️ Le mode nocturne ne reprend JAMAIS d'offres déjà notées. La combinaison
+    # noterait deux fois les mêmes offres, chaque nuit, en silence et à chaque
+    # fois payante — exactement ce que le filtre incrémental existe pour éviter.
+    if arguments.derniere_collecte and arguments.renoter:
+        analyseur.error("--derniere-collecte et --renoter s'excluent : "
+                        "le mode nocturne ne repaie jamais une offre déjà notée.")
+
     try:
         if arguments.sans_appeler:
             return apercevoir(limite=arguments.limite or 1, modele=arguments.modele,
-                              renoter=arguments.renoter)
+                              renoter=arguments.renoter, rome=arguments.rome,
+                              au_hasard=arguments.au_hasard, collecte=arguments.collecte,
+                              derniere_collecte=arguments.derniere_collecte)
         return executer(
             limite=arguments.limite, modele=arguments.modele, effort=arguments.effort,
             en_lot=arguments.lot, sans_ecrire=arguments.sans_ecrire,
             renoter=arguments.renoter, rome=arguments.rome,
             au_hasard=arguments.au_hasard, collecte=arguments.collecte,
+            derniere_collecte=arguments.derniere_collecte,
         )
     except (configuration.ConfigurationIncomplete, ErreurNotation, ErreurStockage) as echec:
         _journal.error("%s", echec)

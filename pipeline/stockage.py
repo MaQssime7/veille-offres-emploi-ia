@@ -251,6 +251,41 @@ class Stockage:
         return datetime.fromisoformat(lignes[0]["demarree_a"].replace("Z", "+00:00"))
 
 
+    def derniere_collecte_reussie_id(self) -> int | None:
+        """L'IDENTIFIANT de la dernière collecte `reussite`, ou None s'il n'y en a pas.
+
+        Jumelle de `derniere_execution_reussie()`, qui rend la *date* pour borner
+        la fenêtre de collecte. Ici c'est l'identifiant qu'on veut, parce qu'il
+        sert à autre chose : restreindre la notation aux offres que cette
+        collecte-là vient de trouver.
+
+        ⚠️ **Même filtre `etape=collecte`, même raison, et elle est ici encore
+        plus vicieuse.** Sans lui, cette méthode renverrait l'identifiant de la
+        dernière *notation* réussie — et `offres_a_noter(collecte=<id>)`
+        chercherait alors les offres rattachées à une exécution qui n'a jamais
+        collecté quoi que ce soit. Résultat : **zéro offre à noter, chaque nuit,
+        sans la moindre erreur**. Le job serait vert, la base ne bougerait pas,
+        et personne ne verrait rien avant des semaines.
+
+        ⚠️ **Pourquoi passer par la base plutôt que se faire transmettre
+        l'identifiant par l'étape précédente.** Le workflow GitHub pourrait faire
+        remonter l'identifiant de la collecte en sortie de job et le passer à la
+        notation. On ne le fait pas : ce serait coupler les deux étapes par un
+        canal qui n'existe que dans GitHub Actions, donc casser le lancement à la
+        main et la reprise d'un job. La base est déjà la source de vérité
+        commune ; le producteur y dépose, le consommateur y lit. Les deux étapes
+        restent lançables séparément, dans n'importe quel ordre, depuis
+        n'importe où.
+        """
+        lignes = self._requete(
+            "GET",
+            "/executions_veille?etape=eq.collecte&issue=eq.reussite&select=id"
+            "&order=demarree_a.desc&limit=1",
+            operation="lecture de la dernière collecte réussie",
+        ) or []
+        return lignes[0]["id"] if lignes else None
+
+
     def recoller_offres_orphelines(self, execution_id: int) -> int:
         """Rattache à `execution_id` les offres restées liées à une exécution en échec.
 

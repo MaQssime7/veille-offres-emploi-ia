@@ -121,7 +121,7 @@ Les critères de collecte ont été entièrement refondus sur mesure le 26 août
 | Supabase | Région Paris. `executions_veille` et `offres` créées et alimentées. RLS activé, droits vérifiés |
 | Migrations | **5**, toutes appliquées — `supabase/migrations/`. La 5ᵉ ajoute la notation (deux notes, justifications, salaire annualisé, compteurs de tokens, colonne `etape`) |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
-| `pipeline/` | Collecte **et notation** livrées. **Cron GitHub Actions actif** à 02:23 UTC (4 h 23 à Paris l'été) — ⚠️ il ne fait QUE la collecte, la notation n'y est pas encore branchée. Critères dans `mots_cles.txt` (8 termes) et `codes_rome.txt` (**vide depuis le 26 août, délibérément**) |
+| `pipeline/` | Collecte **et notation** livrées, **toutes deux sur le cron** GitHub Actions à 02:23 UTC (4 h 23 à Paris l'été) — deux jobs enchaînés, la notation ne tournant que si la collecte a réussi. Critères dans `mots_cles.txt` (8 termes) et `codes_rome.txt` (**vide depuis le 26 août, délibérément**) |
 | Modules | `collecte.py` · `notation.py` (`--limite`, `--modele`, `--effort`, `--lot`, `--rome`, `--collecte`, `--au-hasard`, `--renoter`, `--sans-ecrire`, `--sans-appeler`) · `salaire.py` · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
 
@@ -146,9 +146,13 @@ secondes dans la liste, là où il fallait lire le terminal ligne à ligne. Le c
 `deploiement`, `automatisation`, `RPA` et le faux positif `IA`/`IPR-IA` se mène désormais depuis
 cette page.
 
-⚠️ **La clé `ANTHROPIC_API_KEY` est posée et active** (`.env` racine, 5 $ de crédit, ~60
-centimes consommés au 26 août). Elle n'est **pas** dans les secrets GitHub Actions : à y
-mettre le jour où la notation sera branchée sur le cron. Jamais chez Vercel.
+⚠️ **La clé `ANTHROPIC_API_KEY` est posée et active à DEUX endroits** — `.env` à la racine
+pour les lancements à la main, et les **secrets GitHub Actions** depuis le 26 août 2026, où
+elle alimente la notation nocturne. 5 $ de crédit, ~60 centimes consommés. **Jamais chez
+Vercel** : le site ne note rien, il lit des notes déjà écrites.
+⚠️ **Pour la reposer sans jamais l'afficher ni la faire entrer dans une conversation** :
+`printf '%s' "$(grep '^ANTHROPIC_API_KEY=' .env | cut -d= -f2- | tr -d '\n')" | gh secret set ANTHROPIC_API_KEY`.
+Même geste que le `pbcopy` de la § Sécurité — la valeur ne s'affiche nulle part.
 
 ⚠️ **Huit choses à ne pas redécouvrir :**
 
@@ -254,9 +258,8 @@ décide plus rien.** Ne pas la rouvrir « pour voir ».
 | | |
 |---|---|
 | `ANTHROPIC_API_KEY` dans GitHub Actions | Posée en local (`.env`), **absente des secrets GitHub** — à ajouter le jour où la notation sera branchée sur le cron. Jamais chez Vercel |
-| Notation non branchée sur le cron | `.github/workflows/` ne lance que la collecte. La notation se lance à la main. À brancher avant de considérer la phase 2 close |
 | ~~Tri par note : piège `NULLS FIRST`~~ | ✅ **Traité le 26 août** — `note_interet.desc.nullslast` dans `interface/lib/offres.ts`, avec départage complet jusqu'à `identifiant` pour que deux chargements classent les ex æquo pareil |
-| API Batches jamais exécutée | `notation.py --lot` est écrit et **n'a jamais tourné**. Le rattachement par `custom_id` est en place mais non vérifié en conditions réelles |
+| API Batches : **le rattachement par `custom_id` reste non vérifié** | ⚠️ Nuance qui compte. `--lot` **a tourné** le 26 août 2026 (lot `msgbatch_018yAG…`, 1 offre, 2 min 33, réussite) : dépôt, attente, récupération, écriture et trace d'exécution sont validés. Mais **sur UNE offre, apparier par identifiant et apparier par position donnent le même résultat** — le point le plus subtil du module n'est donc toujours pas exercé. Il faudrait un lot de 3 offres, soit ~0,9 centime |
 | Critères de collecte non finis | `deploiement`, `automatisation`, `RPA` et le faux positif `IA`/`IPR-IA` restent à mesurer — voir § État actuel |
 | ⚠️ **Le plafond de 200 tuera l'affichage des offres du jour** | Relevé en revue le 26 août. Depuis le tri par intérêt, les 200 lignes affichées sont **les 200 meilleures de tous les temps**. Aujourd'hui 97 offres sont notées, donc 103 places reviennent aux plus récentes et les offres de la nuit s'affichent. **Le jour où plus de 200 offres portent une note, elles disparaissent** — d'intérêt médian 10, elles ne rentrent plus — et le marqueur « Nouveau » devient du code que rien n'atteint. Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut sans jamais céder leur place. ⚠️ **L'échéance est un compte, pas une date : elle tombe quand `notees` dépasse 200.** À trancher en phase 4 avec les filtres — le remède change ce que cet écran *est*, et le PRD confie déjà le compte rendu de la nuit à `/` |
 | Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | ⚠️ **Devenu inatteignable le 26 août** : le bug ne se déclenche que sur une offre **déjà notée**, donc uniquement en `--renoter` — outil désormais mis de côté, une offre n'étant notée qu'une fois. Il n'est donc **pas urgent**, et ne pas le présenter comme tel. L'analyse et le correctif à faire vivent en commentaire dans `pipeline/notation.py` au-dessus de `apercevoir()`, **au point d'usage** : celui qui ressortira `--renoter` tombera dessus, ce qu'une ligne dans ce tableau ne garantit pas |
@@ -455,7 +458,8 @@ mesurer d'abord ce que le nouveau terme ramène** (voir § Collecte).
 source .venv/bin/activate
 python -m pipeline.notation --sans-appeler --limite 1   # GRATUIT : affiche le prompt, compte les tokens
 python -m pipeline.notation --limite 15                 # note 15 offres, appels directs
-python -m pipeline.notation --lot                       # via l'API Batches : moitié prix, jusqu'à 1 h
+python -m pipeline.notation --derniere-collecte         # LE MODE DU CRON : que les offres de la dernière collecte
+python -m pipeline.notation --lot                       # via l'API Batches : moitié prix, jusqu'à 1 h annoncée
 python -m pipeline.notation --sans-ecrire --limite 1    # appelle le modèle, n'écrit rien en base
 ```
 
@@ -475,6 +479,17 @@ avec le nombre d'appels et l'ordre de grandeur (~0,6 centime par offre, cache ch
   commentaire dans `pipeline/notation.py`, juste au-dessus de `apercevoir()`, c'est-à-dire là
   où on tombera dessus. Résumé : un échec de renotation viole `echec_sans_note` (400), et le
   correctif n'est **pas** d'effacer la note existante mais de n'écrire aucun motif.
+
+- ⚠️ **`--derniere-collecte`** restreint la notation aux offres de la **dernière collecte
+  réussie** — c'est le mode du cron nocturne, et c'est lui qui borne la dépense à ce qui vient
+  d'arriver. Il résout l'identifiant **par la base**, jamais par un canal GitHub Actions : les
+  deux étapes restent lançables séparément et dans n'importe quel ordre.
+  ⚠️ Il s'exclut de `--collecte` et de `--renoter`, et le CLI refuse les combinaisons plutôt
+  que d'en privilégier une en silence.
+- ⚠️ **`--sans-appeler` reçoit les mêmes filtres que la notation réelle depuis le 26 août.**
+  Avant, `--sans-appeler --rome H1206` affichait le prompt d'une offre **quelconque** sans
+  rien signaler : un aperçu qui ne montre pas l'offre qu'on s'apprête à envoyer est pire que
+  pas d'aperçu.
 
 **La recette de mesure d'un critère**, celle qui a fait tomber les codes ROME :
 

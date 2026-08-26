@@ -1400,3 +1400,101 @@ remesurer.
 la moindre erreur. J'ai failli conclure que la moitié de la palette violait le
 plancher d'accessibilité. La parade tient en une ligne : faire convertir la couleur
 par le navigateur lui-même, en la peignant sur un canvas de 1 × 1 pixel.
+
+---
+
+## 26 août 2026, tard — la notation passe sur le cron
+
+**Trois choses livrées** : le chemin d'échec exercé pour de vrai, l'API Batches
+lancée pour la première fois, et la notation branchée sur GitHub Actions.
+
+### Provoquer un échec sans dépenser un centime
+
+Le critère demandait de vérifier qu'une notation ratée laisse l'offre en base
+sans note, avec son motif. Il restait ouvert depuis l'écriture du module :
+**0 échec sur 97 appels**, donc un chemin jamais parcouru.
+
+La façon de le déclencher est presque triviale une fois trouvée : demander un
+**modèle qui n'existe pas**. L'API répond 404 avant tout traitement, donc
+`APIStatusError` est levée et **rien n'est facturé**. Vérifié en base : motif
+tracé, note restée `NULL`, compteur de tentatives incrémenté, exécution fermée
+en `echec`, code de sortie 1.
+
+**La leçon est réutilisable** : pour exercer un chemin d'erreur d'une API
+payante, chercher l'erreur que l'API rejette *avant* de facturer. Une clé
+invalide, un modèle inconnu, un paramètre hors bornes — tous gratuits, tous
+produisant la même exception que la vraie panne.
+
+### L'API Batches a tourné, et le test ne prouve pas ce qu'il semble prouver
+
+Premier lot déposé, `msgbatch_018yAG…`, une offre. Réussite en **2 min 33**,
+là où la documentation annonce jusqu'à une heure. Dépôt, attente, récupération
+des résultats, écriture en base, trace d'exécution : tout est validé.
+
+⚠️ **Sauf le point qui compte.** Le module rattache les résultats par
+`custom_id` parce que l'API les rend dans un ordre quelconque — apparier par
+position donnerait à une offre les notes d'une autre, en silence. Or **sur une
+seule offre, les deux méthodes donnent le même résultat**. Le test ne peut pas
+distinguer un code correct d'un code faux : il ne prouve rien sur ce point.
+
+**Un test qui ne peut pas échouer ne prouve rien**, et un cas limite de taille 1
+est souvent de ceux-là. C'est écrit tel quel dans le `PLAN.md` plutôt que coché.
+
+Mesuré au passage : sur un lot d'une offre, `cache_ecriture` vaut 3 715 et
+`cache_lecture` **zéro**. On paie l'écriture du cache sans jamais le relire —
+le lot n'est rentable qu'à partir de plusieurs offres.
+
+Coïncidence utile : le lot a noté `212YRCR`, l'offre que l'échec volontaire
+avait fait échouer deux fois vingt minutes plus tôt. Remise dans la file
+(2 tentatives < 3), elle est repassée et a été notée. **Le cycle échec →
+reprise → réussite a donc tourné en conditions réelles sans que personne ne
+l'orchestre.**
+
+### Le cron, et le garde-fou qui coûtait 90 centimes
+
+Maxime a tranché : **on ne rattrape pas les 437 offres déjà en base**, on ne
+note que ce qui vient d'arriver. D'où un nouveau drapeau `--derniere-collecte`,
+qui restreint la notation aux offres de la dernière collecte réussie.
+
+Il résout cet identifiant **par la base**, pas par un canal GitHub Actions. Le
+workflow aurait pu faire remonter l'identifiant en sortie de job ; ce serait
+coupler les deux étapes par un mécanisme qui n'existe que chez GitHub, donc
+casser le lancement à la main. La base est déjà la source de vérité commune :
+le producteur y dépose, le consommateur y lit, et chaque étape reste lançable
+seule.
+
+⚠️ **Le vrai piège était ailleurs, et il se chiffre.** « La dernière collecte
+réussie » désigne une collecte *antérieure* si celle de la nuit échoue. Mesuré
+ce soir : la dernière collecte réussie portait alors **146 offres non notées**,
+soit environ **90 centimes** payés d'un coup — la nuit où la collecte plante,
+c'est-à-dire exactement quand on ne veut pas de surprise.
+
+La parade tient en deux mots de YAML : `needs: collecter` **sans**
+`if: always()`. Si la collecte échoue, la notation ne tourne pas du tout. Un
+échec réseau ne coûte plus rien au lieu de coûter de l'argent.
+
+Un second plafond, `--limite 60`, borne le `workflow_dispatch` de rattrapage
+manuel, qui peut ramener 300 offres d'un coup. Et quand cette limite mord, le
+module émet désormais un **avertissement** : avec `--derniere-collecte`, les
+offres laissées ne repasseront jamais toutes seules.
+
+### Un défaut trouvé en passant
+
+`--sans-appeler` ignorait **silencieusement** les filtres de sélection.
+`--sans-appeler --rome H1206` affichait le prompt d'une offre quelconque, sans
+rien signaler. Un aperçu qui ne montre pas l'offre qu'on s'apprête à envoyer
+est pire que pas d'aperçu — on croit vérifier, et on ne vérifie rien. Corrigé :
+`apercevoir()` reçoit exactement les mêmes filtres qu'`executer()`.
+
+### Ce que je retiens
+
+**Un garde-fou de facturation se conçoit en se demandant ce qui se passe quand
+l'étape précédente échoue**, pas quand tout va bien. Le mode nocturne était
+correct dans le cas nominal et coûtait 90 centimes dans le cas dégradé — et le
+cas dégradé n'était ni rare ni tordu, juste une collecte ratée.
+
+**Une clé d'API se pose dans un secret sans jamais s'afficher.** `printf '%s'
+"$(grep '^CLE=' .env | cut -d= -f2-)" | gh secret set CLE` : la valeur passe de
+fichier à secret sans transiter par un terminal, une capture d'écran ou une
+conversation. Seuls sa longueur et son préfixe ont été montrés, et aucun des
+deux n'identifie quoi que ce soit.

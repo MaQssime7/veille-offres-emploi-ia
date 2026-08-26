@@ -12,7 +12,7 @@
 # une donnée personnelle. Toute nouvelle trace ajoutée au pipeline doit tenir
 # cette règle.
 
-name: Collecte nocturne
+name: Veille nocturne
 
 on:
   schedule:
@@ -43,7 +43,7 @@ permissions:
 # laisserait une ligne `en_cours` orpheline jusqu'au rattrapage du lendemain.
 # On préfère faire la queue.
 concurrency:
-  group: collecte-nocturne
+  group: veille-nocturne
   cancel-in-progress: false
 
 jobs:
@@ -90,3 +90,74 @@ jobs:
           else
             python -m pipeline.collecte
           fi
+
+  # -------------------------------------------------------------------------
+  # La notation. Elle ne tourne QUE si la collecte a réussi, et c'est un
+  # garde-fou de facturation, pas de la propreté.
+  # -------------------------------------------------------------------------
+  #
+  # ⚠️ **`needs: collecter` SANS `if: always()` est ce qui protège la facture.**
+  # La notation se restreint aux offres de la « dernière collecte réussie ».
+  # Si la collecte de cette nuit échoue, cette expression désigne une collecte
+  # ANTÉRIEURE — potentiellement une recollecte manuelle de 30 jours. Mesuré le
+  # 26 août 2026 : la dernière collecte réussie d'alors portait **146 offres non
+  # notées**, soit environ **90 centimes** payés d'un coup, la nuit où la
+  # collecte plante. Sans ce `needs` strict, un échec réseau coûterait de
+  # l'argent au lieu d'en économiser.
+  #
+  # Effet de bord assumé : une collecte en échec repousse la notation à la nuit
+  # suivante. C'est le bon sens — il n'y a rien de neuf à noter.
+
+  noter:
+    name: Noter les offres de la nuit
+    runs-on: ubuntu-latest
+    needs: collecter
+
+    # Une nuit normale ramène une dizaine d'offres, soit environ une minute
+    # d'appels séquentiels. Au-delà de 20 minutes, c'est pendu, pas lent.
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7
+
+      - name: Installer Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Installer les dépendances
+        run: pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Noter
+        env:
+          # ⚠️ La SEULE clé facturée à l'appel de tout le projet. Elle n'existe
+          # ni chez Vercel, ni dans le navigateur : le site ne note rien, il
+          # lit des notes déjà écrites. Voir « Sécurité » dans le CLAUDE.md.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          python -m pipeline.notation --derniere-collecte --limite 60
+
+        # ⚠️ **Pourquoi `--derniere-collecte` et pas simplement `--limite`.**
+        # Sans lui, la notation piocherait dans TOUTES les offres sans note, les
+        # plus récemment publiées d'abord — et rattraperait donc peu à peu les
+        # 437 offres déjà en base. Décision de Maxime le 26 août 2026 : on ne
+        # rattrape pas, on ne note que ce qui vient d'arriver. Ces 437 offres
+        # resteront sans note, donc non classées ; l'écran l'affiche
+        # explicitement avec son cartouche « Pas encore notée ».
+        #
+        # ⚠️ **`--limite 60` est un plafond anti-dérapage, pas une cadence.**
+        # Une nuit normale ramène une dizaine d'offres : la limite ne mord
+        # jamais. Elle existe pour le `workflow_dispatch` avec `depuis_jours`,
+        # qui peut ramener 300 offres d'un coup — soit près de 2 $ enchaînés
+        # sans que personne ne l'ait demandé. Elle borne ce cas à ~36 centimes.
+        # ⚠️ Quand elle mord, `notation.py` émet un AVERTISSEMENT dans le
+        # journal : avec `--derniere-collecte`, les offres laissées de côté ne
+        # repasseront jamais toutes seules, la nuit suivante se restreignant à
+        # sa propre collecte. Il faut alors les noter à la main.
