@@ -112,6 +112,38 @@ def _lire_liste(fichier: Path) -> tuple[str, ...]:
     return tuple(valeurs)
 
 
+@dataclass(frozen=True)
+class ConfigNotation:
+    """Ce dont la notation a besoin, et rien de plus."""
+
+    supabase_url: str
+    supabase_secret_key: str
+
+    def __repr__(self) -> str:  # pragma: no cover - garde-fou, pas de la logique
+        return f"ConfigNotation(supabase_url={self.supabase_url!r}, secrets=***)"
+
+
+def charger_notation() -> ConfigNotation:
+    """Valide uniquement ce que la notation utilise.
+
+    ⚠️ Délibérément séparé de `charger()` : la notation n'a rien à faire avec
+    France Travail. Réutiliser la configuration complète obligerait le job de
+    notation à porter les identifiants France Travail dans ses secrets GitHub
+    Actions — quatre secrets pour deux besoins, et deux clés de plus exposées
+    à qui entrerait dans le dépôt, pour rien.
+
+    La clé Anthropic n'est pas rendue : le SDK lit `ANTHROPIC_API_KEY` dans
+    l'environnement tout seul. On vérifie seulement qu'elle est là, ici, plutôt
+    que de laisser le premier appel échouer après la lecture de la base.
+    """
+    load_dotenv()
+    _lire_variable("ANTHROPIC_API_KEY")
+    return ConfigNotation(
+        supabase_url=_lire_variable("SUPABASE_URL").rstrip("/"),
+        supabase_secret_key=_lire_variable("SUPABASE_SECRET_KEY"),
+    )
+
+
 def charger() -> Config:
     """Assemble la configuration, ou échoue tout de suite avec un motif lisible."""
     load_dotenv()  # sans effet en CI, où les secrets sont déjà dans l'environnement

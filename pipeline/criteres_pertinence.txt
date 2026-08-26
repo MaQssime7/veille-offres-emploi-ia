@@ -1,0 +1,144 @@
+// Critères de pertinence — injectés en préfixe du prompt de notation.
+//
+// ⚠️ DEUX MARQUEURS, À NE PAS CONFONDRE :
+//   //  en début de ligne = commentaire pour toi, RETIRÉ avant l'envoi
+//   ##  en début de ligne = titre de section, ENVOYÉ au modèle
+// Les titres portent du sens : sans « ## Note d'INTÉRÊT », le paragraphe qui
+// suit commence par « Elle mesure… » sans que le modèle sache de quoi il parle.
+//
+// Ce fichier est une DONNÉE, pas du code : il s'édite à la main, se relit dans
+// git, et se corrige quand une notation dérape. C'est le seul endroit où le
+// jugement se règle. Les lignes commençant par # ne sont pas envoyées au modèle.
+//
+// ⚠️ Toute modification invalide le cache de prompt : le premier appel suivant
+// repaie le préfixe au tarif plein. C'est normal et ça ne coûte qu'une fois.
+//
+// ⚠️ Ne jamais corriger une note à la main en base. Une note fausse est le
+// symptôme d'un critère mal réglé ; la corriger masque le réglage au lieu de le
+// révéler. On corrige ICI, puis on renote.
+
+## Le candidat
+
+Jeune diplômé Bac+5 d'une école d'ingénieur généraliste (ENSEA, promotion 2026).
+Six mois d'expérience professionnelle en cabinet de conseil en stratégie data et
+IA, au pôle research : développement de preuves de concept agentiques, animation
+d'ateliers clients, études de marché, vulgarisation technique.
+
+Compétences réelles : Python, appels d'API de modèles de langage, orchestration
+d'agents, intégration de systèmes existants, restitution devant un client non
+technique. Il sait brancher un modèle sur le système d'un client et livrer
+quelque chose qui marche.
+
+Ce qu'il n'a pas : des années d'expérience, une thèse, une spécialisation en
+recherche, une expertise d'infrastructure à grande échelle.
+
+Recherche active, exclusivement en Île-de-France.
+
+## Les postes visés
+
+Le cœur de cible, par ordre de proximité :
+
+- Forward Deployed Engineer, AI Solutions Engineer, ingénieur d'intégration IA :
+  aller chez un client, se brancher sur son système, livrer un agent qui marche.
+- Consultant IA / consultant technique IA, avec une vraie part de code.
+- Ingénieur en IA générative, ingénieur LLM, développeur d'agents.
+- Automatisation intelligente de processus métier, quand elle passe par des
+  modèles de langage et non par des règles.
+- Avant-vente technique IA, ingénieur solutions, si le poste construit des
+  démonstrateurs et ne fait pas que présenter des diapositives.
+
+## Ce qui ne l'intéresse PAS
+
+À noter bas en intérêt, même si l'annonce est excellente par ailleurs :
+
+- La modélisation et la recherche : machine learning classique, data science,
+  deep learning, vision par ordinateur, statistiques, thèses CIFRE. C'est un
+  autre métier, dans d'autres entreprises.
+- Les postes de données pures : data engineer, data analyst, business
+  intelligence, ETL, entrepôt de données — sauf si le poste consiste
+  explicitement à construire des agents ou des applications de modèles.
+- Le développement logiciel où l'IA n'est qu'un décor : une annonce de
+  développeur web ou d'ingénieur système qui mentionne « intelligence
+  artificielle » une fois dans une liste de mots-clés.
+- L'infrastructure et l'exploitation : MLOps pur, DevOps, SRE, administration
+  de plateformes.
+- Les métiers non techniques : commercial, chef de projet sans code, recrutement,
+  marketing, support.
+- Tout poste hors Île-de-France, ou en télétravail total rattaché à une autre
+  région, quelle que soit sa qualité.
+
+## Note d'INTÉRÊT — « ai-je envie de ce poste ? »
+
+Elle mesure l'adéquation entre le contenu réel du poste et ce que le candidat
+veut faire. Elle ne tient AUCUN compte de ses chances d'être pris.
+
+Le contenu du poste prime toujours sur son intitulé. Une annonce intitulée
+« Consultant technique » dont la description parle d'intégrer des agents chez
+des clients vaut mieux qu'une annonce intitulée « Ingénieur IA » qui décrit du
+nettoyage de données.
+
+Repères :
+
+- 90-100 : le poste décrit exactement le métier visé — brancher des modèles de
+  langage ou des agents chez un client, ou construire des applications qui en
+  reposent. Aucun doute à la lecture.
+- 70-89 : poste clairement dans l'IA appliquée, avec une réserve : la part de
+  code est floue, le secteur est éloigné, ou l'annonce mélange plusieurs métiers.
+- 50-69 : l'IA est présente et centrale, mais le poste penche vers un métier
+  voisin (données, logiciel, conseil sans code). À lire, pas à écarter.
+- 30-49 : l'IA n'est qu'une partie mineure du poste, ou le poste appartient à un
+  métier voisin qui ne l'intéresse pas.
+- 10-29 : poste technique sans rapport, ou modélisation / recherche.
+- 0-9 : aucun rapport (vente en magasin, logistique, santé, bâtiment). Ces
+  offres existent : la recherche par code ROME en ramène beaucoup.
+
+## Note d'ACCESSIBILITÉ — « ai-je une chance ? »
+
+Elle mesure la probabilité que la candidature ne soit pas écartée d'emblée. Elle
+ne tient AUCUN compte de l'envie.
+
+Ce qui pèse, par ordre d'importance :
+
+1. L'expérience exigée. Six mois en poche. Deux ans demandés restent jouables ;
+   cinq ans ferment la porte.
+2. La séniorité de l'intitulé. « Senior », « Lead », « Principal », « Head of »,
+   « Directeur », « Architecte » ferment. « Junior », « Débutant accepté »,
+   « Jeune diplômé » ouvrent grand.
+3. Le diplôme et la spécialisation attendus. Un doctorat exigé ferme ; un
+   Bac+5 ingénieur correspond.
+4. Le type de contrat. CDI et CDD correspondent. Une alternance ou un stage ne
+   correspond plus à son statut : accessibilité basse, car il serait écarté.
+5. Les technologies exigées. Un empilement d'outils très spécifiques qu'il ne
+   connaît pas fait baisser ; Python et les API de modèles font monter.
+
+Repères :
+
+- 90-100 : débutant explicitement accepté, ou aucune expérience exigée.
+- 70-89 : un à deux ans demandés, intitulé non sénior, pile technique courante.
+- 50-69 : trois ans demandés, ou des exigences techniques qu'il ne couvre qu'en
+  partie. Candidature possible mais pas évidente.
+- 30-49 : quatre à cinq ans, ou intitulé légèrement sénior.
+- 10-29 : plus de cinq ans, intitulé franchement sénior, doctorat souhaité.
+- 0-9 : impossible — dix ans d'expérience, poste de direction, ou contrat qui ne
+  lui correspond pas (alternance, stage).
+
+## Comment écrire les justifications
+
+Une phrase par note, deux au maximum. En français.
+
+Elle doit dire CE QUI, DANS L'ANNONCE, a produit le chiffre — pas répéter le
+chiffre en mots. « Intégration d'agents chez des clients grands comptes, ce qui
+est exactement le métier visé » est utile ; « poste très intéressant » ne l'est
+pas.
+
+Quand l'annonce est vague ou contradictoire, le dire : c'est cette information
+qui permet de repérer un critère mal réglé.
+
+Ne jamais inventer un élément absent de l'annonce. Si l'expérience exigée n'est
+pas indiquée, l'écrire plutôt que de la supposer.
+
+## Le résumé
+
+Une seule phrase, 25 mots au maximum : ce que fait vraiment le poste, pour
+décider en un regard s'il vaut la lecture. Pas de reprise de l'intitulé, pas de
+formule creuse.

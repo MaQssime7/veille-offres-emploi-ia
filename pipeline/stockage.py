@@ -14,6 +14,7 @@ dépôt. On ne garde que le code et le message court.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -35,6 +36,37 @@ TAILLE_LOT = 50
 
 class ErreurStockage(RuntimeError):
     """Toute panne imputable à la base. Jamais avalée silencieusement."""
+
+
+@dataclass(frozen=True)
+class ConsommationTokens:
+    """Compteurs bruts d'un ou plusieurs appels au modèle. Jamais des euros.
+
+    Les quatre compteurs sont distincts parce qu'ils ne coûtent pas la même
+    chose : une lecture de cache vaut environ un dixième d'un token d'entrée
+    plein, et une écriture de cache environ 1,25 fois. Les agréger en un seul
+    nombre rendrait impossible de vérifier que le cache mord — le seul contrôle
+    qui distingue « le cache fonctionne » de « on repaie le préfixe à chaque
+    offre ».
+    """
+
+    entree: int = 0
+    sortie: int = 0
+    cache_ecriture: int = 0
+    cache_lecture: int = 0
+
+    def __add__(self, autre: "ConsommationTokens") -> "ConsommationTokens":
+        return ConsommationTokens(
+            entree=self.entree + autre.entree,
+            sortie=self.sortie + autre.sortie,
+            cache_ecriture=self.cache_ecriture + autre.cache_ecriture,
+            cache_lecture=self.cache_lecture + autre.cache_lecture,
+        )
+
+    @property
+    def total(self) -> int:
+        """Ce qui s'ajoute au compteur `tokens_cumules` d'une offre."""
+        return self.entree + self.sortie + self.cache_ecriture + self.cache_lecture
 
 
 class Stockage:
@@ -146,6 +178,8 @@ class Stockage:
         self, execution_id: int, *, issue: str,
         offres_recues: int | None = None, offres_nouvelles: int | None = None,
         offres_rejetees: int | None = None, motif_echec: str | None = None,
+        offres_notees: int | None = None, modele: str | None = None,
+        tokens: "ConsommationTokens | None" = None,
     ) -> None:
         """Complète la ligne d'exécution. `echec` exige toujours un motif.
 
@@ -170,6 +204,16 @@ class Stockage:
                 "offres_nouvelles": offres_nouvelles,
                 "offres_rejetees": offres_rejetees,
                 "motif_echec": _tronquer(motif_echec),
+                "offres_notees": offres_notees,
+                "modele": modele,
+                # Compteurs BRUTS. La conversion en euros se fait à l'affichage,
+                # contre une grille tarifaire versionnée : les tarifs changent
+                # (Sonnet 5 est en tarif d'introduction jusqu'au 31 août 2026),
+                # un historique en euros deviendrait faux sans prévenir.
+                "tokens_entree": tokens.entree if tokens else None,
+                "tokens_sortie": tokens.sortie if tokens else None,
+                "tokens_cache_ecriture": tokens.cache_ecriture if tokens else None,
+                "tokens_cache_lecture": tokens.cache_lecture if tokens else None,
             },
         ) or []
         if not modifiees:
@@ -299,6 +343,119 @@ class Stockage:
             "%d offre(s) présentée(s), %d nouvelle(s) écrite(s).", len(lignes), nouvelles
         )
         return nouvelles
+
+    # ---------------------------------------------------------- notation
+
+    # Les colonnes envoyées au modèle. `charge_brute` en est délibérément
+    # absente : c'est une archive, jamais une valeur de travail — et la tirer
+    # ici multiplierait par trois le nombre de tokens facturés par offre.
+    CHAMPS_A_NOTER = (
+        "identifiant,intitule,entreprise_nom,lieu_libelle,type_contrat_libelle,"
+        "nature_contrat,experience_libelle,description,competences,salaire_libelle,"
+        "rome_libelle,appellation_libelle,secteur_activite_libelle,"
+        "qualification_libelle,alternance,tokens_cumules,notation_tentatives"
+    )
+
+    def offres_a_noter(
+        self, limite: int | None = None, *, max_tentatives: int = 3
+    ) -> list[dict[str, Any]]:
+        """Les offres pas encore notées, les plus récentes d'abord.
+
+        ⚠️ **`note_interet=is.null` est ce qui rend la notation incrémentale.**
+        Une offre déjà notée n'est jamais reprise, même si l'annonce a changé à
+        la source : renoter en boucle coûterait à chaque passage sans rien
+        apprendre.
+
+        ⚠️ **Le filtre sur `notation_tentatives` est un garde-fou de
+        facturation.** Une offre qui fait systématiquement échouer l'appel —
+        description pathologique, refus du modèle — serait autrement retentée
+        chaque nuit, indéfiniment, et chaque tentative est payante. Au-delà de
+        `max_tentatives`, elle sort de la file et attend une intervention.
+        """
+        filtres = (
+            f"/offres?note_interet=is.null"
+            f"&notation_tentatives=lt.{max_tentatives}"
+            f"&select={self.CHAMPS_A_NOTER}"
+            f"&order=publiee_a.desc"
+        )
+        if limite is not None:
+            filtres += f"&limit={limite}"
+        return self._requete(
+            "GET", filtres, operation="lecture des offres à noter"
+        ) or []
+
+    def compter_offres_a_noter(self, *, max_tentatives: int = 3) -> int:
+        """Combien d'offres attendent une note. Sert à annoncer la dépense avant
+        de la faire.
+
+        On ramène les identifiants et on les compte, plutôt que d'ajouter un
+        chemin HTTP parallèle pour lire un en-tête `Content-Range`. À la
+        volumétrie de ce projet — 373 offres aujourd'hui, quelques milliers d'ici
+        la fin de l'année — c'est quelques kilo-octets. Un second chemin de
+        requête, lui, se paierait à chaque relecture du code.
+        """
+        lignes = self._requete(
+            "GET",
+            f"/offres?note_interet=is.null"
+            f"&notation_tentatives=lt.{max_tentatives}&select=identifiant",
+            operation="comptage des offres à noter",
+        ) or []
+        return len(lignes)
+
+    def enregistrer_notation(
+        self, offre: dict[str, Any], *, notation: dict[str, Any],
+        execution_id: int, modele: str, tokens: ConsommationTokens,
+    ) -> None:
+        """Écrit les notes d'une offre et sa consommation.
+
+        `offre` est la ligne lue par `offres_a_noter()` : on s'en sert pour
+        **incrémenter** les compteurs plutôt que de les écraser. L'API REST ne
+        sait pas faire `colonne = colonne + n` ; sans la valeur d'avant, une
+        renotation remettrait `tokens_cumules` à la consommation du dernier
+        appel et l'écran de suivi d'exploitation compterait faux.
+        """
+        identifiant = offre["identifiant"]
+        modifiees = self._requete(
+            "PATCH", f"/offres?identifiant=eq.{identifiant}&select=identifiant",
+            operation=f"enregistrement de la notation de {identifiant}",
+            headers={"Prefer": "return=representation"},
+            json={
+                **notation,
+                "notee_a": _maintenant(),
+                "notation_execution_id": execution_id,
+                "notation_modele": modele,
+                "notation_motif_echec": None,
+                "notation_tentatives": (offre.get("notation_tentatives") or 0) + 1,
+                "tokens_cumules": (offre.get("tokens_cumules") or 0) + tokens.total,
+            },
+        ) or []
+        if not modifiees:
+            raise ErreurStockage(
+                f"notation de {identifiant} : aucune ligne modifiée. "
+                f"L'offre a disparu entre la lecture et l'écriture."
+            )
+
+    def enregistrer_echec_notation(
+        self, offre: dict[str, Any], *, motif: str, execution_id: int, modele: str
+    ) -> None:
+        """Trace l'échec sans perdre l'offre : elle reste sans note, à reprendre.
+
+        On incrémente quand même le compteur de tentatives — c'est lui qui
+        empêchera la boucle de facturation si l'échec est permanent.
+        """
+        identifiant = offre["identifiant"]
+        self._requete(
+            "PATCH", f"/offres?identifiant=eq.{identifiant}&select=identifiant",
+            operation=f"trace de l'échec de notation de {identifiant}",
+            headers={"Prefer": "return=representation"},
+            json={
+                "notation_motif_echec": _tronquer(motif),
+                "notation_execution_id": execution_id,
+                "notation_modele": modele,
+                "notation_tentatives": (offre.get("notation_tentatives") or 0) + 1,
+            },
+        )
+        _journal.warning("Notation de %s en échec : %s", identifiant, motif)
 
 
 def _maintenant() -> str:
