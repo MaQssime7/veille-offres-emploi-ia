@@ -260,9 +260,10 @@ site déjà en ligne. Sans notes, sans statuts, sans fiche.
 **Cette phase met le site en ligne et allume le cron dès le premier jour.** Ce n'est pas de
 l'empressement : un historique ne se reconstitue pas, et les seuils se règlent sur deux
 semaines de données réelles. Chaque jour sans cron est un jour perdu définitivement. C'est
-aussi la phase qui lève le plus d'incertitude — c'est là qu'on découvre si le champ
-« expérience exigée » existe vraiment (marqué *à confirmer* dans `API_FRANCE_TRAVAIL.md`)
-et à quoi ressemble une description France Travail complète.
+aussi la phase qui a levé le plus d'incertitude — **et elle l'a fait** : le champ
+« expérience exigée » existe bien (`experienceExige`, codes `D` et `E` observés), et une
+description France Travail plafonne à 5 000 caractères. Détail dans
+`docs/API_FRANCE_TRAVAIL.md`.
 
 ### Critères d'acceptation
 

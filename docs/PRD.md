@@ -575,5 +575,6 @@ pour laquelle ils figurent au PRD au lieu d'attendre d'être demandés.
 
 **Identité visuelle** — Le système de design est fixé dans `docs/DESIGN.md` depuis le
 16 août 2026, avec un aperçu vérifiable dans `docs/design-preview.html`. Les valeurs
-de mise en page y sont marquées comme hypothèses : elles ont été posées contre du
-contenu inventé et se confirment sur la première tranche livrée.
+de mise en page ont été **mesurées contre 373 offres réelles et figées le 26 août 2026** —
+largeur de page et densité de la ligne. Cinq autres restent des hypothèses, chacune avec
+son échéance : elles décrivent des écrans qui n'existent pas encore.

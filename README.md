@@ -254,6 +254,16 @@ Deux partis pris qui se défendent :
 ⚠️ Le code de la porte n'est **pas encore en ligne** : les deux variables
 d'environnement ne sont pas posées chez Vercel.
 
-**Prochaine étape** : remesurer la mise en page contre le contenu réel, puis clôturer la
-phase 1. Le site est en ligne derrière son mot de passe, l'écran `/offres` lit la base, et
-la collecte tourne toute seule.
+**Phase 1 close le 26 août 2026.** Le site est en ligne derrière son mot de passe, l'écran
+`/offres` lit la base, la collecte tourne toute seule, et les valeurs de mise en page ne sont
+plus des suppositions : elles ont été mesurées contre 373 offres réelles.
+
+La clôture a servi à quelque chose — elle a attrapé un défaut créé le matin même. Resserrer
+la ligne d'offre sans toucher au squelette de chargement faisait sauter la page de 56 px
+quand les offres arrivaient ; ni le compilateur ni le linter ne bronchent, les deux fichiers
+étant cohérents séparément. Le rythme vertical vit désormais dans un module partagé, importé
+par la ligne et par son squelette : la contrainte est portée par le code, plus par un
+commentaire qu'il fallait avoir lu.
+
+**Prochaine étape** : la phase 2, les deux notes — une note d'intérêt, une note
+d'accessibilité, et le classement qui va avec.

@@ -10,6 +10,7 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | **Pourquoi** une décision de cadrage est ce qu'elle est · questions encore ouvertes | `docs/DECISIONS.md` |
 | **Schéma de la base** : tables, colonnes, contraintes, et le *pourquoi* de chacune | `supabase/migrations/` — **seule source de vérité, jamais recopiée ailleurs** |
 | API France Travail : authentification, pagination, quota, cas limites | `docs/API_FRANCE_TRAVAIL.md` |
+| **Mise en ligne** : variables Vercel, migrations Supabase, secrets GitHub Actions — commandes et pièges | `docs/HEBERGEMENT.md` |
 | API Anthropic : modèles, paramètres, sortie structurée, cache, batches | référence `/claude-api` |
 | Claude Agent SDK : surface d'API | `code.claude.com/docs/en/agent-sdk` |
 | Ce que le produit doit faire · ce qu'il refuse de faire | `docs/PRD.md` |
@@ -104,143 +105,71 @@ la même chose finissent en deux tables et deux fonctions.
 À rouvrir avant toute décision produit.
 <!-- produit:end -->
 
-## État actuel (au 21 août 2026, fin de séance)
+## État actuel — 26 août 2026
 
-**La stack est posée. Le schéma est en base. Le pipeline collecte pour de vrai, et depuis le
-26 août **le cron GitHub Actions est allumé** — 373 offres réelles en base. La porte est EN
-LIGNE et vérifiée. L'écran `/offres` lit la base.**
+**Phase 1 close.** Le site est en ligne derrière son mot de passe, la collecte tourne toute
+seule chaque nuit, l'écran `/offres` lit la base. **373 offres réelles**, 10 exécutions
+tracées.
 
 | Brique | État |
 |---|---|
-| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. Jetons, polices et rayon du `DESIGN.md` appliqués. **La porte est posée** (`/connexion`, `proxy.ts`, session signée) ; mode sombre branché sur la préférence système. Aucun écran de données |
-| Supabase | Projet en région Paris. **`executions_veille` et `offres` créées et alimentées** — 373 offres, 10 exécutions tracées (les identifiants montent à #26 : la séquence Postgres ne se rembobine pas après la suppression des lignes de test). RLS activé, droits vérifiés par 18 contrôles |
-| Migrations | **4** dans `supabase/migrations/`, toutes appliquées via `npx supabase` — voir Commandes |
-| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · fonctions en région Paris. **Les 4 variables sont posées** (Production + Preview, marquées *Sensitive*) et **la porte est en ligne, testée le 21 août** : `/` renvoie 307 vers `/connexion`, le mot de passe ouvre, la session survit au rechargement. CLI lié depuis `interface/` (`.vercel/`, ignoré par git) |
-| `pipeline/` | **Collecte livrée et exécutée.** 5 modules, 1 métier chacun. Critères éditables dans `mots_cles.txt` et `codes_rome.txt`. Notation et enrichissement : phases 2 et 6 |
-| `.venv/` | Créé à la racine, `requirements.txt` versionné |
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte (`/connexion`, `proxy.ts`, session signée), l'écran `/offres`, mode sombre sur la préférence système |
+| Supabase | Région Paris. `executions_veille` et `offres` créées et alimentées. RLS activé, droits vérifiés |
+| Migrations | 4, toutes appliquées — `supabase/migrations/` |
+| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
+| `pipeline/` | Collecte livrée. **Cron GitHub Actions actif** à 02:23 UTC (4 h 23 à Paris l'été). Critères éditables dans `mots_cles.txt` et `codes_rome.txt` |
+| `.venv/` | À la racine, `requirements.txt` versionné |
 
-⚠️ **Quatre pièges actifs :**
-
-1. La page d'accueil est une **page de contrôle temporaire** posée par `/installe` —
-   pas un écran du produit. L'étape 4 la remplace. Ne pas construire dessus.
-   ⚠️ Elle vit maintenant dans `app/(site)/page.tsx` — un **composant serveur** qui appelle
-   `exigerSession()` puis rend `app/(site)/_controle/page-de-controle.tsx`. En la
-   remplaçant, **garder la première ligne** : c'est elle qui referme la porte.
-   ⚠️ **Le groupe `(site)` n'est pas de l'organisation, c'est une serrure.** `/connexion`
-   est délibérément *hors* du groupe : une action serveur s'invoque par un `POST` sur une
-   route, et `/connexion` est la seule que le proxy laisse passer sans cookie. Un
-   composant rendu par la porte et important une action sensible la ferait entrer dans son
-   manifeste, donc déclenchable sans session. Ne jamais déplacer `/connexion` dans le
-   groupe, ni faire rendre l'en-tête par elle.
-2. ⚠️ **Poser une variable chez Vercel ne suffit pas : il faut redéployer.** Elles ne
-   s'appliquent qu'aux déploiements *suivants*, jamais à celui déjà en ligne.
-   ⚠️ **Et un code non poussé n'est pas en ligne, même si les variables y sont.** Le
-   21 août, les 3 commits portant la porte étaient restés en local pendant que les
-   variables étaient posées : le site public répondait 200 sur `/`, sans mot de passe,
-   et `/connexion` renvoyait 404. Vérifier `git log origin/main..main` avant de conclure
-   qu'une protection est active.
-   ⚠️ Les variables marquées *Sensitive* ne sont **pas relisibles**, même par le CLI :
-   `vercel env pull` renvoie `[REDACTED]`. On ne peut donc pas comparer la valeur posée à
-   la valeur locale — le seul test possible est de se connecter au site déployé.
-   ⚠️ **Une variable listée chez Vercel n'est pas une variable qui marche.** Le 21 août,
-   `SUPABASE_URL` et `SUPABASE_SECRET_KEY` apparaissaient dans `vercel env ls` depuis
-   quatre jours — posées à la main dans l'interface — et le site déployé répondait
-   pourtant « Variable d'environnement absente : SUPABASE_URL ». Les reposer depuis
-   `interface/.env.local` via le CLI a tout réglé. Comme *Sensitive* interdit de relire la
-   valeur, ce genre de défaut ne se voit **que** sur le site en ligne : après toute
-   modification de variable, ouvrir la page et regarder, jamais se fier à la liste.
-   ⚠️ Et une variable modifiée ne prend effet qu'au **redéploiement** :
-   `npx vercel@59.3.0 redeploy <url-du-dernier-déploiement>` (sans `--yes`, l'option
-   n'existe pas sur cette commande).
-3. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le code,
-   jamais les données : une branche qui migre ou supprime touche les vraies données.
-4. **Les tables d'enrichissement n'existent pas, et c'est une décision** — voir
-   « Base de données » ci-dessous. Ne pas les créer avant la phase 6.
-
-✅ **DETTE FERMÉE le 26 août 2026 — `MOT_DE_PASSE_SITE` a été régénéré**, après sa fuite
-du 21 août par une sélection dans l'éditeur (voir § Sécurité).
-
-⚠️ **`SECRET_SESSION` a été régénéré en même temps, et c'est le point qui compte** : un
-cookie de session est signé avec `SECRET_SESSION`, **pas** avec le mot de passe. Changer le
-seul mot de passe ferme la porte aux nouvelles connexions mais **laisse vivre 30 jours toute
-session déjà ouverte** avec l'ancien. Régénérer le seul mot de passe après une fuite est
-donc une révocation à moitié. Le refaire ainsi si le cas se représente.
-
-**Procédure exécutée, reproductible telle quelle :** valeurs générées avec le module
-`secrets` de Python (mot de passe : 24 caractères en 6 groupes de 4, alphabet de 32 symboles
-sans `I`/`O`/`0`/`1`, soit 120 bits · `SECRET_SESSION` : 32 octets en hexadécimal, 256 bits)
-→ réécriture ciblée de `interface/.env.local` en contrôlant que le nombre de lignes ne bouge
-pas → `vercel env add <nom> <cible> --sensitive --force --yes` **en lisant la valeur sur
-l'entrée standard**, jamais via `--value` qui l'exposerait dans la liste des processus →
-`vercel redeploy` → dépôt dans le presse-papiers.
-
-⚠️ **Deux pièges rencontrés, à ne pas redécouvrir :**
-- **La colonne « created » de `vercel env ls` ne bouge pas** quand `--force` écrase une
-  valeur. La liste ne prouve donc **rien** sur une rotation — elle affichait encore « 5d ago »
-  juste après. Seul un essai de connexion sur le site en ligne fait foi.
-- **La porte ne se teste pas en `curl`.** Le formulaire est un composant client : Next
-  n'émet aucun champ caché `$ACTION_ID_`, l'action s'invoque par un en-tête `Next-Action`
-  dont le corps est un format React interne. Deux tentatives ont rendu des HTTP 500 qui ne
-  prouvaient rien. **Passer par un vrai navigateur** — un script Playwright qui lit la
-  valeur dans le fichier, pour qu'elle ne transite jamais par la conversation.
-
-**En attente :** `ANTHROPIC_API_KEY` du `.env` contient un texte d'exemple, pas une vraie
-clé — **bloquant pour la phase 2**, et il empêche déjà de compter les tokens exactement
-(les estimations de coût du 21 août sont à ±30 %) · les clés Supabase legacy restent
-actives en parallèle des nouvelles, à désactiver maintenant que le cron tourne.
-
-⚠️ **Chez Vercel, exactement 4 variables et pas une de plus** : `SUPABASE_URL`,
-`SUPABASE_SECRET_KEY`, `MOT_DE_PASSE_SITE`, `SECRET_SESSION`. `ANTHROPIC_API_KEY`,
-`FT_CLIENT_ID` et `FT_CLIENT_SECRET` y avaient été posées le 17 août et ont été **retirées
-le 21 août** : le pipeline Python tourne chez GitHub Actions, aucune ligne du site ne les
-lit, et les garder offrait la clé Anthropic — qui est facturée — à qui entrerait dans le
-compte Vercel. Ne pas les y remettre.
-
-⚠️ **`interface/.env.local` détient l'unique copie des deux secrets du site.** Il n'est pas
-versionné et n'existe nulle part ailleurs tant qu'ils ne sont pas chez Vercel. Le supprimer
-ou l'écraser oblige à tout régénérer — c'est arrivé le 21 août, un agent de revue l'ayant
-écrasé pour lancer l'app.
-
-⚠️ **Un défaut connu, laissé ouvert faute de correctif propre** : l'écriture des offres se
-fait par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de transaction. Si
-un lot échoue, les précédents sont écrits et rattachés à une exécution marquée `echec`. Le
-recollage (`recoller_offres_orphelines`) les récupère la nuit suivante, et le compte
-partiel remonte dans le motif d'échec. À rouvrir si le cas se produit vraiment.
-
-**Les décisions de cadrage, de design et de plan sont acquises — ne pas les rouvrir.**
-Elles sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoire et
-les arbitrages en chemin sont dans **`docs/JOURNAL.md`**.
-
-**PHASE 1 CLOSE le 26 août 2026** — les 6 étapes sont faites, `/cloture` déroulé : 18 critères
-repris, 4 parcours de régression rejoués en production, 15 constats de revue traités.
-**Prochaine phase : la 2 — les deux notes.** ⚠️ Elle est **bloquée par `ANTHROPIC_API_KEY`**,
-qui contient encore un texte d'exemple.
+**Prochaine phase : la 2 — les deux notes.** ⚠️ **Bloquée par `ANTHROPIC_API_KEY`**, qui
+contient encore un texte d'exemple.
 
 ⚠️ **Trois choses à ne pas redécouvrir en phase 2 :**
-1. **Le salaire compte 9 familles de forme, pas 6** (remesuré le 26 août) — dont `Annuel de
-   N Euros` (montant unique, pas une fourchette) et `Horaire …` (conversion par le temps de
-   travail). Trois sont apparues en cinq jours : **ne pas coder une liste fermée.**
+
+1. **Le salaire compte 9 familles de forme, pas 6** (remesuré le 26 août sur 373 offres) —
+   dont `Annuel de N Euros` (montant unique, pas une fourchette) et `Horaire …` (conversion
+   par le temps de travail). Trois sont apparues en cinq jours : **ne pas coder une liste
+   fermée.** Détail dans `docs/PLAN.md` § Contenu de test.
 2. **Les libellés de notes s'écrivent en toutes lettres** — « Intérêt », « Accessibilité ».
    C'est ce choix qui fonde `--largeur-page: 1000px` ; coder `INT`/`ACC` démentirait la mesure.
 3. **Le rythme vertical de la ligne vit dans `_composants/rythme.ts`**, partagé avec le
    squelette de chargement. Le modifier ailleurs fait sauter la page sans aucune erreur.
 
-⚠️ **Le contenu de test a doublé le 26 août : 373 offres, plus 189.** Les mesures de mise en
-page du 21 août portaient sur la moitié du volume actuel — les refaire, pas les reprendre.
+### Ce qui reste ouvert
 
-⚠️ **Le bouton de déconnexion est un composant client** (`_coquille/formulaire-deconnexion.tsx`),
-et ce n'est pas un choix de confort : quand la session est tombée, le proxy répond **401** au
-`POST` de l'action, et **un `error.tsx` ne rattrape pas cet échec** — mesuré le 21 août, le
-routeur le traite au-dessus des frontières d'erreur, qui ne sont jamais consultées. Sans ce
-composant, l'utilisateur tombait sur l'écran de secours de Next, en anglais et sans issue.
+| | |
+|---|---|
+| `ANTHROPIC_API_KEY` | Texte d'exemple — **bloquant pour la phase 2**, et empêche de compter les tokens exactement |
+| Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver (`docs/HEBERGEMENT.md`) |
+| `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme : « base injoignable » alors que la base va bien |
+| Largeur contre barre latérale | Les 1000 px figés ne laissent pas la place aux 208 px de filtres prévus en phase 4 — à trancher là-bas (`docs/DESIGN.md`) |
+| En-tête de `/offres` | Ne plaît pas à Maxime. Reporté **après la phase 4**, quand les filtres y auront pris place |
 
-**On travaille directement sur `main` par défaut.** Le geste complet (brancher, développer,
-demander la fusion) a été fait une fois le 17 août 2026 ; seul sur le dépôt, le répéter
-n'apporte aucune relecture. Ne pas reproposer de brancher par principe.
+⚠️ **Quatre règles opposables, qui ne se déduisent d'aucun fichier :**
 
-⚠️ **Deux exceptions, où je propose de brancher sans qu'on me le demande** : une
-**migration de schéma** ou tout changement touchant des données déjà en base · un
-**chantier qu'on peut vouloir jeter en entier**. La branche y sert de filet, pas de rituel.
+1. **La page d'accueil `/` est une page de contrôle temporaire** posée par `/installe` — pas un
+   écran du produit. Ne pas construire dessus. ⚠️ Elle vit dans `app/(site)/page.tsx`, un
+   composant serveur qui appelle `exigerSession()` puis rend `_controle/page-de-controle.tsx`.
+   En la remplaçant, **garder la première ligne** : c'est elle qui referme la porte.
+   ⚠️ **Le groupe `(site)` n'est pas de l'organisation, c'est une serrure.** `/connexion` est
+   délibérément *hors* du groupe — voir § Sécurité. Ne jamais l'y déplacer.
+2. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le code, jamais
+   les données : une branche qui migre ou supprime touche les vraies données.
+3. **Chez Vercel, exactement 4 variables** : `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
+   `MOT_DE_PASSE_SITE`, `SECRET_SESSION`. Ni la clé Anthropic ni les identifiants France
+   Travail — le pipeline tourne chez GitHub Actions, et les garder offrirait une clé facturée
+   à qui entrerait dans le compte. Détail : `docs/HEBERGEMENT.md`.
+4. **`interface/.env.local` détient l'unique copie des deux secrets du site.** Non versionné,
+   nulle part ailleurs. ⚠️ **Un agent de revue qui lance l'app écrit dans ce fichier** — c'est
+   arrivé le 21 août, les secrets ont dû être régénérés.
+
+⚠️ **Un défaut connu, laissé ouvert faute de correctif propre** : l'écriture des offres se fait
+par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de transaction. Si un lot
+échoue, les précédents sont écrits et rattachés à une exécution marquée `echec`. Le recollage
+(`recoller_offres_orphelines`) les récupère la nuit suivante. À rouvrir si le cas se produit.
+
+**Les décisions de cadrage, de design et de plan sont acquises — ne pas les rouvrir.** Elles
+sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoire est dans
+**`docs/JOURNAL.md`**.
 
 ## Collecte — trois faits mesurés, opposables
 
@@ -360,34 +289,14 @@ mesurer d'abord ce que le nouveau terme ramène** (voir § Collecte).
 
 ### Migrations Supabase
 
-**Le CLI passe par `npx`, pas par Homebrew** — les Command Line Tools de la machine
-datent de 2023 et Homebrew refuse de compiler. `npx` évite la mise à jour et épingle la
-version dans le dépôt.
+⚠️ **Procédure complète dans `docs/HEBERGEMENT.md` § Migrations Supabase** — commandes
+`npx supabase`, validation par l'analyseur de PostgreSQL, et les deux pièges qui bloquent
+ou exposent le mot de passe. **Deux règles restent ici parce qu'elles se perdraient :**
 
-```bash
-set -a; source .env; set +a          # charge SUPABASE_DB_PASSWORD et le reste
-npx supabase@2.115.0 migration new <nom_en_francais>
-npx supabase@2.115.0 db push --yes   # applique ce qui n'est pas encore appliqué
-npx supabase@2.115.0 migration list  # ce qui est local vs ce qui est en base
-```
-
-⚠️ **Ne jamais passer le mot de passe en argument** (`--password …`) : il devient visible
-dans la liste des processus de la machine. Le CLI lit `SUPABASE_DB_PASSWORD` depuis
-l'environnement.
-
-⚠️ **Sans `set -a; source .env`, la commande attend une saisie qui n'arrivera jamais** et
-reste bloquée jusqu'au délai d'expiration.
-
-**Valider une migration avant de la pousser**, avec le vrai analyseur de PostgreSQL :
-
-```bash
-.venv/bin/python -c "from pglast import parse_sql; import pathlib; \
-  print(len(parse_sql(pathlib.Path('supabase/migrations/<fichier>.sql').read_text())), 'instructions')"
-```
-
-⚠️ **Syntaxe valide ne veut pas dire « ça marche ».** Le 20 août, une migration
-syntaxiquement irréprochable a créé deux tables que le serveur ne pouvait pas lire.
-**Après chaque migration : tenter de lire, d'écrire, et de violer chaque contrainte.**
+- **Une migration déjà appliquée ne se modifie jamais.** On corrige par une suivante.
+- ⚠️ **Syntaxe valide ne veut pas dire « ça marche ».** Le 20 août, une migration
+  irréprochable a créé deux tables que le serveur ne pouvait pas lire. **Après chaque
+  migration : tenter de lire, d'écrire, et de violer chaque contrainte.**
 
 ## API France Travail
 
@@ -456,17 +365,12 @@ Les clés de ce projet donnent accès à un compte facturé et à une base de do
    de clés commitées et les exploitent en minutes, aux frais du propriétaire. Une
    clé poussée par erreur reste dans l'historique Git même après suppression du
    fichier : la **révoquer**, pas seulement la supprimer.
-4. **Supabase : deux clés, deux rôles opposés.** La clé **publiable**
-   (`sb_publishable_…`) est publique par conception — **inutilisée ici**, puisque le
-   navigateur ne parle jamais à la base. La clé **secrète** (`sb_secret_…`, variable
-   `SUPABASE_SECRET_KEY`) contourne *toutes* les règles de sécurité — jamais dans une
-   variable `NEXT_PUBLIC_*`, jamais dans un composant client, jamais commitée. RLS
-   activé sur toutes les tables, et **le navigateur ne parle jamais directement à
-   Supabase** : tout passe par le serveur.
-   ⚠️ Les anciennes clés `anon` / `service_role` sont l'ancienne génération, **dépréciée
-   fin 2026**. Elles restent actives en parallèle tant qu'on ne les désactive pas
-   explicitement : quatre accès valides pour deux utilisés. À désactiver dans
-   `Settings > API Keys` une fois le pipeline en service.
+4. **Supabase : la clé secrète (`sb_secret_…`, `SUPABASE_SECRET_KEY`) contourne *toutes*
+   les règles de sécurité** — jamais dans une variable `NEXT_PUBLIC_*`, jamais dans un
+   composant client, jamais commitée. RLS activé sur toutes les tables, et **le navigateur
+   ne parle jamais directement à Supabase** : tout passe par le serveur.
+   ⚠️ Les deux générations de clés et celles restées actives à tort :
+   `docs/HEBERGEMENT.md` § Les clés Supabase.
 5. **Aucun déclenchement d'agent accessible publiquement sans garde-fou.** Un
    bouton en ligne qui lance un agent Claude sans protection est une facture
    ouverte : un robot qui scanne les URL peut l'actionner en boucle. Tranché au
@@ -618,31 +522,25 @@ lettres — « Intérêt » et « Accessibilité »**, décidé le 26 août 2026
 abréviations `INT` / `ACC` sont abandonnées. ⚠️ **« intérêt », jamais « intéressement »** :
 à côté d'un salaire, le second se lit comme une prime de participation aux bénéfices.
 
-⚠️ **Contenu de test réel disponible en base (remesuré le 26 août 2026 sur 373 offres)** — à
-utiliser plutôt qu'à réinventer : **36 % sans nom d'entreprise, 65 % sans salaire, 0 % sans
-lieu** — le vide est le cas normal, pas le cas limite · 3 types de contrat seulement (CDI 301,
-MIS 39, CDD 33) · **76 formes de salaire distinctes** en texte libre, non normalisé (phase 2) ·
-descriptions : médiane 2 313 caractères, 17 au plafond de 5 000 imposé par l'API.
+⚠️ **Le contenu de test est du contenu RÉEL, en base — à utiliser plutôt qu'à réinventer.**
+Chiffres, formes de salaire et cas limites : `docs/PLAN.md` § Contenu de test, remesuré le
+26 août 2026 sur 373 offres. **Deux faits à ne pas redécouvrir** : le vide est le cas normal
+(36 % sans entreprise, 65 % sans salaire, mais le lieu toujours renseigné), et **l'intitulé
+très long n'existe pas** — 94 caractères au maximum, médiane 40. Ne pas fabriquer un cas que
+France Travail ne produira jamais, mais vérifier la mise en page à 375 px contre le plus long
+*réellement observé*.
 
-⚠️ **Le cas « intitulé très long » a été retiré du contenu de test le 21 août : il
-n'existe pas.** Maximum observé **99 caractères** sur 235 offres, **94** sur les 373 en base au
-26 août (médiane : 40). Ne pas fabriquer un cas que France Travail ne produira jamais — mais
-vérifier quand même la mise en page à 375 px contre l'intitulé le plus long *réellement
-observé* : « Ingénieur intégration & validation système (h/f)  aéronautique / spatial /
-défense (H/F) », qui porte deux fois la mention (h/f) et une double espace.
+**Mise en page mesurée et figée le 26 août 2026** : `--largeur-page: 1000px`, ligne d'offre
+de **91 px en bureau et 146 px sous 640 px** — ne jamais reprendre les 91 px pour dimensionner
+un repli. Le seuil de 1000 px n'est pas un arrondi : en dessous, les offres **qui affichent un
+salaire** cassent sur deux lignes.
 
-**Mesuré et figé le 26 août 2026** contre les 373 offres réelles : **largeur de page
-1000 px** (jeton `--largeur-page`) et **ligne d'offre de 91 px**. Le seuil de 1000 px
-n'est pas un arrondi — en dessous, les offres **qui affichent un salaire** cassent sur
-deux lignes (34 sur 200 à 820 px). ⚠️ Il vaut pour le salaire **non normalisé** : la
-phase 2 rendra de la marge.
+⚠️ **Le vide à droite de la ligne est une réserve, pas un défaut** — il accueille les notes en
+phase 2 puis le statut en phase 4. Ne pas le combler.
 
-⚠️ **Le vide à droite de la ligne est une réserve, pas un défaut** — il accueille les
-notes en phase 2 puis le statut en phase 4. Ne pas le combler.
-
-**Restent des hypothèses, avec échéance** : barre latérale de filtres (phase 4),
-panneau d'enrichissement (phase 6), colonne d'enrichissement de la fiche (phase 3).
-Détail et méthode dans `docs/DESIGN.md` § Mise en page.
+**Cinq valeurs restent des hypothèses**, chacune avec son échéance (phases 3, 4 et 6), dont
+une **arithmétiquement incompatible** avec les 1000 px : `docs/DESIGN.md` § Mise en page, qui
+porte aussi la méthode de mesure.
 
 **Interdits sur ce projet** : Inter, Roboto, Poppins, Montserrat, Space Grotesk et
 les autres polices sur-utilisées · Instrument Serif (un seul poids, le gras y est

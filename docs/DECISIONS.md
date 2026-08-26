@@ -306,7 +306,9 @@ mission, alimente le prompt de notation.
 
 Ils sont consignés à leur place, dans `docs/API_FRANCE_TRAVAIL.md` : le plafond
 de ~1150 offres par recherche n'est pas un problème en régime quotidien, et
-l'expérience exigée serait disponible dans un champ structuré — à confirmer.
+l'expérience exigée est disponible dans un champ structuré — **confirmé le 20 août 2026** :
+`experienceExige` porte un code d'une lettre, `D` (débutant accepté) et `E` (exigée)
+observés, `S` (souhaitée) attendu mais jamais vu. Le code doit tolérer une valeur inconnue.
 
 ---
 
