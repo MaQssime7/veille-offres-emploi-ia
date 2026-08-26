@@ -203,6 +203,32 @@ Calculés dans le navigateur, sur les couleurs résolues, dans les deux modes.
 | Jauge de budget — bientôt épuisé | 3:1 | 3,24:1 | 5,40:1 |
 | Jauge de budget — épuisé | 3:1 | 3,28:1 | 3,30:1 |
 
+**Ajoutées le 26 août 2026 avec le composant réel des deux notes.** Recalculées dans le
+navigateur sur les couleurs résolues — ⚠️ **en passant par un canvas 1 × 1**, parce que
+`getComputedStyle` rend désormais de l'OKLCH : un calcul qui lit `oklch(0.988 0.007 84)`
+comme un triplet RVB sort des ratios proches de 1:1 sans lever la moindre erreur. Première
+tentative faite exactement comme ça, et tous les résultats étaient faux.
+
+| Paire | Exigé | Clair | Sombre |
+|---|---|---|---|
+| Remplissage d'intérêt sur la piste | 3:1 | 9,52:1 | 9,88:1 |
+| Remplissage d'accessibilité sur la piste | 3:1 | 5,05:1 | 5,65:1 |
+| Remplissage d'intérêt sur le filet de piste | 3:1 | 6,15:1 | 7,98:1 |
+| Remplissage d'accessibilité sur le filet de piste | 3:1 | 3,26:1 | 4,56:1 |
+| Remplissage d'intérêt sur la carte | 3:1 | 11,52:1 | 11,71:1 |
+| Remplissage d'accessibilité sur la carte | 3:1 | 6,11:1 | 6,70:1 |
+| Libellé « Intérêt » / « Accessibilité » | 4,5:1 | 6,67:1 | 7,40:1 |
+| Chiffre de la note | 4,5:1 | 15,76:1 | 14,13:1 |
+| Phrase de justification | 4,5:1 | 6,67:1 | 7,40:1 |
+| Message « Notation impossible » | 4,5:1 | 6,15:1 | 4,85:1 |
+| Cartouche « Pas encore notée » | 4,5:1 | 6,67:1 | 7,40:1 |
+
+**Hors exigence, noté pour éviter un faux débat.** Le filet de la piste ne contraste qu'à
+**1,87:1** (clair) et **1,47:1** (sombre) avec la carte. C'est la valeur de `--border`, que
+ce document classe explicitement comme **filet décoratif sans exigence WCAG** — la même que
+les séparateurs entre les lignes d'offres. Il ne porte aucune information : il rend visible
+la longueur de l'échelle, que le chiffre énonce déjà.
+
 **Mesure hors exigence, notée pour éviter un faux débat.** L'écart de luminance entre les
 deux barres de notes est de **1,89:1** en clair et 1,75:1 en sombre. Ce n'est **pas** un
 défaut : aucun critère WCAG n'impose un contraste entre deux indicateurs distincts et non
@@ -337,12 +363,67 @@ Largeur fixe de barre en liste (88 px) : c'est l'alignement d'une offre à l'aut
 de comparer d'un coup d'œil. En fiche, barres larges ; sous 560 px elles deviennent fluides,
 sinon le chiffre sort du cadre et disparaît.
 
-⏳ **Ce qui suit est mesuré sur des barres SIMULÉES, le composant n'existe pas encore** (phase 2). À traiter comme une hypothèse chiffrée, pas comme un acquis — la règle du § Mise en page vaut ici aussi. **Relevé le 26 août :** libellé sur 104 px, **aligné à droite en bureau** (les
-barres s'alignent alors d'une ligne à l'autre) et **à gauche en mobile** (sinon le bloc
-décroche du reste de la ligne, qui part de la marge gauche). En bureau les notes tiennent
-dans la réserve de droite ; sous 640 px elles passent **sous les cartouches**, et la ligne
-monte de 146 à 191 px — de 6,2 à 4,7 offres par écran. C'est le prix de l'information,
-accepté en séance.
+✅ **Mesuré sur le composant réel le 26 août 2026, et l'hypothèse précédente était fausse.**
+
+Elle disait : libellé sur 104 px aligné à droite, barres logées **dans la réserve de droite**
+de la ligne, hauteur inchangée en bureau. Elle avait été relevée sur des **barres simulées,
+sans les justifications** — et c'est ce qui l'a rendue fausse. Une justification fait
+**145 caractères en médiane** (169 pour l'accessibilité, mesuré sur 97 offres notées) : dans
+les ~192 px de la réserve de droite, cela ferait **dix lignes de texte**. La réserve ne peut
+pas porter les notes dès lors que les justifications se lisent à plat, ce que le produit
+exige.
+
+**Ce qui est en place, mesuré au DOM :**
+
+| | |
+|---|---|
+| Position | Bloc pleine largeur **sous les cartouches**, séparé par un filet |
+| Disposition | **Deux colonnes** en bureau, empilées sous 640 px |
+| Libellé | **108 px**, aligné à gauche, `whitespace-nowrap` |
+| Barre | 88 px × 8 px, piste bordée d'un filet |
+| Alignement | **Une seule position gauche sur 200 lignes**, dans les deux colonnes — vérifié |
+
+⚠️ **108 px et non 104.** « ACCESSIBILITÉ » rendu en Geist Mono mesure **exactement
+100,1 px**. À 104 px de boîte il restait 4 px ; le temps que la police web charge — ou si
+elle ne charge pas — le repli système est plus large et pousse la barre. L'alignement d'une
+ligne à l'autre, qui est **toute la raison d'être** de cette largeur fixe, tombait alors sans
+que rien ne le signale.
+
+⚠️ **Deux colonnes et non deux blocs empilés.** Empilés sur toute la largeur, la ligne notée
+atteignait ~210 px ; en deux colonnes elle en fait 195. Sur une liste de 200 offres, la
+différence est un tiers d'écran par ligne.
+
+⚠️ **La piste de la jauge porte un filet.** Sans lui elle ne contraste qu'à **1,21:1** avec la
+carte : aucune exigence WCAG ne s'y applique (l'information est portée par le chiffre), mais
+une piste invisible fait disparaître la **longueur commune** aux deux barres — et c'est elle
+qui permet de comparer deux offres d'un coup d'œil. À 0, sans filet, il ne restait rien à
+l'écran.
+
+✅ **QUESTION CLOSE — l'échelle des barres reste LINÉAIRE.** Tranchée par Maxime le
+26 août 2026. Le `PLAN.md` l'avait signalée comme « une vraie question de conception, pas un
+détail » : la distribution réelle est **écrasée en bas** (médiane d'intérêt 5, la plupart des
+notes entre 0 et 10), donc sur une barre linéaire une offre à 3 et une offre à 8 sont
+visuellement indistinguables.
+
+**Décision : on ne corrige pas, et le motif est le bon.** Le chiffre exact est écrit à côté de
+la barre, donc l'information n'est jamais perdue — la barre n'est qu'un renfort visuel.
+Étaler le bas de l'échelle ferait paraître prometteuses des offres qui ne le sont pas :
+**un instrument de décision doit dire la vérité, et si presque tout est mauvais, la barre doit
+le montrer.** Ne pas rouvrir pour « améliorer la lisibilité ».
+
+**Le prix de l'information, mesuré et accepté :**
+
+| | Avant (phase 1) | Après (phase 2) |
+|---|---|---|
+| Ligne notée, bureau | 91 px | **174 à 218 px, médiane 195** |
+| Ligne notée, 375 px | 146 px | **289 à 472 px, médiane 361** |
+| Ligne **en attente de note** | 91 px | **91 px — inchangée** |
+
+⚠️ **L'offre en attente de note ne prend PAS le bloc.** Son cas est porté par un cartouche
+creux dans la rangée des métadonnées, exactement comme « Salaire non précisé ». En bloc
+séparé avec son filet, « pas encore notée » coûtait **42 px pour une phrase d'excuse**, sur
+103 des 200 lignes affichées. **Un état vide ne doit jamais être plus encombrant que l'état
+plein.**
 
 ### Cartouches de métadonnées
 
@@ -414,7 +495,8 @@ coût se calcule à l'affichage.
 | Valeur | Statut |
 |---|---|
 | Largeur maximale de contenu · **1000 px** | ✅ **mesurée et figée** — voir ci-dessous |
-| Densité de la ligne d'offre · **91 px en bureau**, **146 px sous 640 px** | ✅ **mesurées et figées** — ⚠️ ne jamais reprendre les 91 px pour dimensionner un repli, une pagination ou une hauteur virtuelle : sur mobile la ligne fait 60 % de plus |
+| Densité de la ligne **en attente de note** · **91 px en bureau**, **146 px sous 640 px** | ✅ **mesurées et figées** — ⚠️ ne jamais reprendre les 91 px pour dimensionner un repli, une pagination ou une hauteur virtuelle : sur mobile la ligne fait 60 % de plus |
+| Densité de la ligne **notée** · **195 px en bureau**, **361 px sous 640 px** (médianes) | ✅ **mesurée le 26 août 2026** sur les 97 offres notées — ⚠️ **c'est une médiane, pas une constante** : la hauteur dépend de la longueur des deux justifications et va de 174 à 218 px en bureau, de 289 à 472 px en mobile. Aucun calcul ne doit supposer une ligne de hauteur fixe |
 | Barre latérale de filtres · 208 px | ⏳ hypothèse — **à mesurer en phase 4**. ⚠️ **Arithmétiquement incompatible avec les 1000 px figés** : 1000 − 48 de gouttières − 208 laisse 744 px de liste, sous les 820 px où 34 lignes sur 200 cassent déjà. La mesure des 1000 px a été faite **en colonne unique**. La phase 4 devra soit élargir la page, soit poser les filtres autrement qu'en colonne — pas reconduire ce chiffre |
 | Panneau d'enrichissement · 316 px | ⏳ hypothèse — **à mesurer en phase 6** |
 | Fiche d'offre, colonne d'enrichissement · 404 px | ⏳ hypothèse — **à mesurer en phase 3** |
@@ -450,9 +532,26 @@ C'est pourquoi le libellé devait être tranché *avant* la largeur : figer 960 
 allonger les libellés en phase 2 aurait cassé neuf lignes sans que rien ne le signale.
 **Quand deux valeurs sont couplées, l'ordre dans lequel on les fige n'est pas neutre.**
 
-⚠️ **Ce seuil vaut pour le salaire non normalisé.** La phase 2 ramènera le libellé à
-« 50–60 k€ » : la contrainte tombera et la largeur pourra être rouverte à la baisse.
-**Échéance : phase 2.**
+⚠️ **ÉCHÉANCE ARRIVÉE, ET LE PARI EST FAUX — 26 août 2026.** Ce paragraphe disait : « la
+phase 2 ramènera le libellé à 50–60 k€, la contrainte tombera et la largeur pourra être
+rouverte à la baisse ». La normalisation est livrée et **la largeur ne peut pas baisser**.
+
+La raison n'a rien à voir avec la mise en page : **l'annualisation est calculée pendant la
+notation** (`pipeline/salaire.py` tourne dans `notation.py`). Une offre pas encore notée n'a
+donc aucune valeur annuelle, quelle que soit la qualité de son libellé — et la notation est
+incrémentale. Mesuré ce jour : **31 offres sur 535 affichent « 45–60 k€ », les 504 autres
+affichent la phrase de France Travail**. Le libellé long reste donc le cas majoritaire, et
+c'est lui qui dimensionne la page.
+
+Vérifié après livraison, à 1000 px, sur les 200 lignes affichées — **cartouche « Pas encore
+notée » compris, qui en ajoute un cinquième sur la moitié des lignes** : **0 ligne cassée**.
+
+⚠️ **La leçon dépasse ce chiffre.** Le pari couplait deux choses qui ne le sont pas : la
+mise en forme (immédiate, pour toutes les offres) et le calcul qui l'alimente (payant, offre
+par offre, étalé sur des semaines). **Une échéance posée sur « la phase N fera X » doit
+nommer ce qui, dans X, arrive d'un coup et ce qui arrive au goutte-à-goutte.** La largeur
+pourra être rouverte le jour où *toute la base* sera notée — pas le jour où le code de
+normalisation existera.
 
 ⚠️ **Le vide à droite de la ligne n'est pas un défaut, c'est une réserve.** Il accueille les
 deux barres de notes en phase 2, puis le statut en phase 4. Le combler serait à refaire.
@@ -527,5 +626,9 @@ reproduit ni l'écran haute densité, ni la barre du navigateur mobile.
 | 16 août 2026 | « Écarter » en brique et non en orange | L'orange franc se confondrait avec l'ocre du marqueur « nouveau » |
 | 16 août 2026 | Fraunces 700 en titrage | Instrument Serif n'a qu'un poids : le gras aurait été synthétique. Choix confirmé par Maxime contre Clash Grotesk |
 | 16 août 2026 | `--signal-fort` ajouté | L'ocre a deux contraintes opposées ; avec une seule valeur la jauge tombait à 1,94:1 |
+| 26 août 2026 | Les notes quittent la réserve de droite pour un bloc pleine largeur en deux colonnes | La mesure qui les y logeait portait sur des barres **sans justification** ; 145 caractères n'entrent pas dans 192 px |
+| 26 août 2026 | Libellé de note porté de 104 à 108 px | « ACCESSIBILITÉ » mesure 100,1 px : 4 px de marge tombaient dès que la police web n'était pas encore chargée |
+| 26 août 2026 | Filet autour de la piste de jauge | Sans lui la piste contraste à 1,21:1 et la longueur commune aux deux barres disparaît — à 0, il ne restait rien à l'écran |
+| 26 août 2026 | L'offre en attente de note reste à 91 px, en cartouche | En bloc séparé, l'état vide coûtait 42 px sur la moitié des lignes affichées |
 | 16 août 2026 | Borne de conversation en tokens, pas en messages | Le contexte est renvoyé à chaque tour : la consommation croît quadratiquement. Décidé par Maxime |
 | 16 août 2026 | Blocage définitif à 100 % du budget | Une borne réinitialisable d'un clic n'est plus une borne. Décidé par Maxime |

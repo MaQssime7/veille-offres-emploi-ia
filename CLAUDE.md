@@ -109,14 +109,15 @@ la même chose finissent en deux tables et deux fonctions.
 
 ## État actuel — 26 août 2026
 
-**Phase 1 close. Phase 2 en cours — la notation tourne, l'écran reste à faire.**
-Le site est en ligne derrière son mot de passe, la collecte tourne chaque nuit, l'écran
-`/offres` lit la base. **535 offres réelles, 97 notées**, 0 échec sur 97 appels au modèle.
+**Phase 1 close. Phase 2 en cours — la notation tourne, l'écran est livré, trois critères
+restent ouverts.** Le site est en ligne derrière son mot de passe, la collecte tourne chaque
+nuit, et `/offres` affiche désormais **les deux notes avec leurs justifications à plat, classées
+par intérêt décroissant**. **535 offres réelles, 97 notées**, 0 échec sur 97 appels au modèle.
 Les critères de collecte ont été entièrement refondus sur mesure le 26 août au soir.
 
 | Brique | État |
 |---|---|
-| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte (`/connexion`, `proxy.ts`, session signée), l'écran `/offres`, mode sombre sur la préférence système |
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte (`/connexion`, `proxy.ts`, session signée), l'écran `/offres` **avec les deux notes**, mode sombre sur la préférence système |
 | Supabase | Région Paris. `executions_veille` et `offres` créées et alimentées. RLS activé, droits vérifiés |
 | Migrations | **5**, toutes appliquées — `supabase/migrations/`. La 5ᵉ ajoute la notation (deux notes, justifications, salaire annualisé, compteurs de tokens, colonne `etape`) |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
@@ -124,8 +125,26 @@ Les critères de collecte ont été entièrement refondus sur mesure le 26 août
 | Modules | `collecte.py` · `notation.py` (`--limite`, `--modele`, `--effort`, `--lot`, `--rome`, `--collecte`, `--au-hasard`, `--renoter`, `--sans-ecrire`, `--sans-appeler`) · `salaire.py` · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
 
-**Reste à faire en phase 2 : l'écran.** Les deux barres de note et les justifications à plat
-dans `/offres`, tri par intérêt décroissant. Rien d'autre.
+**Reste à faire en phase 2 — trois critères, aucun visuel :**
+
+1. **Faire tourner l'API Batches une fois.** `notation.py --lot` est écrit et n'a jamais tourné.
+2. **Provoquer volontairement un échec de notation** pour exercer `enregistrer_echec_notation()`
+   en conditions réelles. Le chemin est en place, l'écran sait l'afficher, mais 0 échec sur
+   97 appels : il n'a jamais été déclenché.
+3. **Brancher la notation sur le cron** GitHub Actions, avec `ANTHROPIC_API_KEY` dans les secrets.
+
+⚠️ **Un critère restera non vérifié sur données réelles : « 200 offres notées ».** Il n'y en a
+que 97. Vérifié **en simulation** le 26 août (les 97 dupliquées jusqu'à 200) : 39 567 px de haut,
+5 699 nœuds, **153 Ko transférés**, 70 ms de recalcul complet de la mise en page, aucun
+débordement horizontal. Le fermer pour de vrai demande ~100 offres de plus, soit ~60 centimes en
+appels directs — décision de Maxime, pas prise au 26 août.
+
+⚠️ **L'écran est l'instrument de mesure des critères de collecte, et c'est pour ça qu'il passait
+en premier.** Les justifications à plat rendent lisible d'un coup d'œil ce qu'un mot-clé ramène :
+« Conducteur d'engins Polyvalent » noté **0/100** avec sa justification est visible en deux
+secondes dans la liste, là où il fallait lire le terminal ligne à ligne. Le chantier ouvert sur
+`deploiement`, `automatisation`, `RPA` et le faux positif `IA`/`IPR-IA` se mène désormais depuis
+cette page.
 
 ⚠️ **La clé `ANTHROPIC_API_KEY` est posée et active** (`.env` racine, 5 $ de crédit, ~60
 centimes consommés au 26 août). Elle n'est **pas** dans les secrets GitHub Actions : à y
@@ -235,15 +254,17 @@ bonnes offres ratées.
 |---|---|
 | `ANTHROPIC_API_KEY` dans GitHub Actions | Posée en local (`.env`), **absente des secrets GitHub** — à ajouter le jour où la notation sera branchée sur le cron. Jamais chez Vercel |
 | Notation non branchée sur le cron | `.github/workflows/` ne lance que la collecte. La notation se lance à la main. À brancher avant de considérer la phase 2 close |
-| Tri par note : piège `NULLS FIRST` | En PostgreSQL, `ORDER BY note_interet DESC` place les **NULL en PREMIER**. Sans `NULLS LAST` ou filtre explicite, les 438 offres non notées s'afficheraient **en haut** de la liste triée par intérêt. À traiter en construisant l'écran |
+| ~~Tri par note : piège `NULLS FIRST`~~ | ✅ **Traité le 26 août** — `note_interet.desc.nullslast` dans `interface/lib/offres.ts`, avec départage complet jusqu'à `identifiant` pour que deux chargements classent les ex æquo pareil |
 | API Batches jamais exécutée | `notation.py --lot` est écrit et **n'a jamais tourné**. Le rattachement par `custom_id` est en place mais non vérifié en conditions réelles |
 | Critères de collecte non finis | `deploiement`, `automatisation`, `RPA` et le faux positif `IA`/`IPR-IA` restent à mesurer — voir § État actuel |
+| ⚠️ **Le plafond de 200 tuera l'affichage des offres du jour** | Relevé en revue le 26 août. Depuis le tri par intérêt, les 200 lignes affichées sont **les 200 meilleures de tous les temps**. Aujourd'hui 97 offres sont notées, donc 103 places reviennent aux plus récentes et les offres de la nuit s'affichent. **Le jour où plus de 200 offres portent une note, elles disparaissent** — d'intérêt médian 10, elles ne rentrent plus — et le marqueur « Nouveau » devient du code que rien n'atteint. Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut sans jamais céder leur place. ⚠️ **L'échéance est un compte, pas une date : elle tombe quand `notees` dépasse 200.** À trancher en phase 4 avec les filtres — le remède change ce que cet écran *est*, et le PRD confie déjà le compte rendu de la nuit à `/` |
+| Bug pipeline : `--renoter` perd la trace d'un échec | `enregistrer_echec_notation()` (`pipeline/stockage.py`) écrit `notation_motif_echec` **sans effacer les notes existantes**. Sur une offre déjà notée — donc en `--renoter` — le `PATCH` viole la contrainte `echec_sans_note` et Postgres renvoie 400 : **la trace de l'échec est perdue pendant une campagne d'étalonnage**, exactement quand on en a besoin. Relevé en revue le 26 août, jamais déclenché (0 échec sur 97 appels). À corriger avant de comparer Sonnet et Opus |
 | Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver (`docs/HEBERGEMENT.md`) |
 | `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme : « base injoignable » alors que la base va bien |
 | Largeur contre barre latérale | Les 1000 px figés ne laissent pas la place aux 208 px de filtres prévus en phase 4 — à trancher là-bas (`docs/DESIGN.md`) |
 | En-tête de `/offres` | Ne plaît pas à Maxime. Reporté **après la phase 4**, quand les filtres y auront pris place |
 
-⚠️ **Quatre règles opposables, qui ne se déduisent d'aucun fichier :**
+⚠️ **Six règles opposables, qui ne se déduisent d'aucun fichier :**
 
 1. **La page d'accueil `/` est une page de contrôle temporaire** posée par `/installe` — pas un
    écran du produit. Ne pas construire dessus. ⚠️ Elle vit dans `app/(site)/page.tsx`, un
@@ -260,6 +281,20 @@ bonnes offres ratées.
 4. **`interface/.env.local` détient l'unique copie des deux secrets du site.** Non versionné,
    nulle part ailleurs. ⚠️ **Un agent de revue qui lance l'app écrit dans ce fichier** — c'est
    arrivé le 21 août, les secrets ont dû être régénérés.
+5. ⚠️ **Pour regarder l'app sans jamais lire le mot de passe réel** : relancer le serveur avec
+   `MOT_DE_PASSE_SITE='une-valeur-de-test' npm run dev`. Next.js ne remplace **jamais** une
+   variable déjà présente dans l'environnement, donc la valeur de test l'emporte sur
+   `.env.local` **sans y toucher** — vérifié par empreinte MD5 avant et après, le 26 août 2026.
+   C'est la parade concrète à la règle « ne jamais faire entrer un secret dans la
+   conversation » : la passe visuelle n'a plus besoin de connaître le vrai mot de passe.
+6. ⚠️ **Ne jamais passer l'objet `offre` entier à un composant client.** Aujourd'hui toute la
+   chaîne de `/offres` est en composants serveur : leurs props ne traversent pas la frontière,
+   et c'est **mesuré** — `notation_motif_echec`, `execution_id` et `salaire_annuel_min`
+   apparaissent **0 fois** dans le document reçu par le navigateur, contre 194 fois pour un
+   texte réellement affiché. **La phase 4 casse cette propriété** en posant des boutons de
+   statut, donc des composants clients. Leur passer `offre` enverrait **toutes** les colonnes
+   lues dans le navigateur — le message d'erreur technique, et surtout la note personnelle le
+   jour où elle existera. Leur passer les champs dont ils ont besoin, un par un.
 
 ⚠️ **Un défaut connu, laissé ouvert faute de correctif propre** : l'écriture des offres se fait
 par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de transaction. Si un lot
@@ -679,12 +714,20 @@ abréviations `INT` / `ACC` sont abandonnées. ⚠️ **« intérêt », jamais 
 à côté d'un salaire, le second se lit comme une prime de participation aux bénéfices.
 
 ⚠️ **Le contenu de test est du contenu RÉEL, en base — à utiliser plutôt qu'à réinventer.**
-Chiffres, formes de salaire et cas limites : `docs/PLAN.md` § Contenu de test, remesuré le
-26 août 2026 sur 373 offres. **Deux faits à ne pas redécouvrir** : le vide est le cas normal
-(36 % sans entreprise, 65 % sans salaire, mais le lieu toujours renseigné), et **l'intitulé
-très long n'existe pas** — 94 caractères au maximum, médiane 40. Ne pas fabriquer un cas que
-France Travail ne produira jamais, mais vérifier la mise en page à 375 px contre le plus long
-*réellement observé*.
+Chiffres, formes de salaire et cas limites : `docs/PLAN.md` § Contenu de test. **Un fait à ne
+pas redécouvrir** : le vide est le cas normal (36 % sans entreprise, 65 % sans salaire, mais
+le lieu toujours renseigné).
+
+⚠️ **CORRIGÉ LE 26 AOÛT AU SOIR — « l'intitulé très long n'existe pas » était FAUX.** Cette
+ligne affirmait « 94 caractères au maximum, médiane 40 », mesuré sur 373 offres. Remesuré sur
+**535** : **223 caractères au maximum**, médiane 43, et 3 offres au-dessus de 94. Le record est
+un « Stage de fin d'études / Alternance - Sujet de stage : Accompagner les transformations
+majeures… » qui se déroule sur **6 lignes à 375 px** (vérifié, rien ne casse).
+
+**La leçon vaut plus que le chiffre : une mesure de cas limite se périme à chaque recollecte.**
+Un maximum observé n'est pas une borne, c'est un échantillon — et il ne peut que monter. Ne
+jamais écrire qu'un cas « n'existe pas » sur la foi d'un maximum ; écrire ce qu'on a vu, avec
+la taille de l'échantillon et la date.
 
 **Mise en page mesurée et figée le 26 août 2026** : `--largeur-page: 1000px`, ligne d'offre
 de **91 px en bureau et 146 px sous 640 px** — ne jamais reprendre les 91 px pour dimensionner

@@ -1,8 +1,9 @@
 import type { OffreEnListe } from "@/lib/offres";
 
 import { Cartouche, CartoucheAbsent } from "./cartouche";
+import { BlocNotes, CartoucheEnAttente, etatNotation } from "./notes";
 import { RYTHME_LIGNE } from "./rythme";
-import { formaterDate, formaterSalaire } from "./formats";
+import { formaterDate, formaterSalaire, formaterSalaireAnnuel } from "./formats";
 
 /**
  * Une offre en liste.
@@ -10,7 +11,9 @@ import { formaterDate, formaterSalaire } from "./formats";
  * Entre : la ligne lue en base, un drapeau « collectée cette nuit », et l'heure
  * de rendu (passée par la page, pour que toutes les lignes datent du même
  * instant).
- * Sort : un bloc de trois étages — entreprise, intitulé, métadonnées.
+ * Sort : trois étages — entreprise, intitulé, métadonnées — puis, **quand
+ * l'offre a été notée**, le bloc des deux notes séparé par un filet. Une offre
+ * en attente de note reste à trois étages : son cartouche suffit.
  * Casse : aucun champ n'est supposé présent hormis l'intitulé. Sur les données
  * réelles (373 offres, mesuré le 26 août 2026), 36 % des offres ne nomment pas
  * l'entreprise et 65 % n'indiquent aucun salaire : le vide est le cas courant,
@@ -26,6 +29,8 @@ export function LigneOffre({
   maintenant: Date;
 }) {
   const datePubliee = formaterDate(offre.publiee_a, maintenant);
+  const salaire = choisirSalaire(offre);
+  const notation = etatNotation(offre);
 
   return (
     <article
@@ -73,8 +78,8 @@ export function LigneOffre({
         {offre.type_contrat_libelle && (
           <Cartouche>{offre.type_contrat_libelle}</Cartouche>
         )}
-        {offre.salaire_libelle ? (
-          <Cartouche accentue>{formaterSalaire(offre.salaire_libelle)}</Cartouche>
+        {salaire ? (
+          <Cartouche accentue>{salaire}</Cartouche>
         ) : (
           <CartoucheAbsent>Salaire non précisé</CartoucheAbsent>
         )}
@@ -83,7 +88,45 @@ export function LigneOffre({
             <time dateTime={offre.publiee_a}>{datePubliee}</time>
           </Cartouche>
         )}
+        {/* L'attente de note se dit ICI, dans la rangée des métadonnées, et pas
+            en bloc séparé sous un filet : mesuré le 26 août 2026, le bloc
+            coûtait 42 px de hauteur pour une seule phrase, sur la moitié des
+            lignes affichées. */}
+        {notation === "en-attente" && <CartoucheEnAttente />}
       </div>
+
+      {/* L'échec, lui, garde son bloc : il est rare, il doit se voir, et il
+          porte une icône que la rangée de cartouches ne sait pas accueillir. */}
+      {notation !== "en-attente" && <BlocNotes offre={offre} />}
     </article>
   );
+}
+
+/**
+ * Quel salaire afficher : l'annualisé quand il existe, le libellé d'origine
+ * sinon, rien du tout si l'annonce est muette.
+ *
+ * ⚠️ **Le repli sur le libellé brut n'est pas un cas dégradé, c'est le cas
+ * MAJORITAIRE.** L'annualisation est calculée par `pipeline/salaire.py`
+ * pendant la notation : une offre pas encore notée n'a donc aucune valeur
+ * annuelle, quel que soit le sérieux de son libellé. Au 26 août 2026,
+ * 31 offres sur 535 affichent « 45–60 k€ » et toutes les autres affichent la
+ * phrase de France Travail.
+ *
+ * ⚠️ **Deux offres réelles ont un libellé chiffré mais AUCUNE valeur annuelle,
+ * volontairement** — « Mensuel de 45000 Euros sur 12 mois » (× 12 donnerait
+ * 540 000 €/an) et « Annuel de 35.0 Euros ». `salaire.py` a **renoncé plutôt
+ * que deviné**, et ce refus doit rester visible : on réaffiche le libellé
+ * d'origine tel quel plutôt que de le corriger à l'affichage. Requalifier ici
+ * ce que le pipeline a refusé de requalifier, c'est remettre l'invention là où
+ * elle avait été retirée.
+ */
+function choisirSalaire(offre: OffreEnListe): string | null {
+  const annuel = formaterSalaireAnnuel(
+    offre.salaire_annuel_min,
+    offre.salaire_annuel_max,
+  );
+  if (annuel) return annuel;
+
+  return offre.salaire_libelle ? formaterSalaire(offre.salaire_libelle) : null;
 }

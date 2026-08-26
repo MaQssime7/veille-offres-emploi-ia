@@ -36,6 +36,15 @@ export const RYTHME_LIGNE = {
   margeEntreprise: "mb-1",
   /** Sous l'intitulé. */
   margeIntitule: "mb-1.5",
+  /**
+   * Le bloc des deux notes, sous les cartouches.
+   *
+   * ⚠️ **Le filet est le séparateur, pas une ombre ni un fond.** Le produit
+   * n'a aucune ombre — la hiérarchie repose entièrement sur la typographie et
+   * les filets (`docs/DESIGN.md`). Poser un fond gris pour isoler les notes
+   * introduirait une troisième surface dans une ligne qui n'en a que deux.
+   */
+  blocNotes: "mt-2.5 border-t border-border pt-2.5",
 } as const;
 
 /**
@@ -47,4 +56,12 @@ export const HAUTEURS_SQUELETTE = {
   entreprise: "h-[0.9375rem]",
   intitule: "h-[1.3125rem]",
   cartouche: "h-6",
+  /**
+   * La rangée libellé + barre + chiffre. Sa hauteur est celle du chiffre
+   * (`text-xs`, interligne 1rem), qui est l'élément le plus haut de la
+   * rangée — pas celle de la barre, qui ne fait que 8 px.
+   */
+  rangeeNote: "h-4",
+  /** Une ligne de justification : 13 px × interligne 1,625. */
+  justification: "h-[1.3125rem]",
 } as const;

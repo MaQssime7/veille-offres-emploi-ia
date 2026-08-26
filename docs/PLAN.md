@@ -330,14 +330,16 @@ annuel quand c'est possible.
       ~~, même si l'annonce a changé à la source
 - [x] ✅ `executions_veille` enregistre le **modèle utilisé** et les compteurs de tokens bruts
 - [x] ✅ Le compteur `tokens_cumules` de chaque offre est incrémenté
-- [ ] Les deux barres portent leur libellé **en toutes lettres — « Intérêt » et « Accessibilité »** — jamais retirés, même à 375 px : sans eux l'information tient sur la seule couleur. ⚠️ **Les abréviations `INT` / `ACC` sont abandonnées depuis le 26 août 2026** : elles demandaient un décodage au premier regard. Les écrire en entier **déplace le seuil de `--largeur-page` de 960 à 1000 px** — coder les abréviations ferait passer ce critère tout en démentant la mesure qui fonde la largeur
-- [ ] Les justifications se lisent **à plat dans la liste**, ni derrière une infobulle, ni derrière un dépliage — c'est le seul mécanisme qui révèle une notation mal étalonnée
-- [ ] Notes à 0 et à 100 sur les deux axes : les barres restent lisibles, le chiffre reste dans le cadre
-- [x] ✅ *(côté données ; reste à vérifier à l'écran)* Salaire absent, « Selon profil », « Mensuel de 3500 Euros » : l'offre s'affiche correctement dans les trois cas
+- [x] ✅ Les deux barres portent leur libellé **en toutes lettres**, vérifié à 1280 px et à 375 px, en clair et en sombre. Boîte portée de 104 à **108 px** : « ACCESSIBILITÉ » mesure 100,1 px et les 4 px restants tombaient dès que la police web n'était pas encore chargée
+      ~~ : jamais retirés, même à 375 px ; les abréviations `INT` / `ACC` restent abandonnées
+- [x] ✅ Les justifications se lisent **à plat**, en deux colonnes sous les cartouches. ⚠️ **Elles ne pouvaient PAS aller dans la réserve de droite** comme le prévoyait `docs/DESIGN.md` : 145 caractères de médiane n'entrent pas dans 192 px. Prix mesuré et accepté — la ligne notée passe de 91 à **195 px** en bureau, de 146 à **361 px** à 375 px
+- [x] ✅ **0 vérifié sur données réelles** (plusieurs offres notées 0), **100 vérifié par un rendu forcé** puis retiré — les deux axes, en bureau et à 375 px. Le chiffre reste dans le cadre, la barre à 0 laisse voir sa piste. ⚠️ C'est ce cas-là qui a imposé le **filet autour de la piste** : sans lui, à 0, il ne restait rien du tout à l'écran
+- [x] ✅ **Vérifié à l'écran** le 26 août : salaire absent (cartouche creux italique), annualisé (« 40–50 k€ »), et libellé brut quand `salaire.py` a **renoncé** — « Mensuel de 45000 Euros à 60000 Euros sur 12 mois » reste affiché tel quel, le refus du pipeline n'est pas rattrapé à l'affichage
+      ⚠️ **Le pari de `docs/DESIGN.md` sur la largeur de page est démenti** : l'annualisation étant calculée *pendant* la notation, seules **31 offres sur 535** l'ont. Les 504 autres affichent le libellé long, donc les 1000 px ne peuvent pas baisser
 - [ ] ⚠️ **CHEMIN EN PLACE, JAMAIS DÉCLENCHÉ** — Une notation qui échoue laisse l'offre en base **sans note**, avec son motif tracé — elle n'est pas perdue.
       `enregistrer_echec_notation()` + contrainte `echec_sans_note` + plafond `notation_tentatives`. **0 échec sur 97 appels**, donc jamais exercé en conditions réelles. À provoquer volontairement avant de clore.
-- [ ] **États** : aucune offre notée · notation en cours · échec de notation · 200 offres notées
-- [ ] 375 px, mode sombre, console propre
+- [~] **États** : ✅ offre en attente de note (cartouche creux, ligne inchangée à 91 px) · ✅ échec de notation (icône + message, rendu forcé) · ✅ chargement (squelette à 203 px contre 195 px de ligne réelle) · ⚠️ **200 offres notées vérifié en SIMULATION seulement** — 97 dupliquées jusqu'à 200 : 39 567 px de haut, 5 699 nœuds, 153 Ko transférés, 70 ms de recalcul, aucun débordement. La base n'a pas 200 offres notées
+- [x] ✅ **375 px, mode sombre, console propre** — 0 erreur, 0 avertissement · 0 ligne cassée sur 200 à 1000 px, cartouche supplémentaire compris · aucun débordement horizontal à 375 px · 11 nouvelles paires de contraste mesurées, toutes conformes
 
 ### Bloquée par
 
@@ -566,16 +568,19 @@ Le jeu de données minimal sans lequel les critères ci-dessus ne sont pas véri
 une fois, réutilisé à chaque phase. **Sans lui, tout se testera avec trois lignes courtes et
 tout tiendra toujours.**
 
-- [x] ~~L'intitulé le plus long — environ **150 caractères**~~ → **retiré le 21 août 2026 : ça n'existe pas.** Mesuré deux fois sur des données réelles — **99 caractères** au maximum sur 235 offres le 20 août, **79** sur 189 offres le 21 août, **94** sur les 373 en base le 26 août (médiane 40). Les intitulés France Travail sont courts. Décision de Maxime : ne pas fabriquer un cas que la source ne produira jamais. ⚠️ **Ce qui reste vrai** : il faut quand même vérifier la mise en page à 375 px contre l'intitulé le plus long **réellement observé**, pas contre trois lignes de démo
+- [x] ⚠️ **L'intitulé très long EXISTE — le « ça n'existe pas » du 21 août 2026 est démenti.** L'historique de cette ligne est instructif : 99 caractères au maximum sur 235 offres (20 août), 79 sur 189 (21 août), 94 sur 373 (26 août au matin) — d'où la conclusion « les intitulés France Travail sont courts, ne pas fabriquer ce cas ». Remesuré le 26 août **au soir sur 535 offres** : **223 caractères** (« Stage de fin d'études / Alternance - Sujet de stage : Accompagner les transformations majeures des acteurs du transport… »), médiane 43, **3 offres au-dessus de 94**. ✅ Vérifié à l'écran : 6 lignes à 375 px, 2 en bureau, rien ne casse.
+      ⚠️ **La leçon : un maximum observé n'est pas une borne, c'est un échantillon — et il ne peut que monter.** Quatre mesures concordantes ont produit une conclusion fausse. Ne jamais écrire qu'un cas « n'existe pas » sur la foi d'un maximum ; écrire ce qu'on a vu, avec la taille de l'échantillon et la date
 - [x] La description France Travail la plus longue possible — **5 000 caractères**, le plafond de l'API, vérifié le 20 août 2026 : au-delà le texte est coupé en plein mot et `GET /offres/{id}` renvoie la même troncature. ✅ **5 offres à exactement 5 000 caractères sont en base** (la plus courte fait 419)
 - [x] L'offre au minimum de champs remplis : pas de salaire, entreprise non communiquée, contrat imprécis — celle qui teste les replis d'affichage. ⚠️ **Ce n'est pas un cas limite** : remesuré le 26 août sur **373 offres**, **36 % ne nomment pas l'entreprise et 65 % n'indiquent aucun salaire** (contre 34 % et 69 % sur les 189 du 21 août — les proportions tiennent quand le volume double). Le lieu, lui, est **toujours renseigné** : 0 offre sur 373 sans lieu
 - [x] Les formes de salaire — ⚠️ **9 familles au 26 août 2026, pas 6** : remesuré sur 373 offres. `Annuel de N Euros à N Euros` (77) · `Annuel de N Euros à N Euros sur N mois` (35) · `Mensuel de N Euros à N Euros sur N mois` (6) · **`Annuel de N Euros` (5)** · `Mensuel de N Euros à N Euros` (3) · `Annuel de N Euros sur N mois` (2) · `Mensuel de N Euros sur N mois` (2) · **`Horaire de N Euros à N Euros sur N mois` (1)** · **absent (242)**.
       ⚠️ **Trois familles sont apparues entre le 21 et le 26 août**, dont deux qui changent le travail de la phase 2 : `Annuel de N Euros` porte un **montant unique et non une fourchette**, et `Horaire` demande une **conversion par le temps de travail**, pas une simple lecture. Le normaliseur doit couvrir 9 formes, et le compte augmentera encore — **ne pas coder une liste fermée**
 - [x] **200 offres** dans la vue d'ensemble — ✅ **189 en base au 21 août** (remplissage manuel sur 7 jours, `--depuis-jours 7`). Le volume grandit d'environ 25 offres par jour avec le cron
 - [x] ✅ **L'échantillon d'essai : l'offre la plus récente non notée.** Décidé le 26 août 2026 (révisé de 5 à 1 le jour même). Assez petit pour relire la note, la justification *et* le prompt qui les a produites — c'est le seul moyen de voir un étalonnage qui dérive avant d'en produire des centaines
-- [x] ✅ **97 offres notées au 26 août 2026** — utiliser ce jeu plutôt que d'en fabriquer un. Distribution réelle : médiane d'intérêt **5**, moyenne **9**, maximum **85** ; **6 offres au-dessus de 30**, **2 au-dessus de 50**. ⚠️ **La distribution est ÉCRASÉE EN BAS** : la grande majorité des notes sont entre 0 et 10. À l'écran, deux offres à 3 et 8 seront visuellement indistinguables sur une barre linéaire 0-100 — **le choix de l'échelle est une vraie question de conception, pas un détail**
+- [x] ✅ **97 offres notées au 26 août 2026** — utiliser ce jeu plutôt que d'en fabriquer un. Distribution réelle : médiane d'intérêt **5**, moyenne **9**, maximum **85** ; **6 offres au-dessus de 30**, **2 au-dessus de 50**. ⚠️ **La distribution est ÉCRASÉE EN BAS** : la grande majorité des notes sont entre 0 et 10. À l'écran, deux offres à 3 et 8 sont effectivement indistinguables sur une barre linéaire 0-100.
+      ✅ **TRANCHÉ le 26 août 2026 : l'échelle reste linéaire.** Le chiffre exact est écrit à côté de la barre, donc rien n'est perdu ; étaler le bas ferait paraître prometteuses des offres qui ne le sont pas. Décision de Maxime, motif dans `docs/DESIGN.md` § Les deux notes
 - [x] ✅ **Le cas « intérêt haut / accessibilité basse » existe en vrai** : « Alternant Ingénieur IA Agentique » à **85 / 15**. C'est une alternance — passionnante et hors de portée. C'est le cas qui valide la séparation des deux notes, et il est en base
-- [ ] Les valeurs extrêmes de notes, dans les deux sens : une offre **100 / 0** et une offre **0 / 100**. ⚠️ **Une offre à 0 d'intérêt existe déjà** (« Conducteur d'engins Polyvalent ») ; le 100 et le 0 d'accessibilité restent à trouver ou à fabriquer
+- [x] Les valeurs extrêmes de notes. ✅ **0 existe en vrai sur les deux axes** (« Conducteur d'engins Polyvalent » à 0/5, plusieurs offres à 0/0). **100 n'existe sur aucun axe** — maximum réel observé : **85 en intérêt, 55 en accessibilité** sur 97 notées. Vérifié le 26 août par un **rendu forcé à 100/100**, puis retiré : le chiffre reste dans le cadre, la barre ne déborde pas, en bureau comme à 375 px
+      ⚠️ **Que le maximum réel plafonne à 85 / 55 n'est pas un défaut d'affichage, c'est une information sur le gisement** — et elle rejoint le chantier des critères de collecte
 - [ ] Une note personnelle de **5 000 caractères**
 - [ ] Une justification de note anormalement longue — le modèle peut déraper, l'écran doit tenir
 - [ ] Une offre **écartée**, avec ses notes et sa justification, consultable
@@ -605,10 +610,12 @@ régressions tant qu'il n'y a pas de tests automatisés.
 - [x] Vérifier que la collecte de cette nuit a bien écrit sa trace — l'écran annonce « 200 offres les plus récentes, sur 373 collectées »
 - [x] **Voir la liste sans qu'elle saute au chargement** — le squelette et la ligne réelle ont la même hauteur, à 375 px comme en bureau, et **quelle que soit la taille de police du navigateur** (mesuré à 16, 20 et 24 px de racine)
 
-**Après la phase 2**
+**Après la phase 2** — *déroulés en développement le 26 août 2026, sur les 535 offres réelles*
 
-- [ ] Voir sur chaque offre deux notes chiffrées et **deux justifications non vides**
-- [ ] Retrouver une offre écartée par le seuil, avec sa note et son motif
+- [x] Voir sur chaque offre notée deux notes chiffrées et **deux justifications non vides** — 97 offres, aucune justification vide (les contraintes `interet_justifie` et `accessibilite_justifiee` le rendent impossible en base)
+- [x] **Vérifier que le classement place bien les offres notées en tête** — 85, 75, 40, 38, 35… puis les 103 non notées, qui portent leur cartouche « Pas encore notée ». ⚠️ C'est le parcours qui attrape le piège `NULLS FIRST` : sans `nullslast`, la liste aurait l'air normale **et n'aurait classé personne**
+- [x] **Compter les lignes dont les cartouches cassent sur deux lignes à 1000 px** — 0 sur 200, cartouche « Pas encore notée » compris. À refaire à chaque ajout de cartouche
+- [ ] Retrouver une offre écartée par le seuil, avec sa note et son motif — *dépend du filtre de statut, phase 4*
 
 **Après la phase 3**
 

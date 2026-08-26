@@ -63,3 +63,102 @@ export function formaterDate(iso: string, maintenant: Date): string | null {
 export function formaterSalaire(libelle: string): string {
   return libelle.replace(/(\d)\.0(?!\d)/g, "$1");
 }
+
+/**
+ * Le salaire ramené à l'année, tel qu'il s'affiche.
+ *
+ * Entre : les deux bornes annuelles calculées par `pipeline/salaire.py`.
+ * Sort : « 45–60 k€ », « 30 k€ », « 22,8–32,8 k€ » — ou `null` quand il n'y a
+ * rien à afficher, auquel cas l'appelant retombe sur le libellé d'origine.
+ * Casse : rien. Une borne absente, nulle ou négative fait renvoyer `null` ;
+ * jamais de « NaN k€ » en travers de la ligne.
+ *
+ * ⚠️ **Cette fonction ne calcule RIEN.** L'annualisation — les neuf familles de
+ * forme, les périodes inconnues, le seuil de plausibilité qui a fait écarter
+ * « Mensuel de 45000 Euros sur 12 mois » — vit dans `pipeline/salaire.py` et
+ * **nulle part ailleurs**. Deux endroits qui convertissent des salaires
+ * finissent toujours par diverger, et c'est celui qui est en base qui aurait
+ * raison. Ici on met en forme deux entiers déjà calculés, point.
+ *
+ * ⚠️ **Le tiret est un demi-cadratin (–), pas un trait d'union.** Sur
+ * « 45-60 », le trait d'union se lit comme une soustraction ou une césure ; le
+ * demi-cadratin est le signe typographique de l'intervalle.
+ *
+ * ⚠️ **Une décimale, jamais zéro.** Les vraies valeurs en base comptent des
+ * montants comme 22 750 ou 38 400 € : arrondir au millier afficherait « 23 k€ »
+ * pour 22 750, et comme le libellé d'origine disparaît de la liste dès qu'on
+ * l'a remplacé, plus rien ne permettrait de retrouver le chiffre exact. Une
+ * décimale conserve la valeur à 100 € près ; les « ,0 » sont retirés pour que
+ * le cas courant reste « 45–60 k€ » et non « 45,0–60,0 k€ ».
+ */
+export function formaterSalaireAnnuel(
+  min: number | null,
+  max: number | null,
+): string | null {
+  const bas = estAffichable(min) ? min : null;
+  const haut = estAffichable(max) ? max : null;
+
+  if (bas === null && haut === null) return null;
+
+  // Les deux bornes égales décrivent un salaire fixe, pas un intervalle de
+  // largeur nulle : « 28 k€ », jamais « 28–28 k€ ». Cinq offres réelles sont
+  // dans ce cas au 26 août 2026.
+  if (bas !== null && haut !== null) {
+    return bas === haut
+      ? `${enMilliers(bas)} k€`
+      : `${enMilliers(bas)}–${enMilliers(haut)} k€`;
+  }
+
+  // Une seule borne. Aucune offre réelle n'est dans ce cas au 26 août 2026,
+  // mais la base l'autorise (les deux colonnes sont indépendamment nullables)
+  // et un affichage muet vaudrait mieux qu'un intervalle inventé.
+  return bas !== null
+    ? `à partir de ${enMilliers(bas)} k€`
+    : `jusqu'à ${enMilliers(haut as number)} k€`;
+}
+
+/**
+ * Un montant est affichable s'il est fini et **au moins égal à 50 €**.
+ *
+ * ⚠️ Le `> 0` seul ne suffisait pas, et le défaut était invisible : la base
+ * n'interdit qu'un montant nul ou négatif (contrainte `salaire_annuel_positif`),
+ * donc un salaire annuel de 35 € y entre légalement. `enMilliers(35)` arrondit à
+ * **0**, et la ligne affichait « 0 k€ » — un salaire de zéro euro énoncé comme
+ * un fait, sans le moindre signal. Ce n'est pas théorique : « Annuel de 35.0
+ * Euros » est un libellé réellement observé dans les données.
+ *
+ * ⚠️ **Ce n'est PAS le seuil de plausibilité des salaires**, lequel vit dans
+ * `pipeline/salaire.py` et nulle part ailleurs — c'est lui qui décide ce qui est
+ * un vrai salaire. Ici on ne juge rien : on refuse seulement de **rendre** une
+ * valeur que l'arrondi transformerait en mensonge. L'appelant retombe alors sur
+ * le libellé d'origine, où le lecteur voit le chiffre brut et juge lui-même.
+ *
+ * ⚠️ `0` étant faux en JavaScript, un test raccourci en `min ? … : …`
+ * traiterait silencieusement zéro comme « absent » — vrai par accident, pas par
+ * intention. D'où le test explicite.
+ */
+const PLANCHER_AFFICHAGE_EUROS = 50;
+
+function estAffichable(montant: number | null): montant is number {
+  return (
+    montant !== null &&
+    Number.isFinite(montant) &&
+    montant >= PLANCHER_AFFICHAGE_EUROS
+  );
+}
+
+/**
+ * 45000 → « 45 » · 22750 → « 22,8 » · 30012 → « 30 ».
+ *
+ * ⚠️ La virgule décimale est française et posée à la main, pas par
+ * `toLocaleString`. Cette fonction est appelée pendant le rendu **serveur**,
+ * lequel tourne chez Vercel avec une locale par défaut qui n'est pas garantie :
+ * un `toLocaleString()` sans argument y produirait « 22.8 ». Le même piège que
+ * le fuseau horaire ci-dessus, et il ne se voit pas davantage.
+ */
+function enMilliers(montant: number): string {
+  const milliers = Math.round(montant / 100) / 10;
+  return Number.isInteger(milliers)
+    ? String(milliers)
+    : String(milliers).replace(".", ",");
+}

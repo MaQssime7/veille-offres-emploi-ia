@@ -1302,3 +1302,101 @@ tentation était de conclure « le gisement est vide ». Le calcul dit autre cho
 si le gisement contenait 6 offres pertinentes sur 111, rater les 17 a 36 % de
 chances d'arriver. La conclusion honnête était « au plus 15 sur 111, et je ne peux
 pas exclure 6 » — ce qui suffisait à décider, sans prétendre à une preuve.
+
+---
+
+## 26 août 2026, dans la soirée — l'écran des deux notes
+
+**Ce qui est livré** : `/offres` affiche les deux notes avec leurs justifications à
+plat, classées par intérêt décroissant, et le salaire ramené à l'année quand il
+peut l'être. C'est le dernier morceau visuel de la phase 2.
+
+### La question posée avant de coder : dans quel ordre ?
+
+Maxime demandait s'il fallait finir de mesurer les critères de collecte d'abord.
+Réponse retenue : **l'écran d'abord, parce que c'est lui l'instrument de mesure.**
+Jusqu'ici, juger un mot-clé voulait dire noter un échantillon puis lire les
+justifications dans le terminal, une par une. Depuis ce soir, il suffit d'ouvrir la
+page : « Conducteur d'engins Polyvalent » noté **0/100** avec sa justification se
+voit en deux secondes. Construire les critères avant l'outil qui sert à les juger,
+c'était travailler dans le mauvais sens.
+
+Argument secondaire mais réel : mesurer un critère n'est pas gratuit non plus — la
+qualité se mesure en notant un échantillon, soit ~9 centimes par terme testé.
+Repousser l'écran ne repoussait pas la dépense, ça la déplaçait.
+
+### Ce que la mesure a démenti, trois fois
+
+**1. Les notes ne pouvaient pas aller dans la réserve de droite.** `docs/DESIGN.md`
+l'affirmait, mesuré « le 26 août avec des barres simulées ». La mesure était juste
+et la conclusion fausse : elle portait sur des **barres nues**. Une justification
+fait 145 caractères en médiane — dans les 192 px de la réserve, cela donne dix
+lignes. Le bloc est passé pleine largeur, en deux colonnes sous les cartouches.
+**Une mesure faite sur une maquette incomplète mesure la maquette, pas la chose.**
+
+**2. « L'intitulé très long n'existe pas » était faux.** Le `PLAN.md` le tenait pour
+acquis depuis le 21 août, sur quatre mesures concordantes : 99 caractères au maximum
+sur 235 offres, 79 sur 189, 94 sur 373. Sur les **535** d'aujourd'hui : **223
+caractères**. Rien n'était erroné dans ces mesures — un maximum observé n'est pas une
+borne, c'est un échantillon, et il ne peut que monter. Vérifié à l'écran : 6 lignes à
+375 px, rien ne casse.
+
+**3. Le salaire normalisé ne libère pas la largeur de page.** `DESIGN.md` pariait que
+la phase 2 raccourcirait le libellé (« 50–60 k€ ») et permettrait de descendre sous
+1000 px. Le code est livré et **31 offres sur 535** en bénéficient : l'annualisation
+est calculée *pendant la notation*, donc une offre non notée n'a pas de valeur
+annuelle, quelle que soit la qualité de son libellé. Le pari couplait deux choses qui
+ne le sont pas — une mise en forme qui arrive d'un coup, et un calcul payant qui
+arrive au goutte-à-goutte.
+
+### Deux corrections nées de l'écran regardé, pas du code relu
+
+**Le libellé est passé de 104 à 108 px.** « ACCESSIBILITÉ » mesure exactement
+100,1 px en Geist Mono. À 104 px il restait 4 px de marge — assez tant que la police
+web est chargée, plus rien si elle ne l'est pas encore. L'alignement des barres d'une
+ligne à l'autre, qui est toute la raison d'être de cette largeur fixe, serait tombé
+sans le moindre signal.
+
+**La piste de la jauge a reçu un filet.** Elle ne contrastait qu'à **1,21:1** avec la
+carte. Aucune exigence WCAG ne s'y applique — l'information est portée par le chiffre
+— mais à 0, il ne restait littéralement rien à l'écran, et avec elle disparaissait la
+longueur commune aux deux barres, celle qui permet de comparer deux offres d'un coup
+d'œil.
+
+**Et l'état vide a été dégonflé.** « Pas encore notée » en bloc séparé, avec son filet
+et ses marges, coûtait **42 px pour une phrase d'excuse**, sur 103 des 200 lignes
+affichées. Ramené en cartouche creux dans la rangée des métadonnées — le même
+traitement que « Salaire non précisé » — la ligne non notée reste à 91 px.
+**Un état vide ne doit jamais être plus encombrant que l'état plein.**
+
+### Un piège attrapé au bon endroit
+
+`ORDER BY note_interet DESC` place les `NULL` **en premier** en PostgreSQL. Sans
+`nullslast`, les 438 offres non notées auraient occupé les 200 lignes affichées et
+**aucune offre notée ne serait apparue**. Ni erreur, ni ligne vide : une liste d'allure
+parfaitement normale qui n'aurait classé personne. Le piège était écrit dans le
+`CLAUDE.md` depuis l'ouverture de la phase — c'est la seule raison pour laquelle il n'a
+pas été découvert en production.
+
+Même famille, plus discret : `lireDerniereExecution()` filtre désormais sur
+`etape = 'collecte'`. Les notations écrivent leurs propres lignes dans
+`executions_veille` ; sans ce filtre, la dernière notation réussie serait devenue « la
+dernière exécution » et **plus aucune offre n'aurait porté le marqueur « Nouveau »**,
+puisqu'une notation ne collecte rien. C'est le pendant, côté interface, du bug que la
+colonne `etape` avait corrigé côté pipeline.
+
+### Ce que je retiens
+
+**Une hypothèse chiffrée marquée ⏳ dans un document n'est pas moins dangereuse qu'un
+chiffre inventé — elle est juste mieux signalée.** Les trois démentis de la soirée
+portaient tous sur des valeurs écrites, datées et sourcées. Ce qui les a rendues
+fausses n'est jamais un défaut de rigueur : c'est que la chose mesurée n'était pas
+encore la chose réelle. Le marqueur ⏳ a bien fait son travail — il a dit quand
+remesurer.
+
+**Le premier calcul de contraste était faux, et silencieusement.**
+`getComputedStyle` rend désormais de l'OKLCH ; un parseur qui lit
+`oklch(0.988 0.007 84)` comme un triplet RVB sort des ratios voisins de 1:1 sans lever
+la moindre erreur. J'ai failli conclure que la moitié de la palette violait le
+plancher d'accessibilité. La parade tient en une ligne : faire convertir la couleur
+par le navigateur lui-même, en la peignant sur un canvas de 1 × 1 pixel.
