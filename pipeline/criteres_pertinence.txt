@@ -97,21 +97,38 @@ Repères :
 Elle mesure la probabilité que la candidature ne soit pas écartée d'emblée. Elle
 ne tient AUCUN compte de l'envie.
 
-Ce qui pèse, par ordre d'importance :
+DEUX facteurs dominent, à égalité :
 
 1. L'expérience exigée. Six mois en poche. Deux ans demandés restent jouables ;
    cinq ans ferment la porte.
-2. La séniorité de l'intitulé. « Senior », « Lead », « Principal », « Head of »,
-   « Directeur », « Architecte » ferment. « Junior », « Débutant accepté »,
-   « Jeune diplômé » ouvrent grand.
-3. Le diplôme et la spécialisation attendus. Un doctorat exigé ferme ; un
-   Bac+5 ingénieur correspond.
-4. Le type de contrat. CDI et CDD correspondent. Une alternance ou un stage ne
-   correspond plus à son statut : accessibilité basse, car il serait écarté.
-5. Les technologies exigées. Un empilement d'outils très spécifiques qu'il ne
-   connaît pas fait baisser ; Python et les API de modèles font monter.
 
-Repères :
+   Lis l'expérience dans le TEXTE de l'annonce, jamais dans le champ
+   « Expérience exigée ». Mesuré sur les offres réelles : ce champ contredit le
+   texte environ une fois sur deux. Une annonce marquée « Débutant accepté » qui
+   écrit « 3 ans minimum » dans son corps exige trois ans. Quand les deux se
+   contredisent, suis le texte et dis-le dans la justification.
+
+2. L'adéquation technique. Une pile que le candidat pratique ouvre : Python,
+   API, MCP, n8n, Claude Code, agents de codage, Agent SDK, intégration de
+   modèles de langage. Une pile entièrement étrangère ferme — administration
+   réseau et sécurité, ERP, embarqué, CAO, outils métier très spécialisés —
+   MÊME quand l'annonce dit « débutant accepté ». Un employeur qui accepte un
+   débutant accepte un débutant de SON domaine, pas quelqu'un qui n'a jamais
+   touché à sa pile.
+
+Trois facteurs ajustent ensuite, de quelques points chacun :
+
+3. La séniorité de l'intitulé. « Senior », « Lead », « Principal », « Head of »,
+   « Directeur », « Architecte » ferment. « Junior », « Débutant accepté »,
+   « Jeune diplômé » ouvrent.
+4. Le diplôme et la spécialisation attendus. Un doctorat exigé ferme ; un
+   Bac+5 ingénieur correspond.
+5. Le type de contrat. CDI et CDD correspondent. Une alternance ou un stage ne
+   correspond plus à son statut : accessibilité basse, car il serait écarté.
+
+Repères — ils valent POUR UNE PILE TECHNIQUE FAMILIÈRE. Quand la pile est
+étrangère au candidat, retire 30 à 50 points au repère, quelle que soit
+l'expérience demandée :
 
 - 90-100 : débutant explicitement accepté, ou aucune expérience exigée.
 - 70-89 : un à deux ans demandés, intitulé non sénior, pile technique courante.

@@ -388,7 +388,7 @@ def noter_en_lot(
 
 def executer(
     *, limite: int | None, modele: str, effort: str,
-    en_lot: bool = False, sans_ecrire: bool = False,
+    en_lot: bool = False, sans_ecrire: bool = False, renoter: bool = False,
 ) -> int:
     """Note les offres en attente. Rend 0 en réussite, 1 en échec.
 
@@ -400,7 +400,7 @@ def executer(
     stockage = Stockage(reglages.supabase_url, reglages.supabase_secret_key)
     client = anthropic.Anthropic()
 
-    offres = stockage.offres_a_noter(limite, max_tentatives=MAX_TENTATIVES)
+    offres = stockage.offres_a_noter(limite, max_tentatives=MAX_TENTATIVES, renoter=renoter)
     if not offres:
         _journal.info("Aucune offre en attente de note. Rien à faire.")
         return 0
@@ -460,7 +460,7 @@ def executer(
     return 0 if notees else 1
 
 
-def apercevoir(*, limite: int, modele: str) -> int:
+def apercevoir(*, limite: int, modele: str, renoter: bool = False) -> int:
     """Affiche le prompt exact et compte ses tokens SANS rien facturer.
 
     `count_tokens` est gratuit. Ce mode existe pour vérifier le prompt, la
@@ -471,7 +471,7 @@ def apercevoir(*, limite: int, modele: str) -> int:
     stockage = Stockage(reglages.supabase_url, reglages.supabase_secret_key)
     client = anthropic.Anthropic()
 
-    offres = stockage.offres_a_noter(limite, max_tentatives=MAX_TENTATIVES)
+    offres = stockage.offres_a_noter(limite, max_tentatives=MAX_TENTATIVES, renoter=renoter)
     if not offres:
         print("Aucune offre en attente de note.")
         return 0
@@ -520,6 +520,9 @@ def main() -> int:
                            help="appeler le modèle mais ne rien écrire en base")
     analyseur.add_argument("--sans-appeler", action="store_true",
                            help="afficher le prompt et compter ses tokens sans rien facturer")
+    analyseur.add_argument("--renoter", action="store_true",
+                           help="reprendre les offres DÉJÀ notées, les plus récentes d'abord "
+                                "— mode d'étalonnage, chaque offre est repayée")
     arguments = analyseur.parse_args()
 
     logging.basicConfig(
@@ -533,10 +536,12 @@ def main() -> int:
 
     try:
         if arguments.sans_appeler:
-            return apercevoir(limite=arguments.limite or 1, modele=arguments.modele)
+            return apercevoir(limite=arguments.limite or 1, modele=arguments.modele,
+                              renoter=arguments.renoter)
         return executer(
             limite=arguments.limite, modele=arguments.modele, effort=arguments.effort,
             en_lot=arguments.lot, sans_ecrire=arguments.sans_ecrire,
+            renoter=arguments.renoter,
         )
     except (configuration.ConfigurationIncomplete, ErreurNotation, ErreurStockage) as echec:
         _journal.error("%s", echec)

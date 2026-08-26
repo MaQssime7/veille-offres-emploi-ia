@@ -357,7 +357,8 @@ class Stockage:
     )
 
     def offres_a_noter(
-        self, limite: int | None = None, *, max_tentatives: int = 3
+        self, limite: int | None = None, *, max_tentatives: int = 3,
+        renoter: bool = False,
     ) -> list[dict[str, Any]]:
         """Les offres pas encore notées, les plus récentes d'abord.
 
@@ -366,18 +367,34 @@ class Stockage:
         la source : renoter en boucle coûterait à chaque passage sans rien
         apprendre.
 
+        `renoter=True` inverse ce filtre — c'est le mode d'étalonnage, et il ne
+        s'active jamais tout seul. Il sert à mesurer l'effet d'une correction
+        des critères sur les mêmes offres : sans lui, un réglage ne peut se
+        juger que sur des annonces différentes, donc pas se juger du tout.
+
         ⚠️ **Le filtre sur `notation_tentatives` est un garde-fou de
         facturation.** Une offre qui fait systématiquement échouer l'appel —
         description pathologique, refus du modèle — serait autrement retentée
         chaque nuit, indéfiniment, et chaque tentative est payante. Au-delà de
         `max_tentatives`, elle sort de la file et attend une intervention.
         """
-        filtres = (
-            f"/offres?note_interet=is.null"
-            f"&notation_tentatives=lt.{max_tentatives}"
-            f"&select={self.CHAMPS_A_NOTER}"
-            f"&order=publiee_a.desc"
-        )
+        if renoter:
+            # Mode étalonnage : reprendre les offres DÉJÀ notées, les plus
+            # récemment notées d'abord, pour comparer un avant et un après sur
+            # les mêmes annonces. Le plafond de tentatives ne s'applique pas —
+            # ici c'est un humain qui décide de repayer, pas une boucle.
+            filtres = (
+                f"/offres?note_interet=not.is.null"
+                f"&select={self.CHAMPS_A_NOTER}"
+                f"&order=notee_a.desc"
+            )
+        else:
+            filtres = (
+                f"/offres?note_interet=is.null"
+                f"&notation_tentatives=lt.{max_tentatives}"
+                f"&select={self.CHAMPS_A_NOTER}"
+                f"&order=publiee_a.desc"
+            )
         if limite is not None:
             filtres += f"&limit={limite}"
         return self._requete(
