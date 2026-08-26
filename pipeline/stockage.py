@@ -14,6 +14,7 @@ dépôt. On ne garde que le code et le message court.
 from __future__ import annotations
 
 import logging
+import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -358,7 +359,7 @@ class Stockage:
 
     def offres_a_noter(
         self, limite: int | None = None, *, max_tentatives: int = 3,
-        renoter: bool = False,
+        renoter: bool = False, rome: str | None = None, au_hasard: bool = False,
     ) -> list[dict[str, Any]]:
         """Les offres pas encore notées, les plus récentes d'abord.
 
@@ -395,6 +396,35 @@ class Stockage:
                 f"&select={self.CHAMPS_A_NOTER}"
                 f"&order=publiee_a.desc"
             )
+        if rome is not None:
+            filtres += f"&rome_code=eq.{rome}"
+
+        if au_hasard and limite is not None:
+            # ⚠️ Tirer les N plus récentes n'est PAS un échantillon : une seule
+            # journée de collecte peut être atypique, et une mesure faite dessus
+            # ne dit rien du gisement. On lit donc tous les identifiants
+            # éligibles, on en tire N au hasard, puis on relit ces N lignes.
+            # Deux requêtes plutôt qu'une, mais une mesure au lieu d'une
+            # impression.
+            candidats = self._requete(
+                "GET", filtres.replace(f"&select={self.CHAMPS_A_NOTER}", "&select=identifiant"),
+                operation="tirage de l'échantillon à noter",
+            ) or []
+            if not candidats:
+                return []
+            tires = random.sample(
+                [c["identifiant"] for c in candidats], min(limite, len(candidats))
+            )
+            _journal.info(
+                "Échantillon tiré au hasard : %d offre(s) sur %d éligibles — %s",
+                len(tires), len(candidats), ", ".join(tires),
+            )
+            liste = ",".join(tires)
+            return self._requete(
+                "GET", f"/offres?identifiant=in.({liste})&select={self.CHAMPS_A_NOTER}",
+                operation="lecture de l'échantillon tiré",
+            ) or []
+
         if limite is not None:
             filtres += f"&limit={limite}"
         return self._requete(

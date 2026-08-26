@@ -389,6 +389,7 @@ def noter_en_lot(
 def executer(
     *, limite: int | None, modele: str, effort: str,
     en_lot: bool = False, sans_ecrire: bool = False, renoter: bool = False,
+    rome: str | None = None, au_hasard: bool = False,
 ) -> int:
     """Note les offres en attente. Rend 0 en réussite, 1 en échec.
 
@@ -400,7 +401,8 @@ def executer(
     stockage = Stockage(reglages.supabase_url, reglages.supabase_secret_key)
     client = anthropic.Anthropic()
 
-    offres = stockage.offres_a_noter(limite, max_tentatives=MAX_TENTATIVES, renoter=renoter)
+    offres = stockage.offres_a_noter(limite, max_tentatives=MAX_TENTATIVES, renoter=renoter,
+                                     rome=rome, au_hasard=au_hasard)
     if not offres:
         _journal.info("Aucune offre en attente de note. Rien à faire.")
         return 0
@@ -520,6 +522,11 @@ def main() -> int:
                            help="appeler le modèle mais ne rien écrire en base")
     analyseur.add_argument("--sans-appeler", action="store_true",
                            help="afficher le prompt et compter ses tokens sans rien facturer")
+    analyseur.add_argument("--rome", default=None,
+                           help="ne noter que les offres d'un code ROME (ex. H1206)")
+    analyseur.add_argument("--au-hasard", action="store_true",
+                           help="tirer l'échantillon au hasard au lieu de prendre les plus récentes "
+                                "— indispensable pour mesurer un gisement")
     analyseur.add_argument("--renoter", action="store_true",
                            help="reprendre les offres DÉJÀ notées, les plus récentes d'abord "
                                 "— mode d'étalonnage, chaque offre est repayée")
@@ -541,7 +548,8 @@ def main() -> int:
         return executer(
             limite=arguments.limite, modele=arguments.modele, effort=arguments.effort,
             en_lot=arguments.lot, sans_ecrire=arguments.sans_ecrire,
-            renoter=arguments.renoter,
+            renoter=arguments.renoter, rome=arguments.rome,
+            au_hasard=arguments.au_hasard,
         )
     except (configuration.ConfigurationIncomplete, ErreurNotation, ErreurStockage) as echec:
         _journal.error("%s", echec)
