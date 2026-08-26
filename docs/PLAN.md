@@ -316,21 +316,26 @@ annuel quand c'est possible.
 
 ### Critères d'acceptation
 
-- [ ] Les critères de pertinence vivent dans un **fichier texte versionné**, pas dans le code, et sont injectés en préfixe du prompt
-- [ ] Le cache de prompt est **actif et vérifié** : `cache_read_input_tokens` est non nul dès le deuxième appel du même lot
-- [ ] La notation passe par l'**API Batches** en volume, et les résultats sont rattachés par leur identifiant, **jamais par leur position**
+- [x] Les critères de pertinence vivent dans un **fichier texte versionné**, pas dans le code, et sont injectés en préfixe du prompt
+- [x] ✅ Le cache de prompt est **actif et vérifié** — `cache_read` = 3 715 dès le 2ᵉ appel, `cache_write` = 0. Préfixe 3 144 tokens, plancher 1024.
+      ~~ : `cache_read_input_tokens` est non nul dès le deuxième appel du même lot
+- [ ] ⚠️ **CODE ÉCRIT, JAMAIS EXÉCUTÉ** — La notation passe par l'**API Batches** en volume, et les résultats sont rattachés par leur identifiant, **jamais par leur position**.
+      `notation.py --lot` implémente le rattachement par `custom_id` et la reprise des offres sans résultat, mais aucun lot n'a tourné au 26 août 2026. À exécuter avant de clore la phase.
 - [ ] Le module accepte une **limite d'offres à noter** (`--limite N`) et sait faire des **appels directs** sans Batches.
       ⚠️ **Décidé le 26 août 2026 : premier essai sur UNE offre** — la consigne du matin disait 5, révisée à 1 le jour même — puis quelques-unes, puis 50, puis le reste. Pas pour le coût — noter les 373 revient à **1,35 $ une seule fois** — mais pour pouvoir relire la notation *et* le prompt qui l'a produite, et refaire l'aller-retour en quelques secondes. Les Batches mettant jusqu'à une heure à rendre leurs résultats, un essai de cette taille **doit** passer en direct, sinon chaque itération sur le prompt coûte une heure d'attente.
       ⚠️ **La base ne s'efface pas pour autant** : noter peu et stocker peu sont deux choses sans rapport, la notation étant incrémentale. Voir `CLAUDE.md` § État actuel pour les quatre raisons.
-- [ ] Le modèle renvoie une **sortie structurée** : deux entiers de 0 à 100, deux justifications, un résumé court, un salaire annualisé
-- [ ] Une offre déjà notée n'est **jamais renotée**, même si l'annonce a changé à la source
-- [ ] `executions_veille` enregistre le **modèle utilisé** et les compteurs de tokens bruts
-- [ ] Le compteur `tokens_cumules` de chaque offre est incrémenté
+- [x] ✅ Le modèle renvoie une **sortie structurée** — 97 appels, 97 réponses conformes, 0 échec.
+      ~~ : deux entiers de 0 à 100, deux justifications, un résumé court, un salaire annualisé
+- [x] ✅ Une offre déjà notée n'est **jamais renotée** (sauf `--renoter`, explicite, jamais par défaut).
+      ~~, même si l'annonce a changé à la source
+- [x] ✅ `executions_veille` enregistre le **modèle utilisé** et les compteurs de tokens bruts
+- [x] ✅ Le compteur `tokens_cumules` de chaque offre est incrémenté
 - [ ] Les deux barres portent leur libellé **en toutes lettres — « Intérêt » et « Accessibilité »** — jamais retirés, même à 375 px : sans eux l'information tient sur la seule couleur. ⚠️ **Les abréviations `INT` / `ACC` sont abandonnées depuis le 26 août 2026** : elles demandaient un décodage au premier regard. Les écrire en entier **déplace le seuil de `--largeur-page` de 960 à 1000 px** — coder les abréviations ferait passer ce critère tout en démentant la mesure qui fonde la largeur
 - [ ] Les justifications se lisent **à plat dans la liste**, ni derrière une infobulle, ni derrière un dépliage — c'est le seul mécanisme qui révèle une notation mal étalonnée
 - [ ] Notes à 0 et à 100 sur les deux axes : les barres restent lisibles, le chiffre reste dans le cadre
-- [ ] Salaire absent, « Selon profil », « Mensuel de 3500 Euros » : l'offre s'affiche correctement dans les trois cas
-- [ ] Une notation qui échoue laisse l'offre en base **sans note**, avec son motif tracé — elle n'est pas perdue
+- [x] ✅ *(côté données ; reste à vérifier à l'écran)* Salaire absent, « Selon profil », « Mensuel de 3500 Euros » : l'offre s'affiche correctement dans les trois cas
+- [ ] ⚠️ **CHEMIN EN PLACE, JAMAIS DÉCLENCHÉ** — Une notation qui échoue laisse l'offre en base **sans note**, avec son motif tracé — elle n'est pas perdue.
+      `enregistrer_echec_notation()` + contrainte `echec_sans_note` + plafond `notation_tentatives`. **0 échec sur 97 appels**, donc jamais exercé en conditions réelles. À provoquer volontairement avant de clore.
 - [ ] **États** : aucune offre notée · notation en cours · échec de notation · 200 offres notées
 - [ ] 375 px, mode sombre, console propre
 
@@ -567,8 +572,10 @@ tout tiendra toujours.**
 - [x] Les formes de salaire — ⚠️ **9 familles au 26 août 2026, pas 6** : remesuré sur 373 offres. `Annuel de N Euros à N Euros` (77) · `Annuel de N Euros à N Euros sur N mois` (35) · `Mensuel de N Euros à N Euros sur N mois` (6) · **`Annuel de N Euros` (5)** · `Mensuel de N Euros à N Euros` (3) · `Annuel de N Euros sur N mois` (2) · `Mensuel de N Euros sur N mois` (2) · **`Horaire de N Euros à N Euros sur N mois` (1)** · **absent (242)**.
       ⚠️ **Trois familles sont apparues entre le 21 et le 26 août**, dont deux qui changent le travail de la phase 2 : `Annuel de N Euros` porte un **montant unique et non une fourchette**, et `Horaire` demande une **conversion par le temps de travail**, pas une simple lecture. Le normaliseur doit couvrir 9 formes, et le compte augmentera encore — **ne pas coder une liste fermée**
 - [x] **200 offres** dans la vue d'ensemble — ✅ **189 en base au 21 août** (remplissage manuel sur 7 jours, `--depuis-jours 7`). Le volume grandit d'environ 25 offres par jour avec le cron
-- [ ] **L'échantillon d'essai : l'offre la plus récente non notée.** Décidé le 26 août 2026 (révisé de 5 à 1 le jour même). Assez petit pour relire la note, la justification *et* le prompt qui les a produites — c'est le seul moyen de voir un étalonnage qui dérive avant d'en produire des centaines
-- [ ] Les valeurs extrêmes de notes, dans les deux sens : une offre **100 / 0** et une offre **0 / 100**
+- [x] ✅ **L'échantillon d'essai : l'offre la plus récente non notée.** Décidé le 26 août 2026 (révisé de 5 à 1 le jour même). Assez petit pour relire la note, la justification *et* le prompt qui les a produites — c'est le seul moyen de voir un étalonnage qui dérive avant d'en produire des centaines
+- [x] ✅ **97 offres notées au 26 août 2026** — utiliser ce jeu plutôt que d'en fabriquer un. Distribution réelle : médiane d'intérêt **5**, moyenne **9**, maximum **85** ; **6 offres au-dessus de 30**, **2 au-dessus de 50**. ⚠️ **La distribution est ÉCRASÉE EN BAS** : la grande majorité des notes sont entre 0 et 10. À l'écran, deux offres à 3 et 8 seront visuellement indistinguables sur une barre linéaire 0-100 — **le choix de l'échelle est une vraie question de conception, pas un détail**
+- [x] ✅ **Le cas « intérêt haut / accessibilité basse » existe en vrai** : « Alternant Ingénieur IA Agentique » à **85 / 15**. C'est une alternance — passionnante et hors de portée. C'est le cas qui valide la séparation des deux notes, et il est en base
+- [ ] Les valeurs extrêmes de notes, dans les deux sens : une offre **100 / 0** et une offre **0 / 100**. ⚠️ **Une offre à 0 d'intérêt existe déjà** (« Conducteur d'engins Polyvalent ») ; le 100 et le 0 d'accessibilité restent à trouver ou à fabriquer
 - [ ] Une note personnelle de **5 000 caractères**
 - [ ] Une justification de note anormalement longue — le modèle peut déraper, l'écran doit tenir
 - [ ] Une offre **écartée**, avec ses notes et sa justification, consultable

@@ -17,6 +17,8 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Identité visuelle : jetons, contrastes vérifiés, composants propres au produit | `docs/DESIGN.md` |
 | Dans quel ordre le construire · contenu de test · parcours à repasser | `docs/PLAN.md` |
 | Ce qui s'est passé et pourquoi, dans l'ordre | `docs/JOURNAL.md` |
+| **Comment le modèle note** : profil, postes visés, barèmes des deux notes | `pipeline/criteres_pertinence.txt` — **c'est une donnée, pas du code** : s'édite à la main, se relit dans git. ⚠️ Deux marqueurs : `//` = commentaire retiré avant l'envoi, `##` = titre envoyé au modèle |
+| **Ce que vaut chaque critère de collecte**, mesuré | `pipeline/codes_rome.txt` (vide, et porte la mesure qui l'a vidé) et `pipeline/mots_cles.txt` — ⚠️ **ne jamais éditer sans relire ces commentaires** : ils listent les termes déjà mesurés et écartés |
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` (`.agents/skills/`) |
 | **Comment le site est protégé** : cookie de session, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts` — abondamment commentés, **seule source de vérité** |
 
@@ -107,35 +109,67 @@ la même chose finissent en deux tables et deux fonctions.
 
 ## État actuel — 26 août 2026
 
-**Phase 1 close.** Le site est en ligne derrière son mot de passe, la collecte tourne toute
-seule chaque nuit, l'écran `/offres` lit la base. **373 offres réelles**, 10 exécutions
-tracées.
+**Phase 1 close. Phase 2 en cours — la notation tourne, l'écran reste à faire.**
+Le site est en ligne derrière son mot de passe, la collecte tourne chaque nuit, l'écran
+`/offres` lit la base. **535 offres réelles, 97 notées**, 0 échec sur 97 appels au modèle.
+Les critères de collecte ont été entièrement refondus sur mesure le 26 août au soir.
 
 | Brique | État |
 |---|---|
 | `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte (`/connexion`, `proxy.ts`, session signée), l'écran `/offres`, mode sombre sur la préférence système |
 | Supabase | Région Paris. `executions_veille` et `offres` créées et alimentées. RLS activé, droits vérifiés |
-| Migrations | 4, toutes appliquées — `supabase/migrations/` |
+| Migrations | **5**, toutes appliquées — `supabase/migrations/`. La 5ᵉ ajoute la notation (deux notes, justifications, salaire annualisé, compteurs de tokens, colonne `etape`) |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
-| `pipeline/` | Collecte livrée. **Cron GitHub Actions actif** à 02:23 UTC (4 h 23 à Paris l'été). Critères éditables dans `mots_cles.txt` et `codes_rome.txt` |
+| `pipeline/` | Collecte **et notation** livrées. **Cron GitHub Actions actif** à 02:23 UTC (4 h 23 à Paris l'été) — ⚠️ il ne fait QUE la collecte, la notation n'y est pas encore branchée. Critères dans `mots_cles.txt` (8 termes) et `codes_rome.txt` (**vide depuis le 26 août, délibérément**) |
+| Modules | `collecte.py` · `notation.py` (`--limite`, `--modele`, `--effort`, `--lot`, `--rome`, `--collecte`, `--au-hasard`, `--renoter`, `--sans-ecrire`, `--sans-appeler`) · `salaire.py` · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
 
-**Prochaine phase : la 2 — les deux notes.** ⚠️ **Bloquée par `ANTHROPIC_API_KEY`**, qui
-contient encore un texte d'exemple.
+**Reste à faire en phase 2 : l'écran.** Les deux barres de note et les justifications à plat
+dans `/offres`, tri par intérêt décroissant. Rien d'autre.
 
-⚠️ **Cinq choses à ne pas redécouvrir en phase 2 :**
+⚠️ **La clé `ANTHROPIC_API_KEY` est posée et active** (`.env` racine, 5 $ de crédit, ~60
+centimes consommés au 26 août). Elle n'est **pas** dans les secrets GitHub Actions : à y
+mettre le jour où la notation sera branchée sur le cron. Jamais chez Vercel.
 
-1. **Le premier essai de notation porte sur UNE offre**, décidé par Maxime le 26 août 2026
-   — la consigne du matin disait 5, révisée à 1 le jour même. Puis quelques-unes, puis 50, puis
-   le reste. ⚠️ **Ce n'est pas une question de coût** — noter les 373 coûte **1,35 $ une seule
-   fois** (Sonnet 5, Batches + cache) et la clé porte 5 $ de crédit. C'est pour pouvoir **relire
-   la notation *et* le prompt qui l'a produite**, et refaire l'aller-retour en quelques secondes
-   tant que l'étalonnage n'est pas jugé bon.
-   ⚠️ **Sur un échantillon, ne pas passer par l'API Batches** : elle met jusqu'à une heure à
-   rendre ses résultats, ce qui rend toute itération sur le prompt insupportable. Appels directs
-   pour le test, Batches pour le volume — le module doit donc savoir faire les deux.
-2. ⚠️ **La base ne s'efface pas.** Question posée et tranchée le 26 août : garder les 373
-   offres, ne noter qu'un échantillon. Effacer et noter peu sont deux choses **sans rapport** —
+⚠️ **Huit choses à ne pas redécouvrir :**
+
+1. **Le coût réel d'une notation : ~0,6 centime par offre**, cache chaud, Sonnet 5 au tarif
+   d'introduction. Mesuré sur 97 appels. Une offre = ~4 500 tokens d'entrée dont 3 715 de
+   préfixe mis en cache, ~250 de sortie. Noter les 453 offres restantes coûterait ~2,70 $ en
+   direct, ~1,35 $ en Batches.
+   ⚠️ **L'API Batches n'a JAMAIS tourné** — le code existe (`--lot`) et n'est pas testé. Elle
+   met jusqu'à une heure à rendre ses résultats : appels directs pour régler le prompt,
+   Batches pour le volume.
+   ⚠️ **Prévenir Maxime avant tout appel facturé**, toujours, avec le nombre d'appels et
+   l'ordre de grandeur. `models.list()` et `count_tokens()` sont gratuits — s'en servir sans
+   demander. `--sans-appeler` affiche le prompt et compte ses tokens sans rien dépenser.
+
+2. ⚠️ **Le cache de prompt a un plancher de 1024 tokens chez Sonnet 5, et EN DESSOUS IL NE DIT
+   RIEN.** Pas d'erreur, pas de message : `cache_read_input_tokens` reste simplement à zéro et
+   chaque offre repaie le préfixe. Le préfixe actuel fait **3 144 tokens**, donc le cache mord
+   — vérifié, `cache_read` = 3 715 dès le deuxième appel. `notation.py` journalise les quatre
+   compteurs à chaque appel et avertit si aucune lecture n'a lieu sur plusieurs offres.
+   ⚠️ Toute modification de `criteres_pertinence.txt` invalide le cache : le premier appel
+   suivant repaie le préfixe au tarif plein. C'est normal et ça ne coûte qu'une fois.
+
+3. ⚠️ **Le champ `experience_libelle` de France Travail est FAUX une fois sur deux.** Mesuré :
+   sur 3 offres vérifiées ligne à ligne, 2 portaient « Débutant accepté » ou « 2 An(s) » alors
+   que le texte de l'annonce exigeait « 3 ans minimum ». **Toute logique bâtie sur ce champ —
+   filtre, tri, seuil — sera fausse une fois sur deux.** Les critères de notation demandent
+   explicitement de suivre le TEXTE et de signaler la contradiction. C'est aussi l'argument
+   qui justifie de faire lire les annonces par un modèle plutôt que de les filtrer sur leurs
+   métadonnées.
+
+4. ⚠️ **Le barème d'accessibilité a été corrigé le 26 août, et la leçon est générale : quand le
+   modèle s'écarte du barème, c'est souvent le barème qui a tort.** L'ancien classait
+   l'expérience en facteur n°1 et les technologies en n°5 ; sur une annonce réseau « débutant
+   accepté » exigeant Cisco/Aruba/Palo Alto, il commandait 90-100 alors que la chance réelle
+   est nulle. Le modèle avait mis 40. Deux facteurs dominent désormais à égalité — expérience
+   **et** adéquation technique — et les repères chiffrés ne valent que pour une pile familière.
+   Effet vérifié en renotant les mêmes offres : seules bougent celles dont la pile est
+   étrangère.
+5. ⚠️ **La base ne s'efface pas.** Question posée et tranchée le 26 août : garder toutes les
+   offres (373 alors, **535 depuis la recollecte du soir**), ne noter qu'un échantillon. Effacer et noter peu sont deux choses **sans rapport** —
    la notation est incrémentale (« une offre déjà notée n'est jamais renotée »). Quatre raisons
    de garder : France Travail **dépublie** ses annonces et une offre effacée ne revient jamais
    (c'est la raison d'être de `charge_brute`) · ces 373 offres **sont** le jeu de test mesuré,
@@ -144,35 +178,66 @@ contient encore un texte d'exemple.
    se noient d'elles-mêmes (~1 500 de plus d'ici octobre, tri par date décroissante).
    **Si des offres périmées gênent à l'écran, c'est un filtre d'affichage qu'il faut, pas une
    suppression.**
-3. **Le salaire compte 9 familles de forme, pas 6** (remesuré le 26 août sur 373 offres) —
-   dont `Annuel de N Euros` (montant unique, pas une fourchette) et `Horaire …` (conversion
-   par le temps de travail). Trois sont apparues en cinq jours : **ne pas coder une liste
-   fermée.** Détail dans `docs/PLAN.md` § Contenu de test.
-4. **Les libellés de notes s'écrivent en toutes lettres** — « Intérêt », « Accessibilité ».
+6. **Le salaire : 9 familles de forme, et DEUX libellés faux à la source.** `pipeline/salaire.py`
+   les traite — 129 montants retenus sur 373, 242 absents, 2 écartés. Les deux écartés :
+   « Mensuel de 45000 à 60000 Euros sur 12 mois » (× 12 = 540 000 à 720 000 €/an, une offre
+   d'**ingénieur IA**) et « Annuel de 35.0 Euros ». ⚠️ **Renoncer plutôt que deviner** : on ne
+   les requalifie pas, on les écarte avec un motif et le libellé d'origine reste affiché.
+   ⚠️ **Ne pas coder une liste fermée** de périodes — trois formes sont apparues en cinq jours.
+   Une période inconnue rend `periode_inconnue:<mot>` et un avertissement, jamais une exception
+   ni une conversion inventée. Le seuil de plausibilité vit **dans ce module et nulle part
+   ailleurs**, surtout pas dupliqué en contrainte SQL.
+7. **Les libellés de notes s'écrivent en toutes lettres** — « Intérêt », « Accessibilité ».
    C'est ce choix qui fonde `--largeur-page: 1000px` ; coder `INT`/`ACC` démentirait la mesure.
-5. **Le rythme vertical de la ligne vit dans `_composants/rythme.ts`**, partagé avec le
+8. **Le rythme vertical de la ligne vit dans `_composants/rythme.ts`**, partagé avec le
    squelette de chargement. Le modifier ailleurs fait sauter la page sans aucune erreur.
 
-⚠️ **Deux questions ouvertes, à trancher AVEC la notation en main — pas avant :**
+### Les critères de collecte — refondus le 26 août, et le chantier n'est pas fini
 
-- **80 % des offres collectées ne portent aucun signal IA** (mesuré le 26 août : 298 sur 373,
-  ni dans l'intitulé ni dans la description). Les codes ROME en sont la cause : **`H1206`
-  ramène 111 offres pour 6 pertinentes — 5 %**, à lui seul 30 % du volume ; `M1403` en ramène
-  7 pour zéro. ⚠️ **Ne pas les retirer maintenant : la notation EST le filtre**, et elle
-  donnera une bien meilleure mesure que le lexique — la note d'intérêt réelle par code ROME.
-  Le coût du bruit est de **2,77 $/mois**, donc l'argument économique ne tranche pas ; le vrai
-  risque est le **plafond de pagination** de France Travail (~1150 par recherche), qu'un
-  rattrapage de 30 jours approcherait.
-- **Sonnet 5 ou Opus 5 pour la notation ?** L'écart mesuré est de **2,30 $/mois**. Le choix de
-  Sonnet 5 dans § Architecture avait été fait sans chiffres ; à ce niveau de dépense il ne se
-  joue plus sur le coût mais sur le nombre de bonnes offres ratées. **À rouvrir en phase 2 en
-  faisant tourner les deux sur les mêmes 50 offres.**
+**Question CLOSE : le bruit des codes ROME.** Elle était ouverte depuis le 26 août au matin
+(« H1206 ramène 111 offres pour 6 pertinentes »). Tranchée le soir même, sur mesure :
+**les six codes ROME sont retirés**, ils apportaient 445 offres nettes par mois pour zéro
+offre au-dessus de 30 sur 50 notées au hasard. Détail dans `pipeline/codes_rome.txt`, qui
+porte la mesure entière.
+
+**Effet mesuré de la nouvelle configuration**, sur 15 offres tirées au hasard dans la collecte
+de reconfiguration, comparées aux 82 notées sous l'ancienne :
+
+| | Nouvelle config | Ancienne |
+|---|---|---|
+| Volume collecté | **294 offres/mois** | 707 |
+| Moyenne d'intérêt | **16,2** | 7,7 |
+| Médiane | **10** | 5 |
+| Offres au-dessus de 50 | **7 %** | 1 % |
+| Coût de notation | **~1,75 $/mois** | ~4,20 $ |
+
+⚠️ **CHANTIER OUVERT — Maxime veut les critères les PLUS optimaux, et la mesure n'est pas
+finie.** Ce qui reste à mesurer, dans l'ordre :
+
+1. **`deploiement` (29 offres/mois) et `automatisation` (16)** ne sont pas mesurés. Ce sont eux
+   qui ramènent « Conducteur d'engins Polyvalent » (noté **0/100**) et « Comptable support
+   logiciel » (3/100). Premier gisement d'amélioration.
+2. **`IA` matche `IPR-IA`** — « Inspecteur pédagogique régional ». Trois offres notées
+   viennent de ce faux positif. À quantifier avant de décider quoi faire.
+3. **`RPA` ne ramène que 3 offres/mois** — à garder ou retirer selon leur qualité.
+4. **De nouveaux mots-clés à tester** : le vocabulaire s'ouvre (voir § Collecte), donc la
+   liste des termes à zéro doit être remesurée périodiquement.
+
+⚠️ **Question TOUJOURS OUVERTE : Sonnet 5 ou Opus 5 ?** **Rien n'a été testé sur Opus 5** — les
+97 offres sont toutes notées par Sonnet 5. Le choix reste à faire en lançant `--renoter
+--modele claude-opus-5` sur les mêmes offres et en comparant les notations côte à côte. À ce
+niveau de dépense (~2,30 $/mois d'écart) il ne se joue pas sur le coût mais sur le nombre de
+bonnes offres ratées.
 
 ### Ce qui reste ouvert
 
 | | |
 |---|---|
-| `ANTHROPIC_API_KEY` | Texte d'exemple — **bloquant pour la phase 2**, et empêche de compter les tokens exactement |
+| `ANTHROPIC_API_KEY` dans GitHub Actions | Posée en local (`.env`), **absente des secrets GitHub** — à ajouter le jour où la notation sera branchée sur le cron. Jamais chez Vercel |
+| Notation non branchée sur le cron | `.github/workflows/` ne lance que la collecte. La notation se lance à la main. À brancher avant de considérer la phase 2 close |
+| Tri par note : piège `NULLS FIRST` | En PostgreSQL, `ORDER BY note_interet DESC` place les **NULL en PREMIER**. Sans `NULLS LAST` ou filtre explicite, les 438 offres non notées s'afficheraient **en haut** de la liste triée par intérêt. À traiter en construisant l'écran |
+| API Batches jamais exécutée | `notation.py --lot` est écrit et **n'a jamais tourné**. Le rattachement par `custom_id` est en place mais non vérifié en conditions réelles |
+| Critères de collecte non finis | `deploiement`, `automatisation`, `RPA` et le faux positif `IA`/`IPR-IA` restent à mesurer — voir § État actuel |
 | Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver (`docs/HEBERGEMENT.md`) |
 | `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme : « base injoignable » alors que la base va bien |
 | Largeur contre barre latérale | Les 1000 px figés ne laissent pas la place aux 208 px de filtres prévus en phase 4 — à trancher là-bas (`docs/DESIGN.md`) |
@@ -207,23 +272,37 @@ sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoir
 
 ## Collecte — trois faits mesurés, opposables
 
-Mesurés contre l'API réelle le 21 août 2026. Détail et méthode dans
-`docs/API_FRANCE_TRAVAIL.md`. **Ne pas les redécouvrir, ne pas les contredire de
-mémoire.**
+Mesurés contre l'API réelle le 21 août 2026, **remesurés et en partie corrigés le
+26 août**. Détail et méthode dans `docs/API_FRANCE_TRAVAIL.md`. **Ne pas les
+redécouvrir, ne pas les contredire de mémoire.**
 
 1. **La recherche France Travail n'indexe PAS la description.** Un mot pris dans le
-   corps d'une annonce ne la retrouve pas. Elle porte sur l'intitulé, le libellé ROME
-   et le champ `competences`. Conséquence directe : une offre au titre banal dont l'IA
-   n'apparaît que dans le texte est invisible à **toute** liste de mots-clés. C'est
-   pour ça que `codes_rome.txt` existe — un filtre structurel que le lexique ne peut
-   pas remplacer.
-2. **Le vocabulaire est fermé et français.** `IA générative`, `agent IA`, `POC IA`,
-   `LLM`, `GenAI`, `chatbot`, `MLOps`, `ChatGPT` renvoient **zéro offre**. Les
-   expressions à plusieurs mots sont pires qu'inutiles : `avant-vente` ramène 299
-   postes de vendeur en magasin, le moteur ayant matché « vente ».
-3. ⚠️ **Un mot-clé ne s'ajoute jamais sans mesurer ce qu'il ramène.** Ni au flair, ni
-   par analogie avec l'anglais. Le script de mesure tient en vingt lignes ; l'erreur,
-   elle, pollue la base en silence.
+   corps d'une annonce ne la retrouve pas. Elle porte sur l'intitulé, le **libellé
+   ROME**, l'**appellation** et le champ `competences`. Conséquence directe : une
+   offre au titre banal dont l'IA n'apparaît que dans le texte est invisible à
+   **toute** liste de mots-clés. Ce fait reste vrai et commande tout le reste.
+2. ⚠️ **CORRIGÉ LE 26 AOÛT — le vocabulaire n'est ni fermé ni français.** L'ancienne
+   version de ce point disait le contraire, et c'était l'erreur la plus coûteuse de
+   la configuration : **`AI` en anglais ramène 28 offres nettes par mois** qu'aucun
+   autre critère ne trouvait. `GenAI`, `LLM`, `copilot`, `prompt` et `RAG` ne
+   renvoient plus zéro non plus. Ce qui reste vrai : les expressions à plusieurs mots
+   sont dangereuses — `avant-vente` ramène 299 postes de vendeur, le moteur ayant
+   matché « vente ».
+3. ⚠️ **CORRIGÉ LE 26 AOÛT — les codes ROME ne rattrapent PAS ce que le lexique rate.**
+   `codes_rome.txt` existait pour ça et le raisonnement était juste ; la mesure l'a
+   démenti. Les six codes apportaient 445 offres nettes par mois pour **zéro offre
+   au-dessus de 30 sur 50 notées au hasard**. Tous retirés. Le fichier reste en place,
+   **vide et valide** (`config.charger()` l'autorise), avec la mesure qui l'a vidé.
+   ⚠️ Corollaire non évident : **un code ROME dont le libellé contient un mot déjà
+   cherché n'apporte rien**, la recherche indexant ce libellé. `M1889` « Ingénieur en
+   Intelligence Artificielle » a la meilleure qualité mesurée de tous les codes et un
+   apport net de **zéro**.
+4. ⚠️ **Un critère ne s'ajoute jamais sans mesurer ce qu'il ramène** — ni mot-clé, ni
+   code ROME. Et mesurer veut dire **deux choses** : le volume *net* (ce que les
+   autres critères ne trouvent pas déjà) **et** la qualité, en notant un échantillon
+   **tiré au hasard** (`--rome CODE --au-hasard`, `--collecte ID --au-hasard`).
+   Prendre les N plus récentes n'est pas un échantillon : elles viennent d'une seule
+   journée de collecte.
 
 **Les postes visés** sont ceux qui *branchent* un modèle chez un client — Forward
 Deployed Engineer, AI Solutions Engineer, consultant IA, ingénieur d'intégration.
@@ -246,7 +325,7 @@ suivante. C'est arrivé le 20 août — voir `docs/JOURNAL.md`.
 assumée au critère d'acceptation du `PLAN.md`, validée en séance : leur forme dépend de ce
 que l'agent produira réellement, et rien ne les alimente d'ici là.
 
-**Six règles opposables, toutes déjà appliquées :**
+**Huit règles opposables, toutes déjà appliquées :**
 
 1. **`timestamptz` partout, jamais `timestamp`.** GitHub Actions tourne en UTC, le
    navigateur est à Paris : sans fuseau, une collecte de 4 h s'affiche « 02:00 » en été.
@@ -266,6 +345,19 @@ que l'agent produira réellement, et rien ne les alimente d'ici là.
    `charge_brute` — pour rester repérables et supprimables. Tout le reste du champ
    `contact` est **écarté à la collecte**, avant écriture. Voir `docs/PRD.md`
    § « Données personnelles ».
+7. ⚠️ **`executions_veille.etape` n'est pas du rangement, c'est un correctif de bug.**
+   `derniere_execution_reussie()` borne la fenêtre de collecte sur la dernière ligne
+   `issue = 'reussite'`. Sans le filtre `etape = 'collecte'`, une notation réussie à 14 h
+   ferait repartir la collecte de la nuit suivante de 14 h au lieu de la veille : **les offres
+   publiées entre les deux seraient perdues, sans la moindre erreur** — ni exception, ni job
+   rouge. `derniere_execution_reussie()` et `recoller_offres_orphelines()` filtrent dessus.
+   Vérifié en plantant une notation réussie datée de maintenant : la fenêtre ne bouge pas.
+8. **`NULL` sur une note veut dire « pas encore notée », jamais « zéro ».** Trois contraintes
+   rendent physiquement impossible d'écrire une note sans sa justification — le plancher
+   d'accessibilité interdit qu'une information tienne sur la seule couleur, et une règle gravée
+   dans le moteur vaut mieux qu'une discipline de code. `notation_tentatives` borne la
+   facturation : sans compteur, une offre qui fait systématiquement échouer l'appel serait
+   retentée chaque nuit, payante à chaque fois.
 
 **Autorisation — deux verrous indépendants, vérifiés :** RLS activé sans aucune politique,
 *et* tous droits retirés à `anon` et `authenticated`. Une politique ajoutée par erreur
@@ -320,6 +412,36 @@ Actions. La trace part en base dans `executions_veille`, dans les deux cas.
 ⚠️ **Les critères de collecte sont des données, pas du code** : `pipeline/mots_cles.txt` et
 `pipeline/codes_rome.txt`. Ils s'éditent sans toucher aux modules — mais **jamais sans
 mesurer d'abord ce que le nouveau terme ramène** (voir § Collecte).
+
+### Lancer la notation
+
+```bash
+source .venv/bin/activate
+python -m pipeline.notation --sans-appeler --limite 1   # GRATUIT : affiche le prompt, compte les tokens
+python -m pipeline.notation --limite 15                 # note 15 offres, appels directs
+python -m pipeline.notation --lot                       # via l'API Batches : moitié prix, jusqu'à 1 h
+python -m pipeline.notation --sans-ecrire --limite 1    # appelle le modèle, n'écrit rien en base
+```
+
+⚠️ **Tout ce qui n'est pas `--sans-appeler` est FACTURÉ. Prévenir Maxime avant, toujours**,
+avec le nombre d'appels et l'ordre de grandeur (~0,6 centime par offre, cache chaud).
+`models.list()` et `count_tokens()` sont gratuits — s'en servir librement.
+
+**Les drapeaux de mesure** — liste complète dans `--help`, deux portent une leçon :
+
+- ⚠️ **`--au-hasard`** tire l'échantillon au sort au lieu de prendre les plus récentes. Sans
+  lui, une « mesure » porte sur une seule journée de collecte et ne dit rien du gisement.
+- **`--renoter`** reprend les offres **déjà notées** : le seul moyen de juger une correction de
+  critères sur les mêmes annonces. Chaque offre est repayée. C'est aussi la commande pour
+  trancher Sonnet contre Opus : `--renoter --modele claude-opus-5`.
+
+**La recette de mesure d'un critère**, celle qui a fait tomber les codes ROME :
+
+1. Volume brut contre l'API (gratuit) — combien d'offres sur 30 jours.
+2. **Volume NET** — combien que les autres critères ne trouvent pas déjà. Un critère à fort
+   volume et apport net nul est inutile ; c'est le piège dans lequel `M1889` est tombé.
+3. Collecter, puis `--au-hasard` sur un échantillon, puis lire les notes. **Le volume ne dit
+   rien de la qualité** — `H1206` ramenait 238 offres/mois pour zéro au-dessus de 30.
 
 ### Migrations Supabase
 

@@ -144,6 +144,28 @@ filets**, et le second existe précisément pour combler ce trou.
 Le modèle lit ensuite la description des unes comme des autres : il fait le
 travail que la recherche ne sait pas faire.
 
+⚠️ **RÉVISÉ LE 26 AOÛT 2026, une fois la notation en main — le second filet est
+supprimé.** La décision ci-dessus était prise sur un raisonnement (« le code ROME
+est structurel, il attrape ce que le lexique rate ») qu'aucune mesure de qualité
+n'avait alors pu vérifier : la notation n'existait pas. Elle existe depuis, et
+elle dit ceci — sur **50 offres tirées au hasard** dans les six codes ROME,
+**aucune ne dépasse 30 sur 100** d'intérêt. Le filet apportait bien 445 offres
+nettes par mois que les mots-clés ne trouvaient pas ; il attrapait technicien
+helpdesk, développeur Salesforce, ingénieur travaux promoteur immobilier.
+
+Ce qui l'a remplacé : **trois mots-clés**, dont `AI` en anglais — 28 offres
+nettes par mois qu'aucun critère ne voyait, parce que le projet cherchait `IA`
+sans jamais chercher `AI`. Résultat mesuré : volume divisé par 2,4 (707 → 294
+offres/mois), moyenne d'intérêt multipliée par 2,1 (7,7 → 16,2), part d'offres
+au-dessus de 50 multipliée par 7 (1 % → 7 %).
+
+**La leçon de méthode, transférable :** l'arbitrage de 2026-08-21 était
+raisonnable et faux, et il ne pouvait pas être tranché à ce moment-là — il
+manquait l'instrument de mesure. Une décision de couverture prise sans pouvoir
+mesurer la *qualité* de ce qu'on ramène doit être explicitement marquée comme
+provisoire, et rouverte dès que l'instrument existe. Détail complet de la mesure
+dans `pipeline/codes_rome.txt`, qui reste en place, vide, pour la porter.
+
 **Les deux options écartées, avec leur chiffre** (mesuré sur 7 jours réels) :
 collecter les seuls mots-clés coûte ~0,80 $/mois mais rate structurellement les
 intitulés banals ; collecter **tout** l'Île-de-France (1 925 offres/jour) et

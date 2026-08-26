@@ -1159,3 +1159,146 @@ intuition de prix vaut rarement une multiplication.
 expliquait clairement pourquoi son filet ne servait à rien — et se trompait. Il
 avait été écrit après une mesure honnête sur une semaine ; cinq jours de données
 en plus l'ont démenti.
+
+---
+
+## 26 août 2026 — La notation tourne, et les critères de collecte s'effondrent
+
+Séance longue. Elle devait livrer la phase 2 ; elle a livré la notation **et**
+démoli la moitié de ce que le projet croyait savoir sur sa propre collecte.
+
+### Ce qui a été construit
+
+Quatre briques, quatre commits, ~60 centimes d'API dépensés sur 5 $.
+
+**La migration 5** — deux notes, deux justifications, un résumé, un salaire
+annualisé, la trace de consommation, et une colonne `etape` sur
+`executions_veille`. 25 vérifications contre la vraie base : lecture, écriture
+d'une notation complète, et violation une par une de chaque contrainte.
+
+Une seule a échoué au premier essai, et c'était mon test qui était faux : j'avais
+écrit une heure de fin en heure de Paris contre un début en UTC, et la contrainte
+`terminee_apres_demarree` l'a attrapée. Le piège que `timestamptz` existe pour
+rendre visible s'est refermé sur moi.
+
+**`pipeline/salaire.py`** — annualisation des 9 formes réelles. Sur 373 offres :
+129 montants retenus, 242 absents, **2 écartés comme invraisemblables**. Ces deux
+sont faux à la source : « Mensuel de 45000 à 60000 Euros sur 12 mois » (× 12 =
+540 000 à 720 000 €/an — et c'est une offre d'ingénieur IA) et « Annuel de 35.0
+Euros ». Sans garde-fou, la première aurait été l'offre la mieux payée du site.
+
+Trois comportements possibles, un seul acceptable : parser bêtement fait d'une
+faute de frappe la meilleure offre ; requalifier le mensuel en annuel revient à
+deviner l'intention de l'employeur, donc à fabriquer de la donnée ; **écarter avec
+un motif** laisse le libellé d'origine visible et l'humain tranche. Sur une donnée
+d'entrée qu'on ne contrôle pas, une valeur absente est récupérable, une valeur
+fausse ne l'est pas — parce que rien en aval ne saura qu'elle est fausse.
+
+**`pipeline/notation.py`** — critères dans un fichier versionné, sortie
+structurée, cache de prompt, appels directs et Batches.
+
+**Un bug attrapé avant le premier centime.** Le mode `--sans-appeler` affiche le
+prompt exact et compte ses tokens gratuitement. Il a montré que mon filtre de
+commentaires, qui retirait les lignes commençant par `#`, **emportait aussi tous
+les titres Markdown** du fichier de critères. Le paragraphe définissant la note
+d'intérêt arrivait au modèle amputé de son titre : « Elle mesure l'adéquation… »
+— *elle* qui ? Prompt grammaticalement correct, notation livrée au hasard, aucune
+erreur nulle part. Les commentaires sont passés en `//`.
+
+### L'étalonnage : quand le modèle a raison contre son barème
+
+Premier essai sur une offre, puis trois. Le modèle s'écartait systématiquement du
+barème d'accessibilité, toujours vers le bas. Sur une annonce d'administration
+réseau marquée « débutant accepté » mais exigeant Cisco, Aruba et Palo Alto, mon
+barème commandait 90-100 ; le modèle a mis 40.
+
+**C'était le barème qui avait tort.** Il classait l'expérience exigée en facteur
+n°1 et les technologies en n°5. Un employeur qui accepte un débutant accepte un
+débutant *de son domaine*. Deux facteurs dominent désormais à égalité — expérience
+et adéquation technique — et les repères chiffrés ne valent que pour une pile
+familière. Effet vérifié en renotant les mêmes trois offres : l'administration
+réseau tombe de 40 à 5, l'ingénierie qualité médicale de 25 à 15, et le poste
+Python/IA reste à 45. **Seules bougent les offres dont la pile est étrangère.**
+
+### Le champ qui ment une fois sur deux
+
+Le modèle a écrit « trois ans d'expérience sont exigés » sur une offre dont le
+champ `experience_libelle` dit « Débutant accepté ». Vérification faite : le texte
+de l'annonce dit « une première expérience, de 3 ans minimum ». Deuxième cas, une
+autre offre : champ « 2 An(s) », texte « au moins 3 ans ».
+
+**Sur trois offres vérifiées ligne à ligne, deux ont un champ structuré contredit
+par leur propre texte.** Toute logique bâtie dessus — filtre, tri, seuil — sera
+fausse une fois sur deux. Et c'est l'argument qui justifie de faire *lire* les
+annonces à un modèle plutôt que de les filtrer sur leurs métadonnées : aucune
+règle n'aurait attrapé ça, il fallait lire la phrase.
+
+### Puis Maxime a posé la bonne question
+
+« Le code ROME, c'est quand même assez large comme filtre. Il n'y a pas une autre
+manière de les collecter ? »
+
+La mesure a donné une réponse que je n'attendais pas, en trois temps.
+
+**Un : les codes ROME collectés étaient les mauvais.** `H1206` = « Management et
+ingénierie R&D **industriel** » est un domaine entier, pas un métier. 238 offres
+par mois, et sur 17 tirées au hasard, **aucune au-dessus de 8 sur 100**. Il existe
+`M1889` = « Ingénieur en Intelligence Artificielle (IA) », un code taillé pour le
+projet — **jamais collecté**.
+
+**Deux : ajouter les bons codes n'aurait rien apporté.** M1889 et M1861 ont la
+meilleure qualité mesurée de tous les codes (moyennes 21,3 et 17,7 ; c'est de
+M1861 que vient la seule offre à 75/100). Leur apport **net** est de zéro : leurs
+47 offres mensuelles sont **déjà toutes** ramenées par les mots-clés. La recherche
+texte indexe le libellé ROME et l'appellation — une offre classée « Ingénieur en
+Intelligence Artificielle » est trouvée par le mot-clé « intelligence
+artificielle ». **Un code ROME dont le libellé contient un mot déjà cherché ne
+peut rien apporter.** Ce n'était écrit nulle part.
+
+**Trois : le vrai trou était ailleurs, et il était béant.** Le projet cherchait
+`IA` depuis dix jours **sans jamais chercher `AI`**. En anglais : 33 offres sur 30
+jours, dont **28 qu'aucun autre critère ne trouvait** — *AI Engineer*, *Generative
+AI & Agentic Engineer*, *AI Lead Engineer*, *Consultant Data et AI Engineer jeune
+diplômé*. Le commentaire de `mots_cles.txt` affirmait que le vocabulaire est
+« FERMÉ et FRANÇAIS ». La seconde moitié était fausse et coûtait cher.
+
+Configuration finale : les six codes ROME retirés, `AI`, `GenAI` et `agentique`
+ajoutés. Mesuré sur 15 offres tirées au hasard dans la collecte de
+reconfiguration, contre les 82 notées sous l'ancienne :
+
+| | Nouvelle config | Ancienne |
+|---|---|---|
+| Volume | 294 offres/mois | 707 |
+| Moyenne d'intérêt | **16,2** | 7,7 |
+| Au-dessus de 50 | **7 %** | 1 % |
+| Coût de notation | ~1,75 $/mois | ~4,20 $ |
+
+La meilleure offre de la soirée, **« Alternant Ingénieur IA Agentique » à 85/100**,
+était invisible avant. Son accessibilité est de 15 — c'est une alternance,
+passionnante et hors de portée. Première fois que les deux notes travaillent en
+sens opposé : c'est le cas qui valide leur séparation.
+
+### Ce que je retiens
+
+**Deux de mes recommandations étaient fausses, et la mesure l'a dit.** J'ai
+proposé d'ajouter M1889 et M1861 : apport net zéro. J'ai annoncé M1805 « le plus
+prometteur » : 6,1 de moyenne. Les deux fois j'avais un raisonnement plausible.
+Aucun des deux n'aurait été détecté sans mesurer — un raisonnement plausible sur
+une API qu'on connaît mal produit des conclusions plausibles et fausses.
+
+**Un échantillon pris par date n'est pas un échantillon.** Les 18 premières offres
+notées venaient toutes de la même journée de collecte. Toute conclusion tirée de
+là aurait porté sur cette journée, pas sur le gisement. `--au-hasard` est né de
+cette gêne, et c'est lui qui rend les mesures de la soirée opposables.
+
+**Une décision prise sans instrument de mesure doit être marquée provisoire.**
+L'arbitrage du 21 août sur les deux filets était raisonnable et faux, et il ne
+*pouvait pas* être tranché ce jour-là : la notation n'existait pas. Ce qui manquait
+n'était pas de la rigueur, c'était l'instrument. Une décision dans cette situation
+mérite une date de réouverture, pas seulement une justification.
+
+**Savoir dire ce que la mesure ne dit pas.** Sur 17 offres H1206 sans succès, la
+tentation était de conclure « le gisement est vide ». Le calcul dit autre chose :
+si le gisement contenait 6 offres pertinentes sur 111, rater les 17 a 36 % de
+chances d'arriver. La conclusion honnête était « au plus 15 sur 111, et je ne peux
+pas exclure 6 » — ce qui suffisait à décider, sans prétendre à une preuve.

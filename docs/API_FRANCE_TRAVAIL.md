@@ -88,11 +88,53 @@ Scikit-Learn ».
 
 **Conséquence opposable** : une offre intitulée « Ingénieur études et
 développement », dont l'IA n'apparaît que dans la description, est **invisible à
-toute requête par mots-clés**, quelle que soit la liste. Le seul recours est un
-filtre structurel — `codeROME` — suivi d'une lecture de la description par le
-modèle. C'est le rôle de `pipeline/codes_rome.txt`.
+toute requête par mots-clés**, quelle que soit la liste. Le seul recours possible
+est un filtre structurel — `codeROME` — suivi d'une lecture de la description par
+le modèle.
 
-### Le vocabulaire est fermé, et français
+⚠️ **MESURÉ LE 26 AOÛT 2026 : ce recours ne fonctionne pas en pratique.** Le
+raisonnement ci-dessus est juste, sa mise en œuvre a échoué. Les six codes ROME
+alors configurés apportaient bien 445 offres nettes par mois — que les mots-clés
+ne trouvaient effectivement pas — mais sur **50 de ces offres notées au hasard,
+aucune ne dépassait 30 sur 100** d'intérêt : technicien helpdesk, développeur
+Salesforce, ingénieur travaux promoteur immobilier. Le filet attrape, et il
+attrape le mauvais poisson. Tous les codes ont été retirés ; `codes_rome.txt`
+reste en place, vide, avec la mesure qui l'a vidé.
+
+⚠️ **Et un code ROME dont le libellé contient un mot déjà cherché n'apporte
+RIEN.** Puisque la recherche indexe le libellé ROME et l'appellation (voir
+ci-dessus), une offre classée `M1889` — libellé « Ingénieur en Intelligence
+Artificielle (IA) » — est **déjà** ramenée par le mot-clé `intelligence
+artificielle`. Mesuré : `M1889` et `M1861`, les deux codes de meilleure qualité
+mesurée, ont un apport net de **zéro** offre sur 30 jours. La question à poser
+avant d'ajouter un code n'est donc pas « ce métier est-il proche de la cible ? »
+mais « **quelles offres apporte-t-il que les mots-clés ratent, et que
+valent-elles une fois notées ?** ». Les deux moitiés comptent.
+
+### Le vocabulaire est étroit — mais PAS français seulement
+
+⚠️ **CORRIGÉ LE 26 AOÛT 2026.** Cette section s'intitulait « Le vocabulaire est
+fermé, et français ». Les deux moitiés étaient fausses, et la seconde coûtait
+cher : **`AI` en anglais ramène 33 offres sur 30 jours, dont 28 qu'aucun autre
+critère ne trouvait** — *AI Engineer*, *Generative AI & Agentic Engineer*, *AI
+Lead Engineer*, *Consultant Data et AI Engineer jeune diplômé*. Beaucoup
+d'employeurs franciliens rédigent leurs annonces en anglais. Le projet a cherché
+`IA` pendant dix jours sans jamais chercher `AI`.
+
+Le vocabulaire n'est pas non plus **fermé** : il s'ouvre lentement. Termes qui
+renvoyaient zéro le 21 août et ne renvoient plus zéro le 26 (30 jours glissants) :
+`GenAI` 3 · `LLM` 1 · `copilot` 2 · `prompt` 1 · `RAG` 1. Encore marginal, mais
+à **remesurer périodiquement** plutôt qu'à tenir pour acquis.
+
+**Mesuré et ÉCARTÉ le 26 août, à ne pas réintroduire au flair** : `machine
+learning` (53 offres nouvelles — data scientist, bioinformaticien, analyste
+quantitatif : le PRD refuse la modélisation) · `data` (275 offres nouvelles,
+postes de données pures, même motif) · `AI engineer` (14 offres, toutes déjà
+ramenées par `AI`).
+
+**Mesures du 21 août, conservées ci-dessous pour l'ordre de grandeur** — les
+volumes portent sur 7 jours, ceux du 26 août sur 30 jours, ils ne se comparent
+pas directement.
 
 Volumes sur 7 jours en Île-de-France :
 
@@ -106,10 +148,14 @@ Volumes sur 7 jours en Île-de-France :
 | IA | 18 |
 | digital · deploiement · automatisation · RPA | 13 · 8 · 6 · 2 |
 
-**Renvoient ZÉRO offre** : `IA générative` · `IA agentique` · `agent IA` ·
-`POC IA` · `intégration IA` · `solution IA` · `chef de projet IA` · `LLM` ·
-`GenAI` · `chatbot` · `agent conversationnel` · `MLOps` · `no-code` · `prompt` ·
-`OpenAI` · `ChatGPT` · `copilot` · `assistant virtuel`.
+**Renvoyaient ZÉRO offre le 21 août** : `IA générative` · `IA agentique` ·
+`agent IA` · `POC IA` · `intégration IA` · `solution IA` · `chef de projet IA` ·
+`LLM` · `GenAI` · `chatbot` · `agent conversationnel` · `MLOps` · `no-code` ·
+`prompt` · `OpenAI` · `ChatGPT` · `copilot` · `assistant virtuel`.
+
+⚠️ Remesuré le 26 août sur 30 jours : `GenAI`, `LLM`, `copilot`, `prompt` et
+`RAG` ne renvoient plus zéro. `chatbot`, `ChatGPT`, `MLOps` et `modèle de
+langage` renvoient toujours zéro.
 
 ⚠️ **Les expressions à plusieurs mots sont dangereuses.** `avant-vente` ramène
 299 postes de *Conseiller de vente*, *Vendeur en animalerie* et *Réceptionnaire
