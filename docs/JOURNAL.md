@@ -892,3 +892,90 @@ page contre ces 373 offres — pas contre les 189 d'avant — puis `/cloture`.
 
 ⚠️ **La dette du 21 août reste ouverte** : `MOT_DE_PASSE_SITE` doit être régénéré.
 Non bloquant pour le cron, qui ne touche pas au site ; impératif avant la phase 4.
+
+---
+
+## 26 août 2026 — Rotation des secrets du site
+
+La dette du 21 août est fermée. `MOT_DE_PASSE_SITE` avait fuité dans une
+conversation par une sélection dans l'éditeur ; il a été régénéré.
+
+### Ce qui a élargi le geste, et pourquoi ça comptait
+
+La dette demandait littéralement « régénérer le mot de passe ». Ç'aurait été une
+**révocation à moitié**.
+
+Un cookie de session est signé avec `SECRET_SESSION`, pas avec le mot de passe.
+La porte vérifie le mot de passe **une fois**, à la connexion, puis pose un jeton
+qui vaut 30 jours ; ensuite, plus personne ne redemande le mot de passe. Donc
+quelqu'un qui aurait utilisé la valeur fuitée pour se connecter **aurait gardé
+son accès un mois entier** après le changement de mot de passe — sa session ne
+dépend plus de lui.
+
+Les deux ont donc été régénérés. Coût : une reconnexion. Maxime a tranché en ce
+sens.
+
+C'est une distinction transférable en entretien : **changer le facteur
+d'authentification ne révoque pas les sessions qu'il a déjà émises.** C'est aussi
+pour ça qu'un vrai système d'authentification garde une liste de sessions
+révocables — ici, avec un seul utilisateur et aucune table de sessions, tourner
+le secret de signature *est* le bouton « déconnecter partout ».
+
+### Comment les valeurs ont été produites
+
+Module `secrets` de Python, pas `random` — le premier tire d'une source
+cryptographique, le second est prévisible si on connaît son état.
+
+| | Forme | Entropie |
+|---|---|---|
+| `MOT_DE_PASSE_SITE` | 24 caractères en 6 groupes de 4, alphabet de 32 symboles sans `I`/`O`/`0`/`1` | 120 bits |
+| `SECRET_SESSION` | 32 octets en hexadécimal | 256 bits |
+
+`session.ts` impose 16 caractères minimum sur les deux ; la marge est large.
+
+L'écriture dans `interface/.env.local` a été ciblée ligne par ligne, avec
+contrôle que le nombre de lignes ne bougeait pas — ce fichier détient l'unique
+copie des secrets du site, et un agent de revue l'avait déjà écrasé le 21 août.
+
+Chez Vercel : `vercel env add <nom> <cible> --sensitive --force --yes`, valeur
+lue **sur l'entrée standard**. `--value` l'aurait exposée dans la liste des
+processus de la machine, lisible par n'importe quel programme local.
+
+### Deux pièges rencontrés
+
+**`vercel env ls` ne prouve rien sur une rotation.** La colonne « created »
+affichait encore « 5d ago » juste après l'écrasement : `--force` remplace la
+valeur sans réinitialiser la date. Comme les variables *Sensitive* ne sont pas
+relisibles, **le seul test possible reste une connexion réelle au site en ligne**
+— ce qui prolonge exactement le piège déjà consigné le 21 août.
+
+**La porte ne se teste pas en `curl`.** Le formulaire est un composant client :
+Next n'émet aucun champ caché `$ACTION_ID_`, l'action s'invoque par un en-tête
+`Next-Action` dont le corps suit un format React interne. Deux tentatives ont
+rendu des HTTP 500 qui ne prouvaient rien — ni que le mot de passe était bon, ni
+qu'il était mauvais. Un test qui échoue pour la mauvaise raison est pire qu'un
+test absent : il ressemble à une preuve.
+
+La sortie a été un script Playwright lancé hors du dépôt, **qui lit les valeurs
+dans les fichiers**. C'était la contrainte structurante de toute l'opération :
+taper le mot de passe dans un navigateur piloté l'aurait fait entrer dans la
+conversation — c'est-à-dire recréer exactement la fuite qu'on réparait.
+
+### Ce qui a été vérifié, sur le site en ligne
+
+| Test | Résultat |
+|---|---|
+| `/` sans cookie | renvoie vers `/connexion` ✓ |
+| **Ancien mot de passe** (le fuité) | **refusé, aucune session ouverte** ✓ |
+| Mot de passe arbitraire | refusé ✓ |
+| **Nouveau mot de passe** | ouvre, session posée ✓ |
+| `/offres` avec la nouvelle session | 200 offres affichées, **console sans erreur** ✓ |
+
+Les offres visibles portent la date du **26 août** : la chaîne complète est
+prouvée de bout en bout — cron GitHub → Supabase → site en ligne.
+
+Le plafond de 200 sur 373 offres en base est `PLAFOND_AFFICHAGE` dans
+`lib/offres.ts`, une limite voulue et documentée, pas une troncature accidentelle.
+
+Copies temporaires de l'ancien mot de passe : écrasées puis supprimées. Nouveau
+mot de passe déposé dans le presse-papiers, jamais affiché.

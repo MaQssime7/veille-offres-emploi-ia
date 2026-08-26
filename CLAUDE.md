@@ -157,15 +157,32 @@ LIGNE et vérifiée. L'écran `/offres` lit la base.**
 4. **Les tables d'enrichissement n'existent pas, et c'est une décision** — voir
    « Base de données » ci-dessous. Ne pas les créer avant la phase 6.
 
-⚠️ **DETTE OUVERTE — `MOT_DE_PASSE_SITE` a fuité le 21 août 2026** dans une conversation,
-par une sélection dans l'éditeur (voir § Sécurité). Il n'est ni public, ni dans git, ni
-dans un journal, mais il est sorti de son périmètre : **il doit être régénéré.** Décision
-de Maxime le 21 août : plus tard, il partait. **À faire à la reprise, et impérativement
-avant la phase 4** (notes personnelles) **et la phase 6** (bouton « Enrichir », qui engage
-une dépense). La procédure : nouveau mot de passe de 24 caractères par groupes de 4 sans
-caractère confondable → `interface/.env.local` → `vercel env rm` puis `env add` sur
-Production *et* Preview → `vercel redeploy` → dépôt dans le presse-papiers, jamais à
-l'écran.
+✅ **DETTE FERMÉE le 26 août 2026 — `MOT_DE_PASSE_SITE` a été régénéré**, après sa fuite
+du 21 août par une sélection dans l'éditeur (voir § Sécurité).
+
+⚠️ **`SECRET_SESSION` a été régénéré en même temps, et c'est le point qui compte** : un
+cookie de session est signé avec `SECRET_SESSION`, **pas** avec le mot de passe. Changer le
+seul mot de passe ferme la porte aux nouvelles connexions mais **laisse vivre 30 jours toute
+session déjà ouverte** avec l'ancien. Régénérer le seul mot de passe après une fuite est
+donc une révocation à moitié. Le refaire ainsi si le cas se représente.
+
+**Procédure exécutée, reproductible telle quelle :** valeurs générées avec le module
+`secrets` de Python (mot de passe : 24 caractères en 6 groupes de 4, alphabet de 32 symboles
+sans `I`/`O`/`0`/`1`, soit 120 bits · `SECRET_SESSION` : 32 octets en hexadécimal, 256 bits)
+→ réécriture ciblée de `interface/.env.local` en contrôlant que le nombre de lignes ne bouge
+pas → `vercel env add <nom> <cible> --sensitive --force --yes` **en lisant la valeur sur
+l'entrée standard**, jamais via `--value` qui l'exposerait dans la liste des processus →
+`vercel redeploy` → dépôt dans le presse-papiers.
+
+⚠️ **Deux pièges rencontrés, à ne pas redécouvrir :**
+- **La colonne « created » de `vercel env ls` ne bouge pas** quand `--force` écrase une
+  valeur. La liste ne prouve donc **rien** sur une rotation — elle affichait encore « 5d ago »
+  juste après. Seul un essai de connexion sur le site en ligne fait foi.
+- **La porte ne se teste pas en `curl`.** Le formulaire est un composant client : Next
+  n'émet aucun champ caché `$ACTION_ID_`, l'action s'invoque par un en-tête `Next-Action`
+  dont le corps est un format React interne. Deux tentatives ont rendu des HTTP 500 qui ne
+  prouvaient rien. **Passer par un vrai navigateur** — un script Playwright qui lit la
+  valeur dans le fichier, pour qu'elle ne transite jamais par la conversation.
 
 **En attente :** `ANTHROPIC_API_KEY` du `.env` contient un texte d'exemple, pas une vraie
 clé — **bloquant pour la phase 2**, et il empêche déjà de compter les tokens exactement
