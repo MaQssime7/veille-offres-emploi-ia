@@ -621,6 +621,16 @@ régressions tant qu'il n'y a pas de tests automatisés.
 - [x] **Compter les lignes dont les cartouches cassent sur deux lignes à 1000 px** — 0 sur 200, cartouche « Pas encore notée » compris. À refaire à chaque ajout de cartouche
 - [ ] Retrouver une offre écartée par le seuil, avec sa note et son motif — *dépend du filtre de statut, phase 4*
 
+**Après la phase 2 — le cron** — *déroulé en production le 26 août 2026, exécution `33011739111`*
+
+- [x] **Déclencher le workflow à la main et voir les deux jobs verts** — collecte puis notation, enchaînées par `needs: collecter`
+- [x] **Vérifier que le secret est masqué dans les journaux PUBLICS** — `ANTHROPIC_API_KEY: ***` dans la sortie du runner
+- [x] **Vérifier que `--derniere-collecte` désigne la collecte qui vient de tourner** — journal : « Notation restreinte à la collecte **#48** », et non #43 qui portait 146 offres non notées. ⚠️ C'est le parcours qui attrape le risque à 90 centimes
+- [x] **Vérifier qu'une notation sans rien à faire n'écrit AUCUNE ligne d'exécution** — `offres_a_noter()` rend une liste vide et le module sort *avant* `ouvrir_execution()`. Une table d'exécutions polluée de lignes vides fausserait l'écran de suivi d'exploitation
+- [ ] ⚠️ **NON VÉRIFIÉ : l'appel payant depuis le runner.** La collecte de 22 h 42 a ramené **0 offre nouvelle** (la précédente datait de 20 h 32), donc la notation n'avait rien à noter. Le chemin réseau vers `api.anthropic.com` depuis GitHub Actions n'a jamais été exercé.
+      ⚠️ **Et il ne peut pas être forcé** : la collecte ne rattache à son exécution que les offres **nouvelles**, donc un rattrapage manuel sur 30 jours ne ramène que des offres déjà en base, dédupliquées, non rattachées — toujours zéro à noter. Ce parcours se fermera de lui-même au premier cron qui trouve des offres.
+      ✅ Ce qui est établi malgré tout : `configuration.charger_notation()` **vérifie explicitement** la présence de `ANTHROPIC_API_KEY` avant toute lecture de base. Le job étant vert, la clé est lisible depuis le runner — ce n'est pas une supposition
+
 **Après la phase 3**
 
 - [ ] Ouvrir une offre, déplier la description intégrale, la replier

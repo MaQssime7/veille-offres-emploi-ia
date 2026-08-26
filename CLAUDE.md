@@ -121,7 +121,7 @@ Les critères de collecte ont été entièrement refondus sur mesure le 26 août
 | Supabase | Région Paris. `executions_veille` et `offres` créées et alimentées. RLS activé, droits vérifiés |
 | Migrations | **5**, toutes appliquées — `supabase/migrations/`. La 5ᵉ ajoute la notation (deux notes, justifications, salaire annualisé, compteurs de tokens, colonne `etape`) |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
-| `pipeline/` | Collecte **et notation** livrées, **toutes deux sur le cron** GitHub Actions à 02:23 UTC (4 h 23 à Paris l'été) — deux jobs enchaînés, la notation ne tournant que si la collecte a réussi. Critères dans `mots_cles.txt` (8 termes) et `codes_rome.txt` (**vide depuis le 26 août, délibérément**) |
+| `pipeline/` | Collecte **et notation** livrées, **toutes deux sur le cron** GitHub Actions à 02:23 UTC (4 h 23 à Paris l'été) — deux jobs enchaînés, la notation ne tournant que si la collecte a réussi. Workflow **déclenché à la main et vert le 26 août** (exécution `33011739111`), ⚠️ mais sans offre à noter ce soir-là : **l'appel payant depuis le runner reste non exercé**. Critères dans `mots_cles.txt` (8 termes) et `codes_rome.txt` (**vide depuis le 26 août, délibérément**) |
 | Modules | `collecte.py` · `notation.py` (`--limite`, `--modele`, `--effort`, `--lot`, `--rome`, `--collecte`, `--au-hasard`, `--renoter`, `--sans-ecrire`, `--sans-appeler`) · `salaire.py` · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
 
