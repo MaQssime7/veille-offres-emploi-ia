@@ -360,6 +360,7 @@ class Stockage:
     def offres_a_noter(
         self, limite: int | None = None, *, max_tentatives: int = 3,
         renoter: bool = False, rome: str | None = None, au_hasard: bool = False,
+        collecte: int | None = None,
     ) -> list[dict[str, Any]]:
         """Les offres pas encore notées, les plus récentes d'abord.
 
@@ -398,6 +399,11 @@ class Stockage:
             )
         if rome is not None:
             filtres += f"&rome_code=eq.{rome}"
+        if collecte is not None:
+            # Restreint aux offres trouvées par UNE exécution de collecte —
+            # c'est ce qui permet de mesurer l'effet d'un changement de critères
+            # sans le diluer dans tout l'historique déjà en base.
+            filtres += f"&execution_id=eq.{collecte}"
 
         if au_hasard and limite is not None:
             # ⚠️ Tirer les N plus récentes n'est PAS un échantillon : une seule

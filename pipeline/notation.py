@@ -389,7 +389,7 @@ def noter_en_lot(
 def executer(
     *, limite: int | None, modele: str, effort: str,
     en_lot: bool = False, sans_ecrire: bool = False, renoter: bool = False,
-    rome: str | None = None, au_hasard: bool = False,
+    rome: str | None = None, au_hasard: bool = False, collecte: int | None = None,
 ) -> int:
     """Note les offres en attente. Rend 0 en réussite, 1 en échec.
 
@@ -402,7 +402,8 @@ def executer(
     client = anthropic.Anthropic()
 
     offres = stockage.offres_a_noter(limite, max_tentatives=MAX_TENTATIVES, renoter=renoter,
-                                     rome=rome, au_hasard=au_hasard)
+                                     rome=rome, au_hasard=au_hasard,
+                                     collecte=collecte)
     if not offres:
         _journal.info("Aucune offre en attente de note. Rien à faire.")
         return 0
@@ -527,6 +528,8 @@ def main() -> int:
     analyseur.add_argument("--au-hasard", action="store_true",
                            help="tirer l'échantillon au hasard au lieu de prendre les plus récentes "
                                 "— indispensable pour mesurer un gisement")
+    analyseur.add_argument("--collecte", type=int, default=None,
+                           help="ne noter que les offres trouvées par cette exécution de collecte")
     analyseur.add_argument("--renoter", action="store_true",
                            help="reprendre les offres DÉJÀ notées, les plus récentes d'abord "
                                 "— mode d'étalonnage, chaque offre est repayée")
@@ -549,7 +552,7 @@ def main() -> int:
             limite=arguments.limite, modele=arguments.modele, effort=arguments.effort,
             en_lot=arguments.lot, sans_ecrire=arguments.sans_ecrire,
             renoter=arguments.renoter, rome=arguments.rome,
-            au_hasard=arguments.au_hasard,
+            au_hasard=arguments.au_hasard, collecte=arguments.collecte,
         )
     except (configuration.ConfigurationIncomplete, ErreurNotation, ErreurStockage) as echec:
         _journal.error("%s", echec)

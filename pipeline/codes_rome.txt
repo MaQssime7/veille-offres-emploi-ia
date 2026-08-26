@@ -1,34 +1,47 @@
 # Familles de métiers collectées chaque nuit, en plus des mots-clés.
 #
-# POURQUOI ce second filet. La recherche par mots-clés ne lit pas la description
-# de l'annonce : une offre intitulée « Ingénieur études et développement », dont
-# l'IA n'apparaît que dans le corps du texte, lui est totalement invisible.
+# ⚠️ AUCUN CODE ACTIF DEPUIS LE 26 AOÛT 2026. Le fichier reste en place, et
+# vide est une configuration valide (voir `config.charger()`). Ce qui suit est
+# la mesure qui a conduit à les retirer tous — la garder ici est le seul moyen
+# d'éviter qu'on les remette au flair dans trois mois.
 #
-# Le code ROME est un filtre STRUCTUREL, posé par France Travail sur le métier
-# et non sur les mots de l'annonce. Il attrape ces offres-là ; le modèle lit
-# ensuite leur description — ce que l'API, elle, ne sait pas faire.
+# CE QU'ON CROYAIT. Le code ROME est un filtre structurel, posé par France
+# Travail sur le métier et non sur les mots de l'annonce : il devait attraper
+# les offres dont l'IA n'apparaît que dans la description, invisibles à toute
+# liste de mots-clés. Le raisonnement était juste. Le résultat, non.
 #
-# ⚠️ REMESURÉ LE 26 AOÛT 2026 SUR 373 OFFRES — le commentaire précédent était faux.
-# Il affirmait que ce filet n'avait trouvé aucune offre IA que les mots-clés
-# rataient. Il en a rattrapé 18. Mais en les regardant : « Ingénieur système rf »,
-# « Chef de projet médical pharmaceutique », « Ingénieur brevets » — le mot IA est
-# quelque part dans leur description, leur métier n'a rien à voir. Le filet
-# attrape, mais il attrape le mauvais poisson.
+# CE QUE LA MESURE A DONNÉ (30 jours glissants, Île-de-France, API réelle ;
+# qualité mesurée en notant 50 offres tirées AU HASARD dans ces codes) :
 #
-# Ce que ces six codes ramènent vraiment : 246 offres sur 373 (66 % du volume),
-# dont 228 sans aucun signal IA. Le pire est le plus gros : H1206 ramène
-# 111 offres pour 6 pertinentes (5 %), à lui seul 30 % du volume. M1403 : 7 pour
-# zéro.
+#   code    offres/mois   apport net   moyenne d'intérêt   au-dessus de 30
+#   H1206       238           231            4,2                  0
+#   M1802       109           106            3,3                  0
+#   M1810        47            46            2,8                  0
+#   M1805        32            29            6,1                  0
+#   M1803        19            19          non mesuré             —
+#   M1403        14            14          « 7 pour zéro »        —
+#   ---------------------------------------------------------------------
+#   TOTAL                     445 offres nettes par mois, pour ZÉRO offre
+#                             dépassant 30 sur 50 notées au hasard.
 #
-# ⚠️ NE PAS LES RETIRER AVANT QUE LA NOTATION TOURNE. La notation EST le filtre
-# conçu pour ça, et elle donnera une mesure bien meilleure que le lexique : la
-# note d'intérêt réelle par code ROME. Le bruit coûte 2,77 $/mois — l'argument
-# économique ne tranche pas. Le vrai risque est le plafond de pagination de
-# France Travail (~1150 par recherche), qu'un rattrapage de 30 jours approcherait.
-
-M1805  # Études et développement informatique
-M1802  # Expertise et support en systèmes d'information
-M1803  # Direction études et développement informatique
-M1810  # Production et exploitation de systèmes d'information
-H1206  # Management et ingénierie études, recherche et développement industriel
-M1403  # Études et prospectives socio-économiques
+# L'apport net n'était pas nul — ces 445 offres, les mots-clés ne les trouvent
+# effectivement pas. Le filet fonctionnait. Il attrapait « Technicien Helpdesk »,
+# « Informaticien de gestion », « Développeur Salesforce », « Ingénieur travaux
+# promoteur immobilier ». Le filet attrape, mais il attrape le mauvais poisson.
+#
+# ⚠️ DEUX CODES QU'IL SEMBLAIT ÉVIDENT D'AJOUTER, ET QUI N'APPORTENT RIEN :
+# M1889 « Ingénieur en Intelligence Artificielle (IA) » et M1861 « Développeur
+# logiciel ou d'application » ont la meilleure qualité mesurée de tous les codes
+# (moyennes 21,3 et 17,7 ; c'est de M1861 que vient la seule offre à 75/100).
+# Mais leur apport net est de ZÉRO : leurs 47 offres mensuelles sont DÉJÀ toutes
+# ramenées par les mots-clés. La recherche texte indexe le libellé ROME et
+# l'appellation — une offre classée « Ingénieur en Intelligence Artificielle »
+# est donc trouvée par le mot-clé « intelligence artificielle ». Ajouter un code
+# ROME dont le libellé contient un mot déjà cherché ne peut rien apporter.
+#
+# CE QUI RESTE VRAI, ET QUI JUSTIFIERAIT D'EN REMETTRE UN JOUR : la recherche
+# n'indexe toujours pas la description. Une offre au titre parfaitement banal
+# dont l'IA n'apparaît que dans le corps du texte reste invisible. Le jour où on
+# voudra rouvrir ce filet, la question à poser n'est pas « ce code est-il proche
+# du métier ? » mais « quelles offres apporte-t-il que les mots-clés ratent, et
+# que valent-elles une fois notées ? ». Les deux moitiés comptent.

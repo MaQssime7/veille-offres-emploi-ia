@@ -88,7 +88,7 @@ def _lire_variable(nom: str) -> str:
     return valeur
 
 
-def _lire_liste(fichier: Path) -> tuple[str, ...]:
+def _lire_liste(fichier: Path, *, autoriser_vide: bool = False) -> tuple[str, ...]:
     """Lit un fichier « une valeur par ligne », commentaires `#` retirés.
 
     Les commentaires sont retirés en fin de ligne aussi : `M1805  # Études…`
@@ -104,7 +104,7 @@ def _lire_liste(fichier: Path) -> tuple[str, ...]:
         if sans_commentaire:
             valeurs.append(sans_commentaire)
 
-    if not valeurs:
+    if not valeurs and not autoriser_vide:
         raise ConfigurationIncomplete(
             f"{fichier.name} ne contient aucune valeur active. "
             f"Une collecte sans critère ne ramènerait rien."
@@ -161,5 +161,11 @@ def charger() -> Config:
         supabase_url=_lire_variable("SUPABASE_URL").rstrip("/"),
         supabase_secret_key=_lire_variable("SUPABASE_SECRET_KEY"),
         mots_cles=_lire_liste(RACINE / "mots_cles.txt"),
-        codes_rome=_lire_liste(RACINE / "codes_rome.txt"),
+        # ⚠️ Vide est une configuration VALIDE pour les codes ROME, pas pour les
+        # mots-clés. Mesuré le 26 août 2026 : les six codes collectés apportaient
+        # 445 offres nettes par mois pour zéro offre dépassant 30 sur 50 notées
+        # au hasard. Le fichier reste en place, documenté et prêt à resservir —
+        # supprimer le fichier plutôt que son contenu ferait perdre la mesure qui
+        # justifie la décision.
+        codes_rome=_lire_liste(RACINE / "codes_rome.txt", autoriser_vide=True),
     )
