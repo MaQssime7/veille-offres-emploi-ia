@@ -210,10 +210,11 @@ ligne, et qu'une exécution portant des offres ne peut pas être supprimée. Ce 
 a d'ailleurs révélé un vrai défaut invisible à la relecture — le serveur n'avait
 aucun droit sur ses propres tables — corrigé par une migration suivante.
 
-### La collecte tourne
+### La collecte tourne, toute seule
 
-Le pipeline Python collecte pour de vrai depuis le 21 août 2026 : **189 offres
-réelles en base**, 8 exécutions tracées. Cinq modules, une responsabilité chacun —
+Le pipeline Python collecte pour de vrai depuis le 21 août 2026, et **sans intervention
+depuis le 26** : un cron GitHub Actions le réveille chaque nuit à 02:23 UTC. **373 offres
+réelles en base**, 10 exécutions tracées. Cinq modules, une responsabilité chacun —
 le trousseau de clés, le client France Travail, la normalisation, le stockage,
 l'orchestration. Aucun ne connaît le métier des autres : quand une nuit échoue, le
 motif enregistré en base dit lequel a lâché.
@@ -253,7 +254,6 @@ Deux partis pris qui se défendent :
 ⚠️ Le code de la porte n'est **pas encore en ligne** : les deux variables
 d'environnement ne sont pas posées chez Vercel.
 
-**Prochaine étape** : l'écran `/offres` et ses quatre états.
-
-Reste de la **phase 1** : `/offres`, la mise en ligne avec le cron GitHub Actions,
-et la remesure de la mise en page contre le contenu réel. La collecte, elle, tourne.
+**Prochaine étape** : remesurer la mise en page contre le contenu réel, puis clôturer la
+phase 1. Le site est en ligne derrière son mot de passe, l'écran `/offres` lit la base, et
+la collecte tourne toute seule.

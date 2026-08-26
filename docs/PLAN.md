@@ -228,8 +228,7 @@ cesse d'agir.
 
 **User stories** : US-8, US-22, US-23, US-26, US-33, US-34, US-37 *(partiel)*
 
-> **Avancement au 21 août 2026 — étapes 1 à 4 terminées, étape 5 à moitié (le cron
-> GitHub Actions n'est pas allumé).**
+> **Avancement au 26 août 2026 — étapes 1 à 5 terminées. Le cron GitHub Actions tourne.**
 >
 > | # | Étape | État |
 > |---|---|---|
@@ -238,7 +237,7 @@ cesse d'agir.
 > | 2 | Le pipeline Python de collecte (`pipeline/`) | ✅ **fait** — 189 offres réelles en base, 15 défauts corrigés après `/code-review` |
 > | 3 | La porte : `/connexion` + `proxy.ts` + session | ✅ **fait** — parcours vérifié en développement *et* sur le build de production |
 > | 4 | L'écran `/offres` et ses quatre états | ✅ **fait** — 5 états atteints et regardés, 14 défauts corrigés après `/code-review` |
-> | 5 | Mise en ligne : variables Vercel + cron GitHub Actions | ⚠️ **à moitié** — les 4 variables sont posées et **la porte est en ligne, testée** ; le cron GitHub Actions reste à allumer |
+> | 5 | Mise en ligne : variables Vercel + cron GitHub Actions | ✅ **fait** — les 4 variables sont posées, la porte est en ligne et testée, et **le cron tourne depuis le 26 août** : deux exécutions réelles chez GitHub, 182 offres nouvelles écrites |
 > | 6 | Remesure de la mise en page contre le contenu réel, puis `/cloture` | ⬅️ **prochaine étape** |
 >
 > ⚠️ **Ce que l'étape 5 a révélé, et qui vaut pour toute mise en ligne future** : les
@@ -283,8 +282,8 @@ et à quoi ressemble une description France Travail complète.
 - [x] Cinq tentatives de mot de passe erronées prennent chacune au moins une seconde — mesuré sur le build de production : 1362 / 1367 / 1376 / 1387 / 1384 ms
 - [x] `/offres` affiche les offres collectées avec intitulé, entreprise, lieu, contrat, date — **189 offres réelles**, salaire compris (brut : la normalisation est en phase 2)
 - [x] **États de `/offres`** : les quatre sont atteints et regardés, **plus un cinquième** (« le site n'est pas configuré », variable absente). Base vide obtenue par filtre temporaire, chargement par ralentissement temporaire, injoignable par adresse Supabase invalide, et 189 offres à 375 px **sans débordement horizontal** (0 élément sur 189 lignes, mesuré au DOM)
-- [~] Le site est **déployé sur Vercel** ✅ et le **cron GitHub tourne** ❌.
-      **Déploiement vérifié en conditions réelles le 21 août** sur l'URL publique : `/` → 307 vers `/connexion?suite=%2F`, `/connexion` → 200, le mot de passe ouvre, la session survit au rechargement. ⚠️ Une adresse **jamais écrite dans le code** (`/api/enrichissements/190MTLR/etapes`) renvoie elle aussi 307 : le proxy sans `matcher` protège bien les adresses qui n'existent pas encore. **Le cron reste à allumer.**
+- [x] Le site est **déployé sur Vercel** ✅ et le **cron GitHub tourne** ✅.
+      **Déploiement vérifié en conditions réelles le 21 août** sur l'URL publique : `/` → 307 vers `/connexion?suite=%2F`, `/connexion` → 200, le mot de passe ouvre, la session survit au rechargement. ⚠️ Une adresse **jamais écrite dans le code** (`/api/enrichissements/190MTLR/etapes`) renvoie elle aussi 307 : le proxy sans `matcher` protège bien les adresses qui n'existent pas encore. **Cron allumé le 26 août** : `.github/workflows/collecte-nocturne.yml`, planifié à 02:23 UTC (4 h 23 à Paris l'été, 3 h 23 l'hiver), 4 secrets posés chez GitHub. Deux exécutions réelles vérifiées — fenêtre automatique (182 offres nouvelles, base passée de 189 à 371) et rattrapage manuel `--depuis-jours 1` (67 présentées, 2 nouvelles : la déduplication tient). Les 4 secrets apparaissent en `***` dans les journaux, qui sont publics. ⚠️ **Le déclenchement planifié lui-même n'est pas encore prouvé** — il ne le sera qu'au premier réveil nocturne, le 27 août.
 - [x] À 375 px et en mode sombre : aucun débordement horizontal, **aucune erreur en console**
       **Fait pour `/connexion` et pour `/offres`** — les 4 combinaisons (375 px / 1280 px × clair / sombre), 0 élément débordant sur 189 lignes, console vide sur chacune et sur tout le parcours. Les 7 couleurs de la ligne d'offre recalculées dans le navigateur : toutes au-dessus du plancher de 4,5:1 dans les deux thèmes.
 - [x] Aucune variable `NEXT_PUBLIC_` dans le code source de la page publiée
@@ -554,9 +553,9 @@ Le jeu de données minimal sans lequel les critères ci-dessus ne sont pas véri
 une fois, réutilisé à chaque phase. **Sans lui, tout se testera avec trois lignes courtes et
 tout tiendra toujours.**
 
-- [x] ~~L'intitulé le plus long — environ **150 caractères**~~ → **retiré le 21 août 2026 : ça n'existe pas.** Mesuré deux fois sur des données réelles — **99 caractères** au maximum sur 235 offres le 20 août, **79** sur 189 offres le 21 août. Les intitulés France Travail sont courts. Décision de Maxime : ne pas fabriquer un cas que la source ne produira jamais. ⚠️ **Ce qui reste vrai** : il faut quand même vérifier la mise en page à 375 px contre l'intitulé le plus long **réellement observé**, pas contre trois lignes de démo
+- [x] ~~L'intitulé le plus long — environ **150 caractères**~~ → **retiré le 21 août 2026 : ça n'existe pas.** Mesuré deux fois sur des données réelles — **99 caractères** au maximum sur 235 offres le 20 août, **79** sur 189 offres le 21 août, **94** sur les 373 en base le 26 août (médiane 40). Les intitulés France Travail sont courts. Décision de Maxime : ne pas fabriquer un cas que la source ne produira jamais. ⚠️ **Ce qui reste vrai** : il faut quand même vérifier la mise en page à 375 px contre l'intitulé le plus long **réellement observé**, pas contre trois lignes de démo
 - [x] La description France Travail la plus longue possible — **5 000 caractères**, le plafond de l'API, vérifié le 20 août 2026 : au-delà le texte est coupé en plein mot et `GET /offres/{id}` renvoie la même troncature. ✅ **5 offres à exactement 5 000 caractères sont en base** (la plus courte fait 419)
-- [x] L'offre au minimum de champs remplis : pas de salaire, entreprise non communiquée, contrat imprécis — celle qui teste les replis d'affichage. ⚠️ **Ce n'est pas un cas limite** : sur les 189 offres en base au 21 août, **34 % ne nomment pas l'entreprise et 69 % n'indiquent aucun salaire**
+- [x] L'offre au minimum de champs remplis : pas de salaire, entreprise non communiquée, contrat imprécis — celle qui teste les replis d'affichage. ⚠️ **Ce n'est pas un cas limite** : remesuré le 26 août sur **373 offres**, **36 % ne nomment pas l'entreprise et 65 % n'indiquent aucun salaire** (contre 34 % et 69 % sur les 189 du 21 août — les proportions tiennent quand le volume double). Le lieu, lui, est **toujours renseigné** : 0 offre sur 373 sans lieu
 - [x] Les formes de salaire — **6 observées en base au 21 août**, l'absence comprise : `Annuel de N Euros à N Euros` (32) · `Annuel de N Euros à N Euros sur N mois` (17) · `Mensuel de N Euros à N Euros` (3) · `Mensuel de N Euros à N Euros sur N mois` (2) · `Annuel de N Euros sur N mois` (1) · `Mensuel de N Euros sur N mois` (1) · **absent (131)**
 - [x] **200 offres** dans la vue d'ensemble — ✅ **189 en base au 21 août** (remplissage manuel sur 7 jours, `--depuis-jours 7`). Le volume grandit d'environ 25 offres par jour avec le cron
 - [ ] Les valeurs extrêmes de notes, dans les deux sens : une offre **100 / 0** et une offre **0 / 100**

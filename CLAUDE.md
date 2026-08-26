@@ -106,14 +106,14 @@ la même chose finissent en deux tables et deux fonctions.
 
 ## État actuel (au 21 août 2026, fin de séance)
 
-**La stack est posée. Le schéma est en base. Le pipeline collecte pour de vrai — 189 offres
-réelles en base. La porte est EN LIGNE et vérifiée. L'écran `/offres` lit la base et affiche
-les 189 offres.**
+**La stack est posée. Le schéma est en base. Le pipeline collecte pour de vrai, et depuis le
+26 août **le cron GitHub Actions est allumé** — 373 offres réelles en base. La porte est EN
+LIGNE et vérifiée. L'écran `/offres` lit la base.**
 
 | Brique | État |
 |---|---|
 | `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. Jetons, polices et rayon du `DESIGN.md` appliqués. **La porte est posée** (`/connexion`, `proxy.ts`, session signée) ; mode sombre branché sur la préférence système. Aucun écran de données |
-| Supabase | Projet en région Paris. **`executions_veille` et `offres` créées et alimentées** — 189 offres, 8 exécutions tracées. RLS activé, droits vérifiés par 18 contrôles |
+| Supabase | Projet en région Paris. **`executions_veille` et `offres` créées et alimentées** — 373 offres, 10 exécutions tracées (les identifiants montent à #26 : la séquence Postgres ne se rembobine pas après la suppression des lignes de test). RLS activé, droits vérifiés par 18 contrôles |
 | Migrations | **4** dans `supabase/migrations/`, toutes appliquées via `npx supabase` — voir Commandes |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · fonctions en région Paris. **Les 4 variables sont posées** (Production + Preview, marquées *Sensitive*) et **la porte est en ligne, testée le 21 août** : `/` renvoie 307 vers `/connexion`, le mot de passe ouvre, la session survit au rechargement. CLI lié depuis `interface/` (`.vercel/`, ignoré par git) |
 | `pipeline/` | **Collecte livrée et exécutée.** 5 modules, 1 métier chacun. Critères éditables dans `mots_cles.txt` et `codes_rome.txt`. Notation et enrichissement : phases 2 et 6 |
@@ -170,9 +170,7 @@ l'écran.
 **En attente :** `ANTHROPIC_API_KEY` du `.env` contient un texte d'exemple, pas une vraie
 clé — **bloquant pour la phase 2**, et il empêche déjà de compter les tokens exactement
 (les estimations de coût du 21 août sont à ±30 %) · les clés Supabase legacy restent
-actives en parallèle des nouvelles, à désactiver maintenant que le pipeline tourne · les
-secrets GitHub Actions ne sont pas posés et le cron n'est pas allumé — **le pipeline ne
-tourne encore qu'à la main.**
+actives en parallèle des nouvelles, à désactiver maintenant que le cron tourne.
 
 ⚠️ **Chez Vercel, exactement 4 variables et pas une de plus** : `SUPABASE_URL`,
 `SUPABASE_SECRET_KEY`, `MOT_DE_PASSE_SITE`, `SECRET_SESSION`. `ANTHROPIC_API_KEY`,
@@ -196,8 +194,11 @@ partiel remonte dans le motif d'échec. À rouvrir si le cas se produit vraiment
 Elles sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoire et
 les arbitrages en chemin sont dans **`docs/JOURNAL.md`**.
 
-**Prochaine étape : le cron GitHub Actions**, puis la remesure de la mise en page contre le
-contenu réel et `/cloture` — étape 6 sur 6 de la phase 1. Les étapes 1 à 5 sont faites.
+**Prochaine étape : la remesure de la mise en page contre le contenu réel, puis `/cloture`** —
+étape 6 sur 6 de la phase 1. Les étapes 1 à 5 sont faites.
+
+⚠️ **Le contenu de test a doublé le 26 août : 373 offres, plus 189.** Les mesures de mise en
+page du 21 août portaient sur la moitié du volume actuel — les refaire, pas les reprendre.
 
 ⚠️ **Le bouton de déconnexion est un composant client** (`_coquille/formulaire-deconnexion.tsx`),
 et ce n'est pas un choix de confort : quand la session est tombée, le proxy répond **401** au
@@ -586,15 +587,18 @@ hiérarchie repose entièrement sur la typographie.
 ⚠️ **Le libellé `INT` / `ACC` devant chaque barre de note ne se retire jamais**,
 même pour gagner de la place : sans lui l'information tient sur la seule couleur.
 
-⚠️ **Contenu de test réel disponible en base (mesuré le 21 août 2026)** — à utiliser
-plutôt qu'à réinventer : 189 offres · 5 descriptions à exactement 5 000 caractères (le
-plafond de l'API) · 6 formes de salaire + l'absence · **34 % sans nom d'entreprise, 69 %
-sans salaire** — le vide est le cas normal, pas le cas limite.
+⚠️ **Contenu de test réel disponible en base (remesuré le 26 août 2026 sur 373 offres)** — à
+utiliser plutôt qu'à réinventer : **36 % sans nom d'entreprise, 65 % sans salaire, 0 % sans
+lieu** — le vide est le cas normal, pas le cas limite · 3 types de contrat seulement (CDI 301,
+MIS 39, CDD 33) · **76 formes de salaire distinctes** en texte libre, non normalisé (phase 2) ·
+descriptions : médiane 2 313 caractères, 17 au plafond de 5 000 imposé par l'API.
 
 ⚠️ **Le cas « intitulé très long » a été retiré du contenu de test le 21 août : il
-n'existe pas.** Maximum observé **99 caractères** sur 235 offres, **79** sur 189. Ne pas
-fabriquer un cas que France Travail ne produira jamais — mais vérifier quand même la mise
-en page à 375 px contre l'intitulé le plus long *réellement observé*.
+n'existe pas.** Maximum observé **99 caractères** sur 235 offres, **94** sur les 373 en base au
+26 août (médiane : 40). Ne pas fabriquer un cas que France Travail ne produira jamais — mais
+vérifier quand même la mise en page à 375 px contre l'intitulé le plus long *réellement
+observé* : « Ingénieur intégration & validation système (h/f)  aéronautique / spatial /
+défense (H/F) », qui porte deux fois la mention (h/f) et une double espace.
 
 **À remesurer en phase 1** : les valeurs de mise en page — largeurs, densité, grille
 de colonnes — ont été posées sans écran réel, contre du contenu inventé. Les

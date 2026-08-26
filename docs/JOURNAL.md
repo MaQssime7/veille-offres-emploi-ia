@@ -791,3 +791,104 @@ bouton de déconnexion.
 2. **`interface/.env.local` détient l'unique copie des deux secrets du site.** Non
    versionné, nulle part ailleurs.
 3. **`ANTHROPIC_API_KEY` est toujours un texte d'exemple** — bloquant pour la phase 2.
+
+---
+
+## 26 août 2026 — Le cron, et six jours de veille perdus
+
+Le pipeline marchait depuis le 21 août. Il ne tournait pas.
+
+En ouvrant la séance, la dernière exécution en base datait du 20 août à 23 h 52.
+**Six jours sans collecte** — six jours d'offres que France Travail ne rendra
+jamais, sa fenêtre de recherche ne remontant pas indéfiniment. C'est exactement
+le risque que le plan avait anticipé en écrivant « allumer le cron dès le premier
+jour » ; il a suffi que l'étape 5 s'arrête à moitié pour qu'il se réalise.
+
+Le rattrapage l'a chiffré : **182 offres nouvelles** en une exécution. La base est
+passée de 189 à 373.
+
+### Ce qui a été posé
+
+`.github/workflows/collecte-nocturne.yml`, 4 secrets chez GitHub
+(`FT_CLIENT_ID`, `FT_CLIENT_SECRET`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`),
+poussés par un tube depuis le `.env` — jamais en argument de commande, où ils
+seraient apparus dans la liste des processus de la machine.
+
+**Quatre décisions qui méritent leur ligne :**
+
+**02:23 UTC, pas 02:00.** GitHub planifie en UTC et ignore l'heure d'été : cela
+donne 4 h 23 à Paris en été, 3 h 23 en hiver. Un créneau entre 2 h et 5 h reste
+correct dans les deux régimes, ce qu'une heure « fixée à Paris » ne permettrait
+pas. Et la minute non ronde évite la file d'attente des crons planifiés à l'heure
+pile, que GitHub retarde.
+
+**`concurrency` sans annulation.** Deux collectes simultanées se marcheraient
+dessus : chacune referme au démarrage les exécutions restées `en_cours`, et borne
+sa fenêtre sur la dernière réussite en base. `cancel-in-progress: false` est
+délibéré — annuler celle qui tourne laisserait une ligne orpheline jusqu'au
+lendemain. On préfère faire la queue.
+
+**L'entrée de rattrapage manuel passe par l'environnement**, jamais par une
+interpolation `${{ }}` posée dans la commande. Interpolée, elle serait recopiée
+telle quelle dans le script avant exécution : une valeur comme
+`1; curl monsite/$SUPABASE_SECRET_KEY` s'exécuterait comme une commande. Par
+l'environnement, le shell la traite comme une donnée. Seul le propriétaire du
+dépôt peut déclencher ce workflow — mais un garde-fou qui dépend de qui appuie
+n'est pas un garde-fou.
+
+**`permissions: contents: read`.** Ce job lit du code et écrit en base. Il n'a
+aucune raison de pouvoir pousser un commit ou ouvrir une issue.
+
+### Ce qui a été vérifié, et comment
+
+Deux exécutions réelles chez GitHub, pas une relecture :
+
+| Chemin | Résultat |
+|---|---|
+| Fenêtre automatique | 20/08 22:52 → 26/08 12:12 (recouvrement d'1 h appliqué), **182 offres nouvelles**, 0 rejetée, exécution fermée `reussite` en 9,1 s |
+| Rattrapage `--depuis-jours 1` | 67 offres présentées, **2 nouvelles** — les 65 autres déjà en base : la déduplication tient |
+| Journaux publics | Les 4 secrets apparaissent en `***`. Aucune donnée personnelle : le pipeline ne trace que des comptes et des critères |
+| Base | 373 offres, 182 rattachées à l'exécution #25, **0 ligne restée `en_cours`** |
+
+⚠️ **Ce qui n'est PAS prouvé** : que le déclenchement *planifié* se produise. Un
+`workflow_dispatch` qui réussit ne dit rien du réveil nocturne. Ça ne se vérifie
+qu'au matin du 27 août, en regardant si une exécution est apparue toute seule.
+
+### Un commentaire qui mentait
+
+`pipeline/config.py` justifiait son seuil `AGE_EXECUTION_ORPHELINE_HEURES = 6`
+par « le workflow GitHub Actions est lui-même plafonné à 6 h » — un workflow qui
+n'existait pas encore, et dont le `timeout-minutes` vaut maintenant 30. Le seuil
+reste à 6 h : il n'existe pas pour détecter vite, mais pour ne **jamais** déclarer
+`echec` une collecte encore vivante. Seule sa justification a été corrigée.
+
+C'est le genre de dette qu'un dépôt public paie cher : le commentaire était le
+seul endroit où la valeur 6 était expliquée.
+
+### Le contenu de test a doublé — remesuré, pas recopié
+
+Les valeurs de `docs/DESIGN.md` avaient été posées contre du contenu inventé, et
+les mesures du 21 août portaient sur 189 offres. Sur **373** :
+
+| | 21 août (189) | 26 août (373) |
+|---|---|---|
+| Sans nom d'entreprise | 34 % | **36 %** |
+| Sans salaire | 69 % | **65 %** |
+| Sans lieu | — | **0 %** |
+| Intitulé le plus long | 79 car. | **94 car.** (médiane 40) |
+
+Les proportions tiennent quand le volume double : **le vide reste le cas normal**,
+pas le cas limite. Le lieu, lui, est toujours renseigné — une information neuve,
+et une hypothèse de moins à défendre dans la mise en page.
+
+Trois types de contrat seulement (CDI 301, MIS 39, CDD 33), mais **76 formes de
+salaire distinctes** en texte libre : la normalisation de la phase 2 aura du
+travail.
+
+### Où en est le projet
+
+**Phase 1, étapes 1 à 5 sur 6 terminées.** Reste l'étape 6 : remesurer la mise en
+page contre ces 373 offres — pas contre les 189 d'avant — puis `/cloture`.
+
+⚠️ **La dette du 21 août reste ouverte** : `MOT_DE_PASSE_SITE` doit être régénéré.
+Non bloquant pour le cron, qui ne touche pas au site ; impératif avant la phase 4.
