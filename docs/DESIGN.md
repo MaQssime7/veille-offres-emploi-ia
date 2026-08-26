@@ -337,7 +337,7 @@ Largeur fixe de barre en liste (88 px) : c'est l'alignement d'une offre à l'aut
 de comparer d'un coup d'œil. En fiche, barres larges ; sous 560 px elles deviennent fluides,
 sinon le chiffre sort du cadre et disparaît.
 
-**En liste, mesuré le 26 août :** libellé sur 104 px, **aligné à droite en bureau** (les
+⏳ **Ce qui suit est mesuré sur des barres SIMULÉES, le composant n'existe pas encore** (phase 2). À traiter comme une hypothèse chiffrée, pas comme un acquis — la règle du § Mise en page vaut ici aussi. **Relevé le 26 août :** libellé sur 104 px, **aligné à droite en bureau** (les
 barres s'alignent alors d'une ligne à l'autre) et **à gauche en mobile** (sinon le bloc
 décroche du reste de la ligne, qui part de la marge gauche). En bureau les notes tiennent
 dans la réserve de droite ; sous 640 px elles passent **sous les cartouches**, et la ligne
@@ -414,11 +414,11 @@ coût se calcule à l'affichage.
 | Valeur | Statut |
 |---|---|
 | Largeur maximale de contenu · **1000 px** | ✅ **mesurée et figée** — voir ci-dessous |
-| Densité de la ligne d'offre · **91 px** | ✅ **mesurée et figée** |
-| Barre latérale de filtres · 208 px | ⏳ hypothèse — **à mesurer en phase 4**, quand les filtres de statut existeront |
+| Densité de la ligne d'offre · **91 px en bureau**, **146 px sous 640 px** | ✅ **mesurées et figées** — ⚠️ ne jamais reprendre les 91 px pour dimensionner un repli, une pagination ou une hauteur virtuelle : sur mobile la ligne fait 60 % de plus |
+| Barre latérale de filtres · 208 px | ⏳ hypothèse — **à mesurer en phase 4**. ⚠️ **Arithmétiquement incompatible avec les 1000 px figés** : 1000 − 48 de gouttières − 208 laisse 744 px de liste, sous les 820 px où 34 lignes sur 200 cassent déjà. La mesure des 1000 px a été faite **en colonne unique**. La phase 4 devra soit élargir la page, soit poser les filtres autrement qu'en colonne — pas reconduire ce chiffre |
 | Panneau d'enrichissement · 316 px | ⏳ hypothèse — **à mesurer en phase 6** |
 | Fiche d'offre, colonne d'enrichissement · 404 px | ⏳ hypothèse — **à mesurer en phase 3** |
-| Bascule « sous 1000 px » | ⏳ **non implémentée** : le code n'utilise aujourd'hui que le seuil `sm:` (640 px), au-dessous duquel la ligne se replie en empilement |
+| Bascule « sous 1000 px » | ❌ **caduque, à re-dériver en phase 4.** Ce seuil datait de `--largeur-page: 1180px` : « sous 1000 px » désignait alors une zone intermédiaire réelle. La page valant désormais 1000 px, il signifierait « toute fenêtre plus étroite que le maximum », donc presque toutes. Aujourd'hui le code n'utilise que `sm:` (640 px), au-dessous duquel la ligne se replie |
 
 - **Approche** : grille stricte.
 - **Largeur maximale de contenu** : **1000 px**, jeton `--largeur-page`.
@@ -437,9 +437,13 @@ faute de place — sur les 200 offres affichées :
 | **1000 px** | 0 | **0** |
 
 ⚠️ **30 des 34 lignes cassées à 820 px sont celles qui affichent un salaire.** Le libellé
-brut de France Travail — « Annuel de 50000.0 Euros à 60000.0 Euros » — pousse les cartouches
-sur une seconde ligne. Autrement dit : une largeur trop courte marche pour les 65 % d'offres
-sans salaire et casse exactement sur celles qui en ont un.
+de France Travail pousse les cartouches sur une seconde ligne. Autrement dit : une largeur trop
+courte marche pour les 65 % d'offres sans salaire et casse exactement sur celles qui en ont un.
+
+⚠️ **La chaîne qui casse est « Annuel de 50000 Euros à 60000 Euros », pas « 50000.0 ».**
+`formaterSalaire()` (`formats.ts`) retire les « .0 » avant l'affichage : quatre caractères de
+moins. La mesure en navigateur reste valable — elle a été faite sur le rendu — mais qui
+voudra la rejouer en phase 2 doit partir de la chaîne **rendue**, pas de la brute.
 
 ⚠️ **Écrire les libellés de notes en toutes lettres déplace le seuil de 960 à 1000 px.**
 C'est pourquoi le libellé devait être tranché *avant* la largeur : figer 960 px puis
@@ -457,8 +461,13 @@ Vérifié le 26 août avec des barres simulées en place : elles s'y logent sans
 ### Défaut connu, non corrigé
 
 **La colonne gauche de la fiche est creuse** tant que la description n'est pas dépliée :
-le résumé fait trois lignes, la fiche d'enrichissement en fait quarante. La correction
-dépend de la longueur réelle des contenus — à trancher sur de vraies offres, en phase 1.
+le résumé fait trois lignes, la fiche d'enrichissement en fait quarante.
+
+⚠️ **Échéance corrigée le 26 août 2026 : phase 3, et non phase 1.** Elle disait « à trancher
+en phase 1 » — or la phase 1 se clôt sans que la fiche existe, puisqu'elle arrive en phase 3.
+L'échéance allait donc expirer en silence, ce que le tableau du § Mise en page est justement
+censé empêcher. **Une échéance qui nomme une phase antérieure à l'écran qu'elle concerne est
+toujours une erreur.**
 
 ---
 

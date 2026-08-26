@@ -45,7 +45,7 @@ export function Cartouche({
  * Le cas « l'information n'existe pas ».
  *
  * Il a son propre traitement — cartouche creux, filet pointillé, italique —
- * parce qu'il est **le cas normal et pas le cas limite** : 69 % des offres
+ * parce qu'il est **le cas normal et pas le cas limite** : 65 % des offres
  * réelles n'indiquent aucun salaire. Le laisser vide ferait croire à un défaut
  * d'affichage ; lui donner le même cartouche que les autres le ferait lire
  * comme une donnée.
@@ -53,7 +53,7 @@ export function Cartouche({
  * ⚠️ **La couleur reste `text-muted-foreground` pleine, sans modificateur
  * d'opacité.** Un `/80` avait été posé pour l'atténuer : mesuré dans le
  * navigateur, il tombait à 4,14:1 en mode clair, sous le plancher opposable de
- * 4,5:1 du projet — et sur 69 % des lignes, pas sur un cas rare. La mise en
+ * 4,5:1 du projet — et sur 65 % des lignes, pas sur un cas rare. La mise en
  * retrait est portée par l'italique et le filet pointillé, qui ne coûtent
  * aucun contraste.
  */

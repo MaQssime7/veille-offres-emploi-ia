@@ -47,7 +47,7 @@ Le système est fixé dans [`../docs/DESIGN.md`](../docs/DESIGN.md) et opposable
   menus : les retirer. La hiérarchie repose sur la typographie et les filets.
 - **Toujours les jetons sémantiques** (`bg-primary`, `text-muted-foreground`),
   jamais une couleur en dur.
-- **Le libellé `INT` / `ACC` devant chaque barre de note ne se retire jamais** :
+- **Le libellé devant chaque barre de note ne se retire jamais**, et il s'écrit **en toutes lettres** — « Intérêt », « Accessibilité » (les abréviations `INT` / `ACC` sont abandonnées depuis le 26 août 2026) :
   sans lui, l'information ne tiendrait que sur la couleur.
 
 ## Déploiement

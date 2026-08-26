@@ -1,6 +1,7 @@
 import type { OffreEnListe } from "@/lib/offres";
 
 import { Cartouche, CartoucheAbsent } from "./cartouche";
+import { RYTHME_LIGNE } from "./rythme";
 import { formaterDate, formaterSalaire } from "./formats";
 
 /**
@@ -27,8 +28,12 @@ export function LigneOffre({
   const datePubliee = formaterDate(offre.publiee_a, maintenant);
 
   return (
-    <article className="border-b border-border px-4 py-2.5 last:border-b-0 sm:px-5">
-      <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+    <article
+      className={`border-b border-border last:border-b-0 ${RYTHME_LIGNE.article}`}
+    >
+      <div
+        className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${RYTHME_LIGNE.margeEntreprise}`}
+      >
         {offre.entreprise_nom ? (
           <p className="libelle-mono text-muted-foreground">
             {offre.entreprise_nom}
@@ -59,7 +64,7 @@ export function LigneOffre({
           ⚠️ `h2` et non `h3` : le seul titre au-dessus est le `h1` « Offres » de
           la page. Sauter le niveau 2 casse le plan de titres, sur lequel un
           lecteur d'écran navigue pour parcourir la liste. */}
-      <h2 className="mb-1.5 text-[0.9375rem] font-semibold leading-snug text-foreground">
+      <h2 className={`text-[0.9375rem] font-semibold leading-snug text-foreground ${RYTHME_LIGNE.margeIntitule}`}>
         {offre.intitule}
       </h2>
 

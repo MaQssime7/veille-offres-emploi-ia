@@ -1,4 +1,5 @@
 import { CadrePage, EnTetePage } from "./_composants/en-tete-page";
+import { HAUTEURS_SQUELETTE, RYTHME_LIGNE } from "./_composants/rythme";
 
 /**
  * L'état de chargement de `/offres`.
@@ -13,8 +14,10 @@ import { CadrePage, EnTetePage } from "./_composants/en-tete-page";
  * la mise en page en arrivant. Deux copies du même balisage divergeraient à la
  * première modification, sans erreur pour le signaler.
  *
- * ⚠️ La pulsation est une boucle d'animation : elle est coupée par le bloc
- * `prefers-reduced-motion` de `globals.css`, qui est opposable sur ce projet.
+ * ⚠️ **Le rythme vertical n'est plus recopié ici** : il vient de `rythme.ts`,
+ * partagé avec `ligne-offre.tsx`. C'est ce fichier-là qu'il faut modifier, et la
+ * ligne comme son squelette suivront ensemble. Avant ce partage, resserrer la
+ * ligne sans toucher au squelette faisait sauter la page de 56 px.
  */
 export default function ChargementOffres() {
   return (
@@ -30,14 +33,18 @@ export default function ChargementOffres() {
         {Array.from({ length: 6 }, (_, rang) => (
           <div
             key={rang}
-            className="animate-pulse border-b border-border px-4 py-4 last:border-b-0 sm:px-5"
+            className={`animate-pulse border-b border-border last:border-b-0 ${RYTHME_LIGNE.article}`}
           >
-            <div className="mb-2 h-3 w-40 max-w-[60%] bg-muted" />
-            <div className="mb-3 h-4 w-80 max-w-[85%] bg-muted" />
+            <div
+              className={`w-40 max-w-[60%] bg-muted ${RYTHME_LIGNE.margeEntreprise} ${HAUTEURS_SQUELETTE.entreprise}`}
+            />
+            <div
+              className={`w-80 max-w-[85%] bg-muted ${RYTHME_LIGNE.margeIntitule} ${HAUTEURS_SQUELETTE.intitule}`}
+            />
             <div className="flex flex-wrap gap-1.5">
-              <div className="h-5 w-24 bg-muted" />
-              <div className="h-5 w-16 bg-muted" />
-              <div className="h-5 w-40 max-w-[55%] bg-muted" />
+              <div className={`w-24 bg-muted ${HAUTEURS_SQUELETTE.cartouche}`} />
+              <div className={`w-16 bg-muted ${HAUTEURS_SQUELETTE.cartouche}`} />
+              <div className={`w-40 max-w-[55%] bg-muted ${HAUTEURS_SQUELETTE.cartouche}`} />
             </div>
           </div>
         ))}

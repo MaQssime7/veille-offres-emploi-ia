@@ -125,7 +125,7 @@ a { color: inherit; }
   color: var(--muted-foreground);
 }
 
-.enveloppe { max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+.enveloppe { max-width: 1000px; margin: 0 auto; padding: 0 24px 96px; }
 
 /* ---- barre du haut ---- */
 .barre-haut {
@@ -233,7 +233,7 @@ pre.code .com { color: var(--muted-foreground); }
 
 /* ============================================================
    LES DEUX NOTES — barres continues de même longueur, deux couleurs.
-   Le libellé INT / ACC porte l'information ; la couleur la renforce.
+   Le libellé Intérêt / Accessibilité porte l'information ; la couleur la renforce.
    Sans ce libellé, l'écart ne tiendrait que sur la teinte — ce que
    le plancher d'accessibilité interdit.
    ============================================================ */
@@ -672,11 +672,11 @@ def noter_offre(offre: Offre) -> Notation:
     <div class="bloc">
       <div class="etiquette" style="margin-bottom:14px">Les deux notes</div>
       <div class="notes grandes" style="margin-bottom:16px">
-        <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:87%"></i></div><span class="val">87</span></div>
-        <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:71%"></i></div><span class="val">71</span></div>
+        <div class="note int"><span class="lib">Intérêt</span><div class="barre"><i style="width:87%"></i></div><span class="val">87</span></div>
+        <div class="note acc"><span class="lib">Accessibilité</span><div class="barre"><i style="width:71%"></i></div><span class="val">71</span></div>
       </div>
       <p style="font-size:12.5px; color:var(--muted-foreground); margin:0">
-        Deux barres de même longueur, deux couleurs. Le libellé <b>INT</b> / <b>ACC</b>
+        Deux barres de même longueur, deux couleurs. Le libellé <b>Intérêt</b> / <b>Accessibilité</b>
         devant chaque barre n'est pas décoratif : sans lui, la distinction ne tiendrait que
         sur la teinte — invisible pour un daltonien, et perdue sur un partage d'écran
         compressé. Avec le libellé, la couleur devient un renfort, pas le seul porteur.
@@ -794,8 +794,8 @@ def noter_offre(offre: Offre) -> Notation:
     bilan : <span id="indicatif"></span>
     Aucun critère WCAG n'impose un contraste minimal entre deux indicateurs distincts et
     non adjacents. Les deux barres sont empilées, séparées par du fond, et chacune est
-    identifiée par son libellé <code class="mono">INT</code> /
-    <code class="mono">ACC</code>. Elles se distinguent par la <b>teinte</b> — brun chaud
+    identifiée par son libellé <code class="mono">Intérêt</code> /
+    <code class="mono">Accessibilité</code>. Elles se distinguent par la <b>teinte</b> — brun chaud
     contre vert froid — pas par la clarté : c'est pourquoi ce chiffre est bas alors que
     l'écart se voit parfaitement à l'œil. La compter comme un échec inventerait un défaut.
   </p>
@@ -860,12 +860,12 @@ def noter_offre(offre: Offre) -> Notation:
                 <span class="cart fort">42–48 k€</span>
                 <span class="cart">Publiée il y a 2 j</span>
               </div>
-              <div class="justif"><b>INT</b> L'annonce décrit l'orchestration d'agents en production ; l'intitulé générique masque un poste central sur le sujet.</div>
-              <div class="justif"><b>ACC</b> Deux ans demandés, aucun intitulé de séniorité, pile technique proche de ton expérience.</div>
+              <div class="justif"><b>Intérêt</b> L'annonce décrit l'orchestration d'agents en production ; l'intitulé générique masque un poste central sur le sujet.</div>
+              <div class="justif"><b>Accessibilité</b> Deux ans demandés, aucun intitulé de séniorité, pile technique proche de ton expérience.</div>
             </div>
             <div class="notes">
-              <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:87%"></i></div><span class="val">87</span></div>
-              <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:71%"></i></div><span class="val">71</span></div>
+              <div class="note int"><span class="lib">Intérêt</span><div class="barre"><i style="width:87%"></i></div><span class="val">87</span></div>
+              <div class="note acc"><span class="lib">Accessibilité</span><div class="barre"><i style="width:71%"></i></div><span class="val">71</span></div>
             </div>
           </div>
         </a>
@@ -884,12 +884,12 @@ def noter_offre(offre: Offre) -> Notation:
                 <span class="cart absent">Salaire non précisé</span>
                 <span class="cart">Publiée hier</span>
               </div>
-              <div class="justif"><b>INT</b> Mise en production de modèles de langage, supervision de la consommation — le cœur du sujet.</div>
+              <div class="justif"><b>Intérêt</b> Mise en production de modèles de langage, supervision de la consommation — le cœur du sujet.</div>
               <div class="etat encours"><svg class="pulse"><use href="#i-loupe"></use></svg> Enrichissement en cours — étape 4 sur 6</div>
             </div>
             <div class="notes">
-              <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:79%"></i></div><span class="val">79</span></div>
-              <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:58%"></i></div><span class="val">58</span></div>
+              <div class="note int"><span class="lib">Intérêt</span><div class="barre"><i style="width:79%"></i></div><span class="val">79</span></div>
+              <div class="note acc"><span class="lib">Accessibilité</span><div class="barre"><i style="width:58%"></i></div><span class="val">58</span></div>
             </div>
           </div>
         </a>
@@ -907,12 +907,12 @@ def noter_offre(offre: Offre) -> Notation:
                 <span class="cart fort">40–45 k€</span>
                 <span class="cart">Publiée il y a 3 j</span>
               </div>
-              <div class="justif"><b>ACC</b> Profil jeune diplômé explicitement accepté, mission d'avant-vente proche de ton expérience en cabinet.</div>
+              <div class="justif"><b>Accessibilité</b> Profil jeune diplômé explicitement accepté, mission d'avant-vente proche de ton expérience en cabinet.</div>
               <div class="etat prete"><svg><use href="#i-coche-cercle"></use></svg> Fiche d'enrichissement disponible</div>
             </div>
             <div class="notes">
-              <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:74%"></i></div><span class="val">74</span></div>
-              <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:83%"></i></div><span class="val">83</span></div>
+              <div class="note int"><span class="lib">Intérêt</span><div class="barre"><i style="width:74%"></i></div><span class="val">74</span></div>
+              <div class="note acc"><span class="lib">Accessibilité</span><div class="barre"><i style="width:83%"></i></div><span class="val">83</span></div>
             </div>
           </div>
         </a>
@@ -930,11 +930,11 @@ def noter_offre(offre: Offre) -> Notation:
                 <span class="cart fort">38–44 k€</span>
                 <span class="cart">Publiée il y a 5 j</span>
               </div>
-              <div class="justif"><b>INT</b> Intégration d'une brique conversationnelle sur une base documentaire — utile, mais loin de l'orchestration d'agents.</div>
+              <div class="justif"><b>Intérêt</b> Intégration d'une brique conversationnelle sur une base documentaire — utile, mais loin de l'orchestration d'agents.</div>
             </div>
             <div class="notes">
-              <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:63%"></i></div><span class="val">63</span></div>
-              <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:45%"></i></div><span class="val">45</span></div>
+              <div class="note int"><span class="lib">Intérêt</span><div class="barre"><i style="width:63%"></i></div><span class="val">63</span></div>
+              <div class="note acc"><span class="lib">Accessibilité</span><div class="barre"><i style="width:45%"></i></div><span class="val">45</span></div>
             </div>
           </div>
         </a>
@@ -952,11 +952,11 @@ def noter_offre(offre: Offre) -> Notation:
                 <span class="cart absent">Salaire non précisé</span>
                 <span class="cart">Publiée il y a 6 j</span>
               </div>
-              <div class="justif"><b>INT</b> Pilotage plus que construction ; l'IA y est un périmètre, pas une pratique.</div>
+              <div class="justif"><b>Intérêt</b> Pilotage plus que construction ; l'IA y est un périmètre, pas une pratique.</div>
             </div>
             <div class="notes">
-              <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:51%"></i></div><span class="val">51</span></div>
-              <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:66%"></i></div><span class="val">66</span></div>
+              <div class="note int"><span class="lib">Intérêt</span><div class="barre"><i style="width:51%"></i></div><span class="val">51</span></div>
+              <div class="note acc"><span class="lib">Accessibilité</span><div class="barre"><i style="width:66%"></i></div><span class="val">66</span></div>
             </div>
           </div>
         </a>
@@ -1077,13 +1077,13 @@ def noter_offre(offre: Offre) -> Notation:
     <div class="notes-fiche">
       <div class="note-detail">
         <div class="notes grandes">
-          <div class="note int"><span class="lib">INT</span><div class="barre"><i style="width:87%"></i></div><span class="val">87</span></div>
+          <div class="note int"><span class="lib">Intérêt</span><div class="barre"><i style="width:87%"></i></div><span class="val">87</span></div>
         </div>
         <p class="phrase">L'annonce décrit l'orchestration d'agents en production, avec supervision de la consommation par requête. L'intitulé générique masque un poste central sur le sujet.</p>
       </div>
       <div class="note-detail">
         <div class="notes grandes">
-          <div class="note acc"><span class="lib">ACC</span><div class="barre"><i style="width:71%"></i></div><span class="val">71</span></div>
+          <div class="note acc"><span class="lib">Accessibilité</span><div class="barre"><i style="width:71%"></i></div><span class="val">71</span></div>
         </div>
         <p class="phrase">Deux ans d'expérience demandés, aucun intitulé de séniorité, pile technique proche de la tienne. La mention d'une équipe déjà constituée réduit un peu la marge.</p>
       </div>

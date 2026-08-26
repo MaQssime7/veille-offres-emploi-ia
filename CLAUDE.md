@@ -211,8 +211,19 @@ partiel remonte dans le motif d'échec. À rouvrir si le cas se produit vraiment
 Elles sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoire et
 les arbitrages en chemin sont dans **`docs/JOURNAL.md`**.
 
-**Prochaine étape : la remesure de la mise en page contre le contenu réel, puis `/cloture`** —
-étape 6 sur 6 de la phase 1. Les étapes 1 à 5 sont faites.
+**PHASE 1 CLOSE le 26 août 2026** — les 6 étapes sont faites, `/cloture` déroulé : 18 critères
+repris, 4 parcours de régression rejoués en production, 15 constats de revue traités.
+**Prochaine phase : la 2 — les deux notes.** ⚠️ Elle est **bloquée par `ANTHROPIC_API_KEY`**,
+qui contient encore un texte d'exemple.
+
+⚠️ **Trois choses à ne pas redécouvrir en phase 2 :**
+1. **Le salaire compte 9 familles de forme, pas 6** (remesuré le 26 août) — dont `Annuel de
+   N Euros` (montant unique, pas une fourchette) et `Horaire …` (conversion par le temps de
+   travail). Trois sont apparues en cinq jours : **ne pas coder une liste fermée.**
+2. **Les libellés de notes s'écrivent en toutes lettres** — « Intérêt », « Accessibilité ».
+   C'est ce choix qui fonde `--largeur-page: 1000px` ; coder `INT`/`ACC` démentirait la mesure.
+3. **Le rythme vertical de la ligne vit dans `_composants/rythme.ts`**, partagé avec le
+   squelette de chargement. Le modifier ailleurs fait sauter la page sans aucune erreur.
 
 ⚠️ **Le contenu de test a doublé le 26 août : 373 offres, plus 189.** Les mesures de mise en
 page du 21 août portaient sur la moitié du volume actuel — les refaire, pas les reprendre.

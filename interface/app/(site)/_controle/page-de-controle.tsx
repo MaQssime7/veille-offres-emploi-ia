@@ -56,7 +56,7 @@ export function PageDeControle() {
           artificielle, jeune diplômé, Île-de-France.
         </p>
         <p className="font-mono text-sm text-foreground">
-          Geist Mono — 0123456789 · INT 87 · ACC 62 · 2026-08-17
+          Geist Mono — 0123456789 · Intérêt 87 · Accessibilité 62 · 2026-08-17
         </p>
       </section>
 

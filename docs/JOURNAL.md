@@ -979,3 +979,84 @@ Le plafond de 200 sur 373 offres en base est `PLAFOND_AFFICHAGE` dans
 
 Copies temporaires de l'ancien mot de passe : écrasées puis supprimées. Nouveau
 mot de passe déposé dans le presse-papiers, jamais affiché.
+
+---
+
+## 26 août 2026 — Clôture de la phase 1
+
+La phase 1 est close. Le site est en ligne derrière son mot de passe, la
+collecte tourne toute seule, l'écran des offres lit la base, et les valeurs de
+mise en page ne sont plus des suppositions.
+
+### Ce que la clôture a attrapé, et que rien d'autre n'aurait vu
+
+**Un défaut que je venais de créer.** Resserrer la ligne d'offre (`py-4` →
+`py-2.5`) sans toucher au squelette de chargement faisait **sauter la page de
+56 px** au moment où les offres arrivaient. Ni le compilateur ni le linter ne
+bronchent : les deux fichiers étaient cohérents séparément. Le commentaire de
+`loading.tsx` promettait pourtant exactement l'inverse — il expliquait que le
+cadre était partagé « pour que le contenu réel ne fasse pas sauter la mise en
+page ». La promesse valait pour l'en-tête ; la ligne, elle, était recopiée.
+
+**Un défaut invisible au réglage par défaut.** Ma première correction posait les
+hauteurs du squelette en pixels durs. Mesuré ensuite : avec une police par
+défaut à 20 px — un réglage d'accessibilité courant — le saut revenait à **54 px**,
+et à **105 px** à 24 px. Le texte grandissait, la barre grise restait figée.
+Corrigé en `rem`. Personne n'aurait trouvé ça par hasard : au réglage standard,
+tout allait bien.
+
+**Une divergence documentaire en six endroits.** Décider que les libellés de
+notes s'écrivent en toutes lettres a laissé derrière : un critère de la phase 2
+qui imposait toujours `INT` / `ACC`, le README de l'interface, la page de
+contrôle, et 26 occurrences dans l'aperçu de design — lequel affichait encore la
+largeur de 1180 px abandonnée le matin même. Trois sources décrivaient le même
+libellé, deux disaient le contraire de la décision.
+
+### La leçon que je retiens
+
+**Un test peut échouer — ou réussir — pour la mauvaise raison, et ça ressemble à
+une preuve.** Trois fois aujourd'hui :
+
+| Le test disait | La réalité |
+|---|---|
+| Contraste de l'intitulé : **1,44:1**, sous le plancher | Le calcul lisait les couleurs `lab()` du projet comme du RGB. Vraie valeur : **14,88:1** |
+| Focus du bouton : « indicateur présent » | `box-shadow` n'était pas la chaîne `none`, mais toutes ses couleurs étaient transparentes. Tranché par **comparaison d'images** |
+| Police agrandie : saut de **135 px** | Le test posait la police sur `DOMContentLoaded`, après le rendu du squelette. Vrai chiffre : **54 px** — le défaut existait, mon test en exagérait l'ampleur |
+
+Le remède qui a marché à chaque fois : **ne pas croire le nombre, aller chercher
+la preuve la plus bête possible.** Comparer deux captures d'écran octet par
+octet a tranché la question du focus en une seconde, là où trois lectures de
+propriétés CSS m'avaient égaré.
+
+### Ce que la revue de code a apporté
+
+Quinze constats, dont un seul faux — elle affirmait que le squelette sautait
+aussi à 375 px, ce que la mesure a démenti (écart de **0 px** : le squelette se
+replie exactement comme la ligne). Les quatorze autres tenaient, y compris ceux
+que je n'aurais pas trouvés seul : la contradiction arithmétique entre la
+largeur figée à 1000 px et la barre latérale de 208 px prévue en phase 4
+(1000 − 48 − 208 = 744 px de liste, sous les 820 px où 34 lignes cassent).
+
+**Elle raisonne bien et mesure peu.** C'est exactement l'inverse de ce que je
+dois faire : prendre ses raisonnements au sérieux, et aller vérifier moi-même.
+
+### Une décision de conception, prise à cause du défaut
+
+Le rythme vertical de la ligne vit désormais dans `rythme.ts`, importé par la
+ligne **et** par son squelette. L'alternative était un commentaire demandant
+« pense à reporter la valeur » — c'est ce qui existait, et ça n'a pas tenu une
+seule modification. Un garde-fou qui suppose qu'on l'ait lu n'est pas un
+garde-fou.
+
+⚠️ Les classes y sont écrites **en entier**, jamais assemblées : Tailwind lit le
+code source pour savoir quelles classes produire, et une classe concaténée ne
+serait jamais générée — le style disparaîtrait sans aucun message d'erreur.
+
+### Ce qui reste ouvert
+
+| | |
+|---|---|
+| **Le cron planifié** | Deux exécutions manuelles réussies, mais le réveil de 2 h 23 UTC ne se prouve qu'au matin du 27 août |
+| **`PGRST303`** | Reproductible au premier appel après recompilation, **en développement seulement** — jamais observé en production. Symptôme : l'écran affiche « base injoignable » alors que la base va bien |
+| **1000 px contre 208 px** | La largeur figée ne laisse pas la place à la barre latérale de filtres. À trancher en phase 4, pas à reconduire |
+| **L'en-tête de `/offres`** | Maxime ne l'aime pas. Reporté **après la phase 4**, quand les filtres y auront pris place : le redessiner avant, c'est le redessiner deux fois |

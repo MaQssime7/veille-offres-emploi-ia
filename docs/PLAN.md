@@ -276,8 +276,8 @@ et à quoi ressemble une description France Travail complète.
 - [x] Quota d'appels dépassé : `QuotaDepasse` levée sur HTTP 429, et 0,25 s imposé entre deux appels. ⚠️ **Non déclenché en réel** — la temporisation l'empêche
 - [x] Chaque exécution écrit sa ligne dans `executions_veille` — vérifié dans les deux sens : réussite (43 reçues / 43 nouvelles) et échec (identifiants faussés → `echec` motivé, code de sortie 1, aucun `en_cours` orphelin)
 - [x] Sans mot de passe, `/` et `/offres` renvoient vers `/connexion` — HTTP 307 vérifié en curl et au navigateur, avec la destination mémorisée dans `?suite=`
-- [~] **Sans mot de passe, une adresse de données appelée en dehors du navigateur ne renvoie aucune offre** — critère de succès n° 5.
-      **Mécanisme en place et vérifié sur le principe** : `proxy.ts` n'a *aucun* `matcher`, donc il protège toute adresse, y compris celles qui n'existent pas encore — `curl` sur `/api/enrichissements/190MTLR/etapes` renvoie déjà 307. ⚠️ **À re-vérifier quand la première adresse de données existera vraiment** (phase 6) : ce contrôle-ci porte sur une adresse vide.
+- [x] **Sans mot de passe, une adresse de données appelée en dehors du navigateur ne renvoie aucune offre** — critère de succès n° 5.
+      **Rejoué en production le 26 août 2026, hors navigateur**, sur 4 adresses — `/`, `/offres`, `/api/offres`, `/api/enrichissements/190MTLR/etapes` : toutes répondent **HTTP 307 avec un corps de 15 octets**, et aucune ne contient le moindre champ d'offre (`intitule`, `entreprise_nom`) — vérifié par recherche dans le corps de chaque réponse. `proxy.ts` n'a *aucun* `matcher`, donc il protège aussi les adresses qui n'existent pas encore. ⚠️ **À rejouer en phase 6**, quand la première adresse de données existera vraiment : ce contrôle-ci porte sur des adresses vides.
 - [x] Une session ouverte survit à un rechargement et à la fermeture du navigateur, et expire après 30 jours d'inactivité — cookie **persistant** (échéance à 30 jours, pas un cookie de session), et **glissant** : trois cas mesurés (cookie de 12 h non renouvelé, de 2 jours et de 25 jours renouvelés)
 - [x] Cinq tentatives de mot de passe erronées prennent chacune au moins une seconde — mesuré sur le build de production : 1362 / 1367 / 1376 / 1387 / 1384 ms
 - [x] `/offres` affiche les offres collectées avec intitulé, entreprise, lieu, contrat, date — **189 offres réelles**, salaire compris (brut : la normalisation est en phase 2)
@@ -288,9 +288,9 @@ et à quoi ressemble une description France Travail complète.
       **Fait pour `/connexion` et pour `/offres`** — les 4 combinaisons (375 px / 1280 px × clair / sombre), 0 élément débordant sur 189 lignes, console vide sur chacune et sur tout le parcours. Les 7 couleurs de la ligne d'offre recalculées dans le navigateur : toutes au-dessus du plancher de 4,5:1 dans les deux thèmes.
 - [x] Aucune variable `NEXT_PUBLIC_` dans le code source de la page publiée
       **Vérifié le 21 août sur la page RÉELLEMENT PUBLIÉE** (945 Ko de HTML et de JavaScript analysés sur l'URL de production, après connexion) : ni le mot de passe, ni le secret de session, ni la clé Supabase, ni l'adresse du projet Supabase, ni aucune occurrence de `NEXT_PUBLIC_`, ni aucun motif de clé (`sb_secret_`, `sk-ant-`).
-- [~] Les valeurs de mise en page de `docs/DESIGN.md`, posées contre du contenu inventé, sont **remesurées contre le contenu réel** puis figées.
+- [x] Les valeurs de mise en page de `docs/DESIGN.md`, posées contre du contenu inventé, sont **remesurées contre le contenu réel** puis figées.
       **Mesuré et figé le 26 août 2026** contre les 373 offres réelles : **largeur de page 1000 px** (contre 1180) et **ligne d'offre de 91 px** (contre 109) — de 6 à 10 offres par écran en bureau, de 5,5 à 6,2 en mobile. Vérifié aux 4 combinaisons 375/1280 px × clair/sombre : 200 offres, aucun débordement, console propre, focus clavier visible.
-      **Méthode** : à chaque largeur, compter les lignes dont les cartouches passent à la ligne. 820 px → 34 cassées · 900 px → 6 · 960 px → 0 · 1000 px → 0. ⚠️ **30 des 34 sont les offres qui affichent un salaire** — le libellé brut « Annuel de 50000.0 Euros à 60000.0 Euros » déborde. Le seuil vaut donc pour le salaire **non normalisé** ; la phase 2 rendra de la marge.
+      **Méthode** : à chaque largeur, compter les lignes dont les cartouches passent à la ligne. 820 px → 34 cassées · 900 px → 6 · 960 px → 0 · 1000 px → 0. ⚠️ **30 des 34 sont les offres qui affichent un salaire** — le libellé brut « Annuel de 50000 Euros à 60000 Euros » (la chaîne **rendue** : `formaterSalaire()` retire les « .0 ») déborde. Le seuil vaut donc pour le salaire **non normalisé** ; la phase 2 rendra de la marge.
       ⚠️ **Entorse assumée : seules 2 des 7 valeurs de `DESIGN.md` ont pu être figées.** Les cinq autres — barre latérale de filtres, panneau d'enrichissement, colonne d'enrichissement de la fiche, bascule sous 1000 px — décrivent des écrans **qui n'existent pas encore**. Les figer aurait donné à des chiffres inventés le statut d'une mesure. Elles portent désormais une **échéance nommée** (phase 3, 4 ou 6) au lieu d'un « à remesurer » sans date.
       ⚠️ **Décision de séance du 26 août** : les libellés de notes s'écrivent **en toutes lettres** (« Intérêt », « Accessibilité ») et non `INT` / `ACC`. Mesuré : ça tient en bureau et en mobile, mais **déplace le seuil de largeur de 960 à 1000 px** — d'où l'ordre, libellé d'abord, largeur ensuite.
 
@@ -322,7 +322,7 @@ annuel quand c'est possible.
 - [ ] Une offre déjà notée n'est **jamais renotée**, même si l'annonce a changé à la source
 - [ ] `executions_veille` enregistre le **modèle utilisé** et les compteurs de tokens bruts
 - [ ] Le compteur `tokens_cumules` de chaque offre est incrémenté
-- [ ] Les deux barres portent leur libellé **`INT` et `ACC`** — jamais retirés, même à 375 px : sans eux l'information tient sur la seule couleur
+- [ ] Les deux barres portent leur libellé **en toutes lettres — « Intérêt » et « Accessibilité »** — jamais retirés, même à 375 px : sans eux l'information tient sur la seule couleur. ⚠️ **Les abréviations `INT` / `ACC` sont abandonnées depuis le 26 août 2026** : elles demandaient un décodage au premier regard. Les écrire en entier **déplace le seuil de `--largeur-page` de 960 à 1000 px** — coder les abréviations ferait passer ce critère tout en démentant la mesure qui fonde la largeur
 - [ ] Les justifications se lisent **à plat dans la liste**, ni derrière une infobulle, ni derrière un dépliage — c'est le seul mécanisme qui révèle une notation mal étalonnée
 - [ ] Notes à 0 et à 100 sur les deux axes : les barres restent lisibles, le chiffre reste dans le cadre
 - [ ] Salaire absent, « Selon profil », « Mensuel de 3500 Euros » : l'offre s'affiche correctement dans les trois cas
@@ -560,7 +560,8 @@ tout tiendra toujours.**
 - [x] ~~L'intitulé le plus long — environ **150 caractères**~~ → **retiré le 21 août 2026 : ça n'existe pas.** Mesuré deux fois sur des données réelles — **99 caractères** au maximum sur 235 offres le 20 août, **79** sur 189 offres le 21 août, **94** sur les 373 en base le 26 août (médiane 40). Les intitulés France Travail sont courts. Décision de Maxime : ne pas fabriquer un cas que la source ne produira jamais. ⚠️ **Ce qui reste vrai** : il faut quand même vérifier la mise en page à 375 px contre l'intitulé le plus long **réellement observé**, pas contre trois lignes de démo
 - [x] La description France Travail la plus longue possible — **5 000 caractères**, le plafond de l'API, vérifié le 20 août 2026 : au-delà le texte est coupé en plein mot et `GET /offres/{id}` renvoie la même troncature. ✅ **5 offres à exactement 5 000 caractères sont en base** (la plus courte fait 419)
 - [x] L'offre au minimum de champs remplis : pas de salaire, entreprise non communiquée, contrat imprécis — celle qui teste les replis d'affichage. ⚠️ **Ce n'est pas un cas limite** : remesuré le 26 août sur **373 offres**, **36 % ne nomment pas l'entreprise et 65 % n'indiquent aucun salaire** (contre 34 % et 69 % sur les 189 du 21 août — les proportions tiennent quand le volume double). Le lieu, lui, est **toujours renseigné** : 0 offre sur 373 sans lieu
-- [x] Les formes de salaire — **6 observées en base au 21 août**, l'absence comprise : `Annuel de N Euros à N Euros` (32) · `Annuel de N Euros à N Euros sur N mois` (17) · `Mensuel de N Euros à N Euros` (3) · `Mensuel de N Euros à N Euros sur N mois` (2) · `Annuel de N Euros sur N mois` (1) · `Mensuel de N Euros sur N mois` (1) · **absent (131)**
+- [x] Les formes de salaire — ⚠️ **9 familles au 26 août 2026, pas 6** : remesuré sur 373 offres. `Annuel de N Euros à N Euros` (77) · `Annuel de N Euros à N Euros sur N mois` (35) · `Mensuel de N Euros à N Euros sur N mois` (6) · **`Annuel de N Euros` (5)** · `Mensuel de N Euros à N Euros` (3) · `Annuel de N Euros sur N mois` (2) · `Mensuel de N Euros sur N mois` (2) · **`Horaire de N Euros à N Euros sur N mois` (1)** · **absent (242)**.
+      ⚠️ **Trois familles sont apparues entre le 21 et le 26 août**, dont deux qui changent le travail de la phase 2 : `Annuel de N Euros` porte un **montant unique et non une fourchette**, et `Horaire` demande une **conversion par le temps de travail**, pas une simple lecture. Le normaliseur doit couvrir 9 formes, et le compte augmentera encore — **ne pas coder une liste fermée**
 - [x] **200 offres** dans la vue d'ensemble — ✅ **189 en base au 21 août** (remplissage manuel sur 7 jours, `--depuis-jours 7`). Le volume grandit d'environ 25 offres par jour avec le cron
 - [ ] Les valeurs extrêmes de notes, dans les deux sens : une offre **100 / 0** et une offre **0 / 100**
 - [ ] Une note personnelle de **5 000 caractères**
@@ -584,12 +585,13 @@ dépose les siens, aucun ne s'enlève. À dérouler avec Playwright avant chaque
 et après toute phase qui touche à une partie déjà livrée — c'est le seul filet contre les
 régressions tant qu'il n'y a pas de tests automatisés.
 
-**Après la phase 1**
+**Après la phase 1** — *tous déroulés en production le 26 août 2026*
 
-- [ ] Ouvrir le site sans être connecté, être renvoyé vers `/connexion`
-- [ ] Taper le mot de passe, arriver sur les offres, recharger la page, être toujours connecté
-- [ ] **Appeler une adresse de données en dehors du navigateur, sans mot de passe, et ne recevoir aucune offre**
-- [ ] Vérifier que la collecte de cette nuit a bien écrit sa trace
+- [x] Ouvrir le site sans être connecté, être renvoyé vers `/connexion` — 307 vers `/connexion?suite=%2F` et `?suite=%2Foffres`
+- [x] Taper le mot de passe, arriver sur les offres, recharger la page, être toujours connecté — 200 offres avant et après rechargement
+- [x] **Appeler une adresse de données en dehors du navigateur, sans mot de passe, et ne recevoir aucune offre** — 4 adresses, 307, corps de 15 octets, aucun champ d'offre
+- [x] Vérifier que la collecte de cette nuit a bien écrit sa trace — l'écran annonce « 200 offres les plus récentes, sur 373 collectées »
+- [x] **Voir la liste sans qu'elle saute au chargement** — le squelette et la ligne réelle ont la même hauteur, à 375 px comme en bureau, et **quelle que soit la taille de police du navigateur** (mesuré à 16, 20 et 24 px de racine)
 
 **Après la phase 2**
 

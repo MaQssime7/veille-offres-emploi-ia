@@ -100,10 +100,15 @@
   --radius: 0.25rem;
 
   /* Largeur maximale du contenu (DESIGN.md § Mise en page).
-     ⚠️ Elle vit ICI parce que le DESIGN.md la donne encore pour une hypothèse,
-     à remesurer contre du contenu réel puis à figer. Recopiée dans chaque
-     écran, cette remesure se ferait à trois endroits et l'en-tête finirait
-     désaligné du contenu qu'il surplombe. */
+     **Mesurée et figée le 26 août 2026** contre les 373 offres réelles : en
+     dessous de 1000 px, les offres qui affichent un salaire cassent sur deux
+     lignes (34 sur 200 à 820 px, 9 à 960 px avec les libellés de notes en
+     toutes lettres). Ce n'est pas un arrondi.
+     ⚠️ Elle vit ICI et nulle part ailleurs : recopiée dans chaque écran, une
+     remesure se ferait à trois endroits et l'en-tête finirait désaligné du
+     contenu qu'il surplombe.
+     ⚠️ Le seuil vaut pour le salaire **non normalisé**. La phase 2 raccourcira
+     le libellé et rendra de la marge — c'est le moment de le rouvrir. */
   --largeur-page: 1000px;
 
   /* Dérivés de la palette ci-dessus : shadcn référence ces jetons,
