@@ -118,19 +118,23 @@ class Stockage:
             )
         return len(refermees)
 
-    def ouvrir_execution(self) -> int:
+    def ouvrir_execution(self, etape: str = "collecte") -> int:
         """Écrit la ligne d'exécution AU DÉMARRAGE et rend son identifiant.
 
         Écrire à la fin imposerait de garder toutes les offres en mémoire (la
         clé étrangère exige que l'exécution existe avant la première offre), et
         surtout : un plantage ne laisserait aucune trace, rendant la panne
         indistinguable d'une nuit calme.
+
+        `etape` vaut `collecte` ou `notation` — la base refuse tout le reste.
+        Elle sépare deux passages qui n'ont pas la même conséquence : seule une
+        collecte réussie déplace la fenêtre de la nuit suivante.
         """
         cree = self._requete(
             "POST", "/executions_veille?select=id",
-            operation="ouverture de l'exécution",
+            operation=f"ouverture de l'exécution ({etape})",
             headers={"Prefer": "return=representation"},
-            json={"issue": "en_cours"},
+            json={"issue": "en_cours", "etape": etape},
         )
         if not cree:
             raise ErreurStockage("ouverture de l'exécution : aucune ligne rendue.")
@@ -179,14 +183,21 @@ class Stockage:
         )
 
     def derniere_execution_reussie(self) -> datetime | None:
-        """Date de démarrage de la dernière exécution `reussite`, ou None.
+        """Date de démarrage de la dernière **collecte** `reussite`, ou None.
 
         C'est elle qui borne la fenêtre de collecte : on repart de là, avec une
         heure de recouvrement. Un `en_cours` ne compte JAMAIS comme une réussite.
+
+        ⚠️ **Le filtre `etape=collecte` est la partie qui compte.** Depuis la
+        phase 2, la notation écrit ses propres lignes dans cette table. Sans ce
+        filtre, une notation réussie à 14 h ferait repartir la collecte de la
+        nuit suivante de 14 h au lieu de la veille : les offres publiées entre
+        les deux seraient **perdues, sans la moindre erreur** — ni exception, ni
+        job rouge, juste des offres qui n'existent jamais.
         """
         lignes = self._requete(
             "GET",
-            "/executions_veille?issue=eq.reussite&select=demarree_a"
+            "/executions_veille?etape=eq.collecte&issue=eq.reussite&select=demarree_a"
             "&order=demarree_a.desc&limit=1",
             operation="lecture de la dernière exécution réussie",
         ) or []
@@ -217,9 +228,12 @@ class Stockage:
         Idempotent : une fois recollées, ces offres pointent vers une exécution
         réussie et ne sont plus jamais reprises.
         """
+        # `etape=collecte` : seule une collecte peut laisser des offres orphelines.
+        # Sans le filtre, la liste d'identifiants gonflerait à chaque notation
+        # ratée pour rien — et finirait par produire une URL trop longue.
         echouees = self._requete(
-            "GET", "/executions_veille?issue=eq.echec&select=id",
-            operation="lecture des exécutions en échec",
+            "GET", "/executions_veille?etape=eq.collecte&issue=eq.echec&select=id",
+            operation="lecture des collectes en échec",
         ) or []
         if not echouees:
             return 0

@@ -125,13 +125,15 @@ contient encore un texte d'exemple.
 
 ⚠️ **Cinq choses à ne pas redécouvrir en phase 2 :**
 
-1. **Le premier essai de notation porte sur 5 offres**, décidé par Maxime le 26 août 2026.
-   Puis 50, puis le reste. ⚠️ **Ce n'est pas une question de coût** — noter les 373 coûte
-   **1,35 $ une seule fois** (Sonnet 5, Batches + cache). C'est pour pouvoir **relire chaque
-   notation en entier** et juger l'étalonnage avant d'en produire des centaines.
-   ⚠️ **Sur 5 offres, ne pas passer par l'API Batches** : elle met jusqu'à une heure à rendre
-   ses résultats, ce qui rend toute itération sur le prompt insupportable. Appels directs pour
-   le test, Batches pour le volume — le module doit donc savoir faire les deux.
+1. **Le premier essai de notation porte sur UNE offre**, décidé par Maxime le 26 août 2026
+   — la consigne du matin disait 5, révisée à 1 le jour même. Puis quelques-unes, puis 50, puis
+   le reste. ⚠️ **Ce n'est pas une question de coût** — noter les 373 coûte **1,35 $ une seule
+   fois** (Sonnet 5, Batches + cache) et la clé porte 5 $ de crédit. C'est pour pouvoir **relire
+   la notation *et* le prompt qui l'a produite**, et refaire l'aller-retour en quelques secondes
+   tant que l'étalonnage n'est pas jugé bon.
+   ⚠️ **Sur un échantillon, ne pas passer par l'API Batches** : elle met jusqu'à une heure à
+   rendre ses résultats, ce qui rend toute itération sur le prompt insupportable. Appels directs
+   pour le test, Batches pour le volume — le module doit donc savoir faire les deux.
 2. ⚠️ **La base ne s'efface pas.** Question posée et tranchée le 26 août : garder les 373
    offres, ne noter qu'un échantillon. Effacer et noter peu sont deux choses **sans rapport** —
    la notation est incrémentale (« une offre déjà notée n'est jamais renotée »). Quatre raisons
