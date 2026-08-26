@@ -242,11 +242,12 @@ finie.** Ce qui reste à mesurer, dans l'ordre :
 4. **De nouveaux mots-clés à tester** : le vocabulaire s'ouvre (voir § Collecte), donc la
    liste des termes à zéro doit être remesurée périodiquement.
 
-⚠️ **Question TOUJOURS OUVERTE : Sonnet 5 ou Opus 5 ?** **Rien n'a été testé sur Opus 5** — les
-97 offres sont toutes notées par Sonnet 5. Le choix reste à faire en lançant `--renoter
---modele claude-opus-5` sur les mêmes offres et en comparant les notations côte à côte. À ce
-niveau de dépense (~2,30 $/mois d'écart) il ne se joue pas sur le coût mais sur le nombre de
-bonnes offres ratées.
+✅ **Question CLOSE le 26 août 2026 : c'est Sonnet 5, et Opus 5 ne sera pas testé.** Décision
+de Maxime. Le motif est bon et il faut le retenir plutôt que la conclusion : le prompt est
+calibré, les 97 notations produites sont conformes et lisibles, et l'écart de coût (~2,30 $/mois)
+ne justifie pas de repayer 97 offres pour arbitrer un doute que personne n'a. **Une question
+ouverte n'a pas à être fermée par une mesure — elle peut l'être en constatant qu'elle ne
+décide plus rien.** Ne pas la rouvrir « pour voir ».
 
 ### Ce qui reste ouvert
 
@@ -258,7 +259,7 @@ bonnes offres ratées.
 | API Batches jamais exécutée | `notation.py --lot` est écrit et **n'a jamais tourné**. Le rattachement par `custom_id` est en place mais non vérifié en conditions réelles |
 | Critères de collecte non finis | `deploiement`, `automatisation`, `RPA` et le faux positif `IA`/`IPR-IA` restent à mesurer — voir § État actuel |
 | ⚠️ **Le plafond de 200 tuera l'affichage des offres du jour** | Relevé en revue le 26 août. Depuis le tri par intérêt, les 200 lignes affichées sont **les 200 meilleures de tous les temps**. Aujourd'hui 97 offres sont notées, donc 103 places reviennent aux plus récentes et les offres de la nuit s'affichent. **Le jour où plus de 200 offres portent une note, elles disparaissent** — d'intérêt médian 10, elles ne rentrent plus — et le marqueur « Nouveau » devient du code que rien n'atteint. Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut sans jamais céder leur place. ⚠️ **L'échéance est un compte, pas une date : elle tombe quand `notees` dépasse 200.** À trancher en phase 4 avec les filtres — le remède change ce que cet écran *est*, et le PRD confie déjà le compte rendu de la nuit à `/` |
-| Bug pipeline : `--renoter` perd la trace d'un échec | `enregistrer_echec_notation()` (`pipeline/stockage.py`) écrit `notation_motif_echec` **sans effacer les notes existantes**. Sur une offre déjà notée — donc en `--renoter` — le `PATCH` viole la contrainte `echec_sans_note` et Postgres renvoie 400 : **la trace de l'échec est perdue pendant une campagne d'étalonnage**, exactement quand on en a besoin. Relevé en revue le 26 août, jamais déclenché (0 échec sur 97 appels). À corriger avant de comparer Sonnet et Opus |
+| Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | ⚠️ **Devenu inatteignable le 26 août** : le bug ne se déclenche que sur une offre **déjà notée**, donc uniquement en `--renoter` — outil désormais mis de côté, une offre n'étant notée qu'une fois. Il n'est donc **pas urgent**, et ne pas le présenter comme tel. L'analyse et le correctif à faire vivent en commentaire dans `pipeline/notation.py` au-dessus de `apercevoir()`, **au point d'usage** : celui qui ressortira `--renoter` tombera dessus, ce qu'une ligne dans ce tableau ne garantit pas |
 | Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver (`docs/HEBERGEMENT.md`) |
 | `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme : « base injoignable » alors que la base va bien |
 | Largeur contre barre latérale | Les 1000 px figés ne laissent pas la place aux 208 px de filtres prévus en phase 4 — à trancher là-bas (`docs/DESIGN.md`) |
@@ -466,9 +467,14 @@ avec le nombre d'appels et l'ordre de grandeur (~0,6 centime par offre, cache ch
 
 - ⚠️ **`--au-hasard`** tire l'échantillon au sort au lieu de prendre les plus récentes. Sans
   lui, une « mesure » porte sur une seule journée de collecte et ne dit rien du gisement.
-- **`--renoter`** reprend les offres **déjà notées** : le seul moyen de juger une correction de
-  critères sur les mêmes annonces. Chaque offre est repayée. C'est aussi la commande pour
-  trancher Sonnet contre Opus : `--renoter --modele claude-opus-5`.
+- ⚠️ **`--renoter`** reprend les offres **déjà notées**, et il est **MIS DE CÔTÉ depuis le
+  26 août 2026** : il a servi à régler `criteres_pertinence.txt` en itérant sur les mêmes
+  offres, ce travail est fait, et une offre n'est désormais notée **qu'une seule fois**. Le
+  drapeau reste en place pour le jour où un barème changera vraiment.
+  ⚠️ **Il porte un bug connu, à corriger avant de le ressortir** — l'analyse complète est en
+  commentaire dans `pipeline/notation.py`, juste au-dessus de `apercevoir()`, c'est-à-dire là
+  où on tombera dessus. Résumé : un échec de renotation viole `echec_sans_note` (400), et le
+  correctif n'est **pas** d'effacer la note existante mais de n'écrire aucun motif.
 
 **La recette de mesure d'un critère**, celle qui a fait tomber les codes ROME :
 

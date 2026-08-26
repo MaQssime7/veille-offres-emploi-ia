@@ -62,10 +62,14 @@ _journal = logging.getLogger(__name__)
 RACINE = Path(__file__).resolve().parent
 FICHIER_CRITERES = RACINE / "criteres_pertinence.txt"
 
-# Tranché à l'architecture le 16 août 2026. Le choix entre Sonnet 5 et Opus 5
-# reste ouvert : l'écart de coût mesuré est de 2,30 $/mois, donc il ne se joue
-# pas sur la dépense mais sur le nombre de bonnes offres ratées. `--modele` sert
-# à faire tourner les deux sur les mêmes offres et à comparer.
+# Tranché à l'architecture le 16 août 2026, et CLOS le 26 août 2026 : c'est
+# Sonnet 5, définitivement. La comparaison avec Opus 5 était portée comme une
+# question ouverte ; Maxime l'a fermée sans la mener, et le motif est bon — le
+# prompt est calibré, les 97 notations produites sont conformes et lisibles, et
+# l'écart de coût (2,30 $/mois) ne justifie pas de repayer 97 offres pour
+# arbitrer un doute que personne n'a. Ne pas rouvrir « pour voir ».
+# `--modele` reste là : il sert à changer de modèle le jour où il le faudra,
+# pas à organiser un match.
 MODELE_PAR_DEFAUT = "claude-sonnet-5"
 
 # Assez pour la réponse structurée ET la réflexion adaptative du modèle.
@@ -463,6 +467,33 @@ def executer(
     return 0 if notees else 1
 
 
+# ---------------------------------------------------------------------------
+# ⚠️ `--renoter` est MIS DE CÔTÉ depuis le 26 août 2026, et il porte un bug connu
+# ---------------------------------------------------------------------------
+#
+# Il a servi à une seule chose : itérer sur `criteres_pertinence.txt` en renotant
+# les mêmes offres, jusqu'à ce que le barème d'accessibilité soit correct. Ce
+# travail est fait. Décision de Maxime le 26 août : **une offre n'est notée
+# qu'une fois**, l'outil est conservé mais n'a plus d'usage quotidien.
+#
+# ⚠️ **Avant de le ressortir, corriger ceci.** `stockage.enregistrer_echec_notation()`
+# écrit `notation_motif_echec` **sans toucher aux notes existantes**. Sur une
+# offre déjà notée — c'est-à-dire uniquement en `--renoter` — le `PATCH` viole la
+# contrainte `echec_sans_note` et Postgres renvoie 400 : la trace de l'échec est
+# perdue, et l'exception remonte en plein milieu de la campagne.
+#
+# ⚠️ **Le correctif n'est PAS d'effacer les notes pour satisfaire la contrainte.**
+# Ce serait détruire une note valide à cause d'un incident réseau. La contrainte
+# dit « un échec veut dire pas de note », et elle a raison : une offre déjà notée
+# dont la RE-notation échoue n'est pas en échec, elle garde simplement la note
+# qu'elle avait. Le bon comportement est donc de n'écrire aucun motif dans ce cas
+# et de se contenter d'incrémenter `notation_tentatives`. C'est une décision de
+# conception, pas un correctif mécanique — d'où le fait qu'elle attende un usage
+# réel plutôt que d'être tranchée à vide.
+#
+# Relevé en revue de code le 26 août 2026. Jamais déclenché : 0 échec sur 97 appels.
+
+
 def apercevoir(*, limite: int, modele: str, renoter: bool = False) -> int:
     """Affiche le prompt exact et compte ses tokens SANS rien facturer.
 
@@ -532,7 +563,8 @@ def main() -> int:
                            help="ne noter que les offres trouvées par cette exécution de collecte")
     analyseur.add_argument("--renoter", action="store_true",
                            help="reprendre les offres DÉJÀ notées, les plus récentes d'abord "
-                                "— mode d'étalonnage, chaque offre est repayée")
+                                "— outil d'étalonnage MIS DE CÔTÉ, voir la note ci-dessous. "
+                                "Chaque offre est repayée")
     arguments = analyseur.parse_args()
 
     logging.basicConfig(
