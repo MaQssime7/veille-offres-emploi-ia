@@ -26,10 +26,13 @@ REGION_ILE_DE_FRANCE = "11"
 DELAI_CONNEXION = 15
 DELAI_LECTURE = 60
 
-# Au-delà, une exécution restée `en_cours` est forcément morte : le workflow
-# GitHub Actions est lui-même plafonné à 6 h. En deçà, on risquerait de déclarer
-# `echec` une collecte qui tourne encore — un rattrapage sur 30 jours dure
-# plusieurs minutes.
+# Au-delà, une exécution restée `en_cours` est forcément morte : le job de
+# collecte est coupé à 30 min par `timeout-minutes` dans
+# `.github/workflows/collecte-nocturne.yml`. Ce seuil-ci est délibérément bien
+# plus large que ce plafond — il n'existe pas pour détecter vite, mais pour ne
+# JAMAIS déclarer `echec` une collecte encore vivante : un lancement manuel
+# pendant que le cron tourne, ou un rattrapage sur 30 jours qui dure plusieurs
+# minutes.
 AGE_EXECUTION_ORPHELINE_HEURES = 6
 
 # Sans exécution réussie antérieure, on regarde 24 h en arrière.

