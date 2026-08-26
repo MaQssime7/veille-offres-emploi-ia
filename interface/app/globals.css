@@ -104,7 +104,7 @@
      à remesurer contre du contenu réel puis à figer. Recopiée dans chaque
      écran, cette remesure se ferait à trois endroits et l'en-tête finirait
      désaligné du contenu qu'il surplombe. */
-  --largeur-page: 1180px;
+  --largeur-page: 1000px;
 
   /* Dérivés de la palette ci-dessus : shadcn référence ces jetons,
      les laisser vides produirait des surfaces transparentes. */

@@ -318,15 +318,31 @@ Deux barres **continues, de même longueur**, remplies proportionnellement, en d
 couleurs : brun-encre pour l'intérêt, olive pour l'accessibilité. Le chiffre en chasse fixe
 à droite.
 
-⚠️ **Le libellé `INT` / `ACC` devant chaque barre n'est pas décoratif.** Sans lui, la
-distinction ne tiendrait que sur la teinte : perdue pour un daltonien, perdue sur un
-partage d'écran compressé — et le partage d'écran est un usage réel de ce produit. Le
-libellé porte l'information, la couleur la renforce. **Ne jamais le retirer pour gagner de
-la place.**
+⚠️ **Le libellé devant chaque barre n'est pas décoratif.** Sans lui, la distinction ne
+tiendrait que sur la teinte : perdue pour un daltonien, perdue sur un partage d'écran
+compressé — et le partage d'écran est un usage réel de ce produit. Le libellé porte
+l'information, la couleur la renforce. **Ne jamais le retirer pour gagner de la place.**
 
-Largeur fixe en liste (88 px) : c'est l'alignement d'une offre à l'autre qui permet de
-comparer d'un coup d'œil. En fiche, barres larges ; sous 560 px elles deviennent fluides,
+⚠️ **Les libellés s'écrivent EN TOUTES LETTRES : « Intérêt » et « Accessibilité »** —
+décidé par Maxime le 26 août 2026, après vérification qu'ils tiennent en bureau *et* en
+mobile. Les abréviations `INT` / `ACC` demandaient un décodage au premier regard, ce qui
+est exactement le coût qu'un instrument de décision ne doit pas faire payer. Elles sont
+abandonnées.
+
+⚠️ **Vocabulaire : « intérêt », jamais « intéressement ».** Sur un écran d'offres d'emploi,
+à côté d'un salaire, « intéressement » se lit comme une prime de participation aux
+bénéfices. Le contresens est immédiat.
+
+Largeur fixe de barre en liste (88 px) : c'est l'alignement d'une offre à l'autre qui permet
+de comparer d'un coup d'œil. En fiche, barres larges ; sous 560 px elles deviennent fluides,
 sinon le chiffre sort du cadre et disparaît.
+
+**En liste, mesuré le 26 août :** libellé sur 104 px, **aligné à droite en bureau** (les
+barres s'alignent alors d'une ligne à l'autre) et **à gauche en mobile** (sinon le bloc
+décroche du reste de la ligne, qui part de la marge gauche). En bureau les notes tiennent
+dans la réserve de droite ; sous 640 px elles passent **sous les cartouches**, et la ligne
+monte de 146 à 191 px — de 6,2 à 4,7 offres par écran. C'est le prix de l'information,
+accepté en séance.
 
 ### Cartouches de métadonnées
 
@@ -390,18 +406,53 @@ coût se calcule à l'affichage.
 
 ## Mise en page
 
-> **Statut : hypothèse jusqu'à la première tranche livrée.** Ces valeurs ont été posées
-> avant qu'aucun écran n'existe, contre du contenu inventé. À remesurer contre du contenu
-> réel — l'intitulé le plus long, la description France Travail la plus fournie, la fiche
-> la plus étoffée — dès la première tranche, puis à figer. **Tout le reste de ce document
-> est opposable dès maintenant.**
+> **Statut : partiellement mesuré le 26 août 2026.** Ce qui existe à l'écran a été mesuré
+> contre les **373 offres réelles** et figé. Ce qui n'existe pas encore reste une hypothèse,
+> avec une **échéance nommée** — un chiffre inventé ne devient pas une mesure parce qu'on
+> l'a écrit deux fois.
+
+| Valeur | Statut |
+|---|---|
+| Largeur maximale de contenu · **1000 px** | ✅ **mesurée et figée** — voir ci-dessous |
+| Densité de la ligne d'offre · **91 px** | ✅ **mesurée et figée** |
+| Barre latérale de filtres · 208 px | ⏳ hypothèse — **à mesurer en phase 4**, quand les filtres de statut existeront |
+| Panneau d'enrichissement · 316 px | ⏳ hypothèse — **à mesurer en phase 6** |
+| Fiche d'offre, colonne d'enrichissement · 404 px | ⏳ hypothèse — **à mesurer en phase 3** |
+| Bascule « sous 1000 px » | ⏳ **non implémentée** : le code n'utilise aujourd'hui que le seuil `sm:` (640 px), au-dessous duquel la ligne se replie en empilement |
 
 - **Approche** : grille stricte.
-- **Liste du matin** : barre latérale 208 px · liste fluide · panneau d'enrichissement
-  316 px. Sous 1000 px, la barre latérale devient horizontale et le panneau descend.
-- **Fiche d'offre** : colonne principale fluide · colonne d'enrichissement 404 px.
-- **Largeur maximale de contenu** : 1180 px.
+- **Largeur maximale de contenu** : **1000 px**, jeton `--largeur-page`.
 - **Arrondi** : `--radius: 0.25rem`. **Un seul.** Les autres en dérivent.
+
+### Pourquoi 1000 px, et pas moins
+
+Mesuré en comptant, à chaque largeur, les lignes dont les cartouches passent à la ligne
+faute de place — sur les 200 offres affichées :
+
+| Largeur | Avec `INT` / `ACC` | Libellés en toutes lettres |
+|---|---|---|
+| 820 px | 34 cassées | — |
+| 900 px | 6 cassées | — |
+| 960 px | 0 | **9 cassées** |
+| **1000 px** | 0 | **0** |
+
+⚠️ **30 des 34 lignes cassées à 820 px sont celles qui affichent un salaire.** Le libellé
+brut de France Travail — « Annuel de 50000.0 Euros à 60000.0 Euros » — pousse les cartouches
+sur une seconde ligne. Autrement dit : une largeur trop courte marche pour les 65 % d'offres
+sans salaire et casse exactement sur celles qui en ont un.
+
+⚠️ **Écrire les libellés de notes en toutes lettres déplace le seuil de 960 à 1000 px.**
+C'est pourquoi le libellé devait être tranché *avant* la largeur : figer 960 px puis
+allonger les libellés en phase 2 aurait cassé neuf lignes sans que rien ne le signale.
+**Quand deux valeurs sont couplées, l'ordre dans lequel on les fige n'est pas neutre.**
+
+⚠️ **Ce seuil vaut pour le salaire non normalisé.** La phase 2 ramènera le libellé à
+« 50–60 k€ » : la contrainte tombera et la largeur pourra être rouverte à la baisse.
+**Échéance : phase 2.**
+
+⚠️ **Le vide à droite de la ligne n'est pas un défaut, c'est une réserve.** Il accueille les
+deux barres de notes en phase 2, puis le statut en phase 4. Le combler serait à refaire.
+Vérifié le 26 août avec des barres simulées en place : elles s'y logent sans rien pousser.
 
 ### Défaut connu, non corrigé
 

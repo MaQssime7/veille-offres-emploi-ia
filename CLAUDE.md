@@ -601,8 +601,11 @@ vive · l'ocre existe en deux valeurs (`--signal`, `--signal-fort`) parce qu'il 
 retirer : ce produit n'a **aucune ombre**, uniquement des filets. Conséquence, la
 hiérarchie repose entièrement sur la typographie.
 
-⚠️ **Le libellé `INT` / `ACC` devant chaque barre de note ne se retire jamais**,
-même pour gagner de la place : sans lui l'information tient sur la seule couleur.
+⚠️ **Le libellé devant chaque barre de note ne se retire jamais**, même pour gagner de
+la place : sans lui l'information tient sur la seule couleur. Il s'écrit **en toutes
+lettres — « Intérêt » et « Accessibilité »**, décidé le 26 août 2026 après mesure : les
+abréviations `INT` / `ACC` sont abandonnées. ⚠️ **« intérêt », jamais « intéressement »** :
+à côté d'un salaire, le second se lit comme une prime de participation aux bénéfices.
 
 ⚠️ **Contenu de test réel disponible en base (remesuré le 26 août 2026 sur 373 offres)** — à
 utiliser plutôt qu'à réinventer : **36 % sans nom d'entreprise, 65 % sans salaire, 0 % sans
@@ -617,10 +620,18 @@ vérifier quand même la mise en page à 375 px contre l'intitulé le plus long 
 observé* : « Ingénieur intégration & validation système (h/f)  aéronautique / spatial /
 défense (H/F) », qui porte deux fois la mention (h/f) et une double espace.
 
-**À remesurer en phase 1** : les valeurs de mise en page — largeurs, densité, grille
-de colonnes — ont été posées sans écran réel, contre du contenu inventé. Les
-confronter à du contenu long et réaliste dès la première tranche livrée, puis les
-figer. Tout le reste du système est opposable dès maintenant.
+**Mesuré et figé le 26 août 2026** contre les 373 offres réelles : **largeur de page
+1000 px** (jeton `--largeur-page`) et **ligne d'offre de 91 px**. Le seuil de 1000 px
+n'est pas un arrondi — en dessous, les offres **qui affichent un salaire** cassent sur
+deux lignes (34 sur 200 à 820 px). ⚠️ Il vaut pour le salaire **non normalisé** : la
+phase 2 rendra de la marge.
+
+⚠️ **Le vide à droite de la ligne est une réserve, pas un défaut** — il accueille les
+notes en phase 2 puis le statut en phase 4. Ne pas le combler.
+
+**Restent des hypothèses, avec échéance** : barre latérale de filtres (phase 4),
+panneau d'enrichissement (phase 6), colonne d'enrichissement de la fiche (phase 3).
+Détail et méthode dans `docs/DESIGN.md` § Mise en page.
 
 **Interdits sur ce projet** : Inter, Roboto, Poppins, Montserrat, Space Grotesk et
 les autres polices sur-utilisées · Instrument Serif (un seul poids, le gras y est
