@@ -123,16 +123,48 @@ tracées.
 **Prochaine phase : la 2 — les deux notes.** ⚠️ **Bloquée par `ANTHROPIC_API_KEY`**, qui
 contient encore un texte d'exemple.
 
-⚠️ **Trois choses à ne pas redécouvrir en phase 2 :**
+⚠️ **Cinq choses à ne pas redécouvrir en phase 2 :**
 
-1. **Le salaire compte 9 familles de forme, pas 6** (remesuré le 26 août sur 373 offres) —
+1. **Le premier essai de notation porte sur 5 offres**, décidé par Maxime le 26 août 2026.
+   Puis 50, puis le reste. ⚠️ **Ce n'est pas une question de coût** — noter les 373 coûte
+   **1,35 $ une seule fois** (Sonnet 5, Batches + cache). C'est pour pouvoir **relire chaque
+   notation en entier** et juger l'étalonnage avant d'en produire des centaines.
+   ⚠️ **Sur 5 offres, ne pas passer par l'API Batches** : elle met jusqu'à une heure à rendre
+   ses résultats, ce qui rend toute itération sur le prompt insupportable. Appels directs pour
+   le test, Batches pour le volume — le module doit donc savoir faire les deux.
+2. ⚠️ **La base ne s'efface pas.** Question posée et tranchée le 26 août : garder les 373
+   offres, ne noter qu'un échantillon. Effacer et noter peu sont deux choses **sans rapport** —
+   la notation est incrémentale (« une offre déjà notée n'est jamais renotée »). Quatre raisons
+   de garder : France Travail **dépublie** ses annonces et une offre effacée ne revient jamais
+   (c'est la raison d'être de `charge_brute`) · ces 373 offres **sont** le jeu de test mesuré,
+   dont des formes de salaire présentes sur **une seule offre** · l'écran de suivi
+   d'exploitation a besoin de l'historique, qui ne se reconstitue pas · et les offres anciennes
+   se noient d'elles-mêmes (~1 500 de plus d'ici octobre, tri par date décroissante).
+   **Si des offres périmées gênent à l'écran, c'est un filtre d'affichage qu'il faut, pas une
+   suppression.**
+3. **Le salaire compte 9 familles de forme, pas 6** (remesuré le 26 août sur 373 offres) —
    dont `Annuel de N Euros` (montant unique, pas une fourchette) et `Horaire …` (conversion
    par le temps de travail). Trois sont apparues en cinq jours : **ne pas coder une liste
    fermée.** Détail dans `docs/PLAN.md` § Contenu de test.
-2. **Les libellés de notes s'écrivent en toutes lettres** — « Intérêt », « Accessibilité ».
+4. **Les libellés de notes s'écrivent en toutes lettres** — « Intérêt », « Accessibilité ».
    C'est ce choix qui fonde `--largeur-page: 1000px` ; coder `INT`/`ACC` démentirait la mesure.
-3. **Le rythme vertical de la ligne vit dans `_composants/rythme.ts`**, partagé avec le
+5. **Le rythme vertical de la ligne vit dans `_composants/rythme.ts`**, partagé avec le
    squelette de chargement. Le modifier ailleurs fait sauter la page sans aucune erreur.
+
+⚠️ **Deux questions ouvertes, à trancher AVEC la notation en main — pas avant :**
+
+- **80 % des offres collectées ne portent aucun signal IA** (mesuré le 26 août : 298 sur 373,
+  ni dans l'intitulé ni dans la description). Les codes ROME en sont la cause : **`H1206`
+  ramène 111 offres pour 6 pertinentes — 5 %**, à lui seul 30 % du volume ; `M1403` en ramène
+  7 pour zéro. ⚠️ **Ne pas les retirer maintenant : la notation EST le filtre**, et elle
+  donnera une bien meilleure mesure que le lexique — la note d'intérêt réelle par code ROME.
+  Le coût du bruit est de **2,77 $/mois**, donc l'argument économique ne tranche pas ; le vrai
+  risque est le **plafond de pagination** de France Travail (~1150 par recherche), qu'un
+  rattrapage de 30 jours approcherait.
+- **Sonnet 5 ou Opus 5 pour la notation ?** L'écart mesuré est de **2,30 $/mois**. Le choix de
+  Sonnet 5 dans § Architecture avait été fait sans chiffres ; à ce niveau de dépense il ne se
+  joue plus sur le coût mais sur le nombre de bonnes offres ratées. **À rouvrir en phase 2 en
+  faisant tourner les deux sur les mêmes 50 offres.**
 
 ### Ce qui reste ouvert
 

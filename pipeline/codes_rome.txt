@@ -8,9 +8,23 @@
 # et non sur les mots de l'annonce. Il attrape ces offres-là ; le modèle lit
 # ensuite leur description — ce que l'API, elle, ne sait pas faire.
 #
-# Coût mesuré le 21 août 2026 : environ 19 offres par jour, ~2 $ par mois de
-# notation. Sur la semaine testée, ce filet n'a trouvé aucune offre IA que les
-# mots-clés rataient : c'est une assurance, pas un gain démontré.
+# ⚠️ REMESURÉ LE 26 AOÛT 2026 SUR 373 OFFRES — le commentaire précédent était faux.
+# Il affirmait que ce filet n'avait trouvé aucune offre IA que les mots-clés
+# rataient. Il en a rattrapé 18. Mais en les regardant : « Ingénieur système rf »,
+# « Chef de projet médical pharmaceutique », « Ingénieur brevets » — le mot IA est
+# quelque part dans leur description, leur métier n'a rien à voir. Le filet
+# attrape, mais il attrape le mauvais poisson.
+#
+# Ce que ces six codes ramènent vraiment : 246 offres sur 373 (66 % du volume),
+# dont 228 sans aucun signal IA. Le pire est le plus gros : H1206 ramène
+# 111 offres pour 6 pertinentes (5 %), à lui seul 30 % du volume. M1403 : 7 pour
+# zéro.
+#
+# ⚠️ NE PAS LES RETIRER AVANT QUE LA NOTATION TOURNE. La notation EST le filtre
+# conçu pour ça, et elle donnera une mesure bien meilleure que le lexique : la
+# note d'intérêt réelle par code ROME. Le bruit coûte 2,77 $/mois — l'argument
+# économique ne tranche pas. Le vrai risque est le plafond de pagination de
+# France Travail (~1150 par recherche), qu'un rattrapage de 30 jours approcherait.
 
 M1805  # Études et développement informatique
 M1802  # Expertise et support en systèmes d'information

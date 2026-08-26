@@ -1060,3 +1060,102 @@ serait jamais générée — le style disparaîtrait sans aucun message d'erreur
 | **`PGRST303`** | Reproductible au premier appel après recompilation, **en développement seulement** — jamais observé en production. Symptôme : l'écran affiche « base injoignable » alors que la base va bien |
 | **1000 px contre 208 px** | La largeur figée ne laisse pas la place à la barre latérale de filtres. À trancher en phase 4, pas à reconduire |
 | **L'en-tête de `/offres`** | Maxime ne l'aime pas. Reporté **après la phase 4**, quand les filtres y auront pris place : le redessiner avant, c'est le redessiner deux fois |
+
+---
+
+## 26 août 2026 — Décisions de cadrage pour la phase 2
+
+Séance de fin de journée, sans code. Trois questions posées par Maxime, trois
+réponses chiffrées, et une décision que j'ai contestée avant qu'elle soit prise.
+
+### Où intervient l'API Claude, et ce que ça coûte vraiment
+
+Rappel demandé sur la frontière agent / appel d'API. Elle n'a pas bougé :
+**API Messages pour la notation** (une offre entre, deux notes sortent — aucune
+exploration), **Agent SDK pour l'enrichissement** en phase 6 (tâche ouverte,
+nombre d'étapes inconnu). C'est l'argument d'entretien le plus solide du projet ;
+inverser les deux est l'erreur qu'un lead technique repère immédiatement.
+
+Coût mesuré avec les tarifs officiels — pas de mémoire, la référence
+`/claude-api` a été chargée pour ça :
+
+| | Brut | + Batches | + cache de prompt |
+|---|---|---|---|
+| Sonnet 5 (tarif normal) | 9,40 $ | 4,70 $ | **3,46 $/mois** |
+| Opus 5 | 15,66 $ | 7,83 $ | 5,76 $/mois |
+
+Sur 30 offres par jour, description médiane de 2 313 caractères. **Noter toute la
+base coûte moins qu'un café par mois** — et un test unique sur les 373 offres
+revient à **1,35 $**.
+
+Conséquence que je n'attendais pas : **le choix Sonnet 5 contre Opus 5 ne se joue
+plus sur le coût**, l'écart étant de 2,30 $ par mois. Il avait été tranché sans
+chiffres au cadrage ; à ce niveau de dépense, la seule question qui compte est le
+nombre de bonnes offres ratées. Question rouverte pour la phase 2, à décider en
+faisant tourner les deux modèles sur les mêmes 50 offres.
+
+### 80 % des offres collectées sont du bruit
+
+Maxime a remarqué que la plupart des offres n'ont rien à voir avec ce qu'il
+cherche. Mesuré : **298 offres sur 373 ne contiennent aucun mot du champ lexical
+de l'IA**, ni dans l'intitulé ni dans la description.
+
+Les codes ROME en sont la cause, et le plus gros est le pire : **`H1206` ramène
+111 offres pour 6 pertinentes — 5 %**, à lui seul 30 % du volume. `M1403` en
+ramène 7 pour zéro.
+
+⚠️ **Le fichier `codes_rome.txt` affirmait que ce filet « n'a trouvé aucune offre
+IA que les mots-clés rataient ». C'est faux — il en a rattrapé 18.** Mais en les
+regardant : « Ingénieur système rf », « Chef de projet médical pharmaceutique »,
+« Ingénieur brevets ». Le mot IA est quelque part dans leur description, leur
+métier n'a rien à voir. **Le filet attrape, mais il attrape le mauvais poisson.**
+
+**Décision : ne rien retirer maintenant.** La notation *est* le filtre — c'est
+tout le propos de la phase 2. Retirer les codes ROME avant, c'est faire à la main
+et au lexique ce que le modèle fera mieux ; et après, on disposera d'une mesure
+autrement solide, la note d'intérêt réelle par code ROME. Le bruit coûte 2,77 $
+par mois, donc l'argument économique ne tranche pas. Le vrai risque est ailleurs :
+le **plafond de pagination** de France Travail, qu'un rattrapage de 30 jours
+approcherait.
+
+### Effacer la base : contesté, et abandonné
+
+Maxime voulait tester la notation sur 50 offres seulement, « quitte à effacer la
+base et n'en garder que 50 » — les offres d'août étant périmées pour quelqu'un qui
+postule en octobre.
+
+**Le raisonnement liait deux choses sans rapport** : noter peu et stocker peu. La
+notation est incrémentale par construction — « une offre déjà notée n'est jamais
+renotée » — donc limiter la notation ne demande aucune suppression.
+
+Quatre raisons contre l'effacement, dans l'ordre où elles pèsent :
+
+1. **France Travail dépublie ses annonces.** Une offre effacée ne se re-collecte
+   **jamais**. C'est la raison d'être écrite de la colonne `charge_brute` :
+   effacer, c'est détruire ce que cette colonne existe pour protéger.
+2. **Ces 373 offres sont le jeu de test, et il venait d'être mesuré le matin
+   même** — neuf familles de salaire, dont une (`Horaire …`) présente sur **une
+   seule offre**. Ce sont exactement les cas qui feront tomber le normaliseur.
+3. **L'écran de suivi d'exploitation** a besoin de l'historique, et un historique
+   ne se reconstitue pas.
+4. **Le problème se règle tout seul** : ~1 500 offres de plus d'ici octobre, tri
+   par date décroissante. Les anciennes descendent d'elles-mêmes.
+
+Et si des offres périmées gênent vraiment à l'écran, **c'est un filtre
+d'affichage qu'il faut, pas une suppression**.
+
+Maxime a répondu en réduisant l'échantillon à **5 offres** sans revenir sur
+l'effacement — la base reste intacte.
+
+### Ce que je retiens
+
+**Chiffrer avant de discuter.** Les trois questions de la séance portaient sur le
+coût, et dans les trois cas le chiffre a déplacé la conversation : le coût ne
+justifiait pas de tester petit (mais la relecture, si), ne justifiait pas de
+retirer les codes ROME, et ne justifiait plus le choix de Sonnet sur Opus. Une
+intuition de prix vaut rarement une multiplication.
+
+**Un commentaire de code peut mentir avec assurance.** `codes_rome.txt`
+expliquait clairement pourquoi son filet ne servait à rien — et se trompait. Il
+avait été écrit après une mesure honnête sur une semaine ; cinq jours de données
+en plus l'ont démenti.
