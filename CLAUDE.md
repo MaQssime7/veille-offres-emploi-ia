@@ -107,13 +107,16 @@ la même chose finissent en deux tables et deux fonctions.
 À rouvrir avant toute décision produit.
 <!-- produit:end -->
 
-## État actuel — 26 août 2026
+## État actuel — 27 août 2026
 
-**Phase 1 close. Phase 2 en cours — la notation tourne, l'écran est livré, trois critères
-restent ouverts.** Le site est en ligne derrière son mot de passe, la collecte tourne chaque
-nuit, et `/offres` affiche désormais **les deux notes avec leurs justifications à plat, classées
-par intérêt décroissant**. **535 offres réelles, 97 notées**, 0 échec sur 97 appels au modèle.
-Les critères de collecte ont été entièrement refondus sur mesure le 26 août au soir.
+**Phase 1 close. Phase 2 : tout est construit, il ne reste que des VÉRIFICATIONS.** Le site est
+en ligne derrière son mot de passe, la collecte et la notation sont toutes deux sur le cron, et
+`/offres` affiche **les deux notes avec leurs justifications à plat, classées par intérêt
+décroissant**. **535 offres, 98 notées**, 1 échec provoqué volontairement puis rattrapé.
+Les critères de collecte ont été refondus sur mesure le 26 août au soir.
+
+⚠️ **Le cron GitHub Actions n'a PAS tourné dans la nuit du 26 au 27 août** — voir le point
+dédié plus bas. Ce n'est pas un défaut du code, et les données n'en souffrent pas.
 
 | Brique | État |
 |---|---|
@@ -122,22 +125,51 @@ Les critères de collecte ont été entièrement refondus sur mesure le 26 août
 | Migrations | **5**, toutes appliquées — `supabase/migrations/`. La 5ᵉ ajoute la notation (deux notes, justifications, salaire annualisé, compteurs de tokens, colonne `etape`) |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
 | `pipeline/` | Collecte **et notation** livrées, **toutes deux sur le cron** GitHub Actions à 02:23 UTC (4 h 23 à Paris l'été) — deux jobs enchaînés, la notation ne tournant que si la collecte a réussi. Workflow **déclenché à la main et vert le 26 août** (exécution `33011739111`), ⚠️ mais sans offre à noter ce soir-là : **l'appel payant depuis le runner reste non exercé**. Critères dans `mots_cles.txt` (8 termes) et `codes_rome.txt` (**vide depuis le 26 août, délibérément**) |
-| Modules | `collecte.py` · `notation.py` (`--limite`, `--modele`, `--effort`, `--lot`, `--rome`, `--collecte`, `--au-hasard`, `--renoter`, `--sans-ecrire`, `--sans-appeler`) · `salaire.py` · `criteres_pertinence.txt` |
+| Modules | `collecte.py` · `notation.py` (`--limite`, `--modele`, `--effort`, `--lot`, `--rome`, `--collecte`, **`--derniere-collecte`**, `--au-hasard`, `--renoter`, `--sans-ecrire`, `--sans-appeler`) · `salaire.py` · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
 
-**Reste à faire en phase 2 — trois critères, aucun visuel :**
+**Reste à faire en phase 2 — trois VÉRIFICATIONS, aucune construction.** Tout le code est
+écrit, livré et commité ; ce qui suit ne sont que des chemins jamais parcourus en vrai.
 
-1. **Faire tourner l'API Batches une fois.** `notation.py --lot` est écrit et n'a jamais tourné.
-2. **Provoquer volontairement un échec de notation** pour exercer `enregistrer_echec_notation()`
-   en conditions réelles. Le chemin est en place, l'écran sait l'afficher, mais 0 échec sur
-   97 appels : il n'a jamais été déclenché.
-3. **Brancher la notation sur le cron** GitHub Actions, avec `ANTHROPIC_API_KEY` dans les secrets.
+| Ce qui reste | Comment le fermer | Coût |
+|---|---|---|
+| ⚠️ **L'appel payant depuis le runner GitHub n'a jamais été exercé** | Le workflow a tourné vert le 26 août mais **sans aucune offre à noter** (0 collectée dans la fenêtre). Il se ferme au premier passage qui trouve des offres. **16 offres attendent au 27 août 13 h 42** | ~10 centimes |
+| ⚠️ **Le rattachement par `custom_id` de l'API Batches** | `--lot` a tourné sur **une** offre : apparier par identifiant et apparier par position y donnent le même résultat, donc le test **ne peut pas échouer** et ne prouve rien. Il faut un lot de **3** offres | ~0,9 centime |
+| ⚠️ **L'état « 200 offres notées » à l'écran** | Vérifié **en simulation** le 26 août (98 dupliquées jusqu'à 200) : 39 567 px de haut, 5 699 nœuds, 153 Ko transférés, 70 ms de recalcul, aucun débordement. Sur données réelles, il faut ~100 offres de plus | ~60 centimes |
 
-⚠️ **Un critère restera non vérifié sur données réelles : « 200 offres notées ».** Il n'y en a
-que 97. Vérifié **en simulation** le 26 août (les 97 dupliquées jusqu'à 200) : 39 567 px de haut,
-5 699 nœuds, **153 Ko transférés**, 70 ms de recalcul complet de la mise en page, aucun
-débordement horizontal. Le fermer pour de vrai demande ~100 offres de plus, soit ~60 centimes en
-appels directs — décision de Maxime, pas prise au 26 août.
+⚠️ **Aucune de ces trois vérifications n'a été refusée sur le fond** — Maxime a simplement
+choisi de ne pas dépenser dans l'immédiat et d'attendre que le cron produise des offres.
+Le redemander avant de les lancer, comme toute dépense.
+
+### ⚠️ Le cron a été sauté dans la nuit du 26 au 27 août — et ce n'est pas notre code
+
+**Constaté le 27 août à 11 h 40 UTC** : le cron de 02:23 UTC n'avait produit **aucune
+exécution**, neuf heures après son heure. Vérifié :
+
+| | |
+|---|---|
+| Workflow avec `schedule` sur `main` | depuis le 26/08 **12 h 11 UTC**, soit 14 h d'avance |
+| Exécution manuelle à 12 h 12 UTC le 26 | verte — le workflow était bien enregistré |
+| Exécutions `--event=schedule` | **aucune, jamais** |
+| Dépôt archivé · désactivé · Actions coupées | non · non · non |
+
+C'est un comportement **documenté** de GitHub Actions : les workflows planifiés ne sont pas
+garantis, ils peuvent être retardés en période de charge ou abandonnés purement, et c'est plus
+fréquent sur les dépôts publics gratuits. La minute non ronde (23) était déjà une parade ;
+elle n'a pas suffi.
+
+✅ **Les données sont robustes à ça, par conception, et il faut le savoir avant de « réparer ».**
+La fenêtre de collecte part de **la dernière collecte réussie**, jamais de « hier » : une nuit
+sautée est rattrapée par la suivante, qui collecte 48 h d'un coup, et la notation suit. **Aucune
+offre n'est perdue** — vérifié le 27 août, la fenêtre s'est ouverte toute seule sur 16 h.
+
+⚠️ **Ce qu'il faut surveiller** : plusieurs nuits sautées d'affilée font grossir le volume, et
+la **limite de 60** du workflow finirait par mordre — vers 4 ou 5 nuits consécutives. Quand elle
+mord, `notation.py` émet un avertissement, et **les offres laissées ne repassent pas** en mode
+`--derniere-collecte`.
+
+⚠️ **Ne rien « corriger » sur la foi d'un seul saut.** Un second cron de secours est de la
+complexité posée sur une supposition. Observer deux ou trois nuits d'abord.
 
 ⚠️ **L'écran est l'instrument de mesure des critères de collecte, et c'est pour ça qu'il passait
 en premier.** Les justifications à plat rendent lisible d'un coup d'œil ce qu'un mot-clé ramène :
@@ -257,11 +289,10 @@ décide plus rien.** Ne pas la rouvrir « pour voir ».
 
 | | |
 |---|---|
-| `ANTHROPIC_API_KEY` dans GitHub Actions | Posée en local (`.env`), **absente des secrets GitHub** — à ajouter le jour où la notation sera branchée sur le cron. Jamais chez Vercel |
 | ~~Tri par note : piège `NULLS FIRST`~~ | ✅ **Traité le 26 août** — `note_interet.desc.nullslast` dans `interface/lib/offres.ts`, avec départage complet jusqu'à `identifiant` pour que deux chargements classent les ex æquo pareil |
 | API Batches : **le rattachement par `custom_id` reste non vérifié** | ⚠️ Nuance qui compte. `--lot` **a tourné** le 26 août 2026 (lot `msgbatch_018yAG…`, 1 offre, 2 min 33, réussite) : dépôt, attente, récupération, écriture et trace d'exécution sont validés. Mais **sur UNE offre, apparier par identifiant et apparier par position donnent le même résultat** — le point le plus subtil du module n'est donc toujours pas exercé. Il faudrait un lot de 3 offres, soit ~0,9 centime |
 | Critères de collecte non finis | `deploiement`, `automatisation`, `RPA` et le faux positif `IA`/`IPR-IA` restent à mesurer — voir § État actuel |
-| ⚠️ **Le plafond de 200 tuera l'affichage des offres du jour** | Relevé en revue le 26 août. Depuis le tri par intérêt, les 200 lignes affichées sont **les 200 meilleures de tous les temps**. Aujourd'hui 97 offres sont notées, donc 103 places reviennent aux plus récentes et les offres de la nuit s'affichent. **Le jour où plus de 200 offres portent une note, elles disparaissent** — d'intérêt médian 10, elles ne rentrent plus — et le marqueur « Nouveau » devient du code que rien n'atteint. Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut sans jamais céder leur place. ⚠️ **L'échéance est un compte, pas une date : elle tombe quand `notees` dépasse 200.** À trancher en phase 4 avec les filtres — le remède change ce que cet écran *est*, et le PRD confie déjà le compte rendu de la nuit à `/` |
+| ⚠️ **Le plafond de 200 tuera l'affichage des offres du jour** | Relevé en revue le 26 août. Depuis le tri par intérêt, les 200 lignes affichées sont **les 200 meilleures de tous les temps**. Au 27 août, 98 offres sont notées, donc 102 places reviennent aux plus récentes et les offres de la nuit s'affichent. **Le jour où plus de 200 offres portent une note, elles disparaissent** — d'intérêt médian 10, elles ne rentrent plus — et le marqueur « Nouveau » devient du code que rien n'atteint. Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut sans jamais céder leur place. ⚠️ **L'échéance est un compte, pas une date : elle tombe quand `notees` dépasse 200.** À trancher en phase 4 avec les filtres — le remède change ce que cet écran *est*, et le PRD confie déjà le compte rendu de la nuit à `/` |
 | Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | ⚠️ **Devenu inatteignable le 26 août** : le bug ne se déclenche que sur une offre **déjà notée**, donc uniquement en `--renoter` — outil désormais mis de côté, une offre n'étant notée qu'une fois. Il n'est donc **pas urgent**, et ne pas le présenter comme tel. L'analyse et le correctif à faire vivent en commentaire dans `pipeline/notation.py` au-dessus de `apercevoir()`, **au point d'usage** : celui qui ressortira `--renoter` tombera dessus, ce qu'une ligne dans ce tableau ne garantit pas |
 | Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver (`docs/HEBERGEMENT.md`) |
 | `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme : « base injoignable » alors que la base va bien |

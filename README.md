@@ -187,7 +187,7 @@ que la chaîne fonctionne — trois polices, jetons de couleur, mode sombre — 
 remplacée en phase 1. Depuis le 21 août, elle est derrière la porte comme le
 reste du site.
 
-**Phase 1 en cours — le schéma est en base** (20 août 2026).
+**Le schéma, posé le 20 août 2026.**
 
 Avant de figer une seule table, l'API France Travail a été interrogée sur 235
 offres réelles. La mesure a invalidé deux hypothèses du plan et fermé une question
@@ -213,8 +213,8 @@ aucun droit sur ses propres tables — corrigé par une migration suivante.
 ### La collecte tourne, toute seule
 
 Le pipeline Python collecte pour de vrai depuis le 21 août 2026, et **sans intervention
-depuis le 26** : un cron GitHub Actions le réveille chaque nuit à 02:23 UTC. **373 offres
-réelles en base**, 10 exécutions tracées. Cinq modules, une responsabilité chacun —
+depuis le 26** : un cron GitHub Actions le réveille chaque nuit à 02:23 UTC. **535 offres
+réelles en base**, une quinzaine d'exécutions tracées. Cinq modules, une responsabilité chacun —
 le trousseau de clés, le client France Travail, la normalisation, le stockage,
 l'orchestration. Aucun ne connaît le métier des autres : quand une nuit échoue, le
 motif enregistré en base dit lequel a lâché.
@@ -223,13 +223,33 @@ Trois faits ont été **mesurés contre l'API réelle avant d'écrire une ligne*
 deux ont invalidé des hypothèses déjà écrites :
 
 - **La recherche France Travail n'indexe pas la description d'une annonce.** Un mot
-  pris dans le corps d'une offre ne la retrouve pas. La collecte a donc deux filets :
-  des mots-clés, et un filtre par famille de métier — structurel, indépendant des
-  mots employés — dont le modèle lira ensuite les descriptions.
-- **Son vocabulaire est fermé et français.** « IA générative », « agent IA »,
-  « LLM », « chatbot », « MLOps » renvoient tous zéro offre.
+  pris dans le corps d'une offre ne la retrouve pas : la recherche porte sur l'intitulé,
+  le libellé ROME, l'appellation et les compétences. Une offre au titre banal dont l'IA
+  n'apparaît que dans le texte est invisible à **toute** liste de mots-clés. C'est ce fait
+  qui justifie de faire *lire* les annonces par un modèle plutôt que de les filtrer sur
+  leurs métadonnées.
 - **Trois largeurs de collecte ont été chiffrées** avant d'en choisir une : 0,80 $,
   3 $ ou 173 $ par mois selon qu'on ratisse étroit, moyen ou tout l'Île-de-France.
+
+Le 26 août, ces critères ont été **remesurés** — et deux des conclusions initiales étaient
+fausses. C'est la partie du projet dont je suis le plus content, parce que c'est la mesure
+qui a tranché contre le raisonnement :
+
+- **« Le vocabulaire est fermé et français » était faux**, et c'était l'erreur la plus
+  coûteuse de la configuration. `AI` en anglais ramène **28 offres nettes par mois** qu'aucun
+  autre critère ne trouvait. `GenAI`, `LLM`, `copilot`, `prompt` et `RAG` ne renvoient plus
+  zéro non plus.
+- **Les codes ROME ne rattrapaient pas ce que le lexique ratait.** Le raisonnement était bon —
+  un filtre par famille de métier, structurel, indépendant des mots employés. La mesure l'a
+  démenti : les six codes apportaient 445 offres nettes par mois pour **zéro offre au-dessus
+  de 30/100** sur cinquante notées au hasard. Tous retirés.
+- Corollaire non évident : **un code ROME dont le libellé contient un mot déjà cherché
+  n'apporte rien**, puisque la recherche indexe ce libellé. `M1889` « Ingénieur en
+  Intelligence Artificielle » avait la meilleure qualité mesurée de tous les codes, et un
+  apport net de **zéro**.
+
+Effet mesuré : le volume tombe de 707 à **294 offres par mois**, la moyenne d'intérêt monte
+de 7,7 à **16,2**, et la part d'offres au-dessus de 50/100 passe de 1 % à **7 %**.
 
 Le code a ensuite été relu par une revue automatisée qui a trouvé **15 défauts**,
 tous corrigés — dont une fuite de donnée personnelle vers un journal public, et une
@@ -251,9 +271,6 @@ Deux partis pris qui se défendent :
   contournable par un simple en-tête HTTP (CVE-2025-29927) : la vérification qui
   compte est `exigerSession()`, appelée dans la page elle-même.
 
-⚠️ Le code de la porte n'est **pas encore en ligne** : les deux variables
-d'environnement ne sont pas posées chez Vercel.
-
 **Phase 1 close le 26 août 2026.** Le site est en ligne derrière son mot de passe, l'écran
 `/offres` lit la base, la collecte tourne toute seule, et les valeurs de mise en page ne sont
 plus des suppositions : elles ont été mesurées contre 373 offres réelles.
@@ -265,5 +282,34 @@ quand les offres arrivaient ; ni le compilateur ni le linter ne bronchent, les d
 par la ligne et par son squelette : la contrainte est portée par le code, plus par un
 commentaire qu'il fallait avoir lu.
 
-**Prochaine étape** : la phase 2, les deux notes — une note d'intérêt, une note
-d'accessibilité, et le classement qui va avec.
+### Les deux notes, et le refus de n'en faire qu'une
+
+**Phase 2, 26 août 2026.** Chaque offre porte une note d'**intérêt** et une note
+d'**accessibilité**, séparées, chacune avec la phrase qui l'explique. La liste se classe par
+intérêt décroissant.
+
+Le produit repose sur le **refus de fusionner ces deux notes** en un « 87 % de match ». Un cas
+réel montre pourquoi : « Alternant Ingénieur IA Agentique » obtient **85 en intérêt et 15 en
+accessibilité** — le poste est exactement le bon, et c'est une alternance, donc hors de portée.
+Un score unique aurait rendu cette offre indistinguable d'une offre médiocre et accessible.
+
+**Les justifications se lisent à plat dans la liste**, jamais derrière une infobulle ni un
+dépliage. Ce n'est pas un choix de mise en page : c'est le seul mécanisme qui révèle une
+notation mal étalonnée. Il a servi dès le premier jour — sur une annonce réseau « débutant
+accepté » exigeant Cisco, Aruba et Palo Alto, le barème commandait 90 et le modèle a mis 40.
+**C'est le barème qui avait tort**, et il a été corrigé.
+
+Deux décisions d'ingénierie qui se défendent :
+
+- **La frontière agent / appel d'API.** La notation est un appel unique à sortie structurée,
+  pas un agent : une entrée, une sortie, aucune exploration. Un agent y serait plus lent, plus
+  cher et non déterministe pour aucun gain. Le Claude Agent SDK est réservé à l'enrichissement,
+  qui est une vraie tâche ouverte.
+- **Le cache de prompt a un plancher de 1 024 tokens, et en dessous il ne dit rien** — pas
+  d'erreur, pas de message, juste un compteur qui reste à zéro pendant qu'on repaie le préfixe
+  à chaque offre. Le préfixe fait 3 144 tokens, le cache mord, et le module journalise les
+  quatre compteurs à chaque appel pour que le jour où il cesserait de mordre se voie.
+
+Coût réel mesuré : **0,6 centime par offre**, cache chaud.
+
+**Prochaine étape** : la phase 3, la fiche d'une offre.

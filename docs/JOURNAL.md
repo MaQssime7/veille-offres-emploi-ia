@@ -1498,3 +1498,75 @@ cas dégradé n'était ni rare ni tordu, juste une collecte ratée.
 fichier à secret sans transiter par un terminal, une capture d'écran ou une
 conversation. Seuls sa longueur et son préfixe ont été montrés, et aucun des
 deux n'identifie quoi que ce soit.
+
+---
+
+## 27 août 2026 — le cron n'a pas tourné, et ce n'est pas le code
+
+Premier constat du matin : `gh run list` ne montre que des déclenchements
+manuels. **Le cron de 02:23 UTC n'a produit aucune exécution**, neuf heures
+après son heure.
+
+### Établir avant d'expliquer
+
+Quatre vérifications avant toute hypothèse :
+
+| | |
+|---|---|
+| Workflow avec `schedule` sur `main` | depuis le 26/08 **12 h 11 UTC**, soit 14 h d'avance |
+| Exécution manuelle à 12 h 12 UTC le 26 | verte — le workflow était bien enregistré |
+| Exécutions `--event=schedule` | **aucune, jamais** |
+| Dépôt archivé · désactivé · Actions coupées | non · non · non |
+
+Conclusion : GitHub a sauté le passage. C'est **documenté** — les workflows
+planifiés ne sont pas garantis, ils peuvent être retardés en période de charge
+ou abandonnés purement, et c'est plus fréquent sur les dépôts publics gratuits.
+La minute non ronde (23) était déjà une parade contre les files de l'heure
+pile ; elle ne protège pas de ça.
+
+### Ce qui a bien marché, et qui n'était pas un hasard
+
+**Les données n'ont rien perdu**, parce que la fenêtre de collecte part de la
+*dernière collecte réussie* et jamais de « hier ». Vérifié à blanc, gratuitement :
+la fenêtre s'est ouverte toute seule sur seize heures, et seize offres attendent.
+Une nuit sautée est rattrapée par la suivante, qui collecte quarante-huit heures
+d'un coup ; la notation suivant la collecte, ces offres seront notées normalement.
+
+C'est un choix de conception qui date du premier jour et qui paie aujourd'hui :
+**le pipeline ne suppose jamais que son déclencheur est fiable.** Un cron qui
+saute, un job tué, une machine éteinte — la borne est en base, pas dans
+l'horloge.
+
+⚠️ La limite reste à connaître : plusieurs nuits sautées d'affilée font grossir
+le volume, et le plafond de 60 du workflow finirait par mordre vers quatre ou
+cinq nuits consécutives. Les offres laissées ne repassent pas en mode
+`--derniere-collecte`.
+
+### Ne pas réparer sur un seul point
+
+La tentation était d'ajouter tout de suite un second cron de secours. Décision :
+**non.** Un saut ne fait pas une tendance, et la parade coûterait de la
+complexité posée sur une supposition. On observe deux ou trois nuits ; si ça se
+reproduit, on traite, et la parade sera simple.
+
+### La doc mentait sur trois points, dont un dans la vitrine
+
+Question de Maxime — « est-ce que la doc est à jour ? » — posée avant de repartir
+sur une nouvelle conversation. La vérification a trouvé trois affirmations
+fausses, et le fait de les avoir cherchées vaut plus que de les avoir corrigées :
+
+- Le `CLAUDE.md` annonçait encore la clé Anthropic **absente des secrets
+  GitHub**, alors qu'elle y est depuis la veille. Un script de mise à jour avait
+  visé une chaîne qui n'existait pas et n'avait rien remplacé — **sans lever
+  d'erreur**, puisqu'il réécrivait un texte inchangé. La parade tient en une
+  ligne : `assert t != avant` avant chaque écriture.
+- Il listait trois travaux « restant à faire » qui étaient tous terminés.
+- Le **README** — la première chose qu'ouvre un recruteur — affirmait que « le
+  vocabulaire de France Travail est fermé et français ». La mesure du 26 août
+  l'avait démenti douze heures plus tôt : `AI` en anglais ramène 28 offres
+  nettes par mois.
+
+**Une documentation fausse est pire qu'une documentation absente**, et celle-ci
+l'était à l'endroit le plus visible du projet. Le README porte désormais la
+correction *avec* le raisonnement initial qui s'est trompé — c'est plus honnête,
+et bien plus intéressant à lire, qu'une affirmation lissée.
