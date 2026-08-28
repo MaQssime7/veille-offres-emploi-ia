@@ -94,8 +94,8 @@ export function ContenuNotes({ offre }: { offre: ChampsNotation }) {
         libelle="Intérêt"
         valeur={offre.note_interet as number}
         justification={offre.justification_interet}
-        remplissage="bg-primary"
-        teinteLibelle="text-primary"
+        remplissage="bg-interet"
+        teinteLibelle="text-interet"
       />
       <Note
         libelle="Accessibilité"
@@ -145,9 +145,18 @@ function Note({
    * portée par le mot écrit en toutes lettres : la couleur seule est interdite
    * par le plancher d'accessibilité du projet.
    *
-   * Contrastes recalculés le 28 août 2026, sur le fond des cartes :
-   * brun 11,53:1 en clair et 11,74:1 en sombre · olive 6,13:1 et 6,74:1 —
-   * tous au-dessus du plancher de 4,5:1 exigé pour du texte.
+   * ⚠️ **L'intérêt est passé du brun-encre au BLEU le 28 août 2026**, sur
+   * décision de Maxime. Le motif dépasse le goût : le brun-encre servait à la
+   * fois de couleur de texte, de bouton principal *et* de note d'intérêt —
+   * trois emplois pour une teinte, dans un système dont la règle est « un rôle
+   * chacune ». Le bleu ne sert qu'à ça, et les deux mesures se lisent enfin
+   * comme une paire : bleu contre olive, deux axes distincts.
+   *
+   * Contrastes mesurés sur le fond des cartes : bleu **6,30:1** en clair et
+   * 7,88:1 en sombre · olive 6,13:1 et 6,74:1. ⚠️ **Les deux sont du même
+   * ordre, et c'est voulu** : une mesure qui contrasterait deux fois plus que
+   * l'autre se lirait comme la plus importante, ce que le produit refuse — il
+   * repose sur le refus de fusionner ou de hiérarchiser les deux notes.
    */
   teinteLibelle: string;
 }) {

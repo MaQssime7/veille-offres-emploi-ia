@@ -46,7 +46,7 @@ export function LigneOffre({
         className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${RYTHME_LIGNE.margeEntreprise}`}
       >
         {offre.entreprise_nom ? (
-          <p className="nom-entreprise text-foreground">
+          <p className="nom-entreprise">
             {offre.entreprise_nom}
           </p>
         ) : (

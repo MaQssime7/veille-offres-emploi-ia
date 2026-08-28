@@ -35,7 +35,7 @@ export function EnTeteOffre({
   return (
     <header className="mb-6 border-b border-border pb-6">
       {offre.entreprise_nom ? (
-        <p className="nom-entreprise mb-2 text-foreground">
+        <p className="nom-entreprise mb-2">
           {offre.entreprise_nom}
         </p>
       ) : (

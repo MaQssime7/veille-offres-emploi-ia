@@ -127,7 +127,9 @@ un rôle et un seul.
 
 | Teinte | Rôle unique | Ne sert jamais à |
 |---|---|---|
-| **Brun-encre** | action principale · note d'intérêt · texte | un statut |
+| **Brun-encre** | action principale · texte | un statut · ⚠️ **plus la note d'intérêt depuis le 28 août 2026** |
+| **Bleu-encre** *(nouveau, 28 août 2026)* | la note d'**intérêt**, et rien d'autre | un statut · une action · du texte courant |
+| **Brun-terre** *(nouveau, 28 août 2026)* | le nom de l'**entreprise**, et rien d'autre | un intitulé · une mesure |
 | **Ocre** | le temporel : « nouveau », enrichissement en cours | une mesure |
 | **Olive** | note d'accessibilité · statut candidaté | une alerte |
 | **Brique** | erreur · statut écarté | un état normal |
@@ -556,6 +558,39 @@ normalisation existera.
 ⚠️ **Le vide à droite de la ligne n'est pas un défaut, c'est une réserve.** Il accueille les
 deux barres de notes en phase 2, puis le statut en phase 4. Le combler serait à refaire.
 Vérifié le 26 août avec des barres simulées en place : elles s'y logent sans rien pousser.
+
+### Deux teintes entrent dans la palette — 28 août 2026
+
+Décision de Maxime, après avoir regardé les écrans remplis. La palette passe de
+quatre teintes de signal à six, et **la règle « un rôle chacune » tient toujours**
+— c'est même elle qui a dicté la forme de l'ajout.
+
+| Jeton | Clair | Sombre | Contraste sur carte | Rôle |
+|---|---|---|---|---|
+| `--interet` | `oklch(0.480 0.110 250)` | `oklch(0.750 0.110 250)` | **6,30:1** / 7,88:1 | la note d'intérêt |
+| `--marque` | `oklch(0.500 0.100 45)` | `oklch(0.780 0.055 62)` | **6,03:1** / 8,6:1 | le nom de l'entreprise |
+
+⚠️ **Le brun-encre PERD la note d'intérêt, il ne la partage pas.** Il servait à
+trois choses — texte, bouton principal, note d'intérêt — dans un système dont la
+règle est justement qu'une teinte n'en sert qu'une. Le bleu ne prend pas une
+place en plus : il en libère une.
+
+⚠️ **Le bleu et l'olive contrastent au même niveau (6,30 et 6,13), et c'est
+délibéré.** Une mesure deux fois plus contrastée que l'autre se lirait comme la
+plus importante — or tout le produit repose sur le refus de hiérarchiser ou de
+fusionner les deux notes. Deux axes, deux teintes, même poids.
+
+⚠️ **`--marque` existe pour une raison structurelle, pas décorative** : depuis
+que le nom d'entreprise est passé en Geist 15 px semi-gras, il partage **police
+et taille** avec l'intitulé qu'il surplombe. Sans teinte propre, deux lignes
+superposées seraient indiscernables. C'est la couleur qui porte la distinction —
+mais elle ne porte aucune information seule : l'entreprise reste au-dessus, le
+titre en dessous, dans cet ordre.
+
+⚠️ **Ce que cet ajout ne règle PAS** : Maxime trouvait que le site manquait de
+couleur *en général*. Deux teintes ciblées ne répondent pas à ça — la direction
+« sobre » reste entière. Si la question revient, elle se traite avec `/design`
+sur l'ensemble des écrans, jamais en ajoutant une teinte de plus.
 
 ### Le nom d'entreprise sort de la famille des libellés — 28 août 2026
 
