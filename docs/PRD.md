@@ -364,7 +364,7 @@ parce qu'ils servent directement à candidater :
 
 | Champ conservé | Présence réelle | Nature |
 |---|---|---|
-| `contact.nom` | 22/235 offres (9 %) | Nomme une personne dans 8 cas sur 235 (3 %), sinon une agence ou un service |
+| `contact.nom` | 22/235 offres (9 %) — **remesuré le 28 août 2026 : 39/560 (7 %)** | Nomme une personne dans 8 cas sur 235 (3 %) — **remesuré : 21 des 39 contacts (3,8 % des offres)**, les 18 autres sont des agences France Travail |
 | `contact.urlPostulation` | 16/235 offres (7 %) | Un lien de candidature — **aucune donnée personnelle** |
 
 **Écartés à la collecte**, avant toute écriture : `coordonnees1/2/3` (adresses
@@ -377,8 +377,16 @@ quand même en base, dans les sauvegardes et dans les journaux.
 1. **Colonnes nommées, jamais dans l'archive JSON brute.** Une colonne se
    cherche, s'exclut d'un export, se vide d'une requête. Noyée dans un bloc JSON,
    la donnée voyage partout où le bloc voyage — export, débogage, copier-coller.
-2. **Ne sortent pas de la base** : ni journal d'exécution, ni export, ni page
-   publique.
+2. **Ne sortent de la base que sur la fiche d'une offre** — page privée, servie
+   derrière le mot de passe du site. *Amendé le 28 août 2026 par Maxime.* Les
+   deux champs sont conservés **parce qu'ils servent à candidater** : les garder
+   sans jamais les afficher revenait à porter le risque sans l'usage.
+   ⚠️ **Les trois autres interdits tiennent, et le premier est le plus
+   dangereux** : jamais dans un **journal d'exécution** — ceux de GitHub Actions
+   sont **publics**, le dépôt l'étant, et une valeur imprimée une fois y reste ;
+   jamais dans un **export** ; jamais sur une **page publique**.
+   ⚠️ Et jamais dans la **liste** `/offres` : un champ ne se lit que là où il
+   s'affiche. `contact_nom` reste hors des colonnes lues par la liste.
 3. **Le site entier est derrière mot de passe**, donc ces champs ne sont
    accessibles qu'à l'utilisateur unique.
 4. Les **notes personnelles** ajoutées par Maxime relèvent de la même règle.

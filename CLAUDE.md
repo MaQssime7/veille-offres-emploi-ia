@@ -735,8 +735,12 @@ Les clés de ce projet donnent accès à un compte facturé et à une base de do
    et dans les journaux. Ces deux champs vivent en **colonnes nommées, jamais
    dans l'archive JSON brute** — une colonne se cherche, s'exclut d'un export et
    se vide d'une requête ; noyée dans un bloc JSON, la donnée voyage partout où
-   le bloc voyage. Ils ne sortent pas de la base : ni journal, ni export, ni page
-   publique. Les notes personnelles ajoutées par Maxime sur une offre relèvent de
+   le bloc voyage. ⚠️ **Ils s'affichent sur la fiche d'une offre depuis le 28 août
+   2026** — décision de Maxime : le site est derrière son mot de passe et n'a
+   qu'un utilisateur, et ces champs n'existent que pour candidater. **Le reste
+   de la règle tient** : jamais dans un journal — ceux de GitHub Actions sont
+   **publics** — ni dans un export, ni sur une page publique, ni dans la liste
+   `/offres`, qui ne les lit pas. Les notes personnelles ajoutées par Maxime sur une offre relèvent de
    la même règle — ne pas les exposer, ne pas les journaliser, ne pas les faire
    sortir de la base.
    ⚠️ **Tranché le 20 août 2026 sur mesure, pas sur intuition** : sur 235 offres
