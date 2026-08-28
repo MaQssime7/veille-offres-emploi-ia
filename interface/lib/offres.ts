@@ -257,3 +257,215 @@ export async function listerOffres(): Promise<ResultatListe> {
     derniereExecution,
   };
 }
+
+/* ------------------------------------------------------------------ *
+ *  La fiche d'une offre — `/offres/[identifiant]`
+ * ------------------------------------------------------------------ */
+
+/**
+ * Une offre telle qu'elle apparaît sur sa fiche.
+ *
+ * ⚠️ **C'est une seconde liste blanche, distincte de `COLONNES_LISTE`, et le
+ * doublon est délibéré.** Une liste unique « pour ne pas se répéter » ferait
+ * remonter dans les 200 lignes de la liste tout ce que la fiche a le droit de
+ * lire — `description` (2 548 caractères en médiane, 5 000 au maximum) et
+ * `contact_nom`, la seule donnée nominative du projet. Deux écrans, deux
+ * besoins, deux listes.
+ */
+export type OffreEnFiche = {
+  identifiant: string;
+  intitule: string;
+  entreprise_nom: string | null;
+  lieu_libelle: string | null;
+  type_contrat_libelle: string | null;
+  /**
+   * ⚠️ **Ce n'est PAS `type_contrat_libelle`, et c'est le champ le plus utile
+   * de la fiche.** Le premier dit « CDI », celui-ci dit « Contrat
+   * apprentissage ». Mesuré le 28 août 2026 : **7 des 20 meilleures offres sont
+   * des alternances**, dont le cas emblématique du projet — « Alternant
+   * Ingénieur IA Agentique », 85 d'intérêt et 15 d'accessibilité. Sans ce
+   * champ, un écart pareil ne s'explique qu'en lisant la justification.
+   * Renseigné sur 560 offres sur 560.
+   */
+  nature_contrat: string | null;
+  alternance: boolean;
+  salaire_libelle: string | null;
+  salaire_annuel_min: number | null;
+  salaire_annuel_max: number | null;
+  publiee_a: string;
+  /**
+   * Le texte intégral de l'annonce. Conservé en base précisément parce que
+   * France Travail **dépublie** : la description reste lisible ici longtemps
+   * après que le lien d'origine soit mort (US-33).
+   * Médiane 2 548 caractères, maximum **5 000** — le plafond de l'API, atteint
+   * par 5 offres. ⚠️ Ce plafond ne se code nulle part : c'est une limite de
+   * l'API d'aujourd'hui, pas un contrat.
+   */
+  description: string;
+  /** Écrit par la notation. `null` sur les 434 offres pas encore notées. */
+  resume: string | null;
+  note_interet: number | null;
+  justification_interet: string | null;
+  note_accessibilite: number | null;
+  justification_accessibilite: string | null;
+  notation_motif_echec: string | null;
+  notation_tentatives: number;
+  /**
+   * Comment le référentiel ROME classe cette offre. Renseignés tous les deux
+   * sur 560/560.
+   *
+   * ⚠️ **Ils disent *pourquoi cette offre est là*.** C'est l'appellation que le
+   * moteur de recherche France Travail indexe — c'est par elle que le faux
+   * positif `IPR-IA` entrait dans la collecte, et non par l'intitulé. Les
+   * afficher prolonge sur la fiche ce que la liste fait déjà : rendre visible
+   * ce que les critères de collecte ramènent vraiment.
+   */
+  appellation_libelle: string | null;
+  rome_libelle: string | null;
+  /** « Cadre », « Technicien »… Absent sur deux tiers de la base, présent sur 45 % des mieux notées. */
+  qualification_libelle: string | null;
+  /**
+   * ⚠️ **Ce champ ment par son absence, et l'écran doit en tenir compte.**
+   * Mesuré le 28 août 2026 : **127 offres sur 560 exigent l'anglais dans leur
+   * texte, et ce champ n'en capte que 10**. Il rate « Anglais niveau C1 CECRL »,
+   * « Bilingue anglais », « Anglais professionnel indispensable » — 92 %
+   * d'angle mort. **Ne jamais afficher de cartouche d'absence pour les
+   * langues** : « Langues : non précisé » se lirait « pas d'anglais exigé »
+   * alors que ça veut dire « la case n'a pas été remplie ». Même piège que
+   * `experience_libelle`, et même `NULL` ≠ `false` qu'en base.
+   */
+  langues: { libelle?: string | null; exigence?: string | null }[] | null;
+  /** Renseignée sur 560/560 — mais l'annonce, elle, peut avoir été dépubliée. */
+  url_origine: string | null;
+  /**
+   * Les deux champs de contact. ⚠️ **Ils s'affichent ici et NULLE PART
+   * AILLEURS** — décision de Maxime du 28 août 2026, qui amende le garde-fou
+   * n° 2 de `docs/PRD.md` : ces champs n'existent que pour candidater, les
+   * conserver sans jamais les montrer revenait à porter le risque sans l'usage.
+   * Le site est derrière un mot de passe et n'a qu'un utilisateur.
+   *
+   * ⚠️ **Ce qui n'est PAS amendé** : jamais dans un journal — ceux de GitHub
+   * Actions sont **publics**, le dépôt l'étant — ni dans un export, ni dans la
+   * liste `/offres`, dont `COLONNES_LISTE` ne les lit pas. Un champ ne se lit
+   * que là où il s'affiche.
+   *
+   * `contact_nom` : 39 offres sur 560, dont **21 nomment une personne réelle**
+   * (« TIM FRANCE - Mme Isabelle BARBERET ») ; les 18 autres sont des agences.
+   * `contact_url_postulation` : 37 offres.
+   */
+  contact_nom: string | null;
+  contact_url_postulation: string | null;
+};
+
+const COLONNES_FICHE = [
+  "identifiant",
+  "intitule",
+  "entreprise_nom",
+  "lieu_libelle",
+  "type_contrat_libelle",
+  "nature_contrat",
+  "alternance",
+  "salaire_libelle",
+  "salaire_annuel_min",
+  "salaire_annuel_max",
+  "publiee_a",
+  "description",
+  "resume",
+  "note_interet",
+  "justification_interet",
+  "note_accessibilite",
+  "justification_accessibilite",
+  "notation_motif_echec",
+  "notation_tentatives",
+  "appellation_libelle",
+  "rome_libelle",
+  "qualification_libelle",
+  "langues",
+  "url_origine",
+  "contact_nom",
+  "contact_url_postulation",
+].join(",");
+
+/**
+ * Le format d'un identifiant France Travail.
+ *
+ * **Sept caractères alphanumériques**, vérifié deux fois : documenté dans
+ * `docs/API_FRANCE_TRAVAIL.md` sur 50 offres le 20 août 2026, puis recompté sur
+ * **les 560 offres en base le 28 août** — 560 sur 560 conformes, aucune
+ * minuscule, deux formes réelles (`6122825` et `212YDPC`).
+ *
+ * ⚠️ **L'alphabet observé exclut les voyelles, et on ne code PAS cette
+ * exclusion.** Elle n'est garantie nulle part par France Travail ; la coder
+ * ferait disparaître de l'écran, sans le moindre message, la première offre
+ * dont l'identifiant contiendrait un `A`.
+ *
+ * ⚠️ **Les minuscules sont acceptées puis normalisées**, pas rejetées : une
+ * adresse recopiée à la main ou passée par un outil qui met en minuscules doit
+ * ouvrir la fiche, pas une page « introuvable ». Le site est privé — deux
+ * adresses pour une même offre n'ont ici aucune conséquence.
+ */
+const FORMAT_IDENTIFIANT = /^[0-9A-Za-z]{7}$/;
+
+export type ResultatFiche =
+  | { ok: true; offre: OffreEnFiche }
+  | {
+      ok: false;
+      /**
+       * `introuvable` couvre **deux cas volontairement confondus** : le format
+       * est invalide, ou l'offre n'existe pas. L'écran dit la même chose dans
+       * les deux cas — il n'y a rien à cette adresse. Les distinguer
+       * apprendrait à un visiteur quels identifiants sont bien formés, sans
+       * rien apporter à Maxime.
+       */
+      motif: "introuvable" | MotifEchec;
+      explication: string;
+    };
+
+/**
+ * Lit une offre par son identifiant.
+ *
+ * Entre : l'identifiant tel qu'il arrive de la barre d'adresse — donc une
+ * chaîne dont on ne présume **rien**.
+ * Sort : l'offre, ou un échec qualifié : `introuvable` (format refusé ou offre
+ * absente), `injoignable` (la base n'a pas répondu), `configuration`.
+ * Casse : ne lève jamais. Une base morte donne l'écran « base injoignable », un
+ * identifiant fantaisiste donne « offre introuvable » — jamais une erreur 500.
+ *
+ * ⚠️ **La validation a lieu AVANT tout appel à la base, et ce n'est pas une
+ * optimisation.** Une adresse comme `/offres/X&select=*` est refusée ici, avant
+ * qu'aucune requête ne parte. Le second verrou — l'encodage de la valeur — est
+ * dans `interrogerBase` (`options.egal`), et il a été **vérifié en rejouant
+ * l'injection contre la vraie base le 28 août 2026** : 0 ligne rendue.
+ *
+ * Les deux verrous sont indépendants, et il en faut deux. Détail du mécanisme
+ * PostgREST — qui n'est pas celui qu'on suppose — dans `lib/supabase.ts` :
+ * l'ordre des paramètres protège **par accident** aujourd'hui, et cet accident
+ * ne se reproduira pas tout seul.
+ */
+export async function lireOffre(identifiant: string): Promise<ResultatFiche> {
+  if (!FORMAT_IDENTIFIANT.test(identifiant)) {
+    return {
+      ok: false,
+      motif: "introuvable",
+      explication: "Cet identifiant ne ressemble à aucune offre.",
+    };
+  }
+
+  const resultat = await interrogerBase<OffreEnFiche>(
+    `offres?select=${COLONNES_FICHE}&limit=1`,
+    { egal: { identifiant: identifiant.toUpperCase() } },
+  );
+
+  if (!resultat.ok) return resultat;
+
+  const offre = resultat.lignes[0];
+  if (!offre) {
+    return {
+      ok: false,
+      motif: "introuvable",
+      explication: "Aucune offre ne porte cet identifiant.",
+    };
+  }
+
+  return { ok: true, offre };
+}

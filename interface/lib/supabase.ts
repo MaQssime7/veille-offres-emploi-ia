@@ -113,23 +113,51 @@ function totalDepuisEntete(contentRange: string | null): number | null {
  *
  * Entre : un chemin PostgREST déjà construit (`offres?select=…&order=…`).
  *
- * ⚠️ **`chemin` est recopié tel quel dans l'adresse appelée.** Aujourd'hui c'est
- * sans danger : seules des constantes du code arrivent ici. Ça cesse de l'être
- * dès qu'une valeur venue de la barre d'adresse y entrera — le filtre de statut
- * de la phase 4 (`?statut=…`). Une valeur non encodée contenant `&select=*`
- * rajouterait `charge_brute`, `contact_nom` et `contact_url_postulation` à la
- * réponse, c'est-à-dire précisément ce que la liste blanche de colonnes de
- * `offres.ts` sert à empêcher. **Quand ce moment viendra, le garde-fou se pose
- * ici**, au point de passage unique, sous forme d'un objet de filtres dont les
- * valeurs passent par `encodeURIComponent` — pas dans chaque appelant, où il
- * finira par être oublié une fois.
+ * ⚠️ **`chemin` est recopié tel quel dans l'adresse appelée**, et il ne doit donc
+ * jamais porter autre chose que des constantes du code.
+ *
+ * ✅ **Le moment annoncé est arrivé — phase 3, le 28 août 2026.** Ce commentaire
+ * disait « quand une valeur venue de la barre d'adresse entrera ici, le garde-fou
+ * se pose à ce point de passage unique ». C'est l'identifiant de `/offres/[identifiant]`
+ * qui est arrivé le premier, avant le filtre de statut de la phase 4. Le garde-fou
+ * est `options.egal` : **la seule façon d'injecter une valeur extérieure dans une
+ * requête**, et ses valeurs passent toutes par `encodeURIComponent`.
+ *
+ * ⚠️ **Ce que ça empêche — mesuré contre PostgREST le 28 août 2026, et le
+ * mécanisme n'est PAS celui qu'on suppose.** Sur un paramètre dupliqué,
+ * PostgREST n'applique pas une règle unique : c'est le **premier `select`** qui
+ * gagne, mais le **dernier `limit`**. Vérifié sur la base réelle :
+ *
+ * | Requête envoyée | Ce qui revient |
+ * |---|---|
+ * | `select=…&identifiant=eq.X&select=*` | 2 colonnes — l'injection ne fait rien |
+ * | `identifiant=eq.X&select=*&select=…` | **44 colonnes, `charge_brute` compris** |
+ * | `limit=1&limit=5` | 5 lignes |
+ * | `identifiant=eq.X%26select%3D%2A` (encodé) | **0 ligne** |
+ *
+ * Autrement dit : une protection par l'ordre des paramètres **existe**, mais
+ * elle tient à l'endroit où l'appelant a écrit son `select` — une propriété
+ * qu'aucun appelant ne sait devoir respecter, qui n'est documentée nulle part,
+ * et qui ne vaut **déjà plus** pour `limit`. Se reposer dessus, c'est confier sa
+ * sécurité à un comportement qu'on n'a pas choisi.
+ *
+ * **L'encodage, lui, ne dépend de rien** : `eq.X&select=*` devient
+ * `eq.X%26select%3D%2A`, c'est-à-dire un identifiant qui n'existe pas. La
+ * requête rend zéro ligne, et `charge_brute`, `contact_nom` et
+ * `contact_url_postulation` restent en base.
+ *
+ * ⚠️ **Ce n'est pas la seule protection, et c'est voulu.** `lireOffre()` refuse
+ * déjà tout ce qui n'est pas sept caractères alphanumériques, *avant* d'appeler
+ * la base. Deux verrous indépendants : celui-ci tient encore le jour où un
+ * appelant oubliera de valider.
+ *
  * Sort : les lignes, et le total quand on l'a demandé.
  * Casse : renvoie `{ ok: false }` — réseau coupé, délai dépassé, clé refusée,
  * table absente. Ne lève jamais.
  */
 export async function interrogerBase<T>(
   chemin: string,
-  options: { compter?: boolean } = {},
+  options: { compter?: boolean; egal?: Record<string, string> } = {},
 ): Promise<ResultatBase<T>> {
   let configuration;
   try {
@@ -154,9 +182,16 @@ export async function interrogerBase<T>(
     enTetes.Prefer = "count=exact";
   }
 
+  // Les **noms** de colonnes viennent toujours du code — jamais de l'extérieur —
+  // et l'opérateur `eq.` est écrit ici, pas par l'appelant : seule la **valeur**
+  // est étrangère, et c'est elle qu'on encode.
+  const filtres = Object.entries(options.egal ?? {})
+    .map(([colonne, valeur]) => `&${colonne}=eq.${encodeURIComponent(valeur)}`)
+    .join("");
+
   let reponse: Response;
   try {
-    reponse = await fetch(`${configuration.url}/rest/v1/${chemin}`, {
+    reponse = await fetch(`${configuration.url}/rest/v1/${chemin}${filtres}`, {
       headers: enTetes,
       signal: AbortSignal.timeout(DELAI_MS),
       // Les offres changent une fois par nuit, mais la page est derrière un mot
