@@ -252,8 +252,19 @@ export async function interrogerBase<T>(
   // Les **noms** de colonnes viennent toujours du code — jamais de l'extérieur —
   // et l'opérateur `eq.` est écrit ici, pas par l'appelant : seule la **valeur**
   // est étrangère, et c'est elle qu'on encode.
+  //
+  // ⚠️ **Le séparateur dépend du chemin, il n'est pas toujours `&`.** Tous les
+  // appelants d'aujourd'hui passent un chemin qui contient déjà un `?`, mais
+  // `options.egal` est une porte ouverte : le premier qui écrira
+  // `interrogerBase("offres", { egal: … })` produirait
+  // `…/rest/v1/offres&identifiant=eq.X`, que PostgREST lit comme un **nom de
+  // table**, pas comme un filtre. Résultat : la table entière rendue au lieu
+  // d'une ligne, sans la moindre erreur pour le signaler.
   const filtres = Object.entries(options.egal ?? {})
-    .map(([colonne, valeur]) => `&${colonne}=eq.${encodeURIComponent(valeur)}`)
+    .map(([colonne, valeur], rang) => {
+      const separateur = rang === 0 && !chemin.includes("?") ? "?" : "&";
+      return `${separateur}${colonne}=eq.${encodeURIComponent(valeur)}`;
+    })
     .join("");
 
   // ⚠️ **`chemin` est sûr à journaliser par construction** : il ne porte que des

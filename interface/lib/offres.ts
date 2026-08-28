@@ -288,7 +288,6 @@ export type OffreEnFiche = {
    * Renseigné sur 560 offres sur 560.
    */
   nature_contrat: string | null;
-  alternance: boolean;
   salaire_libelle: string | null;
   salaire_annuel_min: number | null;
   salaire_annuel_max: number | null;
@@ -364,7 +363,11 @@ const COLONNES_FICHE = [
   "lieu_libelle",
   "type_contrat_libelle",
   "nature_contrat",
-  "alternance",
+  // ⚠️ **`alternance` a été retiré de cette liste**, et c'est l'application de
+  // la règle énoncée juste au-dessus pour les champs de contact : un champ ne
+  // se lit que là où il s'affiche. L'information « c'est une alternance » est
+  // portée par `nature_contrat` (« Contrat apprentissage »), qui est affiché ;
+  // le booléen faisait doublon et voyageait pour rien.
   "salaire_libelle",
   "salaire_annuel_min",
   "salaire_annuel_max",

@@ -10,12 +10,23 @@ function Panneau({
   titre,
   children,
   ton = "neutre",
+  niveauTitre = 2,
 }: {
   icone: ReactNode;
   titre: string;
   children: ReactNode;
   ton?: "neutre" | "erreur";
+  /**
+   * ⚠️ **Le niveau se choisit selon la page, pas selon l'apparence.** Sur
+   * `/offres`, le `h1` « Offres » existe déjà et ce panneau vient dessous :
+   * niveau 2. Sur la fiche d'une offre, le `h1` est l'intitulé — qu'on n'a
+   * précisément pas pu lire : le panneau devient alors le premier titre de la
+   * page, et sauter du niveau 1 au niveau 2 casse le plan sur lequel un
+   * lecteur d'écran navigue. La taille visuelle, elle, ne bouge pas.
+   */
+  niveauTitre?: 1 | 2;
 }) {
+  const Titre = niveauTitre === 1 ? "h1" : "h2";
   return (
     <div
       className={cn(
@@ -32,9 +43,9 @@ function Panneau({
       >
         {icone}
       </span>
-      <h2 className="font-display text-xl font-bold leading-tight text-foreground">
+      <Titre className="font-display text-xl font-bold leading-tight text-foreground">
         {titre}
-      </h2>
+      </Titre>
       <div className="max-w-prose text-sm leading-relaxed text-muted-foreground">
         {children}
       </div>
@@ -75,13 +86,16 @@ export function AucuneOffre() {
 export function BaseInjoignable({
   motif,
   explication,
+  niveauTitre,
 }: {
   motif: MotifEchec;
   explication: string;
+  niveauTitre?: 1 | 2;
 }) {
   return (
     <Panneau
       ton="erreur"
+      niveauTitre={niveauTitre}
       icone={<DatabaseZap className="size-6" aria-hidden="true" />}
       titre={
         motif === "configuration"

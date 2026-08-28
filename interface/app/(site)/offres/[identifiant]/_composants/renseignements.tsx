@@ -36,7 +36,18 @@ import { formaterLangue } from "../../_composants/formats";
  * salariés » de l'autre — sans aucune règle pour arbitrer.
  */
 export function Renseignements({ offre }: { offre: OffreEnFiche }) {
-  const langues = (offre.langues ?? [])
+  // ⚠️ **`langues` est du `jsonb` recopié VERBATIM de France Travail** — aucune
+  // contrainte de forme en base, aucune validation à la lecture. Le type
+  // TypeScript décrit ce qu'on a observé, pas ce que la source garantit. Si
+  // l'API renvoyait un jour un objet au lieu d'une liste, ou une liste
+  // contenant `null`, un `.map()` direct lèverait en plein rendu et la fiche
+  // entière basculerait sur l'écran d'erreur — alors que `lireOffre()` promet
+  // par contrat de ne jamais lever. On se contente donc de ce qui a la bonne
+  // forme, et on ignore le reste en silence : une langue manquante est moins
+  // grave qu'une fiche qui disparaît.
+  const langues = (Array.isArray(offre.langues) ? offre.langues : [])
+    .filter((entree): entree is { libelle?: string | null; exigence?: string | null } =>
+      typeof entree === "object" && entree !== null)
     .map(formaterLangue)
     .filter((valeur): valeur is string => valeur !== null);
 

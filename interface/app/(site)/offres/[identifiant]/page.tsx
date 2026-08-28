@@ -62,7 +62,17 @@ export async function generateMetadata(
   const resultat = await lireOffreUneFois(identifiant);
 
   if (!resultat.ok) {
-    return { title: "Offre introuvable — Veille offres emploi IA" };
+    // ⚠️ **Le titre distingue les deux pannes, et ce n'est pas un détail.**
+    // `ResultatFiche` sépare « il n'y a rien à cette adresse » de « la base n'a
+    // pas répondu » ; confondre les deux dans le titre ferait mentir l'onglet —
+    // et le titre est ce qui survit dans l'historique et dans un favori, bien
+    // après que la page a disparu de l'écran.
+    return {
+      title:
+        resultat.motif === "introuvable"
+          ? "Offre introuvable — Veille offres emploi IA"
+          : "Offre indisponible — Veille offres emploi IA",
+    };
   }
 
   // Le plus long intitulé en base fait 223 caractères : on tronque, un onglet
@@ -95,7 +105,13 @@ export default async function PageOffre({
     return (
       <CadrePage>
         <RetourListe />
+        {/* ⚠️ `niveauTitre={1}` : sur cette page, le `h1` est porté par
+            l'intitulé de l'offre — qu'on n'a justement pas pu lire. Sans lui,
+            l'arbre de titres démarrerait au niveau 2, ce que le plancher
+            d'accessibilité du projet n'admet pas. Sur `/offres`, le `h1`
+            « Offres » existe déjà : le panneau y reste en niveau 2. */}
         <BaseInjoignable
+          niveauTitre={1}
           motif={resultat.motif}
           explication={resultat.explication}
         />
