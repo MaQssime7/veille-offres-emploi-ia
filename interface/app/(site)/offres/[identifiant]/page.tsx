@@ -137,10 +137,26 @@ export default async function PageOffre({
           absent sur les 434 offres pas encore notées. La question des deux
           colonnes se rouvre en phase 6, quand il y aura de quoi les remplir. */}
       <div className="flex flex-col gap-8">
+        {/* ⚠️ **Le titre n'est pas décoratif : sans lui, ces deux phrases sont
+            orphelines.** Relevé par Maxime en regardant la page — on voit un
+            paragraphe en haut de fiche sans savoir ce qu'il est ni d'où il
+            vient. Les quatre autres blocs portent le leur ; celui-ci faisait
+            exception sans raison.
+            ⚠️ Ce résumé est **écrit par le modèle pendant la notation**, ce
+            n'est pas un extrait de l'annonce. D'où sa place juste au-dessus de
+            l'évaluation, et son absence sur les 434 offres non notées. */}
         {offre.resume && (
-          <p className="max-w-prose text-base leading-relaxed text-foreground">
-            {offre.resume}
-          </p>
+          <section aria-labelledby="titre-resume">
+            <h2
+              id="titre-resume"
+              className="titre-section mb-3"
+            >
+              Résumé de l’offre
+            </h2>
+            <p className="max-w-prose text-base leading-relaxed text-foreground">
+              {offre.resume}
+            </p>
+          </section>
         )}
 
         {/* Le bloc des notes ne se rend pas pour une offre en attente : son cas
@@ -151,7 +167,7 @@ export default async function PageOffre({
           <section aria-labelledby="titre-notes">
             <h2
               id="titre-notes"
-              className="libelle-mono mb-3 text-muted-foreground"
+              className="titre-section mb-3"
             >
               Évaluation
             </h2>
@@ -166,7 +182,7 @@ export default async function PageOffre({
         <section aria-labelledby="titre-description">
           <h2
             id="titre-description"
-            className="libelle-mono mb-3 text-muted-foreground"
+            className="titre-section mb-3"
           >
             L’annonce
           </h2>

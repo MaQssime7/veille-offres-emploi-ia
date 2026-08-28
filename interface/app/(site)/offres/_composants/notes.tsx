@@ -95,12 +95,14 @@ export function ContenuNotes({ offre }: { offre: ChampsNotation }) {
         valeur={offre.note_interet as number}
         justification={offre.justification_interet}
         remplissage="bg-primary"
+        teinteLibelle="text-primary"
       />
       <Note
         libelle="Accessibilité"
         valeur={offre.note_accessibilite as number}
         justification={offre.justification_accessibilite}
         remplissage="bg-success"
+        teinteLibelle="text-success"
       />
     </div>
   );
@@ -126,11 +128,28 @@ function Note({
   valeur,
   justification,
   remplissage,
+  teinteLibelle,
 }: {
   libelle: string;
   valeur: number;
   justification: string | null;
   remplissage: string;
+  /**
+   * ⚠️ **Le libellé prend la teinte de SA jauge, et c'est le système qui le
+   * demande.** `docs/DESIGN.md` attribue un rôle unique à chaque teinte :
+   * brun-encre = « action principale · note d'intérêt · texte », olive =
+   * « accessibilité ». Colorer ces deux mots n'invente rien, ça applique la
+   * table — et ça relie le libellé à sa barre pour l'œil.
+   *
+   * ⚠️ **Ça ne remplace PAS le libellé, ça le renforce.** L'information reste
+   * portée par le mot écrit en toutes lettres : la couleur seule est interdite
+   * par le plancher d'accessibilité du projet.
+   *
+   * Contrastes recalculés le 28 août 2026, sur le fond des cartes :
+   * brun 11,53:1 en clair et 11,74:1 en sombre · olive 6,13:1 et 6,74:1 —
+   * tous au-dessus du plancher de 4,5:1 exigé pour du texte.
+   */
+  teinteLibelle: string;
 }) {
   return (
     <div>
@@ -146,7 +165,9 @@ function Note({
             est toute la raison d'être de cette largeur fixe, tombe alors sans
             que rien ne le signale. `whitespace-nowrap` empêche en plus le
             libellé de se couper en deux lignes. */}
-        <span className="libelle-mono w-[6.75rem] shrink-0 whitespace-nowrap text-muted-foreground">
+        <span
+          className={`libelle-mono w-[6.75rem] shrink-0 whitespace-nowrap font-semibold ${teinteLibelle}`}
+        >
           {libelle}
         </span>
 

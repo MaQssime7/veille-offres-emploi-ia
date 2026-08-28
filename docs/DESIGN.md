@@ -495,8 +495,8 @@ coût se calcule à l'affichage.
 | Valeur | Statut |
 |---|---|
 | Largeur maximale de contenu · **1000 px** | ✅ **mesurée et figée** — voir ci-dessous |
-| Densité de la ligne **en attente de note** · **91 px en bureau**, **146 px sous 640 px** | ✅ **mesurées et figées** — ⚠️ ne jamais reprendre les 91 px pour dimensionner un repli, une pagination ou une hauteur virtuelle : sur mobile la ligne fait 60 % de plus |
-| Densité de la ligne **notée** · **195 px en bureau**, **361 px sous 640 px** (médianes) | ✅ **mesurée le 26 août 2026** sur les 97 offres notées — ⚠️ **c'est une médiane, pas une constante** : la hauteur dépend de la longueur des deux justifications et va de 174 à 218 px en bureau, de 289 à 472 px en mobile. Aucun calcul ne doit supposer une ligne de hauteur fixe |
+| Densité de la ligne **en attente de note** · **95 px en bureau** *(91 avant le 28 août)*, **146 px sous 640 px** | ✅ **mesurées et figées** — ⚠️ ne jamais reprendre les 91 px pour dimensionner un repli, une pagination ou une hauteur virtuelle : sur mobile la ligne fait 60 % de plus |
+| Densité de la ligne **notée** · **199 px en bureau** *(195 avant le 28 août)*, **361 px sous 640 px** (médianes) | ✅ **remesurée le 28 août 2026** sur les 97 offres notées — ⚠️ **c'est une médiane, pas une constante** : la hauteur dépend de la longueur des deux justifications et va de 174 à 218 px en bureau, de 289 à 472 px en mobile. Aucun calcul ne doit supposer une ligne de hauteur fixe |
 | Barre latérale de filtres · 208 px | ⏳ hypothèse — **à mesurer en phase 4**. ⚠️ **Arithmétiquement incompatible avec les 1000 px figés** : 1000 − 48 de gouttières − 208 laisse 744 px de liste, sous les 820 px où 34 lignes sur 200 cassent déjà. La mesure des 1000 px a été faite **en colonne unique**. La phase 4 devra soit élargir la page, soit poser les filtres autrement qu'en colonne — pas reconduire ce chiffre |
 | Panneau d'enrichissement · 316 px | ⏳ hypothèse — **à mesurer en phase 6** |
 | Fiche d'offre, colonne d'enrichissement · 404 px | ⏳ hypothèse — **à mesurer en phase 3** |
@@ -556,6 +556,68 @@ normalisation existera.
 ⚠️ **Le vide à droite de la ligne n'est pas un défaut, c'est une réserve.** Il accueille les
 deux barres de notes en phase 2, puis le statut en phase 4. Le combler serait à refaire.
 Vérifié le 26 août avec des barres simulées en place : elles s'y logent sans rien pousser.
+
+### Le nom d'entreprise sort de la famille des libellés — 28 août 2026
+
+⚠️ **Il portait `libelle-mono`, c'est-à-dire exactement l'habit des titres de
+section et des libellés de notes.** Une donnée déguisée en étiquette : rien, dans
+la ligne, ne distinguait « KAISCHOOL » de « ÉVALUATION ». Relevé par Maxime en
+regardant la page, pas en lisant le code.
+
+Il a désormais sa classe, `nom-entreprise` : **Geist 15 px semi-gras, casse
+réelle**, là où les libellés restent en Geist Mono 11 px. Trois variantes ont été
+construites et comparées sur les données réelles avant de trancher.
+
+| | Mono 11 px *(avant)* | Mono 13 px | **Sans-serif 15 px** *(retenu)* |
+|---|---|---|---|
+| Famille | celle des titres | celle des titres | **la sienne** |
+| Casse | forcée en capitales | forcée | **réelle** |
+| Ligne notée / en attente | 195 / 91 px | 197 / 93 | **199 / 95** |
+| Cartouches cassés à 1000 px | 0 | 0 | **0** |
+
+⚠️ **La casse réelle n'est pas un détail** : sur 347 noms d'entreprise en base,
+**115 sont en casse mixte** — « Institut Curie », « Mercato de l'emploi ». Le
+`text-transform: uppercase` les écrasait tous.
+
+⚠️ **Coût accepté : la ligne prend 4 px.** Sur 200 lignes, +800 px pour une page
+qui en fait 39 000. Les deux chiffres du tableau § Mise en page ont été mis à
+jour — une mesure figée qu'on déplace se réécrit, elle ne se laisse pas périmer.
+
+### Les titres de section se distinguent enfin de leurs libellés — 28 août 2026
+
+⚠️ **Même défaut, un cran plus bas** : « CLASSEMENT FRANCE TRAVAIL » et
+« APPELLATION » portaient la même police, la même taille et le même gris. Rien ne
+disait lequel commandait l'autre. La classe `titre-section` passe le titre en
+**encre pleine et demi-gras** — de 6,64:1 à 15,77:1 sur le même fond.
+
+⚠️ **Le renfort passe par le contraste, JAMAIS par une teinte de signal**, et
+c'est la règle « une teinte, un rôle » qui l'impose. Un titre de section n'est ni
+temporel, ni une mesure, ni une erreur.
+
+**En revanche « Intérêt » prend le brun-encre et « Accessibilité » l'olive** —
+celles de leurs jauges. Ce n'est pas une entorse, c'est l'application de la
+table : elle attribue littéralement « note d'intérêt » au brun et
+« accessibilité » à l'olive. Contrastes recalculés : **11,53:1 et 6,13:1** en
+clair, **11,74:1 et 6,74:1** en sombre.
+
+⚠️ **L'ocre a été essayé sur le nom d'entreprise, puis écarté sur pièce.** Il
+donnait la couleur demandée, mais posé à côté du marqueur « Nouveau » — ocre lui
+aussi — les deux se fondaient et le marqueur perdait sa force. Capture à l'appui.
+**C'est la démonstration concrète de « une teinte qui sert à deux choses ne sert
+plus à rien ».**
+
+⚠️ **Question ouverte, plus large que ce champ** : Maxime trouve que le site
+manque de couleur en général. Ce n'est pas un réglage, c'est la direction
+« sobre » elle-même, choisie au cadrage avant qu'aucun écran ne soit rempli.
+Elle se rouvre avec `/design`, quand tous les écrans existeront — pas en ajoutant
+une teinte à la fois, ce qui produirait exactement les « vingt taches colorées »
+que ce document refuse.
+
+### L'intitulé de la fiche est au plancher du serif — 28 août 2026
+
+Descendu de **24/30 px à 20/24 px** : à 30 px il écrasait le reste de la page.
+⚠️ **20 px est un plancher, pas un choix** — « le serif ne descend jamais sous
+20 px ». Le réduire encore imposerait de passer à Geist.
 
 ### Défaut connu, non corrigé
 

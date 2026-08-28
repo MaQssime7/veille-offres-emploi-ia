@@ -35,20 +35,25 @@ export function EnTeteOffre({
   return (
     <header className="mb-6 border-b border-border pb-6">
       {offre.entreprise_nom ? (
-        <p className="libelle-mono mb-2 text-muted-foreground">
+        <p className="nom-entreprise mb-2 text-foreground">
           {offre.entreprise_nom}
         </p>
       ) : (
         // Même traitement qu'en liste : l'italique met en retrait, jamais une
         // couleur affaiblie — mesurée à 3,32:1, sous le plancher de 4,5:1.
-        <p className="libelle-mono mb-2 italic text-muted-foreground">
+        <p className="nom-entreprise mb-2 italic text-muted-foreground">
           Entreprise non communiquée
         </p>
       )}
 
-      {/* Fraunces, la police de titrage : elle ne descend jamais sous 20 px, ce
-          qui l'interdisait en liste (intitulé à 15 px) et l'autorise ici. */}
-      <h1 className="font-display text-2xl font-bold leading-tight text-foreground sm:text-3xl">
+      {/* ⚠️ **20 px en mobile, 24 px en bureau — et 20 px est un PLANCHER, pas
+          un choix libre.** `docs/DESIGN.md` : « le serif ne descend jamais sous
+          20 px, en dessous c'est Geist ». En dessous de cette taille, Fraunces
+          perd le contraste de ses pleins et déliés et se lit mal.
+          Descendu de 24/30 px à 20/24 px le 28 août 2026 : à 30 px, l'intitulé
+          écrasait tout le reste de la page. On est désormais au plancher — le
+          réduire encore imposerait de changer de police. */}
+      <h1 className="font-display text-xl font-bold leading-tight text-foreground sm:text-2xl">
         {offre.intitule}
       </h1>
 

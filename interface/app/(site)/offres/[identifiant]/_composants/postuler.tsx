@@ -39,7 +39,7 @@ export function Postuler({ offre }: { offre: OffreEnFiche }) {
 
   return (
     <section aria-labelledby="titre-postuler">
-      <h2 id="titre-postuler" className="libelle-mono mb-3 text-muted-foreground">
+      <h2 id="titre-postuler" className="titre-section mb-3">
         Candidater
       </h2>
 

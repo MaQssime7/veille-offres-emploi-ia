@@ -46,7 +46,7 @@ export function LigneOffre({
         className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${RYTHME_LIGNE.margeEntreprise}`}
       >
         {offre.entreprise_nom ? (
-          <p className="libelle-mono text-muted-foreground">
+          <p className="nom-entreprise text-foreground">
             {offre.entreprise_nom}
           </p>
         ) : (
@@ -54,7 +54,7 @@ export function LigneOffre({
           // mode clair, sous le plancher opposable de 4,5:1 — et 36 % des
           // offres réelles ne nomment pas leur entreprise. C'est l'italique
           // qui met en retrait, pas une couleur affaiblie.
-          <p className="libelle-mono italic text-muted-foreground">
+          <p className="nom-entreprise italic text-muted-foreground">
             Entreprise non communiquée
           </p>
         )}

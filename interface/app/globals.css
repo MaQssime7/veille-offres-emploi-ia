@@ -173,6 +173,42 @@
    ⚠️ Il ne fixe PAS la couleur : elle change avec le rôle (texte plein pour un
    nom d'entreprise, atténué pour un sur-titre), et l'imposer ici obligerait
    chaque appelant à la contredire. */
+/* Le nom de l'entreprise. Classe à part, et c'est tout l'enjeu : il portait
+   `libelle-mono`, c'est-à-dire exactement l'habit des titres de section et des
+   libellés de notes — une donnée déguisée en étiquette. Relevé par Maxime le
+   28 août 2026 en regardant la page. */
+/* Le titre d'une section de la fiche : « Résumé de l'offre », « Évaluation »,
+   « Classement France Travail », « L'annonce », « Candidater ».
+
+   ⚠️ **Il portait `libelle-mono text-muted-foreground`, c'est-à-dire EXACTEMENT
+   l'habit des libellés de rubrique qu'il surplombe** (« Appellation », « Métier
+   ROME », « Qualification »). Même police, même taille, même gris : rien ne
+   disait lequel était le titre. Relevé par Maxime le 28 août 2026.
+
+   ⚠️ **Le renfort passe par le CONTRASTE et la GRAISSE, jamais par une teinte
+   de signal.** `docs/DESIGN.md` donne un rôle unique à chacune des quatre —
+   ocre au temporel, olive à l'accessibilité, brique à l'erreur — et « une
+   teinte qui sert à deux choses ne sert plus à rien ». Un titre de section
+   n'est aucun de ces rôles. On passe donc de 6,64:1 à 15,77:1 sur le même
+   fond, ce qui suffit largement à créer la hiérarchie. */
+@utility titre-section {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+@utility nom-entreprise {
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
 @utility libelle-mono {
   font-family: var(--font-mono);
   font-size: 0.6875rem;

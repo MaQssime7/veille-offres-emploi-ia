@@ -82,7 +82,7 @@ export function Renseignements({ offre }: { offre: OffreEnFiche }) {
     <section aria-labelledby="titre-renseignements">
       <h2
         id="titre-renseignements"
-        className="libelle-mono mb-3 text-muted-foreground"
+        className="titre-section mb-3"
       >
         Classement France Travail
       </h2>
