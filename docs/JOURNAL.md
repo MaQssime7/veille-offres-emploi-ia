@@ -1906,3 +1906,118 @@ font **22 %**, pas 21.
   colonne, une migration.
 - **Le plafond de 200** — à 126 notées il reste 74 places. Quand il mordra, les
   offres du matin disparaîtront de l'écran. À traiter en phase 4 avec les filtres.
+
+---
+
+## 28 août 2026, dans la journée — Ce que la fiche d'offre affichera, et ce qu'elle refuse d'afficher
+
+Préparation de la phase 3. Aucune ligne de code encore : d'abord mesurer quelle
+matière existe vraiment, sur les 560 offres en base. Trois décisions en sont
+sorties, et deux d'entre elles vont **contre** ce qui était écrit avant.
+
+### Les métadonnées : la présence globale ment, il faut la croiser avec les bonnes offres
+
+La fiche s'ouvre surtout sur les offres bien notées. Un champ présent sur 38 %
+de la base peut être présent sur 5 % du haut de classement, ou l'inverse. Mesuré
+sur les 560, les 126 notées, et les 20 meilleures :
+
+| Champ | Les 560 | Top 20 | Retenu |
+|---|---|---|---|
+| `nature_contrat` (+ `alternance`) | 100 % | 100 % | ✅ |
+| `appellation_libelle` + `rome_libelle` | 100 % | 100 % | ✅ |
+| `qualification_libelle` | 33 % | 45 % | ✅ quand présent |
+| `langues` | 5 % | 5 % | ✅ quand présent, **sans cartouche d'absence** |
+| `secteur_activite_libelle` / `code_naf` | 38 % | 30 % | ❌ |
+| `tranche_effectif` | 28 % | 30 % | ❌ |
+| `competences` | 18 % | 25 % | ❌ |
+| `formations` | 7 % | 5 % | ❌ |
+| `manque_candidats` | non renseigné sur 450 | 16/20 vides | ❌ |
+| `experience_libelle` | 100 % | 100 % | ❌ **il ment une fois sur deux** |
+
+**Pourquoi `nature_contrat` est le plus utile de la liste.** `type_contrat_libelle`
+dit « CDI » ; `nature_contrat` dit « Contrat apprentissage ». Ce sont deux choses
+différentes, et **7 des 20 meilleures offres sont des alternances**. Le cas
+emblématique du projet en est une : « Alternant Ingénieur IA Agentique », 85
+d'intérêt et 15 d'accessibilité. Sans ce champ, un tel écart ne s'explique qu'en
+lisant la justification.
+
+**Pourquoi l'appellation ROME entre.** Elle dit *pourquoi cette offre est là*.
+Sur l'offre à 85, l'annonce titre « Alternant Ingénieur IA Agentique » et le
+référentiel la classe « Spécialiste IA embarquée ». C'est ce champ que le moteur
+France Travail indexe — c'est même par lui que le faux positif `IPR-IA` entrait
+dans la collecte. La fiche prolonge ainsi ce que fait déjà la liste : rendre
+visible ce que les critères ramènent.
+
+**Pourquoi la taille d'entreprise et le secteur sont écartés bien qu'ils soient
+là.** Ils sont la matière de la **phase 6** (US-17). Les afficher maintenant
+prépare une contradiction qu'aucune règle n'arbitrerait : l'agent trouve « 250
+salariés » en lisant le site, France Travail dit « 6 à 9 salariés », et les deux
+s'affichent sur la même page. Accessoirement, la valeur la plus fréquente de
+`tranche_effectif` est une phrase de 106 caractères qui ne rentre dans aucun
+cartouche.
+
+⚠️ **Le principe qui a servi à trancher, et qui resservira** : une rubrique dont
+le champ manque une fois sur deux transforme la fiche en gruyère de « non
+disponible ». Trois champs toujours présents valent mieux que huit à moitié
+vides — **sauf** quand l'absence a été *conçue*, comme le cartouche « Salaire non
+précisé », qui dit quelque chose au lieu de laisser un trou.
+
+### L'anglais : le champ structuré rate 92 % des cas
+
+Maxime a demandé les langues, pour une raison précise — il veut savoir si un bon
+niveau d'anglais est exigé. Mesuré avant d'accepter :
+
+| | |
+|---|---|
+| Offres dont le **texte** parle d'anglais | **127 sur 560** (23 %) |
+| … que le champ `langues` capte | **10** |
+| … que le champ **rate** | **117**, soit **92 % d'angle mort** |
+| Champ rempli alors que le texte n'en parle pas | 20 |
+| Sur le top 20 | 4 exigent l'anglais dans le texte, **1** a le champ |
+
+Ce que le champ rate est exactement ce qui compte : « Anglais : professionnel
+indispensable », « Bilingue anglais », « Anglais niveau C1 CECRL », « niveau
+d'anglais courant indispensable » — champ vide sur les quatre.
+
+⚠️ **Le danger n'est pas la rareté du champ, c'est qu'il mente par son absence.**
+Une fiche sans rubrique Langues se lirait « pas d'anglais exigé » alors qu'elle
+veut dire « France Travail n'a pas rempli la case ». C'est le `NULL` ≠ `false` de
+la base remonté à l'écran, et le même piège que `experience_libelle`.
+
+**Décision : le champ s'affiche quand il existe, et AUCUN cartouche d'absence
+n'est posé.** Un « Langues : non précisé » affirmerait quelque chose de faux 117
+fois sur 127.
+
+**La vraie parade est ailleurs** : `criteres_pertinence.txt` ne dit rien des
+langues — le niveau d'anglais de Maxime n'est nulle part dans son profil — et
+**0 justification d'accessibilité sur 126** ne mentionne l'anglais. Le modèle lit
+pourtant le texte intégral : il voit le « C1 CECRL », il ne le remonte pas parce
+que personne ne lui a dit que ça comptait. Proposition faite, non encore
+arbitrée : porter l'exigence linguistique dans le barème d'accessibilité.
+⚠️ Elle ne repasserait **pas** sur les 126 offres déjà notées — la notation est
+incrémentale et `--renoter` est mis de côté avec son bug connu.
+
+### `contact_nom` s'affiche — décision de Maxime, et la règle est amendée, pas contournée
+
+Le PRD interdisait à `contact_nom` et `contact_url_postulation` de « sortir de la
+base : ni journal, ni export, ni page publique ». Maxime a tranché ce jour :
+**les deux s'affichent sur la fiche**. Le motif est bon et vaut d'être retenu —
+ces champs sont conservés *parce qu'ils servent à candidater* ; les garder sans
+jamais les afficher, c'était porter le risque sans l'usage. Le site est derrière
+son mot de passe, avec un seul utilisateur.
+
+Remesuré avant d'appliquer, pour qu'il sache ce qu'il affiche : **39 offres sur
+560 portent un contact (7 %), dont 21 nomment une personne réelle** (« TIM FRANCE
+- Mme Isabelle BARBERET »), les 18 autres étant des agences France Travail. La
+mesure du 20 août — 3 % des offres nomment une personne — est confirmée à
+l'échelle de 560.
+
+⚠️ **Ce qui n'est pas amendé, et qui est le plus dangereux** : jamais dans un
+**journal d'exécution**. Ceux de GitHub Actions sont **publics**, le dépôt
+l'étant, et une valeur imprimée une fois y reste. Ni export, ni page publique, ni
+**liste `/offres`** — `contact_nom` reste hors des colonnes que la liste lit. Un
+champ ne se lit que là où il s'affiche.
+
+`docs/PRD.md` § Données personnelles et `CLAUDE.md` § Sécurité ont été corrigés
+dans le même mouvement : une règle qu'on contourne en silence protège moins
+qu'une règle précise qu'on respecte.
