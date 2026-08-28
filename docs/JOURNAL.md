@@ -1570,3 +1570,241 @@ fausses, et le fait de les avoir cherchées vaut plus que de les avoir corrigée
 l'était à l'endroit le plus visible du projet. Le README porte désormais la
 correction *avec* le raisonnement initial qui s'est trompé — c'est plus honnête,
 et bien plus intéressant à lire, qu'une affirmation lissée.
+
+---
+
+## 28 août 2026 — Le rappel est saturé, le filtre passe sur le contrat
+
+### Le cron finit par partir, avec 10 h 32 de retard
+
+Le workflow planifié s'est déclenché le 27 à **12 h 54 UTC** au lieu de 02:23 —
+premier et seul déclenchement `schedule` depuis son enregistrement. Il a réussi
+de bout en bout : collecte 19 s (25 offres), notation 2 min 09 (25 notées, aucun
+échec, 89 160 tokens lus en cache), ~15 centimes.
+
+**Ça ferme la dernière vérification bloquante de la phase 2** : l'appel payant
+depuis le runner GitHub n'avait jamais été exercé, le passage du 26 août étant
+vert mais sans offre à noter.
+
+La nuit du 27 au 28 n'a rien produit non plus à 08 h 11 UTC. **Décidé de ne rien
+corriger avant une troisième nuit** — un cron de secours serait de la complexité
+posée sur une supposition. Et le vrai coût du retard n'est pas dans les données,
+qui se rattrapent seules, mais dans l'usage : un cron qui tourne à midi livre un
+écran vide au moment de la consultation du matin.
+
+### Le moteur de recherche ne fait pas ce que la documentation disait
+
+En cherchant pourquoi `intelligence artificielle` ramenait « Développeur
+Mulesoft » et « Comptable support logiciel », on a fini par chercher le terme
+dans la **charge brute complète** de chaque offre : **26 sur 40 ne le
+contiennent nulle part** — ni intitulé, ni libellé ROME, ni appellation, ni
+compétences, ni description.
+
+Puis ce test :
+
+| Recherche (30 j, région 11) | Offres |
+|---|---|
+| `intelligence artificielle` | 168 |
+| `intelligence` seul | 64 |
+| `artificielle` seul | 43 |
+| union des deux | **64** |
+
+**125 des 168 ne viennent d'aucun des deux mots seuls.** Ni ET, ni OU :
+l'expression déclenche un élargissement au *domaine*.
+
+Le fait n°1 du projet — « la recherche porte sur l'intitulé, le libellé ROME,
+l'appellation et les compétences » — décrivait une correspondance textuelle qui
+n'existe pas. Corrigé dans `CLAUDE.md` et `docs/API_FRANCE_TRAVAIL.md`.
+
+**La règle qui en sort ne change pas, mais son motif oui** : un critère se
+mesure et ne se déduit jamais — non parce que l'index est étroit, mais parce
+qu'il est **opaque**.
+
+### 50 termes balayés : le rappel est saturé, un seul entre
+
+Tout le lexique IA spécialisé a un apport net de **zéro** — `consultant IA`,
+`IA générative`, `intégration IA`, `copilot`, `RAG`, `prompt`, `multi-agents`,
+`MLOps`, `low-code`, `no-code`, `agentic`. Le vocabulaire anglais pointu n'existe
+tout simplement pas : `LLM`, `GPT`, `OpenAI`, `LangChain`, `embeddings`, `NLP`,
+`deep learning`, `n8n`, `forward deployed` — tous à zéro offre.
+
+⚠️ **Ça dément la note du 26 août** qui voyait « le vocabulaire s'ouvrir » sur la
+foi de LLM 1, copilot 2, RAG 1. Deux jours après, LLM est à 0. **Des valeurs à 1
+ou 2 sont du bruit statistique, pas une tendance** — la leçon vaut plus que le
+chiffre.
+
+Faux amis relevés : `agents` rend **2 718 offres** (agent d'accueil, agent de
+sécurité), `démonstrateur` des vendeurs en magasin, `Make` un maquilleur,
+`ingénieur solutions` dix ingénieurs *commerciaux*.
+
+**Un seul terme retenu : `chatbot`**, +1 offre nette par mois.
+
+Et un piège de méthode noté au passage : **l'apport net n'est pas une propriété
+du terme, mais du couple (terme, configuration)**. En retirant `intelligence
+artificielle`, `low-code` et `no-code` passent de 0 à 1.
+
+### Seul le CDI est collecté
+
+Demandé par Maxime : les offres non-CDI sont notées puis jamais regardées, donc
+c'est une dépense pure. Faisable côté serveur — `typeContrat=CDI` filtre avant
+transfert.
+
+**Le coût a été mesuré et montré avant d'agir** : le filtre écarte 11 des 20
+meilleures offres notées. Sept sont des alternances, que Maxime ne regarde pas
+et qui polluaient le classement. Mais quatre sont de vraies offres, dont un
+**CDD Institut Curie « IA Générative et Systèmes Multi-Agents » noté 75**.
+
+Deux options lui ont été posées, avec le fait qu'un filtre à la collecte est
+**irréversible pour le passé** — France Travail dépublie, et rien en base ne
+témoigne de ce qui n'a pas été collecté. Il a maintenu : **CDI strict, à la
+collecte**. C'est sa recherche d'emploi, et il ne prend que du CDI.
+
+Effet mesuré : 21 % du volume écarté (39 CDD dont 27 alternances, 16 intérims,
+3 professions libérales), ~0,35 $/mois d'économie.
+
+**Vérifié après codage, sans croire l'API sur parole** : les 208 offres rendues
+sont toutes des CDI, le résultat filtré est un sous-ensemble strict du non
+filtré, et **aucun CDI n'est écarté à tort**. Le champ `typeContrat` est par
+ailleurs renseigné sur 560 offres sur 560 — donc aucune offre ne disparaît faute
+de valeur, contrôlé avant d'écrire la première ligne.
+
+### Aucun filtre structurel ne peut remplacer les mots-clés
+
+Testé au passage, et c'est un argument transférable en entretien : la
+`qualification` est vide sur **86 des 123 offres notées**, et 11 des 20
+meilleures sont dans ce trou. Filtrer sur « Cadre » perdrait 70 % des bonnes
+offres. Avec `experienceLibelle`, faux une fois sur deux, ça fait deux
+métadonnées inexploitables — **c'est précisément pourquoi le projet fait lire
+les annonces par un modèle plutôt que de les filtrer sur leurs champs.**
+
+`typeContrat` est la seule exception, et seulement parce qu'elle a été vérifiée.
+
+### Reste ouvert
+
+`intelligence artificielle` ramène **127 offres nettes/mois pour une moyenne de
+8/100 et un maximum de 15**, zéro au-dessus de 30 sur 27 notées — le profil
+exact qui a fait tomber les codes ROME. Les 9 offres notées ≥25 sont **toutes**
+rattrapées par `IA` ou `AI`, vérifié une par une : le retrait ne coûterait rien
+et ferait passer le volume de 296 à 141 offres/mois. **Proposé, pas arbitré.**
+
+### Maxime retire `deploiement` et `RPA` à la main
+
+Dans la foulée de la mesure, et sans attendre l'arbitrage formel. **Il garde
+`intelligence artificielle`** — la recommandation la plus forte de la journée
+(127 offres nettes/mois pour un maximum de 15) reste donc en suspens, et la
+projection « 296 → 141 offres/mois » ne se réalisera jamais telle quelle.
+
+Configuration effective : **7 termes**, `chatbot` compris.
+
+⚠️ **Effet secondaire noté au passage, et c'est le piège que le fichier annonçait
+lui-même** : le balayage des 50 termes a été mesuré *avec* `RPA` et `deploiement`
+dans la liste. Ces mesures décrivent donc une configuration qui n'existe plus.
+Ce qu'elles garantissent encore — un terme mesuré à 0 ne peut que monter quand la
+liste rétrécit, donc aucun terme n'a été écarté à tort. Ce qu'elles ne
+garantissent plus — qu'un terme écarté soit toujours inutile. Consigné dans
+`mots_cles.txt`, au point d'usage.
+
+### La revue de code trouve 15 défauts, dont trois qui comptent
+
+Lancée sur le filtre CDI. Aucun n'est un bug d'exécution — le code faisait ce
+qu'il annonçait — mais trois portaient à conséquence :
+
+1. **Un chiffre faux introduit dans un commentaire.** J'avais écrit que le filtre
+   « écarte 31 % des offres » ; c'est 21 % sur la collecte, 31 % étant la part de
+   non-CDI dans l'échantillon *noté*, un autre dénominateur. Deux chiffres pour
+   le même filtre, dans quatre fichiers, dont un seul nommait sa base. Corrigé en
+   nommant les deux dénominateurs côte à côte.
+2. **`TYPE_CONTRAT` échappait à la règle du module.** `config.py` promet
+   d'échouer au démarrage ; cette constante n'était validée nulle part. J'avais
+   vérifié qu'une valeur invalide provoque un HTTP 400 — donc pas d'échec
+   silencieux — mais l'erreur venait de France Travail après le premier appel, pas
+   du projet avant. Ajout de `_valider_type_contrat()`, testé sur 11 valeurs.
+   ⚠️ Il **refuse explicitement la chaîne vide**, qui est *falsy* : elle aurait
+   désactivé le filtre **et** sauté la ligne de journal qui l'annonce.
+3. **Le journal ne disait rien quand le filtre est éteint.** L'absence de ligne
+   devenait le seul signal d'un changement de politique — une nuit sans filtre
+   ressemblait trait pour trait à une nuit d'avant le 28 août. Journalisé
+   désormais dans les deux sens.
+
+Corrigé aussi : le commentaire créditait le filtre d'écarter les alternances
+« (voulu) ». C'est **un accident** — les 34 alternances de la base sont toutes
+typées CDD ou MIS aujourd'hui, mais un contrat de professionnalisation peut être
+conclu en CDI. Le levier direct est la colonne `alternance`, déjà en base.
+
+Et six incohérences de documentation, toutes réelles : « 8 termes » là où il y en
+a 7, le chantier des critères décrit comme ouvert alors qu'il venait d'être clos
+soixante lignes plus haut, le volume de 294 offres/mois périmé dans deux fichiers,
+et surtout **deux affirmations opposées à quarante lignes d'écart dans le
+README** — « `GenAI`, `LLM`, `copilot` ne renvoient plus zéro » juste au-dessus de
+« le vocabulaire anglais pointu n'existe pas ». C'est la vitrine du projet.
+
+**Reste proposé, non fait** : rien en base ne dit qu'une exécution a tourné avec
+un filtre de contrat. Les nuits d'avant et d'après le 28 août sont donc
+incomparables, et les journaux GitHub Actions expirent à 90 jours — après quoi
+l'écran de suivi d'exploitation affichera une chute de 22 % sans explication
+disponible nulle part. Une colonne sur `executions_veille`, écrite à
+`ouvrir_execution()`, referme le trou pour une migration.
+
+### L'API Batches est close — le lot de 3 offres prouve le `custom_id`
+
+Lancé avec l'accord de Maxime, ~0,9 centime. Lot `msgbatch_016Vf4…`, **5 min 06**,
+3 offres notées, 0 échec, exécution #51.
+
+**Pourquoi trois et pas une.** Le lot du 26 août portait une seule offre : sur
+une, apparier par identifiant et apparier par position donnent le même résultat,
+donc le test ne pouvait pas échouer. Trois offres de métiers étrangers l'un à
+l'autre ont été déposées à dessein :
+
+| Offre | Note d'intérêt | Ce que la justification revenue dit |
+|---|---|---|
+| Ingénieur IVV Logiciel — satellite | 8 | « validation/test logiciel (IVV) pour systèmes embarqués spatiaux » |
+| Formateurs en réseaux sociaux et IA | 10 | « mission de formation en réseaux sociaux » |
+| Alternance DevOps Full stack + AI Agent | 75 | « full stack et agents IA/LLM avec RAG » |
+
+Chaque justification parle du métier de **son** offre. Un appariement positionnel
+aurait produit un décalage lisible à l'œil nu.
+
+⚠️ **La vérification devait être sémantique, pas mécanique.** Contrôler que trois
+notes ont bien été écrites — ce qu'un test automatique ferait spontanément —
+serait passé à côté d'un appariement inversé : trois notes auraient été écrites
+dans les deux cas. C'est le *contenu* qui prouve, pas le compte.
+
+✅ **Mesure obtenue en prime, et elle tranche une question de coût** : sur ce lot
+de 3, `cache_lecture` = **7 430**, soit exactement deux relectures du préfixe de
+3 715. Sur le lot d'une seule offre du 26 août, `cache_lecture` valait **zéro** —
+on payait l'écriture du cache sans jamais le relire. Les Batches ne sont donc
+rentables qu'à partir de plusieurs offres, et c'est maintenant mesuré des deux
+côtés plutôt que supposé.
+
+**Défaut cosmétique corrigé au passage** : la fermeture d'une exécution annonçait
+« None distinctes reçues, None nouvelles, None rejetées » sur une notation, qui
+n'a ni offres reçues ni rejets. Le compte rendu suit désormais l'étape — un
+compteur vide se lit comme un compteur cassé.
+
+### Ce que le modèle a signalé, et qui confirme deux décisions
+
+Sur l'offre satellite : « le texte exige 3 à 5 ans d'expérience alors que le champ
+officiel indique 2 ans ». C'est exactement le défaut mesuré le 21 août —
+`experienceLibelle` faux une fois sur deux — et les critères demandent de suivre
+le texte **et** de signaler la contradiction. Le modèle le fait.
+
+Sur l'alternance : « le contrat est une alternance, statut qui ne correspond plus
+à celui du candidat déjà diplômé ». Vérifié sur l'ensemble : les 14 alternances
+notées ont une accessibilité moyenne de **11,1**, et **aucune** ne dépasse 40.
+Le barème les pénalisait donc déjà — mais l'écran classe par **intérêt**, où
+elles sortent à 34,3 de moyenne contre 10,8 pour le reste. Elles remontaient en
+tête malgré une accessibilité au plancher. Le filtre CDI règle ça à la source.
+
+### Phase 2 : la dernière vérification est laissée au temps, délibérément
+
+Il reste un seul point : l'état de l'écran à **200 offres notées**, vérifié en
+simulation le 26 août mais jamais sur données réelles. Il manque 74 offres.
+
+**Décidé de ne pas payer pour l'atteindre**, et le motif n'est pas l'économie :
+200 est aussi le seuil où l'écran casse. Au-delà, les 200 lignes affichées sont
+les 200 meilleures de tous les temps, et les offres du matin — intérêt médian 10
+— n'y entrent plus. Payer 44 centimes reviendrait à payer pour déclencher un
+défaut connu dont le remède est planifié en phase 4, avec les filtres. Au rythme
+actuel (~7 offres notées par nuit), le seuil tombe seul vers le 8 septembre.
+
+Phase 2 : **14 critères d'acceptation sur 15 pleinement vérifiés.**

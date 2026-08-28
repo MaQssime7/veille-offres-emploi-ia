@@ -107,16 +107,25 @@ la même chose finissent en deux tables et deux fonctions.
 À rouvrir avant toute décision produit.
 <!-- produit:end -->
 
-## État actuel — 27 août 2026
+## État actuel — 28 août 2026
 
-**Phase 1 close. Phase 2 : tout est construit, il ne reste que des VÉRIFICATIONS.** Le site est
+**Phase 1 close. Phase 2 : il ne reste QU'UNE vérification, et elle est gratuite si on attend.** Le site est
 en ligne derrière son mot de passe, la collecte et la notation sont toutes deux sur le cron, et
 `/offres` affiche **les deux notes avec leurs justifications à plat, classées par intérêt
-décroissant**. **535 offres, 98 notées**, 1 échec provoqué volontairement puis rattrapé.
-Les critères de collecte ont été refondus sur mesure le 26 août au soir.
+décroissant**. **560 offres, 126 notées**, 1 échec provoqué volontairement puis rattrapé.
+Les critères de collecte ont été refondus le 26 août, **remesurés à fond le 28** (50 termes),
+et **seul le CDI est collecté depuis le 28**.
 
-⚠️ **Le cron GitHub Actions n'a PAS tourné dans la nuit du 26 au 27 août** — voir le point
-dédié plus bas. Ce n'est pas un défaut du code, et les données n'en souffrent pas.
+⚠️ **Le cron GitHub Actions part avec des heures de retard, quand il part.** Nuit du 26 au 27 :
+rien. Nuit du 27 au 28 : rien non plus à 08 h 11 UTC. Le seul déclenchement planifié à ce jour
+est parti le **27 à 12 h 54 UTC, soit 10 h 32 après son heure de 02:23**. Comportement documenté
+de GitHub Actions sur dépôt public gratuit ; la minute non ronde (23) était déjà une parade et
+n'a pas suffi.
+✅ **Les données n'en souffrent pas** — la fenêtre part de la dernière collecte réussie, une nuit
+sautée est rattrapée par la suivante. ⚠️ **Ce que ça coûte vraiment, c'est l'usage** : un cron
+qui tourne à midi livre un écran vide au moment où Maxime le consulte le matin.
+⚠️ **Ne rien « corriger » avant d'avoir observé une troisième nuit** — décidé avec Maxime le
+28 août. Un second cron de secours est de la complexité posée sur une supposition.
 
 | Brique | État |
 |---|---|
@@ -124,22 +133,22 @@ dédié plus bas. Ce n'est pas un défaut du code, et les données n'en souffren
 | Supabase | Région Paris. `executions_veille` et `offres` créées et alimentées. RLS activé, droits vérifiés |
 | Migrations | **5**, toutes appliquées — `supabase/migrations/`. La 5ᵉ ajoute la notation (deux notes, justifications, salaire annualisé, compteurs de tokens, colonne `etape`) |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
-| `pipeline/` | Collecte **et notation** livrées, **toutes deux sur le cron** GitHub Actions à 02:23 UTC (4 h 23 à Paris l'été) — deux jobs enchaînés, la notation ne tournant que si la collecte a réussi. Workflow **déclenché à la main et vert le 26 août** (exécution `33011739111`), ⚠️ mais sans offre à noter ce soir-là : **l'appel payant depuis le runner reste non exercé**. Critères dans `mots_cles.txt` (8 termes) et `codes_rome.txt` (**vide depuis le 26 août, délibérément**) |
+| `pipeline/` | Collecte **et notation** livrées, **toutes deux sur le cron** GitHub Actions à 02:23 UTC (4 h 23 à Paris l'été) — deux jobs enchaînés, la notation ne tournant que si la collecte a réussi. ✅ **Chaîne complète prouvée le 27 août** par le cron (`33074159137`) : 25 offres collectées, 25 notées. Critères dans `mots_cles.txt` (**7 termes** — `RPA` et `deploiement` retirés le 28, `chatbot` ajouté) et `codes_rome.txt` (**vide depuis le 26 août, délibérément**). ⚠️ **Seul le CDI est collecté** depuis le 28 (`TYPE_CONTRAT`) |
 | Modules | `collecte.py` · `notation.py` (`--limite`, `--modele`, `--effort`, `--lot`, `--rome`, `--collecte`, **`--derniere-collecte`**, `--au-hasard`, `--renoter`, `--sans-ecrire`, `--sans-appeler`) · `salaire.py` · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
 
-**Reste à faire en phase 2 — trois VÉRIFICATIONS, aucune construction.** Tout le code est
+**Reste à faire en phase 2 — UNE vérification, aucune construction.** Deux des trois ont été fermées les 27 et 28 août. Tout le code est
 écrit, livré et commité ; ce qui suit ne sont que des chemins jamais parcourus en vrai.
 
 | Ce qui reste | Comment le fermer | Coût |
 |---|---|---|
-| ⚠️ **L'appel payant depuis le runner GitHub n'a jamais été exercé** | Le workflow a tourné vert le 26 août mais **sans aucune offre à noter** (0 collectée dans la fenêtre). Il se ferme au premier passage qui trouve des offres. **16 offres attendent au 27 août 13 h 42** | ~10 centimes |
-| ⚠️ **Le rattachement par `custom_id` de l'API Batches** | `--lot` a tourné sur **une** offre : apparier par identifiant et apparier par position y donnent le même résultat, donc le test **ne peut pas échouer** et ne prouve rien. Il faut un lot de **3** offres | ~0,9 centime |
-| ⚠️ **L'état « 200 offres notées » à l'écran** | Vérifié **en simulation** le 26 août (98 dupliquées jusqu'à 200) : 39 567 px de haut, 5 699 nœuds, 153 Ko transférés, 70 ms de recalcul, aucun débordement. Sur données réelles, il faut ~100 offres de plus | ~60 centimes |
+| ✅ ~~L'appel payant depuis le runner GitHub n'a jamais été exercé~~ | **FERMÉ le 27 août 2026.** Le cron s'est déclenché (run `33074159137`) : collecte 19 s → 25 offres, notation 2 min 09 → **25 notées, aucun échec**, 89 160 tokens lus en cache. Chaîne complète prouvée en conditions réelles, ~15 centimes. ⚠️ **Il est parti à 12 h 54 UTC au lieu de 02:23 — 10 h 32 de retard.** Le retard ne coûte rien aux données (la fenêtre se répare seule) mais livre un écran vide au moment de la consultation du matin | fait |
+| ✅ ~~Le rattachement par `custom_id` de l'API Batches~~ | **FERMÉ le 28 août 2026** — lot `msgbatch_016Vf4…`, 3 offres de métiers étrangers l'un à l'autre, 5 min 06, 0 échec. Chaque justification parle bien du métier de son offre : l'appariement positionnel aurait décalé. ⚠️ Vérification **sémantique**, pas mécanique — compter trois notes écrites n'aurait rien prouvé | fait |
+| ⚠️ **L'état « 200 offres notées » à l'écran** | Vérifié **en simulation** le 26 août (98 dupliquées jusqu'à 200) : 39 567 px de haut, 5 699 nœuds, 153 Ko transférés, 70 ms de recalcul, aucun débordement. Sur données réelles il manque **74 offres** (126 notées au 28 août).<br>⚠️ **NE PAS forcer en payant, et c'est un raisonnement, pas une économie.** 200 est aussi le seuil où l'écran casse : au-delà, les 200 lignes affichées sont les 200 meilleures de tous les temps et **les offres du matin disparaissent**. Payer pour l'atteindre revient à payer pour déclencher un défaut connu dont le remède est en phase 4. Au rythme actuel (~7 notées/nuit) il tombe seul vers le **8 septembre**.<br>⚠️ Si on force quand même : sur les 434 offres non notées, **82 ne sont pas des CDI** — les noter au hasard paierait des offres que Maxime ne regardera pas, `notation.py` n'ayant pas de filtre de contrat | ~44 centimes, **déconseillé** |
 
-⚠️ **Aucune de ces trois vérifications n'a été refusée sur le fond** — Maxime a simplement
-choisi de ne pas dépenser dans l'immédiat et d'attendre que le cron produise des offres.
-Le redemander avant de les lancer, comme toute dépense.
+⚠️ **Les deux premières ont été fermées les 27 et 28 août.** La troisième n'est pas refusée non
+plus : elle est **volontairement laissée au temps**, pour la raison donnée dans le tableau.
+Toute dépense se redemande avant d'être lancée.
 
 ### ⚠️ Le cron a été sauté dans la nuit du 26 au 27 août — et ce n'est pas notre code
 
@@ -174,9 +183,9 @@ complexité posée sur une supposition. Observer deux ou trois nuits d'abord.
 ⚠️ **L'écran est l'instrument de mesure des critères de collecte, et c'est pour ça qu'il passait
 en premier.** Les justifications à plat rendent lisible d'un coup d'œil ce qu'un mot-clé ramène :
 « Conducteur d'engins Polyvalent » noté **0/100** avec sa justification est visible en deux
-secondes dans la liste, là où il fallait lire le terminal ligne à ligne. Le chantier ouvert sur
-`deploiement`, `automatisation`, `RPA` et le faux positif `IA`/`IPR-IA` se mène désormais depuis
-cette page.
+secondes dans la liste, là où il fallait lire le terminal ligne à ligne. Le chantier sur `deploiement`,
+`automatisation`, `RPA` et le faux positif `IA`/`IPR-IA` **a été mesuré et clos le 28 août** —
+voir plus bas ; cette page reste l'instrument de mesure pour la suite.
 
 ⚠️ **La clé `ANTHROPIC_API_KEY` est posée et active à DEUX endroits** — `.env` à la racine
 pour les lancements à la main, et les **secrets GitHub Actions** depuis le 26 août 2026, où
@@ -192,9 +201,10 @@ Même geste que le `pbcopy` de la § Sécurité — la valeur ne s'affiche nulle
    d'introduction. Mesuré sur 97 appels. Une offre = ~4 500 tokens d'entrée dont 3 715 de
    préfixe mis en cache, ~250 de sortie. Noter les 453 offres restantes coûterait ~2,70 $ en
    direct, ~1,35 $ en Batches.
-   ⚠️ **L'API Batches n'a JAMAIS tourné** — le code existe (`--lot`) et n'est pas testé. Elle
-   met jusqu'à une heure à rendre ses résultats : appels directs pour régler le prompt,
-   Batches pour le volume.
+   ✅ **L'API Batches est validée** (28 août, lot de 3 offres) et rend en **5 min**, pas en
+   l'heure annoncée. ⚠️ Elle n'est rentable qu'à **plusieurs offres** : sur un lot d'une seule,
+   `cache_lecture` vaut zéro — on paie l'écriture du préfixe sans jamais le relire. Appels
+   directs pour régler le prompt, Batches pour le volume.
    ⚠️ **Prévenir Maxime avant tout appel facturé**, toujours, avec le nombre d'appels et
    l'ordre de grandeur. `models.list()` et `count_tokens()` sont gratuits — s'en servir sans
    demander. `--sans-appeler` affiche le prompt et compte ses tokens sans rien dépenser.
@@ -260,23 +270,58 @@ de reconfiguration, comparées aux 82 notées sous l'ancienne :
 
 | | Nouvelle config | Ancienne |
 |---|---|---|
-| Volume collecté | **294 offres/mois** | 707 |
+| Volume collecté | 294 offres/mois | 707 |
 | Moyenne d'intérêt | **16,2** | 7,7 |
 | Médiane | **10** | 5 |
 | Offres au-dessus de 50 | **7 %** | 1 % |
-| Coût de notation | **~1,75 $/mois** | ~4,20 $ |
+| Coût de notation | ~1,75 $/mois | ~4,20 $ |
 
-⚠️ **CHANTIER OUVERT — Maxime veut les critères les PLUS optimaux, et la mesure n'est pas
-finie.** Ce qui reste à mesurer, dans l'ordre :
+⚠️ **CE TABLEAU EST PÉRIMÉ — il décrit la configuration du 26 août.** Depuis, `deploiement` et
+`RPA` sont sortis, `chatbot` est entré, et seul le CDI est collecté. **Chiffres au 28 août, à
+utiliser à la place** : **208 offres/mois** (266 sans le filtre de contrat, qui en écarte 22 %),
+soit **~1,25 $/mois** de notation. Les colonnes de qualité (moyenne, médiane, % au-dessus de 50)
+n'ont **pas** été remesurées depuis : elles restent celles du 26 août, sur 15 offres.
 
-1. **`deploiement` (29 offres/mois) et `automatisation` (16)** ne sont pas mesurés. Ce sont eux
-   qui ramènent « Conducteur d'engins Polyvalent » (noté **0/100**) et « Comptable support
-   logiciel » (3/100). Premier gisement d'amélioration.
-2. **`IA` matche `IPR-IA`** — « Inspecteur pédagogique régional ». Trois offres notées
-   viennent de ce faux positif. À quantifier avant de décider quoi faire.
-3. **`RPA` ne ramène que 3 offres/mois** — à garder ou retirer selon leur qualité.
-4. **De nouveaux mots-clés à tester** : le vocabulaire s'ouvre (voir § Collecte), donc la
-   liste des termes à zéro doit être remesurée périodiquement.
+✅ **CHANTIER MESURÉ LE 28 AOÛT 2026. Le rappel est saturé : le problème n'est pas ce que la
+collecte rate, c'est ce qu'elle ramène en trop.** 50 termes balayés sur 30 jours.
+
+1. ✅ **Tout le lexique IA spécialisé a un apport net de ZÉRO** — il ne trouve pas une seule
+   offre que les mots-clés actuels ne trouvent déjà : `consultant IA`, `IA générative`,
+   `générative`, `intégration IA`, `copilot`, `RAG`, `prompt`, `multi-agents`, `MLOps`,
+   `low-code`, `no-code`, `agentic`. **Ne pas les re-tester** sans avoir d'abord changé la
+   liste (voir le piège de méthode plus bas).
+2. ✅ **Le vocabulaire anglais pointu N'EXISTE PAS** — volume brut nul : `LLM`, `GPT`,
+   `OpenAI`, `LangChain`, `Hugging Face`, `embeddings`, `NLP`, `computer vision`,
+   `deep learning`, `Azure AI`, `n8n`, `Zapier`, `forward deployed`, `customer engineer`.
+   ⚠️ **Ceci DÉMENT la note du 26 août** qui voyait « le vocabulaire s'ouvrir » (LLM 1,
+   copilot 2, RAG 1). Deux jours après : LLM 0, copilot 1. **Ces valeurs à 1 ou 2 sont du
+   bruit statistique, pas une tendance** — ne pas remesurer tous les quatre matins.
+3. ✅ **`IA` → `IPR-IA` : quantifié, et c'est marginal.** 3 offres/mois, notées 2, 2 et 3.
+   Le match vient de l'**appellation** `Inspecteur(trice) pédago rég, inspect académie
+   (IPR-IA)`, ROME K2117 — pas de l'intitulé, d'où l'échec des recherches précédentes.
+   Le corriger supposerait de retirer `IA`, qui ramène l'offre à 85. **Défaut à connaître,
+   pas à corriger.**
+4. ✅ **`deploiement` mesuré : 30 offres nettes/mois, homonymie télécom/BTP** — « Conducteur
+   d'engins », « Câbleur Électronique », « CHEF D'ÉQUIPE FTTH », « PMO Déploiement SAP ».
+   **`automatisation`** : 11 nettes, QA/tests et DevOps CI/CD, aucune notée. **`RPA`** :
+   3 nettes, « Développeur RPA UiPath ».
+5. ✅ **Un seul terme retenu sur 50 : `chatbot`** (+1 offre/mois, « Ingénieur front office
+   chatbot »), ajouté le 28 août.
+
+⚠️ **LE PIÈGE DE MÉTHODE, qui vaut plus que ces listes : l'apport net n'est pas une propriété
+du TERME, mais du couple (terme, configuration).** Vérifié — en retirant `intelligence
+artificielle`, `low-code` et `no-code` passent de 0 à 1. **Tout retrait de la liste périme
+les mesures ci-dessus.**
+
+⚠️ **RESTE À TRANCHER — la seule recommandation non appliquée au 28 août.** `intelligence
+artificielle` ramène **127 offres nettes/mois pour une moyenne de 8/100 et un maximum de 15**
+sur 27 notées, zéro au-dessus de 30 : c'est le profil exact qui a fait tomber les codes ROME.
+Et **on ne perdrait rien** — les 9 offres notées ≥25 sont toutes rattrapées par `IA` ou `AI`,
+vérifié une par une. Avec `deploiement`, le retrait ferait passer le volume de **296 à 141
+offres/mois**.
+⚠️ **Partiellement arbitré le 28 août** : Maxime a retiré `deploiement` (et `RPA`) à la main,
+mais **a gardé `intelligence artificielle`**. C'est donc la seule question encore ouverte, et
+la projection 296 → 141 ci-dessus ne se réalisera jamais telle quelle. **Ne pas le retirer seul.**
 
 ✅ **Question CLOSE le 26 août 2026 : c'est Sonnet 5, et Opus 5 ne sera pas testé.** Décision
 de Maxime. Le motif est bon et il faut le retenir plutôt que la conclusion : le prompt est
@@ -290,8 +335,8 @@ décide plus rien.** Ne pas la rouvrir « pour voir ».
 | | |
 |---|---|
 | ~~Tri par note : piège `NULLS FIRST`~~ | ✅ **Traité le 26 août** — `note_interet.desc.nullslast` dans `interface/lib/offres.ts`, avec départage complet jusqu'à `identifiant` pour que deux chargements classent les ex æquo pareil |
-| API Batches : **le rattachement par `custom_id` reste non vérifié** | ⚠️ Nuance qui compte. `--lot` **a tourné** le 26 août 2026 (lot `msgbatch_018yAG…`, 1 offre, 2 min 33, réussite) : dépôt, attente, récupération, écriture et trace d'exécution sont validés. Mais **sur UNE offre, apparier par identifiant et apparier par position donnent le même résultat** — le point le plus subtil du module n'est donc toujours pas exercé. Il faudrait un lot de 3 offres, soit ~0,9 centime |
-| Critères de collecte non finis | `deploiement`, `automatisation`, `RPA` et le faux positif `IA`/`IPR-IA` restent à mesurer — voir § État actuel |
+| ~~API Batches : rattachement par `custom_id`~~ | ✅ **CLOS le 28 août 2026.** Lot de 3 offres (`msgbatch_016Vf4…`), 5 min 06, 0 échec, appariement vérifié sur le contenu des justifications. ⚠️ **Mesure à retenir** : `cache_lecture` = 7 430 sur ce lot de 3, contre **zéro** sur le lot d'une offre — les Batches ne sont rentables qu'à plusieurs, sinon on paie l'écriture du cache sans jamais le relire |
+| ~~Critères de collecte non finis~~ | ✅ **Mesurés et clos le 28 août** (50 termes balayés). `deploiement` et `RPA` retirés, `chatbot` ajouté, `IA`/`IPR-IA` quantifié à 3 offres/mois et jugé non corrigeable. ⚠️ **Seul `intelligence artificielle` reste en suspens** — voir § État actuel. ⚠️ Et la qualité d'`automatisation` (11 nettes/mois) est toujours **inconnue**, faute d'une seule offre notée |
 | ⚠️ **Le plafond de 200 tuera l'affichage des offres du jour** | Relevé en revue le 26 août. Depuis le tri par intérêt, les 200 lignes affichées sont **les 200 meilleures de tous les temps**. Au 27 août, 98 offres sont notées, donc 102 places reviennent aux plus récentes et les offres de la nuit s'affichent. **Le jour où plus de 200 offres portent une note, elles disparaissent** — d'intérêt médian 10, elles ne rentrent plus — et le marqueur « Nouveau » devient du code que rien n'atteint. Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut sans jamais céder leur place. ⚠️ **L'échéance est un compte, pas une date : elle tombe quand `notees` dépasse 200.** À trancher en phase 4 avec les filtres — le remède change ce que cet écran *est*, et le PRD confie déjà le compte rendu de la nuit à `/` |
 | Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | ⚠️ **Devenu inatteignable le 26 août** : le bug ne se déclenche que sur une offre **déjà notée**, donc uniquement en `--renoter` — outil désormais mis de côté, une offre n'étant notée qu'une fois. Il n'est donc **pas urgent**, et ne pas le présenter comme tel. L'analyse et le correctif à faire vivent en commentaire dans `pipeline/notation.py` au-dessus de `apercevoir()`, **au point d'usage** : celui qui ressortira `--renoter` tombera dessus, ce qu'une ligne dans ce tableau ne garantit pas |
 | Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver (`docs/HEBERGEMENT.md`) |
@@ -346,11 +391,22 @@ Mesurés contre l'API réelle le 21 août 2026, **remesurés et en partie corrig
 26 août**. Détail et méthode dans `docs/API_FRANCE_TRAVAIL.md`. **Ne pas les
 redécouvrir, ne pas les contredire de mémoire.**
 
-1. **La recherche France Travail n'indexe PAS la description.** Un mot pris dans le
-   corps d'une annonce ne la retrouve pas. Elle porte sur l'intitulé, le **libellé
-   ROME**, l'**appellation** et le champ `competences`. Conséquence directe : une
-   offre au titre banal dont l'IA n'apparaît que dans le texte est invisible à
-   **toute** liste de mots-clés. Ce fait reste vrai et commande tout le reste.
+1. ⚠️ **CORRIGÉ LE 28 AOÛT — le moteur ne fait PAS de correspondance textuelle, il
+   élargit au domaine.** Ce point énumérait les champs indexés (« l'intitulé, le
+   libellé ROME, l'appellation et le champ `competences` ») ; l'énumération donnait
+   l'illusion d'un contrat qui n'existe pas. Mesuré : sur 40 offres rendues par
+   `intelligence artificielle` en propre, **26 ne contiennent le terme nulle part** —
+   ni dans ces quatre champs, ni dans la description, ni ailleurs dans la charge
+   brute. Et le moteur n'est pas compositionnel : `intelligence artificielle` rend
+   168 offres, `intelligence` 64, `artificielle` 43, leur union **64** — donc 125
+   des 168 ne viennent d'aucun des deux mots seuls.
+   **Trois conséquences opposables** : un terme ramène des offres qui ne le
+   contiennent pas · chercher `X Y` ne se prédit pas en mesurant `X` et `Y` · donc
+   **un critère se mesure, jamais ne se déduit** — même règle qu'avant, mais parce
+   que l'index est *opaque*, pas parce qu'il est étroit.
+   ⚠️ **Corollaire coûteux** : un terme générique ratisse un domaine entier.
+   `agents` rend **2 718 offres/mois** (agent d'accueil, agent de sécurité).
+   Reste vrai : une offre au titre banal peut échapper à toute liste de mots-clés.
 2. ⚠️ **CORRIGÉ LE 26 AOÛT — le vocabulaire n'est ni fermé ni français.** L'ancienne
    version de ce point disait le contraire, et c'était l'erreur la plus coûteuse de
    la configuration : **`AI` en anglais ramène 28 offres nettes par mois** qu'aucun
@@ -373,6 +429,21 @@ redécouvrir, ne pas les contredire de mémoire.**
    **tiré au hasard** (`--rome CODE --au-hasard`, `--collecte ID --au-hasard`).
    Prendre les N plus récentes n'est pas un échantillon : elles viennent d'une seule
    journée de collecte.
+5. ⚠️ **SEUL LE CDI EST COLLECTÉ depuis le 28 août 2026** — `TYPE_CONTRAT` dans
+   `pipeline/config.py`, filtré **côté serveur** par le paramètre `typeContrat`. Écarte
+   21 % du volume : 39 CDD par mois (dont 27 alternances), 16 intérims, 3 professions
+   libérales. Décidé par Maxime, **qui a vu et accepté le coût** : 11 des 20 meilleures
+   offres notées auraient été écartées, dont un CDD Institut Curie à 75. Ne pas rouvrir.
+   ⚠️ **Ce filtre est IRRÉVERSIBLE POUR LE PASSÉ, et sa perte est silencieuse.** France
+   Travail dépublie : le remettre à `None` rouvre l'avenir, jamais les semaines écoulées,
+   et **rien en base ne témoigne de ce qui n'a pas été collecté**. Même logique que « la
+   base ne s'efface pas », en pire — ici on ne voit pas le trou.
+   ⚠️ **`typeContrat` est la SEULE métadonnée sûre à filtrer** : renseignée sur 560 offres
+   sur 560. `qualification` est vide sur 86 des 123 offres notées, et 11 des 20 meilleures
+   sont dans ce trou — filtrer sur « Cadre » perdrait 70 % des bonnes offres. Avec
+   `experience_libelle` (faux une fois sur deux), c'est l'argument central du projet :
+   **les métadonnées France Travail sont trop lacunaires pour trier, d'où un modèle qui
+   lit le texte.**
 
 **Les postes visés** sont ceux qui *branchent* un modèle chez un client — Forward
 Deployed Engineer, AI Solutions Engineer, consultant IA, ingénieur d'intégration.
