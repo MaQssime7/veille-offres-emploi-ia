@@ -345,6 +345,9 @@ annuel quand c'est possible.
       ✅ **Le cycle complet a même tourné sans être orchestré** : la même offre, remise dans la file (2 tentatives < 3), a été notée avec succès par le lot Batches vingt minutes plus tard. Échec → reprise → réussite, sur données réelles.
       ✅ Vérifié à l'écran : le message affiche le compte de tentatives, et **le motif technique ne quitte pas le serveur** (`not_found_error` absent du document reçu par le navigateur).
 - [~] **États** : ✅ offre en attente de note (cartouche creux, ligne inchangée à 91 px) · ✅ échec de notation (icône + message, rendu forcé) · ✅ chargement (squelette à 203 px contre 195 px de ligne réelle) · ⚠️ **200 offres notées vérifié en SIMULATION seulement** — 97 dupliquées jusqu'à 200 : 39 567 px de haut, 5 699 nœuds, 153 Ko transférés, 70 ms de recalcul, aucun débordement. La base n'a pas 200 offres notées
+      ✅ **Deux états ajoutés à la clôture du 28 août** : **base injoignable**, déclenché pour de vrai en relançant le serveur sur une URL Supabase morte — encadré brique, « La base est injoignable », et le message précise que les offres ne sont pas perdues ; **mot de passe incorrect**, bordure brique *et* icône *et* message, l'information ne tenant jamais sur la seule couleur.
+      ⚠️ **Ce que la clôture n'a PAS pu voir, et il faut le dire** : le squelette **en vol** — Turbopack répond en 332 ms, donc il n'apparaît jamais. Ce qui est établi à la place est structurel : `loading.tsx` et `ligne-offre.tsx` importent le même `RYTHME_LIGNE`, en `rem`, et **aucun des deux ne porte de hauteur en dur** (vérifié par lecture des deux fichiers). C'est une garantie par construction, pas une observation.
+      ⚠️ Et l'état **base vide** n'est plus reproductible : la base ne s'efface pas.
 - [x] ✅ **375 px, mode sombre, console propre** — 0 erreur, 0 avertissement · 0 ligne cassée sur 200 à 1000 px, cartouche supplémentaire compris · aucun débordement horizontal à 375 px · 11 nouvelles paires de contraste mesurées, toutes conformes
 
 ### Bloquée par
@@ -632,6 +635,18 @@ régressions tant qu'il n'y a pas de tests automatisés.
 - [ ] ⚠️ **NON VÉRIFIÉ : l'appel payant depuis le runner.** La collecte de 22 h 42 a ramené **0 offre nouvelle** (la précédente datait de 20 h 32), donc la notation n'avait rien à noter. Le chemin réseau vers `api.anthropic.com` depuis GitHub Actions n'a jamais été exercé.
       ⚠️ **Et il ne peut pas être forcé** : la collecte ne rattache à son exécution que les offres **nouvelles**, donc un rattrapage manuel sur 30 jours ne ramène que des offres déjà en base, dédupliquées, non rattachées — toujours zéro à noter. Ce parcours se fermera de lui-même au premier cron qui trouve des offres.
       ✅ Ce qui est établi malgré tout : `configuration.charger_notation()` **vérifie explicitement** la présence de `ANTHROPIC_API_KEY` avant toute lecture de base. Le job étant vert, la clé est lisible depuis le runner — ce n'est pas une supposition
+
+**Après la phase 2 — la clôture du 28 août 2026** — *déroulés en développement sur les 560 offres réelles*
+
+- [x] **Se déconnecter, retaper l'adresse des offres, retomber sur la porte** — bouton « Se déconnecter » → `/connexion`, puis `/offres` → 307 vers `/connexion?suite=%2Foffres`
+- [x] **Taper un mauvais mot de passe et voir pourquoi ça a échoué** — bordure brique *et* icône *et* « Mot de passe incorrect. », champ vidé, message générique qui ne dit pas si le mot de passe existe
+- [x] **Se reconnecter et revenir là où on voulait aller** — le paramètre `suite` ramène sur `/offres`, pas sur l'accueil
+- [x] **Voir la frontière entre offres notées et non notées** — la première « Pas encore notée » tombe à l'index **126**, soit exactement le nombre de notées. ⚠️ C'est ce parcours qui attrape une inversion de tri : un `NULLS FIRST` la mettrait à l'index 0 sans qu'aucune erreur n'apparaisse
+- [x] **Recharger deux fois et retrouver le MÊME ordre** — 200 identifiants identiques. Sans départage jusqu'à `identifiant`, les ex æquo (trois offres à 85, cinq à 75) permuteraient d'un chargement à l'autre
+- [x] **Couper la base et regarder l'écran** — serveur relancé sur une URL Supabase morte : « La base est injoignable », le message dit que les offres ne sont pas perdues, et **le motif technique ne quitte pas le serveur**
+- [x] **Compter les colonnes sensibles reçues par le navigateur** — `notation_motif_echec`, `execution_id`, `salaire_annuel_min`, `notation_tentatives`, `charge_brute`, `contact_nom`, `tokens_cumules` : **0 occurrence chacune**, contre 126 pour un texte réellement affiché. ⚠️ **Le témoin n'est pas décoratif** : sans lui, un test qui ne trouve rien peut simplement être cassé
+- [x] **Vérifier qu'une passe à blanc n'écrit RIEN** — `--sans-ecrire` sur la notation : aucune écriture tentée, ni ligne d'exécution ni note. ⚠️ Ce parcours existe parce que le contraire était vrai jusqu'au 28 août
+- [ ] Retrouver une offre écartée par le seuil, avec sa note et son motif — *dépend du filtre de statut, phase 4*
 
 **Après la phase 3**
 

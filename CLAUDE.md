@@ -18,7 +18,7 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Dans quel ordre le construire · contenu de test · parcours à repasser | `docs/PLAN.md` |
 | Ce qui s'est passé et pourquoi, dans l'ordre | `docs/JOURNAL.md` |
 | **Comment le modèle note** : profil, postes visés, barèmes des deux notes | `pipeline/criteres_pertinence.txt` — **c'est une donnée, pas du code** : s'édite à la main, se relit dans git. ⚠️ Deux marqueurs : `//` = commentaire retiré avant l'envoi, `##` = titre envoyé au modèle |
-| **Ce que vaut chaque critère de collecte**, mesuré | `pipeline/codes_rome.txt` (vide, et porte la mesure qui l'a vidé) et `pipeline/mots_cles.txt` — ⚠️ **ne jamais éditer sans relire ces commentaires** : ils listent les termes déjà mesurés et écartés |
+| **Ce que vaut chaque critère de collecte**, mesuré | `pipeline/codes_rome.txt` (vide, et porte la mesure qui l'a vidé) et `pipeline/mots_cles.txt` — ⚠️ **ne jamais éditer sans relire ces commentaires** : ils listent les termes déjà mesurés et écartés.<br>⚠️ **Un TROISIÈME critère existe et n'est pas un `.txt` : `TYPE_CONTRAT` dans `pipeline/config.py`**, qui écarte 22 % du volume. C'est une entorse assumée à la règle « les critères sont des données » — il tient en une valeur, et sa liste blanche doit rester collée au référentiel de l'API. Mais **chercher les critères dans les seuls fichiers texte fait manquer celui qui coupe le plus** |
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` (`.agents/skills/`) |
 | **Comment le site est protégé** : cookie de session, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts` — abondamment commentés, **seule source de vérité** |
 
@@ -159,7 +159,7 @@ exécution**, neuf heures après son heure. Vérifié :
 |---|---|
 | Workflow avec `schedule` sur `main` | depuis le 26/08 **12 h 11 UTC**, soit 14 h d'avance |
 | Exécution manuelle à 12 h 12 UTC le 26 | verte — le workflow était bien enregistré |
-| Exécutions `--event=schedule` | **aucune, jamais** |
+| Exécutions `--event=schedule` | ⚠️ **PÉRIMÉ — c'était vrai le 27 au matin.** Le cron a fini par partir le **27 à 12 h 54 UTC** (run `33074159137`), soit 10 h 32 après son heure. Il n'était pas sauté, il était retardé |
 | Dépôt archivé · désactivé · Actions coupées | non · non · non |
 
 C'est un comportement **documenté** de GitHub Actions : les workflows planifiés ne sont pas
@@ -177,8 +177,9 @@ la **limite de 60** du workflow finirait par mordre — vers 4 ou 5 nuits consé
 mord, `notation.py` émet un avertissement, et **les offres laissées ne repassent pas** en mode
 `--derniere-collecte`.
 
-⚠️ **Ne rien « corriger » sur la foi d'un seul saut.** Un second cron de secours est de la
-complexité posée sur une supposition. Observer deux ou trois nuits d'abord.
+⚠️ **Ne rien « corriger » avant une TROISIÈME nuit** — même consigne qu'en haut de ce fichier,
+et c'est bien la même. Un second cron de secours est de la complexité posée sur une supposition.
+État au 28 août : une nuit sans rien, une nuit à +10 h 32, une nuit en cours d'observation.
 
 ⚠️ **L'écran est l'instrument de mesure des critères de collecte, et c'est pour ça qu'il passait
 en premier.** Les justifications à plat rendent lisible d'un coup d'œil ce qu'un mot-clé ramène :
@@ -199,8 +200,9 @@ Même geste que le `pbcopy` de la § Sécurité — la valeur ne s'affiche nulle
 
 1. **Le coût réel d'une notation : ~0,6 centime par offre**, cache chaud, Sonnet 5 au tarif
    d'introduction. Mesuré sur 97 appels. Une offre = ~4 500 tokens d'entrée dont 3 715 de
-   préfixe mis en cache, ~250 de sortie. Noter les 453 offres restantes coûterait ~2,70 $ en
-   direct, ~1,35 $ en Batches.
+   préfixe mis en cache, ~250 de sortie. Noter les **434** offres restantes coûterait ~2,60 $ en
+   direct, ~1,30 $ en Batches — et **354 seulement** si l'on s'en tient aux CDI, le filtre
+   s'appliquant aussi à la file de notation depuis le 28 août.
    ✅ **L'API Batches est validée** (28 août, lot de 3 offres) et rend en **5 min**, pas en
    l'heure annoncée. ⚠️ Elle n'est rentable qu'à **plusieurs offres** : sur un lot d'une seule,
    `cache_lecture` vaut zéro — on paie l'écriture du préfixe sans jamais le relire. Appels
@@ -337,7 +339,7 @@ décide plus rien.** Ne pas la rouvrir « pour voir ».
 | ~~Tri par note : piège `NULLS FIRST`~~ | ✅ **Traité le 26 août** — `note_interet.desc.nullslast` dans `interface/lib/offres.ts`, avec départage complet jusqu'à `identifiant` pour que deux chargements classent les ex æquo pareil |
 | ~~API Batches : rattachement par `custom_id`~~ | ✅ **CLOS le 28 août 2026.** Lot de 3 offres (`msgbatch_016Vf4…`), 5 min 06, 0 échec, appariement vérifié sur le contenu des justifications. ⚠️ **Mesure à retenir** : `cache_lecture` = 7 430 sur ce lot de 3, contre **zéro** sur le lot d'une offre — les Batches ne sont rentables qu'à plusieurs, sinon on paie l'écriture du cache sans jamais le relire |
 | ~~Critères de collecte non finis~~ | ✅ **Mesurés et clos le 28 août** (50 termes balayés). `deploiement` et `RPA` retirés, `chatbot` ajouté, `IA`/`IPR-IA` quantifié à 3 offres/mois et jugé non corrigeable. ⚠️ **Seul `intelligence artificielle` reste en suspens** — voir § État actuel. ⚠️ Et la qualité d'`automatisation` (11 nettes/mois) est toujours **inconnue**, faute d'une seule offre notée |
-| ⚠️ **Le plafond de 200 tuera l'affichage des offres du jour** | Relevé en revue le 26 août. Depuis le tri par intérêt, les 200 lignes affichées sont **les 200 meilleures de tous les temps**. Au 27 août, 98 offres sont notées, donc 102 places reviennent aux plus récentes et les offres de la nuit s'affichent. **Le jour où plus de 200 offres portent une note, elles disparaissent** — d'intérêt médian 10, elles ne rentrent plus — et le marqueur « Nouveau » devient du code que rien n'atteint. Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut sans jamais céder leur place. ⚠️ **L'échéance est un compte, pas une date : elle tombe quand `notees` dépasse 200.** À trancher en phase 4 avec les filtres — le remède change ce que cet écran *est*, et le PRD confie déjà le compte rendu de la nuit à `/` |
+| ⚠️ **Le plafond de 200 tuera l'affichage des offres du jour** | Relevé en revue le 26 août. Depuis le tri par intérêt, les 200 lignes affichées sont **les 200 meilleures de tous les temps**. Au 28 août, **126** offres sont notées, donc **74** places reviennent aux plus récentes et les offres de la nuit s'affichent. **Le jour où plus de 200 offres portent une note, elles disparaissent** — d'intérêt médian 10, elles ne rentrent plus — et le marqueur « Nouveau » devient du code que rien n'atteint. Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut sans jamais céder leur place. ⚠️ **L'échéance est un compte, pas une date : elle tombe quand `notees` dépasse 200.** À trancher en phase 4 avec les filtres — le remède change ce que cet écran *est*, et le PRD confie déjà le compte rendu de la nuit à `/` |
 | Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | ⚠️ **Devenu inatteignable le 26 août** : le bug ne se déclenche que sur une offre **déjà notée**, donc uniquement en `--renoter` — outil désormais mis de côté, une offre n'étant notée qu'une fois. Il n'est donc **pas urgent**, et ne pas le présenter comme tel. L'analyse et le correctif à faire vivent en commentaire dans `pipeline/notation.py` au-dessus de `apercevoir()`, **au point d'usage** : celui qui ressortira `--renoter` tombera dessus, ce qu'une ligne dans ce tableau ne garantit pas |
 | Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver (`docs/HEBERGEMENT.md`) |
 | `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme : « base injoignable » alors que la base va bien |
@@ -385,10 +387,10 @@ par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de transact
 sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoire est dans
 **`docs/JOURNAL.md`**.
 
-## Collecte — trois faits mesurés, opposables
+## Collecte — cinq faits mesurés, opposables
 
-Mesurés contre l'API réelle le 21 août 2026, **remesurés et en partie corrigés le
-26 août**. Détail et méthode dans `docs/API_FRANCE_TRAVAIL.md`. **Ne pas les
+Mesurés contre l'API réelle le 21 août 2026, **remesurés et corrigés le 26 puis le
+28 août** — les points 1 et 5 datent du 28 et sont les plus structurants. Détail et méthode dans `docs/API_FRANCE_TRAVAIL.md`. **Ne pas les
 redécouvrir, ne pas les contredire de mémoire.**
 
 1. ⚠️ **CORRIGÉ LE 28 AOÛT — le moteur ne fait PAS de correspondance textuelle, il
@@ -431,7 +433,7 @@ redécouvrir, ne pas les contredire de mémoire.**
    journée de collecte.
 5. ⚠️ **SEUL LE CDI EST COLLECTÉ depuis le 28 août 2026** — `TYPE_CONTRAT` dans
    `pipeline/config.py`, filtré **côté serveur** par le paramètre `typeContrat`. Écarte
-   21 % du volume : 39 CDD par mois (dont 27 alternances), 16 intérims, 3 professions
+   22 % du volume : 39 CDD par mois (dont 27 alternances), 16 intérims, 3 professions
    libérales. Décidé par Maxime, **qui a vu et accepté le coût** : 11 des 20 meilleures
    offres notées auraient été écartées, dont un CDD Institut Curie à 75. Ne pas rouvrir.
    ⚠️ **Ce filtre est IRRÉVERSIBLE POUR LE PASSÉ, et sa perte est silencieuse.** France

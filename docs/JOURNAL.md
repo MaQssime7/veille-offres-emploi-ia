@@ -1808,3 +1808,101 @@ défaut connu dont le remède est planifié en phase 4, avec les filtres. Au ryt
 actuel (~7 offres notées par nuit), le seuil tombe seul vers le 8 septembre.
 
 Phase 2 : **14 critères d'acceptation sur 15 pleinement vérifiés.**
+
+---
+
+## 28 août 2026 — Clôture de la phase 2
+
+14 critères d'acceptation sur 15 vérifiés avec leur preuve. Le quinzième —
+l'écran à 200 offres notées — reste vérifié en simulation, par choix : il manque
+74 offres, et 200 est aussi le seuil où l'écran casse.
+
+### Ce qui a été regardé, et comment
+
+L'app lancée avec un **mot de passe de test passé par l'environnement**, jamais
+écrit dans `interface/.env.local` — empreinte MD5 relevée avant et après la
+session, identique. C'est la parade à la règle « aucun secret dans la
+conversation », et elle a tenu.
+
+Quatre combinaisons : 1280 px et 375 px, clair et sombre. Aucun débordement
+horizontal, **0 cartouche sur deux lignes sur 200 offres**, console à 0 erreur et
+0 avertissement, focus clavier visible.
+
+Deux états déclenchés pour de vrai plutôt que forcés à l'écran : la **base
+injoignable** (serveur relancé sur une URL Supabase morte) et le **mot de passe
+incorrect**. Le premier affiche « La base est injoignable » en précisant que les
+offres ne sont pas perdues ; le motif technique ne quitte pas le serveur.
+
+⚠️ **Deux choses n'ont PAS pu être vues, et le rapport le dit** : le squelette de
+chargement en vol — Turbopack répond en 332 ms, donc il n'apparaît jamais, et
+seule la garantie structurelle est établie (même `RYTHME_LIGNE` partagé, en
+`rem`, aucune hauteur en dur des deux côtés) ; et l'état « base vide », qui n'est
+plus reproductible depuis que la base ne s'efface pas.
+
+### La revue a trouvé un vrai bug, et deux défauts que j'avais introduits
+
+⚠️ **`--sans-ecrire` écrivait en base.** Une passe à blanc de la notation ouvrait
+*et* fermait une vraie ligne d'`executions_veille` annonçant « 3 offres notées »
+alors qu'aucune note n'était écrite dans `offres`. Rien ne plantait, rien ne se
+voyait : seul l'historique était faux — celui-là même que l'écran de suivi
+d'exploitation lira et qui, par définition, ne se reconstitue pas. Défaut
+préexistant, que le message de journal ajouté le matin même rendait plus
+crédible.
+
+**Prouvé sans rien écrire ni rien payer** : les méthodes d'écriture ont été
+interceptées et un modèle inexistant a servi d'appel (404 avant facturation,
+0 token). `collecte.py` portait pourtant la règle en toutes lettres depuis
+toujours — « Tout sauf l'écriture doit vouloir dire tout sauf l'écriture ». La
+notation ne la tenait pas.
+
+⚠️ **Ma liste blanche des types de contrat était bâtie sur un échantillon.** J'y
+avais mis les 4 codes observés dans 560 offres — `CDI`, `CDD`, `MIS`, `LIB`. Le
+référentiel officiel en compte **12**. Conséquence : `TYPE_CONTRAT = "CDI,DIN"`
+(CDI intérimaire, un élargissement naturel) aurait fait échouer la collecte au
+démarrage, avec un message accusant faussement France Travail de renvoyer une
+400. Vérifié : `typeContrat=DIN` et `SAI` répondent **HTTP 204**.
+
+**La leçon vaut plus que le correctif : ce qu'un échantillon contient ne dit pas
+ce qu'un système accepte.** Le référentiel est gratuit
+(`/referentiel/typesContrats`), et c'est lui qui fait foi. C'est la même erreur
+de forme que celle du 26 août sur les intitulés — quatre mesures concordantes
+avaient produit la conclusion fausse que « l'intitulé très long n'existe pas ».
+
+**Le filtre CDI ne s'appliquait qu'à la collecte.** Les 82 offres non-CDI
+arrivées avant le 28 août étaient toujours dans la file de notation : un
+`--limite 100` lancé à la main les aurait payées. Le cron était protégé par
+`--derniere-collecte`, les lancements manuels ne l'étaient pas. Filtre ajouté sur
+la **même constante** — deux réglages séparés divergeraient, et on repaierait un
+jour ce qu'on croit exclure. File désormais à 354 offres, toutes CDI.
+
+### Un raisonnement que j'avais écrit à l'envers
+
+Dans `mots_cles.txt` j'avais conclu que les mesures d'apport net garantissent
+qu'« aucun terme n'a été écarté à tort ». C'est le contraire. Un apport net ne
+peut que **monter** quand la liste rétrécit : retirer `RPA` et `deploiement` a
+donc pu rendre utiles des termes mesurés à 0 — ce qui est précisément vérifié
+ailleurs dans le même fichier (`low-code` et `no-code` passent de 0 à 1 sans
+« intelligence artificielle »).
+
+Corrigé, avec la liste de ceux à remesurer en premier : ceux qui touchaient au
+même gisement que les deux termes retirés.
+
+### Le reste
+
+L'étape est désormais **passée** à `fermer_execution` au lieu d'être devinée du
+compteur renseigné : une collecte plantée et une notation plantée produisaient la
+même ligne de journal, sur le chemin où l'on a le plus besoin de savoir.
+
+Et une erreur d'arrondi propagée à trois endroits : 58 offres écartées sur 266
+font **22 %**, pas 21.
+
+### Ce qui reste ouvert après la phase 2
+
+- **`intelligence artificielle`** — 127 offres nettes/mois pour un maximum de 15.
+  Proposé, non arbitré.
+- **La trace du filtre en base** — rien dans `executions_veille` ne dit qu'une
+  exécution a tourné avec un filtre de contrat. Les nuits d'avant et d'après le
+  28 août sont incomparables, et les journaux GitHub expirent à 90 jours. Une
+  colonne, une migration.
+- **Le plafond de 200** — à 126 notées il reste 74 places. Quand il mordra, les
+  offres du matin disparaîtront de l'écran. À traiter en phase 4 avec les filtres.
