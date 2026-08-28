@@ -162,3 +162,58 @@ function enMilliers(montant: number): string {
     ? String(milliers)
     : String(milliers).replace(".", ",");
 }
+
+/**
+ * La description de l'annonce, préparée pour un rendu en texte brut.
+ *
+ * Entre : le texte tel que France Travail l'a écrit.
+ * Sort : le même texte, débarrassé de deux bruits de machine.
+ * Casse : rien — aucune interprétation, aucune reformulation.
+ *
+ * ⚠️ **On ne « nettoie » que ce qui n'est pas du contenu**, et c'est une règle,
+ * pas une préférence. Mesuré sur les 560 descriptions en base le 28 août 2026 :
+ *
+ * | Motif | Offres | Traitement |
+ * |---|---|---|
+ * | HTML, entités (`&nbsp;`) | **0** | rien à faire |
+ * | `#!#`, séparateur de section | **1** (34 occurrences) | retiré |
+ * | 3 sauts de ligne ou plus | **199 (36 %)** | ramenés à 2 |
+ * | `**gras**` façon markdown | 39 (7 %) | **laissé tel quel** |
+ *
+ * ⚠️ **Les `**` sont laissés VISIBLES, et c'est délibéré.** Les interpréter
+ * demanderait un rendu markdown sur un texte qui n'en est pas : une astérisque
+ * isolée — il y en a — retournerait le reste du paragraphe en emphase. Les
+ * supprimer effacerait une intention de l'annonceur. Entre afficher un texte
+ * un peu brut et le réécrire au jugé, ce projet a déjà tranché : on renonce
+ * plutôt que de deviner. À rouvrir si Maxime les trouve gênants à l'usage.
+ */
+export function preparerDescription(texte: string): string {
+  return texte
+    .replace(/#!#/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Une exigence linguistique, telle qu'elle s'écrit.
+ *
+ * Entre : une entrée du champ `langues` de France Travail.
+ * Sort : « Anglais exigé », « Anglais souhaité », ou le libellé seul.
+ * Casse : renvoie `null` si l'entrée n'a pas de libellé — on n'affiche pas un
+ * cartouche vide.
+ *
+ * ⚠️ **Un code d'exigence inconnu ne devient JAMAIS une supposition.** Deux
+ * valeurs sont observées, `E` et `S` ; France Travail peut en ajouter demain.
+ * Une troisième valeur fait afficher le libellé seul — « Anglais » — plutôt
+ * que de le ranger d'office dans « exigé » ou « souhaité ». Même règle que les
+ * périodes de salaire inconnues dans `pipeline/salaire.py`.
+ */
+export function formaterLangue(langue: {
+  libelle?: string | null;
+  exigence?: string | null;
+}): string | null {
+  if (!langue.libelle) return null;
+  if (langue.exigence === "E") return `${langue.libelle} exigé`;
+  if (langue.exigence === "S") return `${langue.libelle} souhaité`;
+  return langue.libelle;
+}

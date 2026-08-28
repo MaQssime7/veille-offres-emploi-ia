@@ -6,6 +6,26 @@ import { CartoucheAbsent } from "./cartouche";
 import { RYTHME_LIGNE } from "./rythme";
 
 /**
+ * Les seuls champs dont la notation a besoin pour s'afficher.
+ *
+ * ⚠️ **Ce type existe pour que la liste et la fiche partagent le MÊME
+ * composant, pas deux copies.** Les justifications sont l'instrument qui révèle
+ * une notation mal étalonnée : deux rendus divergents, et une note bizarre
+ * s'afficherait différemment selon l'écran où on la regarde. `OffreEnListe` et
+ * `OffreEnFiche` le satisfont tous les deux sans rien déclarer — TypeScript
+ * compare les formes, pas les noms.
+ */
+export type ChampsNotation = Pick<
+  OffreEnListe,
+  | "note_interet"
+  | "justification_interet"
+  | "note_accessibilite"
+  | "justification_accessibilite"
+  | "notation_motif_echec"
+  | "notation_tentatives"
+>;
+
+/**
  * Où en est la notation d'une offre. Trois cas, et **un seul endroit qui les
  * distingue**.
  *
@@ -23,7 +43,7 @@ import { RYTHME_LIGNE } from "./rythme";
  */
 export type EtatNotation = "notee" | "en-attente" | "echec";
 
-export function etatNotation(offre: OffreEnListe): EtatNotation {
+export function etatNotation(offre: ChampsNotation): EtatNotation {
   if (offre.notation_motif_echec !== null) return "echec";
   if (offre.note_interet === null || offre.note_accessibilite === null) {
     return "en-attente";
@@ -52,7 +72,7 @@ export function etatNotation(offre: OffreEnListe): EtatNotation {
  * barème d'accessibilité a précisément été corrigé parce qu'on a pu LIRE
  * pourquoi le modèle mettait 40 là où le barème commandait 90.
  */
-export function BlocNotes({ offre }: { offre: OffreEnListe }) {
+export function BlocNotes({ offre }: { offre: ChampsNotation }) {
   return (
     <div className={RYTHME_LIGNE.blocNotes}>
       <ContenuNotes offre={offre} />
@@ -60,7 +80,7 @@ export function BlocNotes({ offre }: { offre: OffreEnListe }) {
   );
 }
 
-function ContenuNotes({ offre }: { offre: OffreEnListe }) {
+export function ContenuNotes({ offre }: { offre: ChampsNotation }) {
   if (etatNotation(offre) !== "notee") {
     return <NotationEnEchec tentatives={offre.notation_tentatives} />;
   }

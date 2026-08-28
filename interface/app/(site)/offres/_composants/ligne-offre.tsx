@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { OffreEnListe } from "@/lib/offres";
 
 import { Cartouche, CartoucheAbsent } from "./cartouche";
@@ -33,8 +35,12 @@ export function LigneOffre({
   const notation = etatNotation(offre);
 
   return (
+    // `relative` ancre le lien étendu ci-dessous ; `has-[a:focus-visible]`
+    // remonte le focus du lien jusqu'à la ligne entière, sinon l'anneau de
+    // focus n'entourerait que les quelques mots de l'intitulé et la navigation
+    // au clavier deviendrait illisible sur une liste de 200 lignes.
     <article
-      className={`border-b border-border last:border-b-0 ${RYTHME_LIGNE.article}`}
+      className={`relative border-b border-border transition-colors last:border-b-0 hover:bg-accent has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-inset ${RYTHME_LIGNE.article}`}
     >
       <div
         className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${RYTHME_LIGNE.margeEntreprise}`}
@@ -70,7 +76,29 @@ export function LigneOffre({
           la page. Sauter le niveau 2 casse le plan de titres, sur lequel un
           lecteur d'écran navigue pour parcourir la liste. */}
       <h2 className={`text-[0.9375rem] font-semibold leading-snug text-foreground ${RYTHME_LIGNE.margeIntitule}`}>
-        {offre.intitule}
+        {/* ⚠️ **Un SEUL lien par ligne, posé sur l'intitulé et étendu à la
+            carte par `after:absolute after:inset-0`.** Envelopper la ligne
+            entière dans une balise `<a>` serait plus court et bien pire : le
+            lecteur d'écran annoncerait comme libellé du lien la totalité du
+            contenu — entreprise, cartouches, et les ~300 caractères des deux
+            justifications. Ici il annonce l'intitulé, qui est ce qu'on suit.
+
+            ⚠️ **Conséquence assumée : le texte des justifications ne se
+            sélectionne plus à la souris**, la surface du lien passant par
+            dessus. C'est le compromis habituel des listes de cartes. Il est
+            acceptable ici parce que le texte reste sélectionnable sur la fiche,
+            où il est de toute façon plus lisible — et l'alternative, une ligne
+            cliquable seulement sur son titre, offrirait une cible minuscule sur
+            une ligne de 195 px de haut.
+
+            `focus:outline-none` : l'anneau de focus est porté par l'article
+            entier (voir plus haut), pas par les trois mots du titre. */}
+        <Link
+          href={`/offres/${offre.identifiant}`}
+          className="outline-none after:absolute after:inset-0 after:content-['']"
+        >
+          {offre.intitule}
+        </Link>
       </h2>
 
       <div className="flex flex-wrap items-center gap-1.5">
