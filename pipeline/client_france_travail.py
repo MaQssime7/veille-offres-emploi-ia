@@ -195,6 +195,7 @@ class ClientFranceTravail:
         jusqua: datetime,
         mots_cles: str | None = None,
         code_rome: str | None = None,
+        type_contrat: str | None = None,
     ) -> list[dict[str, Any]]:
         """Toutes les offres d'un critère, pagination comprise.
 
@@ -205,6 +206,12 @@ class ClientFranceTravail:
 
         `minCreationDate` et `maxCreationDate` sont **indissociables** : fournir
         l'une sans l'autre renvoie une HTTP 400.
+
+        `type_contrat` filtre **côté serveur** : les offres écartées ne sont pas
+        transférées, donc elles ne comptent ni dans la pagination ni dans le
+        total. Vérifié le 28 août 2026 — `motsCles=IA` seul rend 91 offres, avec
+        `typeContrat=CDI` il en rend 55. Le paramètre est laissé optionnel ici :
+        le client ne décide pas de la politique de collecte, il l'applique.
         """
         base: dict[str, str] = {
             "region": region,
@@ -215,6 +222,8 @@ class ClientFranceTravail:
             base["motsCles"] = mots_cles
         if code_rome:
             base["codeROME"] = code_rome
+        if type_contrat:
+            base["typeContrat"] = type_contrat
 
         critere = mots_cles or code_rome or "(aucun)"
         offres: list[dict[str, Any]] = []

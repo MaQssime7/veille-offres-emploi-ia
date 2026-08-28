@@ -88,11 +88,20 @@ def collecter_offres(
     plusieurs mots-clés et sur son code ROME. Sans ce dictionnaire, on
     présenterait la même offre cinq fois à la base.
 
-    Les deux filets sont complémentaires et ce n'est pas un doublon :
-      · les mots-clés attrapent ce que France Travail a étiqueté « IA » ;
-      · les codes ROME attrapent les annonces dont l'intitulé ne dit rien mais
-        dont la description parle d'IA — la recherche par mots-clés N'INDEXE PAS
-        la description (mesuré le 21 août 2026), le modèle, lui, la lira.
+    ⚠️ Le commentaire précédent justifiait ici les codes ROME comme le filet qui
+    rattrape « les annonces dont la description parle d'IA, la recherche par
+    mots-clés n'indexant pas la description ». Le raisonnement était juste, la
+    mesure l'a démenti deux fois — les six codes ont été retirés le 26 août
+    (445 offres nettes par mois, aucune au-dessus de 30 sur 50 notées), et le
+    28 août on a établi que `motsCles` ne fait pas de correspondance textuelle
+    du tout : sur 40 offres rendues par « intelligence artificielle », 26 ne
+    contiennent le terme **nulle part** dans la réponse de l'API. Le moteur
+    élargit au domaine. La boucle sur les codes ROME reste, `codes_rome.txt`
+    est vide et valide — mais ne pas la re-justifier par la description.
+
+    Le filtre de contrat est appliqué à **toutes** les recherches, mots-clés et
+    codes ROME confondus : un filtre posé sur une seule des deux voies laisserait
+    entrer par l'autre exactement ce qu'on cherche à écarter.
     """
     offres: dict[str, dict[str, Any]] = {}
     sans_identifiant = 0
@@ -111,16 +120,36 @@ def collecter_offres(
                 # compteur suffit à savoir que le cas s'est produit.
                 sans_identifiant += 1
 
+    # Tracé à CHAQUE exécution, dans les deux sens, et pas seulement documenté.
+    # Un filtre qui écarte 21 % des offres sans empreinte au journal se relit
+    # comme « France Travail n'a rien publié cette nuit ». Et journaliser
+    # seulement quand le filtre est actif serait aussi trompeur à l'envers : une
+    # nuit sans filtre ressemblerait alors trait pour trait à une nuit d'avant le
+    # 28 août, et comparer deux exécutions supposerait de savoir quel commit
+    # tournait. Deux nuits doivent se décrire elles-mêmes.
+    if configuration.TYPE_CONTRAT:
+        _journal.info(
+            "Filtre de contrat actif : seules les offres « %s » sont demandées. "
+            "Les autres ne seront pas collectées, et ne pourront pas l'être plus tard.",
+            configuration.TYPE_CONTRAT,
+        )
+    else:
+        _journal.info(
+            "Filtre de contrat DÉSACTIVÉ : toutes natures de contrat sont collectées."
+        )
+
     for mot_cle in config.mots_cles:
         ajouter(client.rechercher(
             region=configuration.REGION_ILE_DE_FRANCE,
             depuis=depuis, jusqua=jusqua, mots_cles=mot_cle,
+            type_contrat=configuration.TYPE_CONTRAT,
         ))
 
     for code_rome in config.codes_rome:
         ajouter(client.rechercher(
             region=configuration.REGION_ILE_DE_FRANCE,
             depuis=depuis, jusqua=jusqua, code_rome=code_rome,
+            type_contrat=configuration.TYPE_CONTRAT,
         ))
 
     if sans_identifiant:

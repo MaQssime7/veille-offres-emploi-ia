@@ -49,6 +49,60 @@ RECOUVREMENT_HEURES = 1
 # la pagination de France Travail plafonne à ~1150 offres par recherche.
 FENETRE_MAXIMALE_JOURS = 30
 
+# Seul le CDI est collecté. Décidé par Maxime le 28 août 2026, après mesure du
+# coût : il ne regarde pas les autres contrats, donc les noter est une dépense
+# pure (~0,6 centime l'offre).
+#
+# ⚠️ CE FILTRE EST IRRÉVERSIBLE POUR LE PASSÉ, et c'est le seul point qui compte
+# ici. France Travail dépublie ses annonces : une offre écartée aujourd'hui
+# n'existera plus le jour où on la voudrait. Le rendre à `None` rouvrira la
+# collecte pour l'avenir, jamais pour les semaines écoulées. C'est le même
+# raisonnement que « la base ne s'efface pas » — sauf qu'ici la perte est
+# silencieuse, personne ne voit ce qui n'a pas été collecté.
+#
+# ⚠️ **Deux pourcentages circulent, avec deux dénominateurs — ne pas les
+# confondre.** Sur ce que la COLLECTE écarte : **21 %** (39 CDD dont 27
+# alternances, 16 intérims, 3 professions libérales, sur 30 jours). Sur
+# l'échantillon des 123 offres NOTÉES : **31 %**. Le second est plus élevé
+# parce que les offres notées ne sont pas un tirage représentatif de la base.
+# Le chiffre qui décide de rouvrir ou non le filtre est le premier.
+#
+# Ce qu'il coûte, sur les 123 offres notées au 28 août : 11 des 20 meilleures
+# offres perdues — dont 7 alternances et 4 vraies offres, dont un CDD Institut
+# Curie noté 75. Maxime a vu ce chiffre et a confirmé : il ne prend que du CDI,
+# donc ces offres sont du bruit pour lui.
+#
+# ⚠️ Ne pas remplacer par un filtre après réception : le but est justement de
+# ne pas les faire entrer. Et `type_contrat` est renseigné sur 560 offres sur
+# 560 (vérifié le 28 août), donc aucune offre ne disparaît faute de valeur.
+#
+# ⚠️ **Le filtre n'écarte les alternances que PAR ACCIDENT — ne pas s'y fier.**
+# Aujourd'hui les 34 alternances de la base sont toutes typées CDD ou MIS, donc
+# aucune ne passe. Mais rien ne le garantit : un contrat de professionnalisation
+# peut être conclu en CDI, et le premier qui arrive passera le filtre. Si écarter
+# l'alternance devient un besoin en soi, le levier direct est la colonne
+# `alternance` — un booléen déjà extrait à la collecte, renseigné partout —
+# et non un effet de bord du type de contrat.
+#
+# `None` désactive le filtre — et c'est le SEUL moyen : la chaîne vide est
+# refusée au démarrage par `_valider_type_contrat()`, parce qu'elle
+# désactiverait le filtre sans laisser de trace au journal.
+# Plusieurs valeurs s'écrivent séparées par une virgule (`"CDI,CDD"`).
+#
+# ⚠️ **SENSIBLE À LA CASSE, et c'est sans danger** — vérifié le 28 août en
+# violant la contrainte exprès. `"cdi"`, `"Cdi"`, `"CDI "` (espace final) et
+# `"CDIX"` renvoient tous **HTTP 400 « Valeur du paramètre typeContrat
+# incorrecte »**, ce qui lève `ErreurFranceTravail`, referme l'exécution en
+# `echec` et rend le code de sortie 1 : le job GitHub Actions rougit.
+# Le scénario redouté — une faute de frappe qui ferait rendre **zéro offre** en
+# silence, donc une collecte « réussie » vide chaque nuit sans une seule erreur —
+# **ne peut pas se produire**. C'est le seul point qu'il fallait vérifier ici.
+# `_valider_type_contrat()` avance quand même l'erreur au démarrage, pour que le
+# motif vienne du projet et non d'un message d'API après le premier appel.
+TYPES_CONTRAT_CONNUS = frozenset({"CDI", "CDD", "MIS", "LIB"})
+
+TYPE_CONTRAT = "CDI"
+
 
 class ConfigurationIncomplete(RuntimeError):
     """Un secret ou un fichier de critères manque. Rien ne peut démarrer."""
@@ -144,9 +198,45 @@ def charger_notation() -> ConfigNotation:
     )
 
 
+def _valider_type_contrat() -> None:
+    """Refuse une valeur de `TYPE_CONTRAT` que France Travail rejetterait.
+
+    ⚠️ Ce contrôle n'existe pas pour éviter une panne — il n'y en a pas : une
+    valeur invalide fait répondre HTTP 400 à l'API, ce qui referme l'exécution
+    en `echec` et fait rougir le job (vérifié le 28 août en la cassant exprès).
+    Il existe pour tenir la règle de ce module — **échouer au démarrage, jamais
+    au milieu**. Sans lui, la faute de frappe n'apparaît qu'après le premier
+    appel réseau, dans un message de France Travail plutôt que du projet.
+
+    ⚠️ La chaîne vide est refusée explicitement, et ce n'est pas du zèle : elle
+    est *falsy*, donc elle désactiverait le filtre en silence **et** sauterait
+    la ligne de journal qui annonce son état. Un `""` laissé par une édition à
+    moitié faite rouvrirait la collecte à tous les contrats sans une seule
+    trace. `None` est le seul moyen de désactiver, et il est explicite.
+    """
+    if TYPE_CONTRAT is None:
+        return
+    if not isinstance(TYPE_CONTRAT, str) or not TYPE_CONTRAT.strip():
+        raise ConfigurationIncomplete(
+            "TYPE_CONTRAT est vide ou n'est pas un texte. Pour désactiver le "
+            "filtre de contrat, écrire `None` — jamais une chaîne vide, qui le "
+            "désactiverait sans le dire dans le journal."
+        )
+    inconnus = [v for v in TYPE_CONTRAT.split(",") if v not in TYPES_CONTRAT_CONNUS]
+    if inconnus:
+        raise ConfigurationIncomplete(
+            f"TYPE_CONTRAT contient {inconnus}, que France Travail refuse "
+            f"(HTTP 400). Valeurs acceptées, SENSIBLES À LA CASSE : "
+            f"{sorted(TYPES_CONTRAT_CONNUS)}. Plusieurs se séparent par une "
+            f"virgule, sans espace : « CDI,CDD »."
+        )
+
+
 def charger() -> Config:
     """Assemble la configuration, ou échoue tout de suite avec un motif lisible."""
     load_dotenv()  # sans effet en CI, où les secrets sont déjà dans l'environnement
+
+    _valider_type_contrat()
 
     # ⚠️ Le garde-fou « aucune variable NEXT_PUBLIC_ » N'EST PAS ici, et c'est
     # délibéré : le risque qu'il vise — une valeur publiée dans le code source
