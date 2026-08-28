@@ -2021,3 +2021,179 @@ champ ne se lit que là où il s'affiche.
 `docs/PRD.md` § Données personnelles et `CLAUDE.md` § Sécurité ont été corrigés
 dans le même mouvement : une règle qu'on contourne en silence protège moins
 qu'une règle précise qu'on respecte.
+
+---
+
+## 28 août 2026 — Clôture de la phase 3 : la fiche d'une offre
+
+**12 critères sur 12, tous vérifiés en exécution.** L'écran `/offres/[identifiant]`
+existe, les lignes de la liste y mènent, et la phase 4 est démarrable.
+
+### Ce qui est livré
+
+Un clic sur une offre ouvre sa fiche : entête complet, résumé, les deux notes avec
+leurs justifications, le classement France Travail, la description intégrale
+repliée derrière un bouton, et comment candidater — annonce d'origine, lien de
+candidature directe et nom du contact quand ils existent.
+
+### La décision de mise en page : colonne unique, et le défaut connu est clos
+
+`docs/DESIGN.md` portait depuis le 16 août un « défaut connu, non corrigé » :
+**la colonne gauche de la fiche est creuse**. Son échéance était cette phase.
+
+Tranché : **colonne unique**, et le motif n'est pas esthétique. Deux mesures l'ont
+décidé.
+
+1. **Le défaut était pire que décrit.** Il annonçait « le résumé fait trois
+   lignes » ; mesuré sur les 126 offres notées, le résumé fait **122 caractères en
+   médiane** — une ligne et demie — et il est **absent sur les 434 offres pas
+   encore notées**, puisqu'il est écrit par la notation.
+2. **La colonne de droite n'a rien à porter avant la phase 6.** Elle était prévue
+   pour la fiche d'enrichissement. Deux colonnes aujourd'hui, c'est 404 px de vide
+   sur toute la hauteur.
+
+⚠️ **La question se rouvre en phase 6**, quand il y aura de quoi remplir. Une
+échéance qui se ferme sur « on a mesuré et voici pourquoi » n'est pas la même
+chose qu'une échéance qui expire en silence.
+
+### Aucun composant client, et c'est une décision de sécurité
+
+Cette page lit `contact_nom` — le seul champ nominatif du projet. Tant que toute
+la chaîne reste en composants serveur, **les props ne traversent pas** vers le
+navigateur : seul le rendu traverse. Vérifié sur la page rendue : `charge_brute`,
+`notation_motif_echec`, `execution_id`, `tokens_cumules` et `salaire_annuel_min`
+apparaissent **0 fois**, contre 6 pour un texte réellement affiché.
+
+C'est ce qui a fait écarter l'`Accordion` de shadcn pour déplier la description au
+profit du **`<details>` natif** du navigateur. Le composant aurait été un composant
+client, donc une frontière ouverte, pour un simple ouvert/fermé. Le natif marche
+sans JavaScript, gère le focus clavier tout seul, et Ctrl+F ouvre le bloc.
+**Une bibliothèque qui coûte une frontière de sécurité pour un comportement que le
+navigateur sait déjà faire est un mauvais échange.**
+
+### Le piège technique de la phase : l'injection de paramètre PostgREST
+
+L'identifiant vient de la barre d'adresse. `lib/supabase.ts` portait depuis la
+phase 1 un commentaire disant « quand une valeur venue de l'extérieur entrera ici,
+le garde-fou se pose à ce point de passage unique ». Ce moment est arrivé — par la
+fiche, pas par le filtre de statut de la phase 4 qu'on attendait.
+
+**Mesuré contre la vraie base**, et le mécanisme n'est pas celui qu'on suppose :
+
+| Requête | Ce qui revient |
+|---|---|
+| `select=…&identifiant=eq.X&select=*` | 2 colonnes — l'injection ne fait rien |
+| `identifiant=eq.X&select=*&select=…` | **44 colonnes, `charge_brute` comprise** |
+| `limit=1&limit=5` | 5 lignes |
+| valeur encodée `eq.X%26select%3D%2A` | **0 ligne** |
+
+Sur `select`, PostgREST retient le **premier**. Sur `limit`, le **dernier**. Une
+protection par l'ordre existait donc, mais elle tenait à l'endroit où le `select`
+était écrit dans la chaîne — un appelant plaçant son filtre en premier obtenait
+la table entière.
+
+⚠️ **La leçon dépasse PostgREST : se reposer sur un comportement qu'on n'a pas
+choisi n'est pas une protection, c'est une coïncidence.** D'où deux verrous
+indépendants — le format refusé avant la base, et la valeur encodée au point de
+passage unique.
+
+### L'enquête sur l'échec intermittent, et ce qu'elle a corrigé chez moi
+
+Une ligne « `[base] requête impossible (TypeError) sur executions_veille` » avait
+été relevée. Cinq scénarios de reproduction ont échoué — concurrence, connexions
+refroidies, coupure client, recompilation, rafales — puis **232 rendus
+instrumentés sans un seul échec**, avec un témoin pour prouver que l'instrument
+fonctionnait.
+
+⚠️ **Le taux annoncé au départ était faux** : « une fois sur sept » venait d'une
+division par les seuls `GET /offres`, en oubliant les 25 `GET /offres/xxx` du même
+journal. Le taux réel est **une fois sur ~430 rendus**.
+
+Conclusion : **il n'y a pas de bug**. Un échec réseau isolé vers un service
+distant est un événement normal. Restaient deux vrais défauts, corrigés :
+
+- **Le diagnostic était aveugle.** Le journal ne disait que `erreur.name`, soit
+  « TypeError » — qui chez Node n'est pas une cause mais l'enveloppe de *toute*
+  panne réseau. La cause vit dans `erreur.cause.code`. C'est ce manque qui a coûté
+  cinq scénarios de reproduction.
+- **Aucune reprise n'était tentée.** Les trois requêtes de `/offres` partent
+  ensemble et celle qui lit `executions_veille` porte le marqueur « Nouveau » :
+  une coupure de vingt millisecondes le faisait disparaître de toute la page, en
+  silence.
+
+⚠️ **On ne reprend JAMAIS sur un délai dépassé** : 8 s + 8 s = 16 s, au-delà du
+plafond d'exécution d'une fonction Vercel. Le cas n'est pas théorique — sous
+rafale de douze rendus simultanés, **six requêtes ont réellement dépassé les 8 s**,
+alors qu'un rendu de la liste prend déjà 1,5 s à vide.
+
+### Ce que la revue de code a trouvé, et pourquoi les cinq constats méritaient d'être corrigés
+
+Cinq constats, tous classés mineurs, tous fondés. Deux catégories :
+
+**Deux écrans qui mentaient.** Le titre de l'onglet annonçait « Offre introuvable »
+même quand la panne était « base injoignable » — or le titre survit dans
+l'historique et les favoris. Et dans cette même branche, plus aucun `h1` : c'est
+l'intitulé de l'offre qui le porte, et il n'a justement pas pu être lu.
+
+**Deux pièges qui n'auraient rien signalé.** `offre.langues` est du `jsonb`
+recopié verbatim — un objet au lieu d'une liste, et le `.map()` levait en plein
+rendu alors que `lireOffre()` promet de ne jamais lever. Et `options.egal`
+préfixait ses filtres d'un `&` en supposant un `?` déjà présent : le premier
+appelant qui écrira `interrogerBase("offres", { egal: … })` aurait obtenu
+`offres&identifiant=eq.X`, que PostgREST lit comme un **nom de table** — la table
+entière rendue au lieu d'une ligne, sans erreur.
+
+**Un champ qui voyageait pour rien** : `alternance`, lu mais jamais affiché.
+L'information est portée par `nature_contrat`. C'est la règle que le fichier
+énonce lui-même pour les champs de contact — un champ ne se lit que là où il
+s'affiche.
+
+### Les métadonnées : la présence globale ment
+
+La fiche s'ouvre surtout sur les bonnes offres, pas sur les 560. Croiser les deux
+taux change les décisions : `qualification_libelle` passe de 33 % à **45 %** sur
+les vingt meilleures.
+
+⚠️ **`experience_libelle` est écarté bien qu'il soit renseigné sur 560 offres sur
+560** — il contredit le texte de l'annonce une fois sur deux. L'afficher au même
+rang que le lieu, c'est poser un mensonge dans la colonne des faits. C'est aussi
+l'argument central du projet : si ces métadonnées suffisaient, un modèle n'aurait
+pas besoin de lire le texte.
+
+⚠️ **`tranche_effectif` et le secteur sont écartés aussi, et pas pour la même
+raison** : ils sont la matière de la phase 6. Les afficher maintenant préparerait
+deux valeurs contradictoires sur la même page — « 250 salariés » trouvé par
+l'agent, « 6 à 9 salariés » dit par France Travail — sans aucune règle d'arbitrage.
+
+### Deux décisions de Maxime, prises en séance
+
+**`contact_nom` s'affiche.** Le PRD l'interdisait ; la règle est **amendée, pas
+contournée**. Motif retenu : ces champs sont conservés *parce qu'ils servent à
+candidater*, et les garder sans jamais les afficher revenait à porter le risque
+sans l'usage. ⚠️ Ce qui n'est pas amendé : jamais dans un journal — ceux de GitHub
+Actions sont **publics** — ni dans un export, ni dans la liste.
+
+**L'anglais entre dans le barème d'accessibilité**, avec deux garde-fous que
+Maxime a posés lui-même : on ne pénalise que sur une mention explicite, et la
+pénalité vaut **5 à 10 points, pas 15 à 25**. Simulé sur les 15 offres notées
+concernées : à −20, dix passent sous 10 et la médiane du groupe tombe à **zéro** —
+la note ne distinguerait plus « exige un anglais courant » de « poste de directeur
+avec dix ans d'expérience ».
+
+⚠️ **La leçon vaut au-delà de l'anglais : une pénalité se calibre sur la
+distribution réelle des notes, jamais sur l'échelle nominale 0-100.** L'échelle
+d'accessibilité a une médiane de 12 et un maximum de 65.
+
+Exercé sur deux offres réelles : « Bilingue anglais » → accessibilité 8, avec
+« anglais bilingue explicitement requis » dans la justification. « Anglais
+technique apprécié » → aucun point retiré. ⚠️ Le modèle ne l'a pas mentionné dans
+ce second cas, et il a probablement raison : la justification fait deux phrases,
+et « pile technique totalement étrangère » était le vrai obstacle.
+
+### Ce qui n'a pas pu être vérifié
+
+- **Le test des deux comptes** est sans objet : le produit n'a ni comptes ni rôles.
+  Remplacé par un contrôle de fuite de colonnes, avec témoin.
+- **Les parcours du cron** (déclenchement, secret masqué dans les journaux
+  publics) demandent un déclenchement GitHub Actions et une dépense d'API. Fermés
+  le 27 août, non rejoués ce jour.

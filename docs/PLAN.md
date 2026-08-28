@@ -368,19 +368,19 @@ lien vers l'annonce d'origine.
 
 ### Critères d'acceptation
 
-- [ ] `/offres/190MTLR` affiche l'entête : intitulé, entreprise, lieu, type de contrat, date de publication, salaire
+- [x] `/offres/190MTLR` affiche l'entête : intitulé, entreprise, lieu, type de contrat, date de publication, salaire
       ⚠️ **`190MTLR` est un identifiant d'illustration, il n'existe PAS en base** (vérifié le 28 août). Les identifiants réels ressemblent à `6141371` (7 chiffres) ou `212YDPC` (alphanumérique) — France Travail utilise les deux formes, ce que la validation de format doit accepter.
-- [ ] Un identifiant au mauvais format est **refusé avant d'atteindre la base**, avec une page « offre introuvable »
-- [ ] Un identifiant bien formé mais inexistant donne la même page, pas une erreur serveur
-- [ ] La description intégrale est **conservée et affichable même si l'annonce a été dépubliée** à la source
-- [ ] Le lien externe n'est **pas présenté comme garanti**
-- [ ] « Salaire non précisé » a son traitement propre — cartouche vide et italique
-- [ ] Un intitulé de 150 caractères ne casse pas l'entête à 375 px
-- [ ] Une description de 20 000 caractères se déplie sans faire déborder la page
+- [x] Un identifiant au mauvais format est **refusé avant d'atteindre la base**, avec une page « offre introuvable »
+- [x] Un identifiant bien formé mais inexistant donne la même page, pas une erreur serveur
+- [x] La description intégrale est **conservée et affichable même si l'annonce a été dépubliée** à la source
+- [x] Le lien externe n'est **pas présenté comme garanti**
+- [x] « Salaire non précisé » a son traitement propre — cartouche vide et italique
+- [x] Un intitulé de 150 caractères ne casse pas l'entête à 375 px
+- [x] Une description de 20 000 caractères se déplie sans faire déborder la page
       ⚠️ **20 000 caractères n'existent pas et ne peuvent pas exister** : l'API plafonne la description à **5 000 caractères** (mesuré le 20 août, `docs/API_FRANCE_TRAVAIL.md`), et 5 offres sont exactement à ce plafond en base. Tester avec 5 000 caractères réels plutôt que fabriquer un cas impossible — mais **ne pas coder le plafond en dur** : c'est une limite de l'API d'aujourd'hui, pas un contrat.
-- [ ] La **colonne gauche creuse** identifiée comme défaut connu dans `docs/DESIGN.md` est tranchée sur du contenu réel
-- [ ] **États** : offre sans notes *(non encore notée)* · en chargement · offre introuvable · description très longue
-- [ ] 375 px, mode sombre, focus clavier visible, console propre
+- [x] La **colonne gauche creuse** identifiée comme défaut connu dans `docs/DESIGN.md` est tranchée sur du contenu réel
+- [x] **États** : offre sans notes *(non encore notée)* · en chargement · offre introuvable · description très longue
+- [x] 375 px, mode sombre, focus clavier visible, console propre
 
 ### Bloquée par
 
@@ -592,6 +592,13 @@ tout tiendra toujours.**
 - [x] ✅ **Le cas « intérêt haut / accessibilité basse » existe en vrai** : « Alternant Ingénieur IA Agentique » à **85 / 15**. C'est une alternance — passionnante et hors de portée. C'est le cas qui valide la séparation des deux notes, et il est en base
 - [x] Les valeurs extrêmes de notes. ✅ **0 existe en vrai sur les deux axes** (« Conducteur d'engins Polyvalent » à 0/5, plusieurs offres à 0/0). **100 n'existe sur aucun axe** — maximum réel observé : **85 en intérêt, 55 en accessibilité** sur 97 notées. Vérifié le 26 août par un **rendu forcé à 100/100**, puis retiré : le chiffre reste dans le cadre, la barre ne déborde pas, en bureau comme à 375 px
       ⚠️ **Que le maximum réel plafonne à 85 / 55 n'est pas un défaut d'affichage, c'est une information sur le gisement** — et elle rejoint le chantier des critères de collecte
+- [x] ✅ **Une offre DÉPUBLIÉE à la source — et ce n'est pas un cas rare.** Mesuré le 28 août 2026 en interrogeant France Travail sur les 14 plus anciennes offres : **7 renvoient 404**, soit la moitié des annonces d'il y a un mois. Leurs descriptions sont intactes en base (jusqu'à 5 000 caractères). ⚠️ **Ne jamais reconstruire une fiche depuis l'API au moment de l'affichage** : une offre sur deux serait vide
+- [x] ✅ **Une offre au minimum de champs, en fiche** : `6142391` — sans entreprise, sans salaire, sans qualification, non notée. **197 offres sur 560** n'ont ni entreprise ni salaire : c'est le cas courant, pas le cas limite
+- [x] ✅ **Une offre portant un contact nominatif** : `211VPRC` (« KAISCHOOL - M. AYMEN KHELIFI »). **39 offres sur 560 portent un contact (7 %), dont 21 nomment une personne réelle** — la mesure du 20 août (3 % des offres) se confirme à l'échelle de 560
+- [x] ✅ **Une offre dont le champ `langues` est renseigné** : `212VGRP` (« Anglais exigé »). ⚠️ **Le champ ne capte que 10 des 127 annonces qui exigent l'anglais dans leur texte** — 92 % d'angle mort. Il sert à tester l'affichage, **jamais** à mesurer une exigence linguistique
+- [x] ✅ **Une offre dont la nature de contrat contredit le type** : `211VPRC` — « CDD » côté type, « Contrat apprentissage » côté nature. **7 des 20 meilleures offres sont des alternances** ; c'est le cas qui justifie d'afficher `nature_contrat`
+- [x] ✅ **Les parasites de mise en forme dans les descriptions**, mesurés sur les 560 : **aucun HTML, aucune entité** · `#!#` sur **1 offre** (34 occurrences) · trois sauts de ligne ou plus sur **199 offres (36 %)** · `**gras**` façon markdown sur **39 (7 %)**, laissés visibles à dessein
+- [x] ✅ **Le format d'identifiant**, vérifié sur la base entière : **560 sur 560** en `^[0-9A-Z]{7}$`, deux formes (`6122825` et `212YDPC`), aucune minuscule. ⚠️ L'alphabet observé exclut les voyelles — **ne pas coder cette exclusion**, rien ne la garantit
 - [ ] Une note personnelle de **5 000 caractères**
 - [ ] Une justification de note anormalement longue — le modèle peut déraper, l'écran doit tenir
 - [ ] Une offre **écartée**, avec ses notes et sa justification, consultable
@@ -650,10 +657,16 @@ régressions tant qu'il n'y a pas de tests automatisés.
 - [x] **Vérifier qu'une passe à blanc n'écrit RIEN** — `--sans-ecrire` sur la notation : aucune écriture tentée, ni ligne d'exécution ni note. ⚠️ Ce parcours existe parce que le contraire était vrai jusqu'au 28 août
 - [ ] Retrouver une offre écartée par le seuil, avec sa note et son motif — *dépend du filtre de statut, phase 4*
 
-**Après la phase 3**
+**Après la phase 3** — *déroulés en développement le 28 août 2026, sur les 560 offres réelles*
 
-- [ ] Ouvrir une offre, déplier la description intégrale, la replier
-- [ ] Suivre le lien vers l'annonce d'origine
+- [x] Ouvrir une offre, déplier la description intégrale, la replier — séquence `fermé → ouvert → fermé`, à la souris **et** à la touche Entrée
+- [x] Suivre le lien vers l'annonce d'origine — `candidat.francetravail.fr/…`, avec `rel="noopener noreferrer"`
+- [x] **Ouvrir une offre dont l'annonce a été DÉPUBLIÉE et lire quand même sa description** — sur les 14 plus vieilles offres, **7 renvoient 404 chez France Travail** ; la fiche de `5501494` affiche ses 5 000 caractères intacts. ⚠️ C'est le parcours qui prouve la raison d'être de `charge_brute` et des colonnes extraites : sans elles, la moitié des offres d'il y a un mois seraient illisibles
+- [x] **Taper une adresse d'offre au mauvais format et ne pas atteindre la base** — `/offres/trop-long-identifiant` et `/offres/6122825%26select=*` rendent la page « introuvable ». ⚠️ Ce parcours attrape l'injection de paramètre PostgREST : sans encodage, `&select=*` placé avant le `select` légitime rend **44 colonnes dont `charge_brute`** — mesuré
+- [x] **Retrouver la fiche demandée après être passé par la porte** — `/offres/211VPRC` sans session renvoie sur `/connexion?suite=%2Foffres%2F211VPRC`, et le mot de passe ramène **sur la fiche**, pas sur la liste
+- [x] **Ouvrir une offre au minimum de champs** — sans entreprise, sans salaire, sans qualification, non notée : « Entreprise non communiquée », cartouche creux « Salaire non précisé », « Pas encore notée », aucun bloc d'évaluation, aucune rubrique vide
+- [x] **Vérifier que le nom de contact ne sort QUE sur la fiche** — 2 occurrences sur `/offres/211VPRC`, **0 sur la liste**, avec témoin. ⚠️ C'est le seul champ nominatif du projet : le parcours existe pour que son périmètre reste vérifiable après chaque phase
+- [x] **Couper la base et ouvrir une fiche** — onglet « Offre indisponible » (et non « introuvable »), `h1` présent, message « La base est injoignable ». ⚠️ Ce parcours attrape deux défauts trouvés en revue : un titre qui ment dans l'historique, et un arbre de titres qui démarre au niveau 2
 
 **Après la phase 4**
 

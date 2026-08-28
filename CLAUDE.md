@@ -109,7 +109,7 @@ la même chose finissent en deux tables et deux fonctions.
 
 ## État actuel — 28 août 2026
 
-**Phases 1 et 2 CLOSES. La phase 3 — la fiche d'une offre — est démarrable immédiatement.**
+**Phases 1, 2 et 3 CLOSES. La phase 4 — statuts et notes personnelles — est démarrable immédiatement.**
 Le site est en ligne derrière son mot de passe, la collecte et la notation sont toutes deux sur
 le cron, et `/offres` affiche **les deux notes avec leurs justifications à plat, classées par
 intérêt décroissant**. **560 offres, 126 notées**, 1 échec provoqué volontairement puis rattrapé.
@@ -134,7 +134,7 @@ qui tourne à midi livre un écran vide au moment où Maxime le consulte le mati
 
 | Brique | État |
 |---|---|
-| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte (`/connexion`, `proxy.ts`, session signée), l'écran `/offres` **avec les deux notes**, mode sombre sur la préférence système |
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte (`/connexion`, `proxy.ts`, session signée), l'écran `/offres` **avec les deux notes**, la **fiche `/offres/[identifiant]`**, mode sombre sur la préférence système |
 | Supabase | Région Paris. `executions_veille` et `offres` créées et alimentées. RLS activé, droits vérifiés |
 | Migrations | **5**, toutes appliquées — `supabase/migrations/`. La 5ᵉ ajoute la notation (deux notes, justifications, salaire annualisé, compteurs de tokens, colonne `etape`) |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
@@ -182,9 +182,17 @@ la **limite de 60** du workflow finirait par mordre — vers 4 ou 5 nuits consé
 mord, `notation.py` émet un avertissement, et **les offres laissées ne repassent pas** en mode
 `--derniere-collecte`.
 
-⚠️ **Ne rien « corriger » avant une TROISIÈME nuit** — même consigne qu'en haut de ce fichier,
-et c'est bien la même. Un second cron de secours est de la complexité posée sur une supposition.
-État au 28 août : une nuit sans rien, une nuit à +10 h 32, une nuit en cours d'observation.
+⚠️ **LES TROIS NUITS SONT OBSERVÉES, et le constat est stable — 28 août 2026, 13 h 42 UTC.**
+Sur deux déclenchements planifiés attendus, **un seul est arrivé, avec 10 h 32 de retard** ; celui
+du 28 n'était toujours pas parti **11 h 19 après son heure**. Ce n'est donc pas un incident, c'est
+le régime normal de GitHub Actions sur ce dépôt.
+
+⚠️ **La parade n'est PAS un second cron** — il serait retardé pareil, c'est la file d'attente des
+dépôts publics gratuits qui décale, pas l'horaire. La seule parade efficace est un **déclencheur
+externe appelant l'API GitHub**, avec un jeton restreint au seul droit de lancer un workflow —
+c'est-à-dire **exactement le mécanisme prévu au critère d'acceptation de la phase 6** pour le
+bouton « Enrichir ». Le construire avant, c'est le construire deux fois.
+✅ **Rustine disponible en attendant** : `gh workflow run` à la main le matin.
 
 ⚠️ **L'écran est l'instrument de mesure des critères de collecte, et c'est pour ça qu'il passait
 en premier.** Les justifications à plat rendent lisible d'un coup d'œil ce qu'un mot-clé ramène :
@@ -351,7 +359,7 @@ décide plus rien.** Ne pas la rouvrir « pour voir ».
 | Largeur contre barre latérale | Les 1000 px figés ne laissent pas la place aux 208 px de filtres prévus en phase 4 — à trancher là-bas (`docs/DESIGN.md`) |
 | En-tête de `/offres` | Ne plaît pas à Maxime. Reporté **après la phase 4**, quand les filtres y auront pris place |
 
-⚠️ **Six règles opposables, qui ne se déduisent d'aucun fichier :**
+⚠️ **Huit règles opposables, qui ne se déduisent d'aucun fichier :**
 
 1. **La page d'accueil `/` est une page de contrôle temporaire** posée par `/installe` — pas un
    écran du produit. Ne pas construire dessus. ⚠️ Elle vit dans `app/(site)/page.tsx`, un
@@ -375,13 +383,25 @@ décide plus rien.** Ne pas la rouvrir « pour voir ».
    C'est la parade concrète à la règle « ne jamais faire entrer un secret dans la
    conversation » : la passe visuelle n'a plus besoin de connaître le vrai mot de passe.
 6. ⚠️ **Ne jamais passer l'objet `offre` entier à un composant client.** Aujourd'hui toute la
-   chaîne de `/offres` est en composants serveur : leurs props ne traversent pas la frontière,
-   et c'est **mesuré** — `notation_motif_echec`, `execution_id` et `salaire_annuel_min`
+   chaîne de `/offres` **et de `/offres/[identifiant]`** est en composants serveur : leurs props
+   ne traversent pas la frontière, et c'est **mesuré** — `notation_motif_echec`, `execution_id` et `salaire_annuel_min`
    apparaissent **0 fois** dans le document reçu par le navigateur, contre 194 fois pour un
    texte réellement affiché. **La phase 4 casse cette propriété** en posant des boutons de
    statut, donc des composants clients. Leur passer `offre` enverrait **toutes** les colonnes
    lues dans le navigateur — le message d'erreur technique, et surtout la note personnelle le
    jour où elle existera. Leur passer les champs dont ils ont besoin, un par un.
+
+7. ⚠️ **`options.egal` est la SEULE façon de faire entrer une valeur extérieure dans une
+   requête** (`interface/lib/supabase.ts`). Elle encode ; le `chemin`, lui, ne doit porter que
+   des constantes du code. **Mesuré le 28 août** : sans encodage, `identifiant=eq.X&select=*`
+   placé *avant* le `select` légitime rend **44 colonnes dont `charge_brute`** — PostgREST
+   retient le **premier** `select` mais le **dernier** `limit`. Une protection par l'ordre des
+   paramètres existe donc, et elle est une **coïncidence**, pas une garantie.
+8. ⚠️ **La fiche d'offre est en COLONNE UNIQUE, et la question se rouvre en phase 6.** Le
+   `DESIGN.md` prévoyait deux colonnes, la droite portant l'enrichissement — qui n'existe pas
+   avant la phase 6. Mesuré le 28 août : le résumé fait **122 caractères en médiane** (et non
+   trois lignes) et il est **absent des 434 offres non notées**. Ne pas repasser en deux
+   colonnes tant qu'il n'y a rien à mettre à droite.
 
 ⚠️ **Un défaut connu, laissé ouvert faute de correctif propre** : l'écriture des offres se fait
 par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de transaction. Si un lot
