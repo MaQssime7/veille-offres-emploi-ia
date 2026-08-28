@@ -32,6 +32,11 @@ quelque chose qui marche.
 Ce qu'il n'a pas : des années d'expérience, une thèse, une spécialisation en
 recherche, une expertise d'infrastructure à grande échelle.
 
+Anglais : niveau limité. Il lit de la documentation technique en anglais sans
+difficulté, mais ne tient pas une réunion ni un échange client en anglais. Une
+annonce qui exige un anglais courant, professionnel ou bilingue le met en
+difficulté réelle — ce n'est pas une réserve de modestie.
+
 Recherche active, exclusivement en Île-de-France.
 
 ## Les postes visés
@@ -125,6 +130,24 @@ Trois facteurs ajustent ensuite, de quelques points chacun :
    Bac+5 ingénieur correspond.
 5. Le type de contrat. CDI et CDD correspondent. Une alternance ou un stage ne
    correspond plus à son statut : accessibilité basse, car il serait écarté.
+6. L'exigence d'anglais — À NE PÉNALISER QUE SI ELLE EST ÉCRITE NOIR SUR BLANC.
+
+   Cherche-la dans le TEXTE de l'annonce, jamais dans les métadonnées : le champ
+   « langues » de France Travail est vide sur 117 des 127 annonces qui exigent
+   l'anglais.
+
+   - Exigence explicite ET concrète — « anglais courant », « bilingue anglais »,
+     « C1 », « anglais professionnel indispensable », « fluent English », ou une
+     annonce rédigée en anglais : retire 5 à 10 points, et DIS-LE dans la
+     justification.
+   - Tout le reste — « anglais technique », « anglais lu », « bon niveau
+     apprécié », « environnement international », un intitulé ou un nom
+     d'entreprise en anglais, une pile technique anglophone, ou aucune mention :
+     NE RETIRE AUCUN POINT. Si l'annonce évoque l'anglais sans l'exiger
+     clairement, mentionne-le dans la justification et LAISSE LA NOTE INTACTE.
+
+   Ne déduis jamais une exigence linguistique d'un contexte. Un client
+   international ou une documentation en anglais ne sont pas une exigence.
 
 Repères — ils valent POUR UNE PILE TECHNIQUE FAMILIÈRE. Quand la pile est
 étrangère au candidat, retire 30 à 50 points au repère, quelle que soit
@@ -138,6 +161,30 @@ l'expérience demandée :
 - 10-29 : plus de cinq ans, intitulé franchement sénior, doctorat souhaité.
 - 0-9 : impossible — dix ans d'expérience, poste de direction, ou contrat qui ne
   lui correspond pas (alternance, stage).
+
+// ⚠️ POURQUOI LA PÉNALITÉ D'ANGLAIS EST FAIBLE — mesuré le 28 août 2026, et ce
+// n'est pas de la clémence. L'échelle réelle d'accessibilité est ÉCRASÉE EN BAS :
+// sur 126 offres notées, médiane 12, moyenne 15, maximum 65, et seulement quatre
+// offres au-dessus de 50. Simulé sur les 15 offres notées qui portent une
+// exigence explicite :
+//
+//   pénalité   offres <10   offres à 0   médiane du groupe
+//   -25        12/15        10           0
+//   -20        10/15         8           0
+//   -10         5/15         3           10
+//    -5         3/15         2           15
+//
+// À -20, la médiane du groupe tombe à ZÉRO : la note ne distinguerait plus
+// « exige un anglais courant » de « poste de directeur avec dix ans
+// d'expérience ». Et l'offre à 85 d'intérêt / 55 d'accessibilité — l'une des
+// quatre meilleures de la base, mention « C1 » — quitterait le haut du
+// classement pour une raison qui n'est pas la principale.
+//
+// LA LEÇON, qui vaut au-delà de l'anglais : une pénalité se calibre sur la
+// DISTRIBUTION RÉELLE des notes, jamais sur l'échelle nominale 0-100. Le même
+// écrasement en bas a déjà été constaté sur les barres de l'écran
+// (docs/DESIGN.md § Les deux notes). Avant d'ajouter un facteur qui retire des
+// points, mesurer ce qu'il reste après.
 
 ## Comment écrire les justifications
 
