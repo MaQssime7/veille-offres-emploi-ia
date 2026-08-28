@@ -109,10 +109,15 @@ la même chose finissent en deux tables et deux fonctions.
 
 ## État actuel — 28 août 2026
 
-**Phase 1 close. Phase 2 : il ne reste QU'UNE vérification, et elle est gratuite si on attend.** Le site est
-en ligne derrière son mot de passe, la collecte et la notation sont toutes deux sur le cron, et
-`/offres` affiche **les deux notes avec leurs justifications à plat, classées par intérêt
-décroissant**. **560 offres, 126 notées**, 1 échec provoqué volontairement puis rattrapé.
+**Phases 1 et 2 CLOSES. La phase 3 — la fiche d'une offre — est démarrable immédiatement.**
+Le site est en ligne derrière son mot de passe, la collecte et la notation sont toutes deux sur
+le cron, et `/offres` affiche **les deux notes avec leurs justifications à plat, classées par
+intérêt décroissant**. **560 offres, 126 notées**, 1 échec provoqué volontairement puis rattrapé.
+
+⚠️ **La phase 2 est close à 14 critères sur 15, et le quinzième est REPORTÉ, pas oublié** —
+l'état de l'écran à 200 offres notées, vérifié en simulation seulement. Reporté par décision de
+Maxime le 28 août, pour un motif qui n'est pas l'économie : voir le tableau plus bas. **Ne pas
+rouvrir la phase 2 pour ça, et ne pas le traiter comme une dette bloquante.**
 Les critères de collecte ont été refondus le 26 août, **remesurés à fond le 28** (50 termes),
 et **seul le CDI est collecté depuis le 28**.
 
@@ -137,8 +142,8 @@ qui tourne à midi livre un écran vide au moment où Maxime le consulte le mati
 | Modules | `collecte.py` · `notation.py` (`--limite`, `--modele`, `--effort`, `--lot`, `--rome`, `--collecte`, **`--derniere-collecte`**, `--au-hasard`, `--renoter`, `--sans-ecrire`, `--sans-appeler`) · `salaire.py` · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
 
-**Reste à faire en phase 2 — UNE vérification, aucune construction.** Deux des trois ont été fermées les 27 et 28 août. Tout le code est
-écrit, livré et commité ; ce qui suit ne sont que des chemins jamais parcourus en vrai.
+**Le seul reliquat de la phase 2, reporté volontairement.** Les deux autres vérifications ont été
+fermées les 27 et 28 août ; celle-ci attend le temps, pas de l'argent.
 
 | Ce qui reste | Comment le fermer | Coût |
 |---|---|---|

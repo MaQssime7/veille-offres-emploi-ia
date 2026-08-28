@@ -369,6 +369,7 @@ lien vers l'annonce d'origine.
 ### Critères d'acceptation
 
 - [ ] `/offres/190MTLR` affiche l'entête : intitulé, entreprise, lieu, type de contrat, date de publication, salaire
+      ⚠️ **`190MTLR` est un identifiant d'illustration, il n'existe PAS en base** (vérifié le 28 août). Les identifiants réels ressemblent à `6141371` (7 chiffres) ou `212YDPC` (alphanumérique) — France Travail utilise les deux formes, ce que la validation de format doit accepter.
 - [ ] Un identifiant au mauvais format est **refusé avant d'atteindre la base**, avec une page « offre introuvable »
 - [ ] Un identifiant bien formé mais inexistant donne la même page, pas une erreur serveur
 - [ ] La description intégrale est **conservée et affichable même si l'annonce a été dépubliée** à la source
@@ -376,6 +377,7 @@ lien vers l'annonce d'origine.
 - [ ] « Salaire non précisé » a son traitement propre — cartouche vide et italique
 - [ ] Un intitulé de 150 caractères ne casse pas l'entête à 375 px
 - [ ] Une description de 20 000 caractères se déplie sans faire déborder la page
+      ⚠️ **20 000 caractères n'existent pas et ne peuvent pas exister** : l'API plafonne la description à **5 000 caractères** (mesuré le 20 août, `docs/API_FRANCE_TRAVAIL.md`), et 5 offres sont exactement à ce plafond en base. Tester avec 5 000 caractères réels plutôt que fabriquer un cas impossible — mais **ne pas coder le plafond en dur** : c'est une limite de l'API d'aujourd'hui, pas un contrat.
 - [ ] La **colonne gauche creuse** identifiée comme défaut connu dans `docs/DESIGN.md` est tranchée sur du contenu réel
 - [ ] **États** : offre sans notes *(non encore notée)* · en chargement · offre introuvable · description très longue
 - [ ] 375 px, mode sombre, focus clavier visible, console propre
