@@ -56,6 +56,38 @@ espacer ses appels — une boucle de pagination sans temporisation le dépassera
 | `motsCles` | plusieurs recherches, union déduplique | Sans mots-clés, l'Île-de-France seule renvoie **68 856 offres**, très au-dessus du plafond de pagination |
 | `minCreationDate` / `maxCreationDate` | ISO 8601 `AAAA-MM-JJTHH:MM:SSZ` | **Les deux sont indissociables.** Fournir `minCreationDate` seul renvoie une HTTP 400 : « les paramètres sont dépendants et doivent être renseignés ensemble » |
 | `range` | `0-149` maximum | Voir pagination |
+| `typeContrat` | `CDI` **depuis le 28 août 2026** | Filtre **côté serveur** : les offres écartées ne sont pas transférées et ne comptent ni dans la pagination ni dans le total. Vérifié — `motsCles=IA` rend 91 offres, avec `typeContrat=CDI` il en rend 55. Plusieurs valeurs séparées par une virgule sont acceptées (`CDI,CDD` → 81). Valeurs observées en base : `CDI`, `CDD`, `MIS` (intérim), `LIB` (profession libérale) |
+
+⚠️ **`typeContrat` est sûr à filtrer, contrairement aux autres métadonnées.** Le
+champ est renseigné sur **560 offres sur 560** (vérifié le 28 août) : aucune
+offre ne disparaît faute de valeur. C'est l'exception — voir plus bas pourquoi
+`qualification` et `experienceLibelle` ne peuvent PAS servir de filtre.
+
+⚠️ **Mais le filtre est irréversible pour le passé.** France Travail dépublie
+ses annonces : une offre écartée aujourd'hui n'existera plus le jour où on la
+voudrait. Rendre `TYPE_CONTRAT` à `None` rouvre la collecte pour l'avenir,
+jamais pour les semaines écoulées — et la perte est **silencieuse**, rien dans
+la base ne témoigne de ce qui n'a pas été collecté.
+
+### Les métadonnées ne peuvent pas servir de filtre — sauf `typeContrat`
+
+Mesuré le 28 août 2026 sur les 123 offres notées, en cherchant un filtre
+structurel qui remplacerait les mots-clés :
+
+| Qualification | Offres notées | Note d'intérêt moyenne | ≥ 25 |
+|---|---|---|---|
+| Cadre | 20 | 24,0 | 6 |
+| *(non renseignée)* | **86** | 10,0 | **11** |
+| Technicien | 8 | 18,4 | 2 |
+| Agent de maîtrise | 4 | 17,8 | 1 |
+| Employé qualifié | 5 | 6,6 | 0 |
+
+**Le champ est vide sur 86 offres sur 123, et 11 des 20 meilleures sont dans ce
+trou.** Filtrer sur « Cadre » perdrait 70 % des bonnes offres.
+
+C'est le même défaut que `experienceLibelle`, faux une fois sur deux. **Et c'est
+l'argument central du projet** : les métadonnées de France Travail sont trop
+lacunaires pour trier, d'où un modèle qui lit le texte de l'annonce.
 
 **Volumes observés le 20 août 2026** (région 11) — ce sont les ordres de grandeur
 qui dimensionnent la collecte quotidienne :
@@ -81,10 +113,49 @@ Test : prendre un mot dans le corps d'une annonce, le chercher, vérifier que
 l'annonce remonte. **Échec 4 fois sur 4.** « polytechnique », présent noir sur
 blanc dans une description, renvoie **zéro offre**.
 
-La recherche porte sur **l'intitulé, le libellé ROME, l'appellation, et le champ
-`competences`** — des phrases normalisées par France Travail du type
-« Documenter les processus et les architectures d'IA », « Python, PyTorch,
-Scikit-Learn ».
+⚠️ **CORRIGÉ LE 28 AOÛT 2026 — la phrase qui suivait était fausse.** Elle
+affirmait : « la recherche porte sur l'intitulé, le libellé ROME, l'appellation
+et le champ `competences` ». C'est une description de **correspondance
+textuelle**, et le moteur n'en fait pas.
+
+Mesure : sur les 40 offres rendues par `motsCles=intelligence artificielle` que
+personne d'autre ne ramène, **26 ne contiennent ni « intelligence », ni
+« artificiel », ni « IA » nulle part** — pas dans l'intitulé, pas dans le libellé
+ROME, pas dans l'appellation, pas dans les compétences, pas dans la description,
+et pas ailleurs dans la charge brute complète. Exemples : « Développeur
+Mulesoft », « Ingénieur Logiciel Embarqué », « Comptable support logiciel ».
+
+Et le moteur n'est pas non plus **compositionnel** :
+
+| Recherche (30 jours, région 11) | Offres |
+|---|---|
+| `intelligence artificielle` | 168 |
+| `intelligence` seul | 64 |
+| `artificielle` seul | 43 |
+| union des deux | **64** |
+
+**125 des 168 ne sont ramenées par aucun des deux mots pris isolément.** Ce
+n'est donc ni un ET, ni un OU : l'expression entière déclenche un élargissement
+au *domaine* — ici, l'informatique.
+
+**Ce qu'il faut en retenir, opposable :**
+
+1. **Un terme ramène des offres qui ne le contiennent pas.** Aucun raisonnement
+   du type « ce mot est dans l'intitulé donc l'offre remontera » — ni sa
+   réciproque — n'est fiable.
+2. **Chercher une expression ≠ chercher ses mots.** On ne peut pas prédire ce
+   que ramène `X Y` en mesurant `X` et `Y`.
+3. **Donc un critère se mesure, jamais ne se déduit.** C'est la même règle
+   qu'avant, mais elle repose désormais sur le bon motif : ce n'est pas que
+   l'index est étroit, c'est qu'il est *opaque*.
+4. ⚠️ **Corollaire coûteux** : un terme générique peut ratisser un domaine
+   entier. `agents` rend **2 718 offres** — agent d'accueil, agent de sécurité.
+
+Ce que le paragraphe corrigé disait n'était pas entièrement faux : le libellé
+ROME et l'appellation sont bien atteints. C'est ainsi que `IA` ramène trois
+« Inspecteur » par mois — leur appellation est `Inspecteur(trice) pédago rég,
+inspect académie (IPR-IA)`, ROME K2117. Mais ces champs ne sont qu'**une partie**
+de ce que le moteur regarde, et l'énumération donnait l'illusion d'un contrat.
 
 **Conséquence opposable** : une offre intitulée « Ingénieur études et
 développement », dont l'IA n'apparaît que dans la description, est **invisible à

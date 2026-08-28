@@ -223,11 +223,12 @@ Trois faits ont été **mesurés contre l'API réelle avant d'écrire une ligne*
 deux ont invalidé des hypothèses déjà écrites :
 
 - **La recherche France Travail n'indexe pas la description d'une annonce.** Un mot
-  pris dans le corps d'une offre ne la retrouve pas : la recherche porte sur l'intitulé,
-  le libellé ROME, l'appellation et les compétences. Une offre au titre banal dont l'IA
+  pris dans le corps d'une offre ne la retrouve pas. Une offre au titre banal dont l'IA
   n'apparaît que dans le texte est invisible à **toute** liste de mots-clés. C'est ce fait
   qui justifie de faire *lire* les annonces par un modèle plutôt que de les filtrer sur
-  leurs métadonnées.
+  leurs métadonnées. *(La seconde moitié de ce constat — « la recherche porte sur
+  l'intitulé, le libellé ROME, l'appellation et les compétences » — s'est révélée fausse
+  le 28 août. Voir plus bas.)*
 - **Trois largeurs de collecte ont été chiffrées** avant d'en choisir une : 0,80 $,
   3 $ ou 173 $ par mois selon qu'on ratisse étroit, moyen ou tout l'Île-de-France.
 
@@ -237,8 +238,9 @@ qui a tranché contre le raisonnement :
 
 - **« Le vocabulaire est fermé et français » était faux**, et c'était l'erreur la plus
   coûteuse de la configuration. `AI` en anglais ramène **28 offres nettes par mois** qu'aucun
-  autre critère ne trouvait. `GenAI`, `LLM`, `copilot`, `prompt` et `RAG` ne renvoient plus
-  zéro non plus.
+  autre critère ne trouvait. *(La suite de ce constat — « `GenAI`, `LLM`, `copilot`, `prompt`
+  et `RAG` ne renvoient plus zéro non plus » — n'a pas tenu deux jours : voir plus bas. Un
+  terme qui ramène une offre ne ramène rien, il fait du bruit.)*
 - **Les codes ROME ne rattrapaient pas ce que le lexique ratait.** Le raisonnement était bon —
   un filtre par famille de métier, structurel, indépendant des mots employés. La mesure l'a
   démenti : les six codes apportaient 445 offres nettes par mois pour **zéro offre au-dessus
@@ -248,8 +250,55 @@ qui a tranché contre le raisonnement :
   Intelligence Artificielle » avait la meilleure qualité mesurée de tous les codes, et un
   apport net de **zéro**.
 
-Effet mesuré : le volume tombe de 707 à **294 offres par mois**, la moyenne d'intérêt monte
-de 7,7 à **16,2**, et la part d'offres au-dessus de 50/100 passe de 1 % à **7 %**.
+Le 28 août, une troisième mesure a démenti le fait le plus structurant du projet.
+
+En cherchant pourquoi `intelligence artificielle` ramenait « Développeur Mulesoft » et
+« Comptable support logiciel », j'ai cherché le terme dans la **charge brute complète** de
+chaque offre — la réponse intégrale de l'API, pas seulement les colonnes extraites.
+**26 offres sur 40 ne le contiennent nulle part.** Puis ce test :
+
+| Recherche (30 jours, Île-de-France) | Offres |
+|---|---|
+| `intelligence artificielle` | 168 |
+| `intelligence` seul | 64 |
+| `artificielle` seul | 43 |
+| union des deux | **64** |
+
+**125 des 168 ne sont ramenées par aucun des deux mots pris isolément.** Le moteur ne fait
+ni un ET ni un OU : l'expression entière déclenche un élargissement au *domaine*. Le
+paramètre `motsCles` n'est donc **ni textuel, ni compositionnel** — on ne peut pas prédire
+ce que ramène `X Y` en mesurant `X` et `Y` séparément.
+
+La règle de travail ne change pas — un critère se mesure, jamais ne se déduit — mais son
+motif, si : ce n'est pas que l'index est *étroit*, c'est qu'il est **opaque**. Corollaire
+coûteux vérifié dans la foulée : `agents` rend **2 718 offres** (agent d'accueil, agent de
+sécurité).
+
+Dans le même mouvement, un balayage de **50 termes candidats** a montré que le rappel est
+saturé : tout le lexique IA spécialisé (`consultant IA`, `IA générative`, `RAG`, `copilot`,
+`MLOps`, `multi-agents`…) a un apport net de **zéro**, et le vocabulaire anglais pointu
+(`LLM`, `GPT`, `OpenAI`, `LangChain`, `embeddings`, `NLP`) n'existe pas sur France Travail.
+Un seul terme est entré : `chatbot`, pour une offre par mois.
+
+**Et un piège de méthode, qui vaut plus que ces listes :** l'apport net n'est pas une
+propriété du terme, mais du couple *(terme, configuration)*. En retirant un mot-clé de la
+liste, des termes mesurés à zéro redeviennent utiles — donc toute mesure d'apport net se
+périme dès que la configuration bouge.
+
+- **Aucune métadonnée France Travail ne peut servir de filtre — sauf le type de contrat.**
+  La `qualification` est vide sur 86 des 123 offres notées, et 11 des 20 meilleures sont
+  dans ce trou : filtrer sur « Cadre » perdrait 70 % des bonnes offres. Avec
+  `experienceLibelle`, faux une fois sur deux, ça fait deux champs inexploitables. C'est le
+  même constat que le premier, par un autre chemin : **il faut lire le texte.** Le
+  `typeContrat` fait exception — renseigné sur 560 offres sur 560 — et sert depuis le
+  28 août à ne collecter que des CDI.
+
+Effet mesuré le 26 août : le volume tombe de 707 à **294 offres par mois**, la moyenne
+d'intérêt monte de 7,7 à **16,2**, et la part d'offres au-dessus de 50/100 passe de 1 % à
+**7 %**. Après le tri du 28 août — `deploiement` et `RPA` retirés, `chatbot` ajouté, CDI
+seulement — le volume descend à **208 offres par mois**, pour environ **1,25 $** de notation
+mensuelle. *(La qualité, elle, n'a pas été remesurée depuis le 26 : les 16,2 et les 7 %
+ci-dessus datent de cette configuration-là, sur un échantillon de 15 offres.)*
 
 Le code a ensuite été relu par une revue automatisée qui a trouvé **15 défauts**,
 tous corrigés — dont une fuite de donnée personnelle vers un journal public, et une

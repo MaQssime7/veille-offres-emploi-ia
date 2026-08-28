@@ -127,11 +127,22 @@ API reste donc large mais bornée (mots-clés + zone géographique), et le tri e
 fait par le modèle.
 
 ⚠️ **Corrigé le 21 août 2026 après mesure.** Le raisonnement ci-dessus supposait
-que la requête API pouvait voir la description. **Elle ne le peut pas** : la
-recherche par mots-clés n'indexe que l'intitulé, le libellé ROME et les
-compétences normalisées (voir `docs/API_FRANCE_TRAVAIL.md`). Le tri par le
-modèle ne peut trier que ce que la requête a ramené — et la requête est aveugle
-au texte de l'annonce.
+que la requête API pouvait voir la description. **Elle ne le peut pas.** Le tri
+par le modèle ne peut trier que ce que la requête a ramené — et la requête est
+aveugle au texte de l'annonce.
+
+⚠️ **RE-CORRIGÉ LE 28 AOÛT 2026 : la seconde moitié de cette phrase était
+fausse.** Elle disait que « la recherche par mots-clés n'indexe que l'intitulé,
+le libellé ROME et les compétences normalisées ». C'est une description de
+correspondance textuelle, et le moteur n'en fait pas : sur 40 offres rendues par
+`intelligence artificielle` en propre, **26 ne contiennent le terme nulle part**
+dans la réponse de l'API. Et l'expression ne se décompose pas — `intelligence
+artificielle` rend 168 offres, `intelligence` 64, `artificielle` 43, leur union
+64. Le moteur élargit au *domaine*. Détail et mesures :
+`docs/API_FRANCE_TRAVAIL.md`.
+**Ce que la décision devient** : elle ne change pas, mais son motif oui. On ne
+peut pas prédire ce qu'une requête ramène, donc **un critère se mesure et ne se
+déduit jamais** — parce que l'index est *opaque*, pas parce qu'il est étroit.
 
 **Ce qui a été décidé à la place, le 21 août 2026** : la collecte a **deux
 filets**, et le second existe précisément pour combler ce trou.
@@ -172,6 +183,52 @@ intitulés banals ; collecter **tout** l'Île-de-France (1 925 offres/jour) et
 tout faire lire au modèle coûte **~173 $/mois** et ne rate rien. L'écart de 170 $
 achète une couverture dont la semaine testée n'a montré aucun gain — arbitrage
 validé en séance, révisable si la veille rate visiblement des offres.
+
+### Seul le CDI est collecté — tranché le 28 août 2026
+
+**La décision.** `TYPE_CONTRAT = "CDI"` dans `pipeline/config.py`. Le paramètre
+`typeContrat` de l'API filtre **côté serveur** : les offres d'un autre contrat ne
+sont pas transférées, donc jamais écrites, jamais notées.
+
+**Le motif de Maxime**, dans ses mots : les offres qui ne sont pas des CDI sont
+notées puis jamais regardées, donc c'est une dépense pure.
+
+**Le coût, mesuré et montré AVANT d'agir** — c'est le point qui compte dans cette
+décision, parce qu'il était contre-intuitif :
+
+| Type de contrat | Offres notées | Note d'intérêt moyenne | ≥ 25 |
+|---|---|---|---|
+| CDI | 85 | 11,0 | 9 |
+| **CDD en alternance** | 13 | **31,2** | **7** |
+| CDD hors alternance | 12 | 15,9 | 3 |
+| Intérim | 13 | 4,8 | 1 |
+
+Les CDD notaient **mieux** que les CDI. Le filtre écarte donc **11 des 20
+meilleures offres** trouvées à ce jour. Sept sont des alternances — que Maxime ne
+regarde pas, et qui polluaient le classement. Mais quatre sont de vraies offres,
+dont un **CDD Institut Curie « IA Générative et Systèmes Multi-Agents » noté 75**.
+
+**Deux options lui ont été posées** : filtrer à la *notation* (même économie,
+réversible, l'historique reste complet) ou à la *collecte* (plus radical,
+irréversible). Il a choisi la collecte et maintenu le CDI strict après avoir vu
+les quatre offres perdues. C'est sa recherche d'emploi, et il ne prend que du CDI.
+
+⚠️ **Ce que cette décision engage, et qu'aucune autre du projet n'engageait.**
+France Travail dépublie ses annonces : **une offre non collectée n'existera plus
+le jour où on la voudrait.** Remettre `TYPE_CONTRAT` à `None` rouvrira l'avenir,
+jamais les semaines écoulées. C'est le même raisonnement que « la base ne
+s'efface pas » (§ *Rien n'est supprimé*) — mais **en pire, car la perte est
+invisible** : un effacement laisse un trou constatable, une non-collecte ne
+laisse rien du tout. C'est pourquoi la collecte journalise l'état du filtre à
+chaque exécution, dans les deux sens.
+
+⚠️ **Le filtre n'écarte les alternances que par accident.** Les 34 alternances de
+la base sont aujourd'hui toutes typées CDD ou MIS, mais un contrat de
+professionnalisation peut être conclu en CDI. Si écarter l'alternance devient un
+besoin en soi, le levier est la colonne `alternance`, déjà extraite à la collecte.
+
+**Effet mesuré** : 266 → **208 offres/mois** (22 % écartées), ~1,25 $/mois de
+notation.
 
 ---
 
