@@ -5,7 +5,18 @@ import { CadrePage } from "../_composants/en-tete-page";
  *
  * ⚠️ **Son seul rôle est d'occuper la place**, pour que l'arrivée du contenu ne
  * fasse pas sauter la page. Il reprend donc les hauteurs réelles de la fiche :
- * lien de retour, entête, résumé, notes, renseignements, description.
+ * lien de retour, entête, résumé, notes, renseignements, description, et le
+ * bloc de candidature.
+ *
+ * ⚠️ **Les hauteurs sont mesurées, pas estimées — et l'exactitude est
+ * impossible ici, contrairement à la liste.** Première version : 641 px contre
+ * 938 px pour la fiche réelle, soit un saut de 297 px à l'arrivée, dû pour
+ * l'essentiel au bloc de candidature dessiné trop court. Corrigé et remesuré.
+ * Mais une fiche n'a pas de hauteur fixe : elle dépend de la longueur des deux
+ * justifications, de la présence du résumé, du nombre de rubriques. On vise
+ * donc la fiche **médiane**, pas une égalité parfaite — et à la différence de
+ * la liste, où 200 lignes sautaient d'un coup, l'écart résiduel se produit en
+ * bas de page, hors du champ de lecture.
  *
  * ⚠️ **`animate-pulse` s'arrête sous `prefers-reduced-motion`** grâce à la règle
  * globale de `globals.css`. Une pulsation est une boucle : c'est exactement le
@@ -50,7 +61,14 @@ export default function ChargementFiche() {
 
           <div>
             <div className="mb-3 h-4 w-20 bg-muted" />
-            <div className="h-12 border border-border bg-card" />
+            <div className="h-14 border border-border bg-card" />
+          </div>
+
+          {/* Le bloc de candidature : bouton, ligne de contact, avertissement
+              sur la dépublication. C'est lui qui manquait le plus. */}
+          <div>
+            <div className="mb-3 h-4 w-24 bg-muted" />
+            <div className="h-36 border border-border bg-card" />
           </div>
         </div>
       </div>
