@@ -438,16 +438,30 @@ def executer(
         )
 
     systeme = construire_systeme(charger_criteres())
-    execution_id = stockage.ouvrir_execution(etape="notation")
+
+    # ⚠️ **`--sans-ecrire` n'ouvrait PAS de ligne d'exécution avant le 28 août
+    # 2026 : il en ouvrait une, et c'était un bug.** `ouvrir_execution` et
+    # `fermer_execution` tournaient inconditionnellement, donc une passe à blanc
+    # sur 3 offres déposait en base une ligne `reussite, offres_notees=3` alors
+    # qu'aucune note n'était écrite dans `offres`. Rien ne plantait, rien ne
+    # s'affichait : seul l'historique était faux — celui-là même que l'écran de
+    # suivi d'exploitation lira, et qui « ne se reconstitue pas ».
+    #
+    # `collecte.py` porte la règle en toutes lettres depuis toujours : « Tout
+    # sauf l'écriture doit vouloir dire tout sauf l'écriture ». La notation ne
+    # la tenait pas. Un drapeau dont le nom promet l'inertie doit être inerte,
+    # sinon il est pire que son absence — on s'en sert pour tester sans risque.
+    execution_id = 0 if sans_ecrire else stockage.ouvrir_execution(etape="notation")
 
     try:
         noter = noter_en_lot if en_lot else noter_en_direct
         resultats = noter(client, offres, modele=modele, effort=effort, systeme=systeme)
     except Exception as echec:  # noqa: BLE001 — on referme la trace avant de relancer
-        stockage.fermer_execution(
-            execution_id, issue="echec", modele=modele,
-            motif_echec=f"{type(echec).__name__} : {echec}",
-        )
+        if not sans_ecrire:
+            stockage.fermer_execution(
+                execution_id, issue="echec", modele=modele, etape="notation",
+                motif_echec=f"{type(echec).__name__} : {echec}",
+            )
         _journal.error("Notation interrompue : %s", echec)
         return 1
 
@@ -472,12 +486,18 @@ def executer(
             )
 
     echoues = len(resultats) - notees
-    stockage.fermer_execution(
-        execution_id,
-        issue="reussite" if notees else "echec",
-        motif_echec=None if notees else f"{echoues} offre(s) tentée(s), aucune notée",
-        offres_notees=notees, modele=modele, tokens=total,
-    )
+    if sans_ecrire:
+        _journal.info(
+            "À BLANC : %d offre(s) auraient été notée(s), %d en échec. "
+            "Aucune ligne d'exécution, aucune note écrite.", notees, echoues,
+        )
+    else:
+        stockage.fermer_execution(
+            execution_id,
+            issue="reussite" if notees else "echec",
+            motif_echec=None if notees else f"{echoues} offre(s) tentée(s), aucune notée",
+            offres_notees=notees, modele=modele, tokens=total, etape="notation",
+        )
     _journal.info(
         "%d offre(s) notée(s), %d en échec. Tokens : entrée %d · sortie %d · "
         "cache écrit %d · cache lu %d.",

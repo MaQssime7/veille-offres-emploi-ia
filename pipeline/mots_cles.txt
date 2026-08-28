@@ -73,11 +73,23 @@
 # ⚠️⚠️ ET C'EST ARRIVÉ LE JOUR MÊME. Les mesures ci-dessus ont été prises avec
 # `RPA` et `deploiement` encore dans la liste ; Maxime les a retirés à la main
 # dans la foulée. **Les chiffres « apport net 0 » ci-dessus valent donc pour une
-# configuration qui n'existe plus.** Ce qu'ils garantissent encore : un terme
-# mesuré à 0 ne peut que MONTER quand la liste rétrécit, jamais descendre — donc
-# aucun terme écarté ci-dessus n'a été gardé à tort. Ce qu'ils ne garantissent
-# plus : qu'un terme écarté soit toujours inutile aujourd'hui. À remesurer avant
-# de conclure quoi que ce soit de neuf.
+# configuration qui n'existe plus, et il faut lire la conséquence dans le bon
+# sens.**
+#
+# Un apport net ne peut que MONTER quand la liste rétrécit — ce que la liste ne
+# trouve plus, un autre terme peut désormais le trouver seul. Donc :
+#
+#   · Ce qui reste vrai : aucun terme n'a été écarté sur un chiffre trop élevé.
+#     Les volumes bruts, eux, ne dépendent pas de la configuration.
+#   · **Ce qui devient FAUX : « ces termes sont inutiles ».** Un terme mesuré à
+#     0 avant le retrait peut valoir plus que 0 aujourd'hui. C'est exactement ce
+#     qui a été vérifié — en retirant « intelligence artificielle », `low-code`
+#     et `no-code` passent de 0 à 1.
+#
+# ⚠️ Donc les termes les plus susceptibles d'avoir changé sont **ceux qui
+# touchaient au même gisement que `RPA` et `deploiement`** : `low-code`,
+# `no-code`, `automatisation intelligente`, `workflow`. À remesurer en premier
+# si on rouvre le sujet — pas à traiter comme définitivement écartés.
 #
 # ⚠️ DEUX TERMES RETIRÉS LE 28 AOÛT 2026, avec leur mesure — sans quoi ils
 # reviendraient au flair, ce que ce fichier existe précisément pour empêcher :

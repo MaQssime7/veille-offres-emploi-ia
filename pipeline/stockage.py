@@ -21,6 +21,7 @@ from typing import Any
 
 import requests
 
+from pipeline import config as configuration
 from pipeline.config import (
     AGE_EXECUTION_ORPHELINE_HEURES,
     DELAI_CONNEXION,
@@ -180,9 +181,18 @@ class Stockage:
         offres_recues: int | None = None, offres_nouvelles: int | None = None,
         offres_rejetees: int | None = None, motif_echec: str | None = None,
         offres_notees: int | None = None, modele: str | None = None,
-        tokens: "ConsommationTokens | None" = None,
+        tokens: "ConsommationTokens | None" = None, etape: str = "collecte",
     ) -> None:
         """Complète la ligne d'exécution. `echec` exige toujours un motif.
+
+        ⚠️ **`etape` est passée, pas devinée.** La première version du compte
+        rendu de fermeture inférait l'étape de « quel compteur est renseigné » :
+        `offres_notees is not None` voulait dire notation, sinon collecte. Ça
+        marchait sur les chemins de réussite et échouait précisément là où on a
+        besoin de savoir — un échec survenu avant tout comptage laisse **tous**
+        les compteurs à `None`, donc une collecte plantée et une notation
+        plantée produisaient la même ligne de journal, indistinguables. Or
+        `ouvrir_execution` connaît déjà l'étape : elle n'avait qu'à voyager.
 
         ⚠️ On VÉRIFIE qu'une ligne a bien été modifiée. Un PATCH PostgREST qui
         ne correspond à aucune ligne renvoie 204 — un succès apparent. Sans ce
@@ -226,14 +236,16 @@ class Stockage:
         # rejets, et l'annoncer « None distinctes reçues, None nouvelles » — ce
         # qu'affichait la version précédente — donne l'air d'un compteur cassé
         # là où il n'y a simplement rien à compter. Constaté sur l'exécution #51.
-        if offres_notees is not None:
-            detail = f"{offres_notees} offre(s) notée(s)"
+        if etape == "notation":
+            detail = (f"{offres_notees} offre(s) notée(s)" if offres_notees is not None
+                      else "aucune offre notée")
         elif offres_recues is not None:
             detail = (f"{offres_recues} distincte(s) reçue(s), {offres_nouvelles} "
                       f"nouvelle(s), {offres_rejetees} rejetée(s)")
         else:
             detail = "aucun compteur"
-        _journal.info("Exécution #%d fermée : %s (%s).", execution_id, issue, detail)
+        _journal.info("Exécution #%d (%s) fermée : %s (%s).",
+                      execution_id, etape, issue, detail)
 
     def derniere_execution_reussie(self) -> datetime | None:
         """Date de démarrage de la dernière **collecte** `reussite`, ou None.
@@ -440,6 +452,21 @@ class Stockage:
                 f"&select={self.CHAMPS_A_NOTER}"
                 f"&order=publiee_a.desc"
             )
+        # ⚠️ **Le filtre de contrat s'applique AUSSI ici, et pas seulement à la
+        # collecte.** Depuis le 28 août la collecte ne ramène que des CDI, mais
+        # les 82 offres non-CDI arrivées AVANT ce jour-là sont toujours en base
+        # et toujours sans note : sans cette ligne, un `--limite 100` lancé à la
+        # main les paierait — ~50 centimes pour des offres que le filtre existe
+        # précisément pour écarter. Le cron nocturne était protégé par
+        # `--derniere-collecte`, les lancements manuels ne l'étaient pas.
+        #
+        # ⚠️ Volontairement basé sur la MÊME constante que la collecte : deux
+        # réglages séparés divergeraient, et on repaierait un jour ce qu'on
+        # croit exclure. Mettre `TYPE_CONTRAT` à `None` rouvre les deux
+        # ensemble, ce qui est le comportement attendu.
+        if configuration.TYPE_CONTRAT:
+            valeurs = ",".join(configuration.TYPE_CONTRAT.split(","))
+            filtres += f"&type_contrat=in.({valeurs})"
         if rome is not None:
             filtres += f"&rome_code=eq.{rome}"
         if collecte is not None:

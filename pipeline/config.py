@@ -61,7 +61,7 @@ FENETRE_MAXIMALE_JOURS = 30
 # silencieuse, personne ne voit ce qui n'a pas été collecté.
 #
 # ⚠️ **Deux pourcentages circulent, avec deux dénominateurs — ne pas les
-# confondre.** Sur ce que la COLLECTE écarte : **21 %** (39 CDD dont 27
+# confondre.** Sur ce que la COLLECTE écarte : **22 %** (39 CDD dont 27
 # alternances, 16 intérims, 3 professions libérales, sur 30 jours). Sur
 # l'échantillon des 123 offres NOTÉES : **31 %**. Le second est plus élevé
 # parce que les offres notées ne sont pas un tirage représentatif de la base.
@@ -99,9 +99,42 @@ FENETRE_MAXIMALE_JOURS = 30
 # **ne peut pas se produire**. C'est le seul point qu'il fallait vérifier ici.
 # `_valider_type_contrat()` avance quand même l'erreur au démarrage, pour que le
 # motif vienne du projet et non d'un message d'API après le premier appel.
-TYPES_CONTRAT_CONNUS = frozenset({"CDI", "CDD", "MIS", "LIB"})
+#
+# ⚠️ **CES 12 CODES VIENNENT DU RÉFÉRENTIEL OFFICIEL, PAS DE LA BASE.** La
+# première version de cette liste n'en contenait que 4 — `CDI`, `CDD`, `MIS`,
+# `LIB` — parce qu'elle avait été construite sur les valeurs *observées* dans
+# 560 offres collectées avec nos propres mots-clés. C'est une liste blanche
+# bâtie sur un échantillon, et elle refusait 8 codes que l'API accepte : passer
+# `TYPE_CONTRAT = "CDI,DIN"` (CDI intérimaire, un élargissement naturel) aurait
+# fait échouer la collecte au démarrage, avec un message accusant à tort France
+# Travail de renvoyer une 400. Vérifié le 28 août : `typeContrat=DIN` et
+# `typeContrat=SAI` répondent **HTTP 204**, pas 400.
+#
+# ⚠️ **La leçon dépasse ce cas** : ce qu'un échantillon contient ne dit pas ce
+# qu'un système accepte. Le référentiel est gratuit —
+# `GET /partenaire/offresdemploi/v2/referentiel/typesContrats` — et c'est lui
+# qui fait foi. Le relire si un code manque ici.
+TYPES_CONTRAT_CONNUS = frozenset({
+    "CCE",  # Profession commerciale
+    "CDD",  # Contrat à durée déterminée
+    "CDI",  # Contrat à durée indéterminée
+    "DDI",  # Contrat durée déterminée insertion
+    "DDT",  # CDD Tremplin
+    "DIN",  # CDI Intérimaire
+    "FRA",  # Franchise
+    "LIB",  # Profession libérale
+    "MIS",  # Mission intérimaire
+    "REP",  # Reprise d'entreprise
+    "SAI",  # Contrat travail saisonnier
+    "TTI",  # Contrat travail temporaire insertion
+})
 
-TYPE_CONTRAT = "CDI"
+# ⚠️ L'annotation `str | None` n'est pas décorative : sans elle le type est
+# déduit à `str`, et le `None` documenté juste au-dessus comme seule façon de
+# désactiver le filtre devient une erreur de typage — pendant que les deux
+# branches de `_valider_type_contrat()` qui le traitent passent pour du code
+# mort. Les états réellement supportés doivent se lire dans la déclaration.
+TYPE_CONTRAT: str | None = "CDI"
 
 
 class ConfigurationIncomplete(RuntimeError):

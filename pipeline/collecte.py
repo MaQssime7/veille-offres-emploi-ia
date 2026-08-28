@@ -121,7 +121,7 @@ def collecter_offres(
                 sans_identifiant += 1
 
     # Tracé à CHAQUE exécution, dans les deux sens, et pas seulement documenté.
-    # Un filtre qui écarte 21 % des offres sans empreinte au journal se relit
+    # Un filtre qui écarte 22 % des offres sans empreinte au journal se relit
     # comme « France Travail n'a rien publié cette nuit ». Et journaliser
     # seulement quand le filtre est actif serait aussi trompeur à l'envers : une
     # nuit sans filtre ressemblerait alors trait pour trait à une nuit d'avant le
@@ -227,7 +227,8 @@ def executer(*, depuis_jours: int | None = None, sans_ecrire: bool = False) -> i
 def _fermer_en_echec(stockage: Stockage, execution_id: int, motif: str) -> None:
     """Referme la ligne. Si même ça échoue, on le dit — sans masquer la panne d'origine."""
     try:
-        stockage.fermer_execution(execution_id, issue="echec", motif_echec=motif)
+        stockage.fermer_execution(execution_id, issue="echec", motif_echec=motif,
+                                  etape="collecte")
     except ErreurStockage as echec_fermeture:
         _journal.error(
             "Impossible de refermer l'exécution #%d (%s). Elle restera en_cours "
