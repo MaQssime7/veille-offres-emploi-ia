@@ -33,11 +33,75 @@
 # Donc : des termes COURTS, français OU anglais, et on vérifie ce qu'ils
 # ramènent — volume ET intitulés — avant de les ajouter.
 
+# ⚠️ BALAYAGE DU 28 AOÛT 2026 — 50 termes testés, un seul retenu.
+# Le rappel est SATURÉ : tout le lexique IA spécialisé a un apport net de ZÉRO,
+# c'est-à-dire qu'il ne trouve pas une seule offre que la liste ci-dessous ne
+# trouve déjà. Mesuré sur 30 jours glissants, apport net contre cette liste :
+#
+#   consultant IA 0 · IA générative 0 · générative 0 · intégration IA 0 ·
+#   copilot 0 · RAG 0 · prompt 0 · multi-agents 0 · MLOps 0 · low-code 0 ·
+#   no-code 0 · agentic 0 (les 3 offres sont déjà prises par « agentique »)
+#
+# Et le vocabulaire anglais pointu N'EXISTE PAS sur France Travail — volume brut
+# nul sur 30 jours : LLM · GPT · OpenAI · LangChain · Hugging Face · embeddings ·
+# fine-tuning · NLP · computer vision · deep learning · Azure AI · Palantir ·
+# n8n · Zapier · forward deployed · customer engineer · présales · POC.
+#
+# ⚠️ Ceci CORRIGE la note du 26 août qui voyait « le vocabulaire s'ouvrir »
+# (LLM 1, copilot 2, prompt 1, RAG 1). Deux jours plus tard : LLM 0, copilot 1.
+# Ces valeurs à 1 ou 2 sont du BRUIT STATISTIQUE, pas une tendance. Ne pas
+# construire dessus, et ne pas re-tester ces termes tous les quatre matins.
+#
+# ⚠️ Termes MESURÉS ET ÉCARTÉS le 28 août, à ne pas réintroduire au flair :
+#   · « agents » : 2 718 offres. Agent d'accueil, agent de sécurité, agent
+#     d'entretien. Le piège d'expansion le plus coûteux rencontré jusqu'ici.
+#   · « transformation digitale » : 15 offres nettes, toutes du conseil CTO
+#     Advisory — pas de l'IA.
+#   · « ingénieur solutions » : 10 nettes, toutes des ingénieurs COMMERCIAUX
+#     (solutions d'impression, logistique). Le mot « solutions » trompe.
+#   · « démonstrateur » : 3 nettes, des vendeurs en grand magasin.
+#   · « Make » : 1 nette, un maquilleur. « workflow » : 1 nette, de la
+#     calibration industrielle.
+#   · « AWS » 5, « Databricks » 4, « Dataiku » 1 : du data engineering pur,
+#     écarté par le PRD au même titre que « data scientist ».
+#
+# ⚠️ Et un piège de méthode, qui vaut plus que ces listes : l'apport net n'est
+# pas une propriété du TERME, mais du couple (terme, configuration). Vérifié —
+# en retirant « intelligence artificielle », « low-code » et « no-code » passent
+# de 0 à 1. Tout retrait de cette liste périme les mesures ci-dessus.
+#
+# ⚠️⚠️ ET C'EST ARRIVÉ LE JOUR MÊME. Les mesures ci-dessus ont été prises avec
+# `RPA` et `deploiement` encore dans la liste ; Maxime les a retirés à la main
+# dans la foulée. **Les chiffres « apport net 0 » ci-dessus valent donc pour une
+# configuration qui n'existe plus.** Ce qu'ils garantissent encore : un terme
+# mesuré à 0 ne peut que MONTER quand la liste rétrécit, jamais descendre — donc
+# aucun terme écarté ci-dessus n'a été gardé à tort. Ce qu'ils ne garantissent
+# plus : qu'un terme écarté soit toujours inutile aujourd'hui. À remesurer avant
+# de conclure quoi que ce soit de neuf.
+#
+# ⚠️ DEUX TERMES RETIRÉS LE 28 AOÛT 2026, avec leur mesure — sans quoi ils
+# reviendraient au flair, ce que ce fichier existe précisément pour empêcher :
+#
+#   · « deploiement » — 30 offres nettes/mois, homonymie télécom/BTP. Ramenait
+#     « Conducteur d'engins Polyvalent » (noté 0/100), « Câbleur Électronique
+#     Itinérant », « CHEF D'ÉQUIPE FTTH IDF », « Technicien déploiement Sûreté
+#     Électronique », « PMO Déploiement SAP S4 HANA ». Une seule de ses offres
+#     avait été notée : 0/100. Le mot désigne le déploiement de réseaux et de
+#     chantiers, pas celui d'un modèle.
+#   · « RPA » — 3 offres nettes/mois seulement : « Développeur RPA UIPATH »,
+#     « Consultant RPA UiPath », « RPA/91/EPINAY ». Aucune n'avait été notée,
+#     donc leur qualité n'a jamais été mesurée. Volume marginal.
+#
+# ⚠️ « automatisation » a été mesuré le même jour et GARDÉ : 11 offres nettes,
+# aucune notée à ce jour — QA/tests, DevOps CI/CD, robotique industrielle. Sa
+# qualité reste donc INCONNUE, ce n'est pas la même chose que « bonne ».
+
 intelligence artificielle
 IA
 AI
 GenAI
 agentique
 automatisation
-RPA
-deploiement
+# Ajouté le 28 août 2026 : 1 offre nette par mois — « Ingénieur front office
+# chatbot ». Seul terme retenu sur les 50 balayés ce jour-là.
+chatbot
