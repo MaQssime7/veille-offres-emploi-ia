@@ -45,6 +45,73 @@ export type ResultatBase<T> =
  */
 const DELAI_MS = 8000;
 
+/**
+ * Une seule reprise, et seulement sur une panne réseau.
+ *
+ * ⚠️ **Ce n'est pas une protection contre un bug, c'est l'admission qu'il n'y en
+ * a pas.** Enquête du 28 août 2026 : une requête a échoué en `TypeError` sur
+ * ~430 rendus — 0,2 %. Cinq scénarios de reproduction (concurrence, connexions
+ * refroidies, coupure client, recompilation, rafales) et 232 rendus
+ * instrumentés n'ont jamais rejoué le cas. Un aléa réseau isolé vers un service
+ * distant n'est pas un défaut de code : il n'y a rien à empêcher, seulement
+ * quelque chose à rattraper.
+ *
+ * Ce qu'il coûtait sans reprise : les trois requêtes de `/offres` partent
+ * ensemble, et celle qui lit `executions_veille` porte le marqueur
+ * « Nouveau ». Une coupure de vingt millisecondes le faisait disparaître de
+ * **toute la page**, en silence, jusqu'au prochain rechargement.
+ *
+ * ⚠️ **On ne reprend JAMAIS sur un dépassement de délai**, et c'est le point le
+ * moins évident. Une reprise après 8 s d'attente en ferait 16 : au-delà du
+ * plafond d'exécution d'une fonction Vercel, l'utilisateur récolterait une
+ * erreur de plateforme illisible au lieu de notre écran « base injoignable ».
+ * Mesuré pendant l'enquête : sous rafale de douze rendus simultanés, six
+ * requêtes ont réellement dépassé les 8 s. Le cas n'est pas théorique.
+ *
+ * ⚠️ **On ne reprend pas non plus sur une réponse HTTP en erreur** : une clé
+ * refusée le restera, et une contrainte violée aussi. Rejouer ne ferait que
+ * doubler la facture d'une erreur certaine.
+ */
+const REPRISES = 1;
+
+/**
+ * Le temps laissé avant de réessayer.
+ *
+ * Assez pour que Node ouvre une connexion neuve plutôt que de réutiliser celle
+ * qui vient de casser ; négligeable devant les ~1,5 s que prend déjà le rendu
+ * de la liste.
+ */
+const PAUSE_REPRISE_MS = 150;
+
+const patienter = (ms: number) =>
+  new Promise<void>((resoudre) => setTimeout(resoudre, ms));
+
+/**
+ * Décrit une panne réseau en une ligne lisible dans un journal.
+ *
+ * ⚠️ **`erreur.name` ne suffit pas, et c'est ce qui a coûté une enquête
+ * entière.** Chez Node, `TypeError: fetch failed` n'est pas une cause : c'est
+ * l'enveloppe de **toute** panne réseau — connexion coupée, nom introuvable,
+ * port fermé. La cause réelle est rangée dans `erreur.cause.code`
+ * (`ECONNRESET`, `ENOTFOUND`, `EAI_AGAIN`…). Sans elle, le journal dit
+ * « TypeError » et n'oriente vers rien.
+ *
+ * La durée écoulée est jointe parce qu'elle sépare d'un coup d'œil deux pannes
+ * qui n'ont rien à voir : une rupture de connexion tombe en quelques
+ * millisecondes, un dépassement de délai à 8 000.
+ *
+ * ⚠️ **Rien d'autre n'entre ici.** Ni en-têtes — ils portent la clé secrète —
+ * ni URL complète.
+ */
+function decrireEchec(erreur: unknown, dureeMs: number): string {
+  const e = erreur as {
+    name?: string;
+    cause?: { code?: string };
+  };
+  const code = e?.cause?.code;
+  return `${e?.name ?? "inconnue"}${code ? ` (${code})` : ""} après ${dureeMs} ms`;
+}
+
 class ConfigurationBaseManquante extends Error {}
 
 /** Les deux valeurs sans lesquelles il n'y a rien à interroger. */
@@ -189,18 +256,50 @@ export async function interrogerBase<T>(
     .map(([colonne, valeur]) => `&${colonne}=eq.${encodeURIComponent(valeur)}`)
     .join("");
 
-  let reponse: Response;
-  try {
-    reponse = await fetch(`${configuration.url}/rest/v1/${chemin}${filtres}`, {
-      headers: enTetes,
-      signal: AbortSignal.timeout(DELAI_MS),
-      // Les offres changent une fois par nuit, mais la page est derrière un mot
-      // de passe : rien ici ne doit atterrir dans un cache partagé.
-      cache: "no-store",
-    });
-  } catch (erreur) {
-    const cause = erreur instanceof Error ? erreur.name : "inconnue";
-    console.error(`[base] requête impossible (${cause}) sur ${chemin}`);
+  // ⚠️ **`chemin` est sûr à journaliser par construction** : il ne porte que des
+  // constantes du code. Les valeurs venues de l'extérieur passent par
+  // `options.egal`, qui les encode et les concatène ici, hors du journal.
+  const table = chemin.split("?")[0];
+
+  let reponse: Response | undefined;
+
+  for (let tentative = 0; tentative <= REPRISES; tentative += 1) {
+    const debut = Date.now();
+    try {
+      reponse = await fetch(`${configuration.url}/rest/v1/${chemin}${filtres}`, {
+        headers: enTetes,
+        signal: AbortSignal.timeout(DELAI_MS),
+        // Les offres changent une fois par nuit, mais la page est derrière un
+        // mot de passe : rien ici ne doit atterrir dans un cache partagé.
+        cache: "no-store",
+      });
+      break;
+    } catch (erreur) {
+      const description = decrireEchec(erreur, Date.now() - debut);
+      const parDelaiDepasse = (erreur as { name?: string })?.name === "TimeoutError";
+
+      // Une panne transitoire mérite un second essai ; un délai dépassé, non.
+      if (tentative < REPRISES && !parDelaiDepasse) {
+        // ⚠️ `warn` et non `error` : la requête n'a pas encore échoué. Mais la
+        // ligne est écrite quand même — une reprise silencieuse masquerait une
+        // panne qui deviendrait quotidienne sans que personne ne le voie.
+        console.warn(`[base] ${description} sur ${table} — seconde tentative`);
+        await patienter(PAUSE_REPRISE_MS);
+        continue;
+      }
+
+      console.error(`[base] requête impossible — ${description} sur ${chemin}`);
+      return {
+        ok: false,
+        motif: "injoignable",
+        explication: "La base n'a pas répondu.",
+      };
+    }
+  }
+
+  // La boucle sort soit par `break` avec une réponse, soit par `return`.
+  // TypeScript ne le déduit pas seul ; ce garde-fou ne se déclenche jamais.
+  if (!reponse) {
     return {
       ok: false,
       motif: "injoignable",
