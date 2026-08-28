@@ -222,10 +222,18 @@ class Stockage:
                 f"fermeture de l'exécution #{execution_id} : aucune ligne modifiée. "
                 f"La ligne n'existe plus — la trace de cette exécution est perdue."
             )
-        _journal.info(
-            "Exécution #%d fermée : %s (%s distinctes reçues, %s nouvelles, %s rejetées).",
-            execution_id, issue, offres_recues, offres_nouvelles, offres_rejetees,
-        )
+        # Le compte rendu suit l'étape : une notation n'a ni offres reçues ni
+        # rejets, et l'annoncer « None distinctes reçues, None nouvelles » — ce
+        # qu'affichait la version précédente — donne l'air d'un compteur cassé
+        # là où il n'y a simplement rien à compter. Constaté sur l'exécution #51.
+        if offres_notees is not None:
+            detail = f"{offres_notees} offre(s) notée(s)"
+        elif offres_recues is not None:
+            detail = (f"{offres_recues} distincte(s) reçue(s), {offres_nouvelles} "
+                      f"nouvelle(s), {offres_rejetees} rejetée(s)")
+        else:
+            detail = "aucun compteur"
+        _journal.info("Exécution #%d fermée : %s (%s).", execution_id, issue, detail)
 
     def derniere_execution_reussie(self) -> datetime | None:
         """Date de démarrage de la dernière **collecte** `reussite`, ou None.
