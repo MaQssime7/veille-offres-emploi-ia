@@ -109,16 +109,51 @@ export default function ChargementOffres() {
            l'oublier — c'est exactement ce qu'on attend d'un commentaire.
 
            ⚠️ **Les largeurs imitent les libellés réels** (« À traiter »,
-           « Candidaté », « Écarté », « Toutes ») plutôt que d'être égales :
-           quatre rectangles identiques annonceraient une barre qui n'arrive
-           jamais. */
+           « Nouveau », « Candidaté », « Écarté », « Toutes ») plutôt que d'être
+           égales : cinq rectangles identiques annonceraient une barre qui
+           n'arrive jamais.
+
+           ⚠️ **30,5 px et non 29 — corrigé le 29 août 2026 en MESURANT.** Cette
+           hauteur était écrite à 29 px depuis la phase 4 ; la pilule réelle en
+           fait 30,5 (1 px de bordure × 2 + 6 px de `py-1.5` × 2 + 16,5 px de
+           hauteur de ligne). L'écart était de 1,5 px sur une rangée, donc 4,5 px
+           à 375 px où la barre se plie en deux lignes et où le menu prend la
+           sienne. Trop petit pour se voir, assez grand pour être faux — et c'est
+           le genre d'écart qui grandit à chaque élément ajouté.
+
+           ⚠️ **CINQ pilules depuis le 29 août 2026, et pas quatre.** L'onglet
+           « Nouveau » est arrivé le même jour dans `filtres-statut.tsx` : sans
+           cette ligne-ci, la barre serait passée de quatre à cinq éléments à
+           l'arrivée des offres. À 375 px la cinquième fait passer la rangée sur
+           deux lignes, donc le saut n'aurait pas été de quelques pixels mais de
+           toute une hauteur de pilule. C'est le piège n° 5 du projet, qui n'a
+           aucun garde-fou mécanique — rien ne relie ce fichier à celui qu'il
+           double. */
         filtres={
           <div aria-hidden="true" className="flex flex-wrap gap-1.5">
-            <div className="h-[1.8125rem] w-28 animate-pulse rounded-full bg-muted" />
-            <div className="h-[1.8125rem] w-28 animate-pulse rounded-full bg-muted" />
-            <div className="h-[1.8125rem] w-24 animate-pulse rounded-full bg-muted" />
-            <div className="h-[1.8125rem] w-24 animate-pulse rounded-full bg-muted" />
+            <div className="h-[1.90625rem] w-28 animate-pulse rounded-full bg-muted" />
+            <div className="h-[1.90625rem] w-26 animate-pulse rounded-full bg-muted" />
+            <div className="h-[1.90625rem] w-28 animate-pulse rounded-full bg-muted" />
+            <div className="h-[1.90625rem] w-24 animate-pulse rounded-full bg-muted" />
+            <div className="h-[1.90625rem] w-24 animate-pulse rounded-full bg-muted" />
           </div>
+        }
+        /* ⚠️ **Le menu de classement occupe la place, il ne s'anime pas seul.**
+           Il partage la rangée des filtres : posé dans `EnTetePage`, il porte la
+           même hauteur qu'eux (30,5 px) et laisse la rangée identique avant et
+           après.
+
+           ⚠️ **Sa LARGEUR, elle, n'a aucun effet vertical** — et c'est pour ça
+           qu'on la cale sur le cas par défaut (155 px mesurés pour « TRIER ·
+           Intérêt ») plutôt que sur le plus large. Le squelette ne peut pas
+           savoir quel classement l'adresse demande : il s'affiche avant que le
+           serveur n'ait répondu. Choisir le plus large aurait donné une barre
+           trop longue trois fois sur quatre, pour aucun gain de calage. */
+        tri={
+          <div
+            aria-hidden="true"
+            className="h-[1.90625rem] w-40 shrink-0 animate-pulse rounded-full bg-muted"
+          />
         }
       />
 

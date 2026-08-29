@@ -116,6 +116,7 @@
   --color-signal-foreground: var(--signal-foreground);
   --color-signal-fort: var(--signal-fort);
   --color-interet: var(--interet);
+  --color-interet-foreground: var(--interet-foreground);
   --color-interet-barre: var(--interet-barre);
   --color-interet-texte: var(--interet-texte);
   --color-interet-piste: var(--interet-piste);
@@ -233,6 +234,15 @@
      n'a jamais reposé sur la barre seule. Le jour où le chiffre disparaîtrait,
      ce choix redeviendrait un défaut. */
   --interet: var(--color-blue);
+  /* ⚠️ **Ajouté le 29 août 2026 avec le menu de classement.** Les quatre autres
+     rôles avaient déjà leur encre (`--success-foreground`, `--ecarte-foreground`,
+     `--signal-foreground`) parce qu'ils servaient de fond de bouton ; le bleu
+     n'était jusque-là qu'une barre et une pastille. Le déclencheur « Trier » en
+     fait un fond plein : sans ce jeton, on aurait écrit `text-foreground`, qui
+     est la même couleur **en clair seulement** — en sombre, `--foreground` passe
+     au blanc cassé et le libellé serait devenu illisible sur le bleu pastel.
+     Texte foncé sur bleu plein : 7,05:1 en clair, 8,67:1 en sombre. */
+  --interet-foreground: var(--on-accent);
   --interet-barre: #0e76ff;
   --interet-piste: var(--color-blue); /* 1,73:1 sur la carte — voir ci-dessus */
   --interet-texte: #0063e6; /* 4,53:1 — le libellé « Intérêt » */

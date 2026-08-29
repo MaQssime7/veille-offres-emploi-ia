@@ -24,17 +24,27 @@ import type { Metadata } from "next";
 
 import { exigerSession } from "@/lib/acces";
 import { accorder } from "@/lib/francais";
-import { FILTRE_PAR_DEFAUT, type FiltreListe, listerOffres } from "@/lib/offres";
-import { LIBELLES_STATUT, estStatut } from "@/lib/statuts";
+import {
+  FILTRE_PAR_DEFAUT,
+  LIBELLES_FILTRE,
+  type FiltreListe,
+  estFiltre,
+} from "@/lib/filtres";
+import { listerOffres } from "@/lib/offres";
+import { type Statut } from "@/lib/statuts";
+import { TRIS, TRI_PAR_DEFAUT, type Tri, estTri } from "@/lib/tri";
 import { lireEtatVeille } from "@/lib/veille";
 
 import { LigneEtatVeille } from "../_composants/etat-veille";
+import { adresseListe } from "./_composants/adresse";
 import { CadrePage, EnTetePage } from "./_composants/en-tete-page";
 import {
   AucuneOffre,
   AucuneOffreDansCeFiltre,
   BaseInjoignable,
+  NouveautesInconnues,
 } from "./_composants/etats";
+import { MenuTri } from "./_composants/menu-tri";
 import { FiltresStatut } from "./_composants/filtres-statut";
 import { LigneOffre } from "./_composants/ligne-offre";
 import { VerrouTri } from "./_composants/verrou-tri";
@@ -51,6 +61,13 @@ import { VerrouTri } from "./_composants/verrou-tri";
  * destinations : « Offres » y est plus juste et plus court que « Plan de
  * travail », de la même façon qu'on clique « Mail » pour arriver sur « Boîte de
  * réception ».
+ *
+ * ⚠️ **Le `h1` est passé à « Bonjour Maxime » le 29 août 2026, et l'onglet ne
+ * l'a PAS suivi — c'est voulu, pas un oubli.** La règle ci-dessus vaut tant que
+ * les deux *nomment* l'écran. Un salut ne nomme rien : il s'adresse à quelqu'un.
+ * Un onglet « Bonjour Maxime » ne dirait plus de quelle page il s'agit dans
+ * l'historique, dans un favori, ni entre deux onglets ouverts — précisément les
+ * trois endroits pour lesquels ce titre existe.
  */
 export const metadata: Metadata = {
   title: "Plan de travail — Veille offres emploi IA",
@@ -82,9 +99,32 @@ function filtreDemande(valeur: string | string[] | undefined): FiltreListe {
   // renverrait `false`, ce qui marche par accident. On le traite explicitement.
   const brut = Array.isArray(valeur) ? valeur[0] : valeur;
 
-  if (brut === "toutes") return "toutes";
-  if (estStatut(brut)) return brut;
-  return FILTRE_PAR_DEFAUT;
+  // ⚠️ **`estFiltre` et non `estStatut`** : « toutes » et « nouvelles » ne sont
+  // pas des statuts, et `estStatut` les refuserait à raison — aucune offre ne
+  // peut porter ces valeurs en base. Les deux validations gardent deux
+  // frontières différentes, celle de l'écran et celle de la table.
+  return estFiltre(brut) ? brut : FILTRE_PAR_DEFAUT;
+}
+
+/**
+ * Quel classement l'adresse demande.
+ *
+ * Entre : la valeur brute de `?tri=`.
+ * Sort : un classement sûr, choisi dans une liste fermée.
+ * Casse : rien — tout ce qui n'est pas reconnu retombe sur l'intérêt.
+ *
+ * ⚠️ **La même clémence que pour le filtre, et pour la même raison** : un
+ * classement ne désigne rien, il réordonne. « Je n'ai pas compris ton ordre »
+ * se répare en rendant l'ordre par défaut, jamais par une page d'erreur.
+ *
+ * ⚠️ **C'est ici que la valeur de l'adresse s'arrête.** Ce qui continue est un
+ * membre du type `Tri`, qui servira de CLÉ dans la table de classements de
+ * `lib/offres.ts` — les lettres tapées dans la barre d'adresse n'atteignent
+ * jamais la requête.
+ */
+function triDemande(valeur: string | string[] | undefined): Tri {
+  const brut = Array.isArray(valeur) ? valeur[0] : valeur;
+  return estTri(brut) ? brut : TRI_PAR_DEFAUT;
 }
 
 export default async function PageOffres({
@@ -100,6 +140,7 @@ export default async function PageOffres({
   // erreur pour le signaler.
   const parametres = await searchParams;
   const filtre = filtreDemande(parametres.statut);
+  const tri = triDemande(parametres.tri);
 
   // Une seule heure de référence pour toute la page : sinon deux lignes rendues
   // à cheval sur minuit ne dateraient pas du même jour, et la manchette pourrait
@@ -110,9 +151,23 @@ export default async function PageOffres({
   // ajouterait son aller-retour à celui de la liste avant le premier pixel,
   // alors qu'aucune des deux ne dépend de l'autre.
   const [resultat, etatVeille] = await Promise.all([
-    listerOffres(filtre),
+    listerOffres(filtre, tri),
     lireEtatVeille(maintenant),
   ]);
+
+  /**
+   * L'adresse de chacun des trois classements, **filtre courant conservé**.
+   *
+   * ⚠️ **Calculée ici, sur le serveur, et passée au menu déjà faite.** La raison
+   * n'est plus celle qu'on croit : `FILTRE_PAR_DEFAUT` a quitté `lib/offres.ts`
+   * pour `lib/filtres.ts` dans ce même diff, donc un composant client pourrait
+   * techniquement le lire. Ce qui tient, c'est que **l'adresse d'une vue se
+   * calcule à un seul endroit** — ici — pour que les liens du menu et ceux des
+   * filtres ne puissent pas diverger.
+   */
+  const adressesTri = Object.fromEntries(
+    TRIS.map((valeur) => [valeur, adresseListe(filtre, valeur)]),
+  ) as Record<Tri, string>;
 
   return (
     <CadrePage>
@@ -143,11 +198,26 @@ export default async function PageOffres({
           resultat.ok && (
             <FiltresStatut
               actif={filtre}
-              comptes={resultat.comptes}
-              total={totalBase(resultat.comptes)}
+              tri={tri}
+              // ⚠️ **Les cinq comptes sont réunis ICI, et `totalBase` ne voit
+              // toujours que les trois statuts.** L'addition qui reconstitue le
+              // total de la base n'est exacte que parce que chaque offre y est
+              // comptée une fois : « nouvelles » et « toutes » comptent les
+              // mêmes offres sous un autre angle, les additionner donnerait un
+              // total supérieur à la base.
+              comptes={{
+                ...resultat.comptes,
+                nouvelles: resultat.nouvelles,
+                toutes: totalBase(resultat.comptes),
+              }}
             />
           )
         }
+        // ⚠️ **Masqué avec les filtres quand la base est injoignable, et pour la
+        // même raison** : reclasser ce qu'on n'a pas pu lire ne mène nulle part,
+        // et le menu prétendrait qu'un classement s'applique à une liste
+        // absente.
+        tri={resultat.ok && <MenuTri actif={tri} adresses={adressesTri} />}
       />
 
       {!resultat.ok ? (
@@ -155,6 +225,12 @@ export default async function PageOffres({
           motif={resultat.motif}
           explication={resultat.explication}
         />
+      ) : filtre === "nouvelles" && resultat.derniereExecution === null ? (
+        // ⚠️ **Ce cas passe AVANT le test de liste vide, et l'ordre compte.**
+        // Sans dernière collecte connue, `listerOffres` rend zéro offre : la
+        // condition suivante afficherait « aucune offre nouvelle », c'est-à-dire
+        // une affirmation sur la nuit passée alors qu'on n'a rien pu lire.
+        <NouveautesInconnues />
       ) : resultat.offres.length === 0 ? (
         // ⚠️ **Deux états vides, jamais un seul.** « La base est vide » est
         // l'écran du tout premier matin ; « ce filtre est vide » est celui d'un
@@ -164,8 +240,15 @@ export default async function PageOffres({
           <AucuneOffre />
         ) : (
           <AucuneOffreDansCeFiltre
-            libelle={filtre === "toutes" ? "Toutes" : LIBELLES_STATUT[filtre]}
+            libelle={LIBELLES_FILTRE[filtre]}
             totalBase={totalBase(resultat.comptes)}
+            // ⚠️ « Nouveau » n'est pas un statut : la phrase par défaut
+            // affirmerait qu'une colonne le porte en base.
+            raison={
+              filtre === "nouvelles"
+                ? "mais aucune ne vient de la dernière collecte"
+                : undefined
+            }
           />
         )
       ) : (
@@ -222,8 +305,16 @@ export default async function PageOffres({
  * ⚠️ **Un seul comptage à `null` rend le total inconnu**, pas partiel : annoncer
  * « 400 offres » quand on n'a pas pu en compter une catégorie serait pire que
  * de se taire.
+ *
+ * ⚠️ **Le paramètre est typé `Record<Statut, …>` et surtout PAS
+ * `Record<string, …>` — correctif de revue du 29 août 2026.** Avec `string`,
+ * l'objet à cinq clés passé aux onglets (`{...comptes, nouvelles, toutes}`)
+ * était parfaitement assignable : quelqu'un l'extrayant dans une constante pour
+ * le réutiliser aurait obtenu 574 + 7 + 574 = **1 155 offres** dans l'onglet
+ * « Toutes » et dans le message d'état vide, sans que TypeScript ne bronche.
+ * Le type dit maintenant ce que le commentaire ci-dessus exigeait déjà.
  */
-function totalBase(comptes: Record<string, number | null>): number | null {
+function totalBase(comptes: Record<Statut, number | null>): number | null {
   const valeurs = Object.values(comptes);
   if (valeurs.some((v) => v === null)) return null;
   return valeurs.reduce((somme: number, v) => somme + (v as number), 0);

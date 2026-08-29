@@ -7,7 +7,9 @@ import {
   interrogerBase,
 } from "@/lib/supabase";
 import { normaliserNote } from "./notes";
+import { FILTRE_PAR_DEFAUT, type FiltreListe } from "./filtres";
 import { STATUTS, type Statut } from "./statuts";
+import { TRI_PAR_DEFAUT, type Tri } from "./tri";
 
 /**
  * La lecture des offres pour l'écran `/offres`.
@@ -161,7 +163,36 @@ export const PLAFOND_AFFICHAGE = 200;
  * qu'aucun libellé à l'écran n'expliquerait. Les ex æquo se départagent par la
  * date, qui ne prétend rien mesurer.
  */
-const CLASSEMENT = "note_interet.desc.nullslast,publiee_a.desc,identifiant.asc";
+/**
+ * ⚠️ **Trois chaînes CONSTANTES, choisies par une clé déjà validée — et c'est
+ * la règle n° 5 du projet appliquée à la lettre.** Le `?tri=` de l'adresse est
+ * passé par `estTri()` puis sert d'index dans cette table : aucune de ses
+ * lettres n'atteint jamais la requête. Concaténer la valeur reçue dans
+ * `&order=` rouvrirait exactement l'injection que `options.egal` existe pour
+ * fermer — un `order` est un endroit du chemin, pas une valeur encodable.
+ *
+ * ⚠️ **`nullslast` sur les DEUX tris par note, pour la même raison.** Les 434
+ * offres pas encore notées prendraient sinon les 200 lignes affichées et
+ * aucune offre notée n'apparaîtrait. Le tri par accessibilité est arrivé après
+ * ; l'oublier là aurait reproduit un bug déjà corrigé une fois.
+ *
+ * ⚠️ **Trier par accessibilité NE FUSIONNE PAS les deux notes**, et c'est ce
+ * qui rend ce tri acceptable au regard du `DESIGN.md`, qui refuse tout score
+ * composite. On regarde une note *ou* l'autre, jamais leur moyenne : le lecteur
+ * sait toujours laquelle il lit, puisque le menu le lui dit.
+ *
+ * ⚠️ **Le départage va jusqu'à une colonne UNIQUE dans les trois cas.**
+ * `publiee_a` porte souvent la même valeur pour des dizaines d'offres publiées
+ * le même jour : sans `identifiant` en dernier recours, Postgres ne garantit
+ * aucun ordre et deux chargements de la même page classent les ex æquo
+ * différemment.
+ */
+const CLASSEMENTS: Record<Tri, string> = {
+  interet: "note_interet.desc.nullslast,publiee_a.desc,identifiant.asc",
+  accessibilite:
+    "note_accessibilite.desc.nullslast,publiee_a.desc,identifiant.asc",
+  recentes: "publiee_a.desc,identifiant.asc",
+};
 
 export type ResultatListe =
   | {
@@ -189,30 +220,26 @@ export type ResultatListe =
        * au lieu d'afficher zéro, qui voudrait dire « il n'y en a aucune ».
        */
       comptes: Record<Statut, number | null>;
+      /**
+       * Combien d'offres la dernière collecte réussie a ramenées — le compte de
+       * l'onglet « Nouveau ».
+       *
+       * ⚠️ **Il vit à côté de `comptes` et surtout PAS dedans**, et ce n'est pas
+       * du rangement. `totalBase()` (dans `page.tsx`) reconstitue le total de la
+       * base en additionnant les valeurs de `comptes` : l'addition n'est exacte
+       * que parce que chaque offre y est comptée une fois et une seule. Une
+       * offre nouvelle porte *aussi* un statut ; glissée dans le même objet,
+       * elle serait comptée deux fois et le total afficherait plus d'offres que
+       * la base n'en contient.
+       *
+       * `null` si le comptage a échoué **ou** si on ne sait pas quelle est la
+       * dernière collecte : l'onglet se tait alors, au lieu d'annoncer zéro
+       * nouveauté un matin où il y en a peut-être vingt.
+       */
+      nouvelles: number | null;
     }
   | { ok: false; motif: MotifEchec; explication: string };
 
-/**
- * Ce que la liste peut montrer : un statut, ou tout.
- *
- * ⚠️ **`"toutes"` n'est PAS un statut**, et c'est pour ça qu'il vit ici et non
- * dans `STATUTS`. Le mettre dans la liste des statuts le rendrait écrivable en
- * base — or aucune offre n'est « toutes ». C'est un mode d'affichage, il
- * n'appartient qu'à cet écran.
- */
-export type FiltreListe = Statut | "toutes";
-
-/**
- * Le filtre par défaut, quand l'adresse ne dit rien.
- *
- * ⚠️ **« À traiter » et non « toutes », et ce n'est pas un détail de
- * commodité.** L'écran devient un plan de travail : ce qui reste à faire. Une
- * offre triée disparaît, ce qui est exactement le geste que la phase 4 existe
- * pour offrir. ⚠️ **Effet de bord à connaître** : ça desserre le plafond de 200
- * sans le résoudre — tant qu'aucune offre n'est triée, les 567 restent « à
- * traiter » et la troncature mord pareil.
- */
-export const FILTRE_PAR_DEFAUT: FiltreListe = "a_traiter";
 
 /**
  * L'identifiant de la dernière exécution réussie.
@@ -236,15 +263,34 @@ export const FILTRE_PAR_DEFAUT: FiltreListe = "a_traiter";
  * ligne à moitié écrite se classerait en dernier et changerait silencieusement
  * quelle exécution est « la dernière ».
  *
- * Un échec ici n'est pas bloquant — on perd le marqueur, pas la liste.
+ * ⚠️ **Elle distingue « la lecture a échoué » de « aucune collecte n'a jamais
+ * réussi », et ce n'est PAS du détail — c'est un défaut vu à l'écran le 29 août
+ * 2026.** Elle rendait `null` dans les deux cas. Conséquence : avec la base
+ * entièrement injoignable, l'onglet « Nouveau » affichait « la liste des offres
+ * répond, mais pas le journal des collectes » — une phrase qui affirme que la
+ * liste répond alors qu'on ne l'avait même pas interrogée. Le lecteur serait
+ * parti chercher une panne dans `executions_veille` un jour où c'est tout
+ * Supabase qui est tombé.
+ *
+ * Un échec reste non bloquant pour les AUTRES filtres : on y perd le marqueur
+ * « Nouveau », pas la liste. C'est l'appelant qui décide, et il ne peut décider
+ * que si les deux cas lui arrivent distincts.
  */
-async function lireDerniereExecution(): Promise<number | null> {
+type LectureExecution =
+  | { ok: true; identifiant: number | null }
+  | { ok: false; motif: MotifEchec; explication: string };
+
+async function lireDerniereExecution(): Promise<LectureExecution> {
   const resultat = await interrogerBase<{ id: number }>(
     "executions_veille?select=id&issue=eq.reussite&etape=eq.collecte" +
       "&order=demarree_a.desc&limit=1",
   );
 
-  return resultat.ok ? (resultat.lignes[0]?.id ?? null) : null;
+  if (!resultat.ok) {
+    return { ok: false, motif: resultat.motif, explication: resultat.explication };
+  }
+
+  return { ok: true, identifiant: resultat.lignes[0]?.id ?? null };
 }
 
 /*
@@ -289,12 +335,70 @@ async function compterParStatut(statut: Statut): Promise<number | null> {
 }
 
 /**
- * La liste des offres, filtrée par statut.
+ * Combien d'offres la dernière collecte réussie a ramenées.
  *
- * Entre : un filtre déjà validé par l'appelant — la page le lit dans l'adresse
- * et le passe par `estStatut()` avant d'arriver ici.
- * Sort : jusqu'à 200 offres, les compteurs de chaque statut, et de quoi
- * marquer « Nouveau ».
+ * Entre : l'identifiant de cette exécution, lu juste avant en base.
+ * Sort : le compte, ou `null` si PostgREST n'a pas renvoyé son en-tête.
+ *
+ * ⚠️ **C'est le MÊME critère que la bulle « Nouveau » de chaque ligne**
+ * (`offre.execution_id === derniereExecution`), et ça ne doit pas cesser : un
+ * onglet qui annoncerait 12 nouveautés en face d'une liste où 8 lignes portent
+ * la bulle ferait douter des deux. Les deux se lisent ensemble.
+ *
+ * ⚠️ **Le prix de ce compteur, dit exactement** — la première rédaction le
+ * minimisait, et une revue l'a relevé. Il ne peut pas partir avec les autres :
+ * il lui faut l'identifiant que la requête précédente ramène. Ce n'est donc pas
+ * « un aller-retour de plus » dans un lot parallèle, c'est **le doublement de la
+ * profondeur** du chemin critique — la page attendait un aller-retour, elle en
+ * attend deux, à chaque chargement et y compris sur les quatre onglets qui ne
+ * lisent jamais ce chiffre. Mesuré en développement depuis un Mac vers Supabase
+ * Paris : ~60 ms. Sur Vercel en région Paris, la base est à quelques
+ * millisecondes ; **non mesuré en production**.
+ *
+ * ⚠️ **Une seule requête serait possible et elle est REFUSÉE** :
+ * `executions_veille.offres_nouvelles` porte déjà un compte, et `lireEtatVeille`
+ * le lit pour la manchette. Mais c'est le compte que la **collecte** a écrit,
+ * pas celui des lignes qui portent aujourd'hui cet `execution_id` — et
+ * `recoller_offres_orphelines` peut rattacher des offres après coup. L'onglet
+ * annoncerait alors un nombre que la liste d'en dessous ne montre pas. Le
+ * compteur et la bulle « Nouveau » de chaque ligne doivent répondre au **même
+ * critère**, sinon on doute des deux.
+ */
+async function compterNouvelles(idExecution: number): Promise<number | null> {
+  const resultat = await interrogerBase<{ identifiant: string }>(
+    "offres?select=identifiant&limit=1",
+    // ⚠️ Converti en chaîne parce que `egal` n'accepte que des chaînes — elle
+    // les encode avant de les concaténer. Un nombre passerait par `String()`
+    // implicitement, l'écrire rend la conversion visible.
+    { compter: true, egal: { execution_id: String(idExecution) } },
+  );
+
+  return resultat.ok ? resultat.total : null;
+}
+
+/**
+ * La requête de liste elle-même, chemin et classement compris.
+ *
+ * ⚠️ **Le classement est choisi ICI par une clé, jamais reçu comme chaîne.**
+ * `CLASSEMENTS[tri]` ne peut rendre que l'une des trois valeurs écrites dans ce
+ * fichier ; c'est ce qui empêche `?tri=` de l'adresse d'atteindre le `&order=`.
+ */
+function lireListe(tri: Tri, filtre?: Record<string, string>) {
+  return interrogerBase<OffreEnListe>(
+    `offres?select=${COLONNES_LISTE}` +
+      `&order=${CLASSEMENTS[tri]}&limit=${PLAFOND_AFFICHAGE}`,
+    { compter: true, ...(filtre ? { egal: filtre } : {}) },
+  );
+}
+
+/**
+ * La liste des offres, filtrée et classée.
+ *
+ * Entre : un filtre et un classement déjà validés par l'appelant — la page les
+ * lit dans l'adresse et les passe par `estStatut()` / `estTri()` avant
+ * d'arriver ici.
+ * Sort : jusqu'à 200 offres, les compteurs de chaque statut, celui des
+ * nouveautés, et de quoi marquer « Nouveau ».
  * Casse : ne lève jamais. Un échec de comptage laisse `null` et l'écran se tait
  * sur ce point plutôt que d'afficher un chiffre faux.
  *
@@ -302,34 +406,57 @@ async function compterParStatut(statut: Statut): Promise<number | null> {
  * faut : « 42 offres · 42 affichées » décrit la liste qu'on regarde. Le total
  * général se reconstitue en additionnant les trois compteurs, et l'onglet
  * « Toutes » l'affiche directement.
+ *
+ * ⚠️ **Le classement change ce que l'écran MONTRE, pas seulement son ordre — et
+ * c'est le point le moins évident de cette fonction.** La liste est plafonnée à
+ * 200 lignes : trier par date fait remonter les offres récentes, y compris **non
+ * notées**, et fait donc sortir de l'écran des offres mieux notées mais plus
+ * anciennes. Ce n'est pas un défaut du tri, c'est le plafond qui devient
+ * visible ; la ligne de compte le signale en affichant « 200 affichées » sur un
+ * total plus grand.
  */
 export async function listerOffres(
   filtre: FiltreListe = FILTRE_PAR_DEFAUT,
+  tri: Tri = TRI_PAR_DEFAUT,
 ): Promise<ResultatListe> {
-  const requeteOffres = interrogerBase<OffreEnListe>(
-    `offres?select=${COLONNES_LISTE}` +
-      `&order=${CLASSEMENT}&limit=${PLAFOND_AFFICHAGE}`,
-    {
-      compter: true,
-      // ⚠️ **Le filtre n'est ajouté que s'il en est un.** « Toutes » n'est pas
-      // un statut : lui chercher un `statut=eq.toutes` rendrait zéro ligne, et
-      // la page afficherait « aucune offre » sur une base pleine.
-      ...(filtre === "toutes" ? {} : { egal: { statut: filtre } }),
-    },
+  // ⚠️ **Cette promesse n'est PAS attendue tout de suite, et c'est ce qui garde
+  // le cas courant rapide.** Trois choses en dépendent — le marqueur des lignes,
+  // le compteur de l'onglet « Nouveau », et la requête elle-même quand cet
+  // onglet est ouvert. Un `await` posé ici ferait attendre à TOUS les
+  // chargements une lecture dont la plupart n'ont pas besoin pour démarrer.
+  const promesseDerniere = lireDerniereExecution();
+
+  const promesseNouvelles = promesseDerniere.then((lecture) =>
+    lecture.ok && lecture.identifiant !== null
+      ? compterNouvelles(lecture.identifiant)
+      : null,
   );
 
-  // Toutes les requêtes partent ensemble : enchaînées, elles multiplieraient
-  // l'attente avant le premier pixel pour aucune raison — aucune ne dépend du
-  // résultat des autres.
-  const [offres, derniereExecution, ...parStatut] = await Promise.all([
-    requeteOffres,
-    lireDerniereExecution(),
-    ...STATUTS.map(compterParStatut),
-  ]);
+  // ⚠️ **`null` ici veut dire « je ne sais pas », pas « aucune offre ».** Si on
+  // n'a pas pu lire quelle est la dernière collecte, on ne peut pas dire quelles
+  // offres en viennent : filtrer sur une valeur inventée rendrait une liste vide
+  // qui se lirait comme « la nuit n'a rien ramené ». L'écran distingue les deux.
+  const requeteOffres =
+    filtre === "nouvelles"
+      ? promesseDerniere.then((lecture) =>
+          lecture.ok && lecture.identifiant !== null
+            ? lireListe(tri, { execution_id: String(lecture.identifiant) })
+            : null,
+        )
+      : // ⚠️ **Le filtre n'est ajouté que s'il en est un.** « Toutes » n'est pas
+        // un statut : lui chercher un `statut=eq.toutes` rendrait zéro ligne, et
+        // la page afficherait « aucune offre » sur une base pleine.
+        lireListe(tri, filtre === "toutes" ? undefined : { statut: filtre });
 
-  if (!offres.ok) {
-    return offres;
-  }
+  // Tout ce qui peut partir ensemble part ensemble : enchaînées, ces requêtes
+  // multiplieraient l'attente avant le premier pixel.
+  const [offres, lectureExecution, nouvelles, ...parStatut] = await Promise.all(
+    [requeteOffres, promesseDerniere, promesseNouvelles, ...STATUTS.map(compterParStatut)],
+  );
+
+  // Le marqueur des lignes : `null` si on n'a pas pu savoir, ce qui ne marque
+  // aucune offre plutôt que d'en marquer au hasard.
+  const derniereExecution = lectureExecution.ok ? lectureExecution.identifiant : null;
 
   // ⚠️ `STATUTS.map` ci-dessus et cette reconstruction se lisent ensemble :
   // l'ordre du tableau vient de la même constante, donc les deux ne peuvent
@@ -338,10 +465,32 @@ export async function listerOffres(
     STATUTS.map((statut, rang) => [statut, parStatut[rang]]),
   ) as Record<Statut, number | null>;
 
+  if (offres === null) {
+    // ⚠️ **Deux causes, deux écrans — et les confondre était le défaut.**
+    // Le journal des collectes injoignable est une panne : on le dit comme
+    // telle, avec son motif. Un journal qui répond « aucune collecte réussie »
+    // est un état légitime du produit : la page l'explique sans crier à la
+    // panne.
+    if (!lectureExecution.ok) {
+      return {
+        ok: false,
+        motif: lectureExecution.motif,
+        explication: lectureExecution.explication,
+      };
+    }
+
+    return { ok: true, offres: [], total: null, comptes, nouvelles, derniereExecution: null };
+  }
+
+  if (!offres.ok) {
+    return offres;
+  }
+
   return {
     ok: true,
     offres: offres.lignes,
     comptes,
+    nouvelles,
     // ⚠️ Pas de repli sur `lignes.length` ici : une liste tronquée à 200 dont
     // l'en-tête de comptage manque annoncerait « 200 offres collectées »
     // comme si c'était toute la base. `null` remonte l'ignorance jusqu'à

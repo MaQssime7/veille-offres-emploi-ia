@@ -1,4 +1,4 @@
-import { DatabaseZap, Inbox } from "lucide-react";
+import { CalendarOff, DatabaseZap, Inbox } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -97,11 +97,21 @@ export function AucuneOffre() {
 export function AucuneOffreDansCeFiltre({
   libelle,
   totalBase,
+  raison = "mais aucune ne porte ce statut pour l’instant",
 }: {
   /** Le libellé du filtre actif, tel qu'il s'écrit sur son onglet. */
   libelle: string;
   /** Combien d'offres existent tous statuts confondus. `null` si inconnu. */
   totalBase: number | null;
+  /**
+   * ⚠️ **La raison est PARAMÉTRABLE depuis l'arrivée de l'onglet « Nouveau »,
+   * et ce n'est pas de la souplesse gratuite.** « Aucune ne porte ce statut »
+   * était juste tant que les quatre onglets filtraient un statut ; « Nouveau »
+   * n'en est pas un — il désigne la dernière collecte. La phrase générique
+   * aurait affirmé qu'un statut nommé « Nouveau » existe en base, ce qui est
+   * faux et enverrait chercher une colonne qui n'existe pas.
+   */
+  raison?: string;
 }) {
   return (
     <Panneau
@@ -111,8 +121,55 @@ export function AucuneOffreDansCeFiltre({
       <p>
         La base répond et contient
         {totalBase !== null ? ` ${totalBase} offre${totalBase >= 2 ? "s" : ""}` : " des offres"}
-        , mais aucune ne porte ce statut pour l’instant. Les autres filtres
-        ci-dessus restent accessibles.
+        , {raison}. Les autres filtres ci-dessus restent accessibles.
+      </p>
+    </Panneau>
+  );
+}
+
+/**
+ * L'onglet « Nouveau » est ouvert, la base répond, et **aucune collecte n'a
+ * jamais abouti**.
+ *
+ * ⚠️ **C'est un CINQUIÈME état, et il ne doit être fondu ni dans « ce filtre
+ * est vide » ni dans « la base est injoignable ».** Les trois montrent une page
+ * sans offres et disent trois choses différentes : « la nuit n'a rien ramené de
+ * neuf », « rien ne répond », et ici « il n'y a pas encore de nuit de
+ * référence ». C'est l'écran du tout premier matin, ou celui d'une base dont
+ * toutes les exécutions ont échoué.
+ *
+ * ⚠️ **Le message a été CORRIGÉ le 29 août 2026, et l'ancien était faux.** Il
+ * disait « la liste des offres répond, mais pas le journal des collectes » —
+ * une affirmation sur la liste, alors qu'avec ce filtre la liste n'est même pas
+ * interrogée : sans identifiant d'exécution, il n'y a rien à demander. Vu à
+ * l'écran en coupant Supabase : la panne générale s'affichait comme une panne
+ * du seul journal des collectes, et aurait envoyé chercher au mauvais endroit.
+ * Le cas « injoignable » est désormais trié en amont, dans `listerOffres`.
+ *
+ * ⚠️ **Même cause que la bulle « Nouveau » absente de toutes les lignes** : sans
+ * dernière collecte réussie, plus rien à l'écran ne distingue les offres de la
+ * nuit. L'écran le dit au lieu de le taire.
+ */
+export function NouveautesInconnues() {
+  return (
+    <Panneau
+      // ⚠️ **PAS `DatabaseZap`, qui est l'icône de « la base est injoignable ».**
+      // Relevé en revue le 29 août 2026 : tout l'intérêt de cet état est de ne
+      // pas se lire comme une panne de base — c'est même pour ça que
+      // `lireDerniereExecution` distingue désormais l'échec de l'absence. Deux
+      // écrans que le code sépare avec soin et que l'œil confond au même
+      // pictogramme, c'est le travail défait par un détail. Un calendrier barré
+      // dit ce dont il s'agit : il n'y a pas eu de nuit de référence.
+      icone={<CalendarOff className="size-6" aria-hidden="true" />}
+      titre="Aucune collecte n’a encore abouti"
+    >
+      {/* Apostrophes typographiques, comme partout ailleurs dans ces panneaux :
+          l’apostrophe droite est refusée par le lint en texte JSX. */}
+      <p>
+        La base répond, mais aucune collecte ne s’est terminée avec
+        succès&nbsp;: il n’y a donc pas de «&nbsp;dernière nuit&nbsp;» à laquelle
+        comparer les offres. Les autres filtres ci-dessus restent accessibles, et
+        l’état de la veille en haut de page dit où en est la collecte.
       </p>
     </Panneau>
   );
