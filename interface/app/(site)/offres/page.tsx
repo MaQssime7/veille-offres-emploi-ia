@@ -23,9 +23,12 @@
 import type { Metadata } from "next";
 
 import { exigerSession } from "@/lib/acces";
+import { accorder } from "@/lib/francais";
 import { FILTRE_PAR_DEFAUT, type FiltreListe, listerOffres } from "@/lib/offres";
 import { LIBELLES_STATUT, estStatut } from "@/lib/statuts";
+import { lireEtatVeille } from "@/lib/veille";
 
+import { LigneEtatVeille } from "../_composants/etat-veille";
 import { CadrePage, EnTetePage } from "./_composants/en-tete-page";
 import {
   AucuneOffre,
@@ -36,8 +39,21 @@ import { FiltresStatut } from "./_composants/filtres-statut";
 import { LigneOffre } from "./_composants/ligne-offre";
 import { VerrouTri } from "./_composants/verrou-tri";
 
+/**
+ * ⚠️ **Le titre d'onglet suit le `h1`, et le lien de navigation ne le suit
+ * pas** — c'est délibéré, pas un oubli. Relevé en revue le 29 août 2026 : après
+ * le passage du titre à « Plan de travail », l'écran portait trois noms
+ * différents (onglet, lien de nav, titre de page), ce qui se voit dès qu'on a
+ * deux onglets ouverts.
+ *
+ * L'onglet et le `h1` nomment **la page**, ils doivent donc coïncider. Le lien
+ * de la barre du haut nomme **une destination** dans une liste d'autres
+ * destinations : « Offres » y est plus juste et plus court que « Plan de
+ * travail », de la même façon qu'on clique « Mail » pour arriver sur « Boîte de
+ * réception ».
+ */
 export const metadata: Metadata = {
-  title: "Offres — Veille offres emploi IA",
+  title: "Plan de travail — Veille offres emploi IA",
 };
 
 /**
@@ -85,39 +101,55 @@ export default async function PageOffres({
   const parametres = await searchParams;
   const filtre = filtreDemande(parametres.statut);
 
-  const resultat = await listerOffres(filtre);
-
   // Une seule heure de référence pour toute la page : sinon deux lignes rendues
-  // à cheval sur minuit ne dateraient pas du même jour.
+  // à cheval sur minuit ne dateraient pas du même jour, et la manchette pourrait
+  // dire « aujourd'hui » là où une ligne dit « hier ».
   const maintenant = new Date();
+
+  // ⚠️ Les deux lectures partent ENSEMBLE. Enchaînées, l'état de la veille
+  // ajouterait son aller-retour à celui de la liste avant le premier pixel,
+  // alors qu'aucune des deux ne dépend de l'autre.
+  const [resultat, etatVeille] = await Promise.all([
+    listerOffres(filtre),
+    lireEtatVeille(maintenant),
+  ]);
 
   return (
     <CadrePage>
-      <EnTetePage>
-        {resultat.ok && resultat.offres.length > 0 && (
-          <p className="font-mono text-xs text-muted-foreground">
-            <CompteAffiche
-              affichees={resultat.offres.length}
-              total={resultat.total}
-              notees={resultat.notees}
-              filtre={filtre}
+      <EnTetePage
+        // ⚠️ La manchette s'affiche dans TOUS les cas, y compris base
+        // injoignable et liste vide — c'est justement là qu'elle est la plus
+        // utile : un écran vide dont la veille date de trois jours s'explique
+        // tout seul, le même écran sans indicateur ressemble à une panne.
+        manchette={<LigneEtatVeille etat={etatVeille} maintenant={maintenant} />}
+        compte={
+          resultat.ok &&
+          resultat.offres.length > 0 && (
+            <p className="font-mono text-xs text-muted-foreground">
+              <CompteAffiche
+                affichees={resultat.offres.length}
+                total={resultat.total}
+                notees={resultat.notees}
+                filtre={filtre}
+              />
+            </p>
+          )
+        }
+        // ⚠️ **La barre reste affichée même quand le filtre est vide**, et
+        // c'est ce qui évite l'impasse : sans elle, un filtre sans résultat
+        // n'offrirait aucun moyen d'en sortir. Elle est en revanche masquée si
+        // la base est injoignable — filtrer ce qu'on n'a pas pu lire n'a aucun
+        // sens, et les compteurs seraient tous à `null`.
+        filtres={
+          resultat.ok && (
+            <FiltresStatut
+              actif={filtre}
+              comptes={resultat.comptes}
+              total={totalBase(resultat.comptes)}
             />
-          </p>
-        )}
-
-        {/* ⚠️ **La barre reste affichée même quand le filtre est vide**, et
-            c'est ce qui évite l'impasse : sans elle, un filtre sans résultat
-            n'offrirait aucun moyen d'en sortir. Elle est en revanche masquée si
-            la base est injoignable — filtrer ce qu'on n'a pas pu lire n'a aucun
-            sens, et les compteurs seraient tous à `null`. */}
-        {resultat.ok && (
-          <FiltresStatut
-            actif={filtre}
-            comptes={resultat.comptes}
-            total={totalBase(resultat.comptes)}
-          />
-        )}
-      </EnTetePage>
+          )
+        }
+      />
 
       {!resultat.ok ? (
         <BaseInjoignable
@@ -254,14 +286,4 @@ function CompteAffiche({
   }
 
   return <>{segments.join(" · ")}</>;
-}
-
-/**
- * Le pluriel français, qui se déclenche à partir de deux — **zéro reste au
- * singulier** (« 0 offre collectée »), contrairement à l'anglais. Un
- * `nombre > 1 ? "s" : ""` recopié dans chaque interpolation finit toujours par
- * être oublié une fois sur deux dans la même phrase.
- */
-function accorder(nombre: number, mot: string): string {
-  return nombre >= 2 ? `${mot}s` : mot;
 }

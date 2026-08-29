@@ -1,3 +1,4 @@
+import { SqueletteEtatVeille } from "../_composants/etat-veille";
 import { CadrePage, EnTetePage } from "./_composants/en-tete-page";
 import { HAUTEURS_SQUELETTE, RYTHME_LIGNE } from "./_composants/rythme";
 
@@ -86,30 +87,40 @@ function SqueletteNotes() {
 export default function ChargementOffres() {
   return (
     <CadrePage aria-busy="true">
-      <EnTetePage>
-        {/* Annonce vocale : un lecteur d'écran ne voit pas une pulsation. */}
-        <p className="font-mono text-xs text-muted-foreground">
-          Chargement des offres…
-        </p>
+      <EnTetePage
+        /* ⚠️ **La manchette d'état arrivée le 29 août 2026 — et c'est
+           exactement le saut que ce fichier existe pour éviter.** Elle ajoute
+           une ligne de 15,4 px plus son filet et son `pb-2` en tête de
+           bandeau ; l'oublier ici aurait décalé toute la page vers le haut au
+           moment où les offres arrivent. Le squelette vient du même fichier
+           que la ligne réelle, pour que les deux se modifient ensemble. */
+        manchette={<SqueletteEtatVeille />}
+        compte={
+          /* Annonce vocale : un lecteur d'écran ne voit pas une pulsation. */
+          <p className="font-mono text-xs text-muted-foreground">
+            Chargement des offres…
+          </p>
+        }
+        /* ⚠️ **Les quatre onglets de filtre, arrivés en phase 4 — et c'est le
+           saut que `en-tete-page.tsx` annonçait par écrit** : « la première
+           modification de l'en-tête (le filtre de statut de la phase 4, par
+           exemple) réintroduit en silence le saut que ce repli servait à
+           éviter ». Le commentaire avait raison et il a suffi à ne pas
+           l'oublier — c'est exactement ce qu'on attend d'un commentaire.
 
-        {/* ⚠️ **Les quatre onglets de filtre, arrivés en phase 4 — et c'est le
-            saut que `en-tete-page.tsx` annonçait par écrit** : « la première
-            modification de l'en-tête (le filtre de statut de la phase 4, par
-            exemple) réintroduit en silence le saut que ce repli servait à
-            éviter ». Le commentaire avait raison et il a suffi à ne pas
-            l'oublier — c'est exactement ce qu'on attend d'un commentaire.
-
-            ⚠️ **Les largeurs imitent les libellés réels** (« À traiter »,
-            « Candidaté », « Écarté », « Toutes ») plutôt que d'être égales :
-            quatre rectangles identiques annonceraient une barre qui n'arrive
-            jamais. */}
-        <div aria-hidden="true" className="flex flex-wrap gap-1.5">
-          <div className="h-[1.8125rem] w-28 animate-pulse bg-muted" />
-          <div className="h-[1.8125rem] w-28 animate-pulse bg-muted" />
-          <div className="h-[1.8125rem] w-24 animate-pulse bg-muted" />
-          <div className="h-[1.8125rem] w-24 animate-pulse bg-muted" />
-        </div>
-      </EnTetePage>
+           ⚠️ **Les largeurs imitent les libellés réels** (« À traiter »,
+           « Candidaté », « Écarté », « Toutes ») plutôt que d'être égales :
+           quatre rectangles identiques annonceraient une barre qui n'arrive
+           jamais. */
+        filtres={
+          <div aria-hidden="true" className="flex flex-wrap gap-1.5">
+            <div className="h-[1.8125rem] w-28 animate-pulse bg-muted" />
+            <div className="h-[1.8125rem] w-28 animate-pulse bg-muted" />
+            <div className="h-[1.8125rem] w-24 animate-pulse bg-muted" />
+            <div className="h-[1.8125rem] w-24 animate-pulse bg-muted" />
+          </div>
+        }
+      />
 
       <div className="border border-border bg-card" aria-hidden="true">
         {Array.from({ length: 4 }, (_, rang) => (
