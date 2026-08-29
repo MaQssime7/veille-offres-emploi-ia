@@ -280,7 +280,7 @@ export function NotePersonnelle({
         Ma note
       </h2>
 
-      <div className="carte-produit px-4 py-4">
+      <div className="carte-produit p-6">
         {/* ⚠️ **`aria-labelledby` vers le titre de section, plutôt qu'un
             `<label>` de plus.** Un champ sans nom accessible est annoncé
             « zone de saisie » et rien d'autre ; un second libellé au-dessus du

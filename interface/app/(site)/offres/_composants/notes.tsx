@@ -80,7 +80,28 @@ export function BlocNotes({ offre }: { offre: ChampsNotation }) {
   );
 }
 
-export function ContenuNotes({ offre }: { offre: ChampsNotation }) {
+/**
+ * ⚠️ **Deux densités, et c'est la seule raison d'être de cette propriété.**
+ * Le même bloc sert la liste et la fiche, qui ne se lisent pas de la même façon :
+ *
+ * | | Liste | Fiche |
+ * |---|---|---|
+ * | Ce qu'on y fait | balayer 200 lignes | lire UNE offre |
+ * | Ce que coûte l'air | du défilement, à chaque ligne | rien, la page est courte |
+ *
+ * Serrer la liste est donc juste, et l'appliquer à la fiche était un défaut —
+ * relevé par Maxime le 29 août 2026 en regardant l'écran : « c'est un peu trop
+ * compacté, alors qu'il y a de la place ». **Ne pas unifier les deux** : ce
+ * serait rendre à la liste l'air qu'elle n'a pas les moyens de payer.
+ */
+export function ContenuNotes({
+  offre,
+  aere = false,
+}: {
+  offre: ChampsNotation;
+  /** `true` sur la fiche, où l'on lit ; `false` en liste, où l'on balaye. */
+  aere?: boolean;
+}) {
   if (etatNotation(offre) !== "notee") {
     return <NotationEnEchec tentatives={offre.notation_tentatives} />;
   }
@@ -89,7 +110,15 @@ export function ContenuNotes({ offre }: { offre: ChampsNotation }) {
     // Deux colonnes en bureau, empilées sous 640 px. Empilées partout, la ligne
     // passerait de 170 à 210 px : sur une liste de 200 offres c'est un tiers
     // d'écran perdu à chaque ligne.
-    <div className="grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
+    //
+    // ⚠️ **L'écart HORIZONTAL grandit aussi, et pas seulement le vertical.**
+    // Les deux justifications sont deux textes différents posés côte à côte : à
+    // 32 px, la dernière ligne de la colonne de gauche et la première de droite
+    // se lisent comme une seule phrase qui court. C'est le défaut le plus net
+    // sur une fiche large.
+    <div
+      className={`grid sm:grid-cols-2 ${aere ? "gap-x-12 gap-y-6" : "gap-x-8 gap-y-2.5"}`}
+    >
       <Note
         libelle="Intérêt"
         valeur={offre.note_interet as number}
@@ -97,6 +126,7 @@ export function ContenuNotes({ offre }: { offre: ChampsNotation }) {
         remplissage="bg-interet-barre"
         piste="bg-interet-piste"
         teinteLibelle="text-interet-texte"
+        aere={aere}
       />
       <Note
         libelle="Accessibilité"
@@ -105,6 +135,7 @@ export function ContenuNotes({ offre }: { offre: ChampsNotation }) {
         remplissage="bg-success-barre"
         piste="bg-success-piste"
         teinteLibelle="text-success-texte"
+        aere={aere}
       />
     </div>
   );
@@ -132,6 +163,7 @@ function Note({
   remplissage,
   piste,
   teinteLibelle,
+  aere = false,
 }: {
   libelle: string;
   valeur: number;
@@ -169,6 +201,8 @@ function Note({
    * le refus de fusionner ou de hiérarchiser les deux notes.
    */
   teinteLibelle: string;
+  /** Espacements de lecture plutôt que de balayage — voir `ContenuNotes`. */
+  aere?: boolean;
 }) {
   return (
     <div>
@@ -184,12 +218,46 @@ function Note({
             est toute la raison d'être de cette largeur fixe, tombe alors sans
             que rien ne le signale. `whitespace-nowrap` empêche en plus le
             libellé de se couper en deux lignes. */}
+        {/* ⚠️ **Largeur fixe en liste, largeur naturelle sur la fiche.** Les
+            108 px alignent les barres d'une offre à l'autre sur 200 lignes ;
+            sur une fiche, ils ne font qu'ouvrir un vide — « INTÉRÊT » ne mesure
+            que 60 px, d'où **48 px de blanc** entre le mot et le début de la
+            jauge. Relevé par Maxime le 29 août 2026 : « il y a quand même un
+            gros espace blanc ». Sur la fiche il n'y a rien à aligner d'une ligne
+            à l'autre, donc rien à réserver.
+            ⚠️ **`whitespace-nowrap` reste dans les deux cas** : sans lui,
+            « ACCESSIBILITÉ » se couperait en deux lignes dès que la colonne se
+            resserre, et la rangée doublerait de hauteur. */}
         <span
-          className={`libelle-mono w-[6.75rem] shrink-0 whitespace-nowrap font-semibold ${teinteLibelle}`}
+          className={`libelle-mono shrink-0 whitespace-nowrap font-semibold ${teinteLibelle} ${aere ? "" : "w-[6.75rem]"}`}
         >
           {libelle}
         </span>
 
+        {/* ⚠️ **Sur la fiche, la barre prend toute la place restante ; en liste,
+            elle garde sa largeur fixe.** C'est le défaut « barres restées à la
+            largeur de la liste », relevé et laissé le 29 août 2026, puis rouvert
+            par Maxime le même jour : « la jauge fait un peu petit par rapport au
+            texte ». Mesuré, il avait raison — 88 px de barre sous une
+            justification de 428 px de large, soit **la moitié de la colonne
+            vide** à droite du chiffre.
+
+            ⚠️ **La largeur fixe n'est PAS un caprice en liste, et c'est pour ça
+            qu'elle y reste** : c'est elle qui aligne les barres d'une offre à
+            l'autre, et cet alignement est ce qui permet de comparer deux cents
+            offres d'un coup d'œil sans lire les chiffres. Sur une fiche, il n'y
+            a qu'une offre — l'argument tombe, la contrainte aussi.
+
+            ⚠️ **Le plafond de 13 rem est un second réglage, demandé après avoir
+            vu le premier.** Sans lui la jauge prenait toute la colonne (290 px),
+            ce qui était trop : une barre plus large que la moitié du texte
+            qu'elle surmonte se lit comme un objet à part entière plutôt que
+            comme la mesure d'une note. Le plafond ne s'applique qu'à partir de
+            640 px — en dessous, la place manque déjà et la barre prend ce qui
+            reste.
+            ⚠️ **`basis-0` avec `flex-1`** : sans lui, la base d'un élément
+            `flex` est sa largeur de contenu, ici zéro, et le calcul du plafond
+            se ferait sur une répartition qu'on ne contrôle pas. */}
         <span
           aria-hidden="true"
           // ⚠️ **La piste est TEINTÉE dans la couleur de sa note, et elle n'a
@@ -212,7 +280,7 @@ function Note({
           // l'information n'a jamais reposé sur la barre seule, qui porte
           // d'ailleurs `aria-hidden`. ⚠️ **Le jour où ce chiffre disparaîtrait
           // de la ligne, ce choix redeviendrait un défaut.**
-          className={`box-border h-2 w-[5.5rem] shrink-0 overflow-hidden rounded-full ${piste}`}
+          className={`box-border overflow-hidden rounded-full ${piste} ${aere ? "h-2.5 min-w-0 flex-1 basis-0 sm:max-w-[13rem]" : "h-2 w-[5.5rem] shrink-0"}`}
         >
           {/* La largeur est un pourcentage calculé au rendu : Tailwind lit le
               code source pour savoir quelles classes produire, il ne peut donc
@@ -227,14 +295,53 @@ function Note({
           />
         </span>
 
-        <span className="font-mono text-xs font-semibold tabular-nums text-foreground">
+        {/* `shrink-0` : sans lui, le chiffre serait le seul élément compressible
+            de la rangée une fois la barre passée en `flex-1`, et « 100 » se
+            couperait sur deux lignes.
+
+            ⚠️ **Le chiffre grandit avec la barre, et c'est une conséquence, pas
+            un ajout.** À 12 px au bout d'une jauge de 290 px et sous un texte de
+            16, il devenait le plus petit élément d'une rangée dont il est
+            pourtant l'information principale — la barre, elle, porte
+            `aria-hidden`. 14 px l'aligne sur les valeurs du classement, qui sont
+            des données du même ordre. Le LIBELLÉ, lui, reste à 11 px : c'est une
+            étiquette, pas une donnée. */}
+        <span
+          className={`shrink-0 font-mono font-semibold tabular-nums text-foreground ${aere ? "text-sm" : "text-xs"}`}
+        >
           {valeur}
           <span className="sr-only"> sur 100</span>
         </span>
       </div>
 
+      {/* ⚠️ **4 px sous la barre en liste, 10 px sur la fiche.** L'écart doit
+          rester plus petit que l'interligne du paragraphe (21 px), sinon la
+          justification se détache de la note qu'elle explique et se lit comme un
+          texte indépendant — on perd le couple.
+
+          ⚠️ **Sur la fiche, la justification prend la MÊME typographie que le
+          résumé — 16 px en encre pleine — et c'est un correctif de fond, pas de
+          forme.** Relevé par Maxime le 29 août 2026 : « c'est bizarre que le
+          texte du résumé ne soit pas le même que celui des justifications ».
+          Il avait raison, et l'écart était double : 16 px contre 13, encre
+          contre gris atténué. Or **les deux textes ont le même auteur et le même
+          statut** — c'est ce que le modèle a compris de l'offre, une fois en
+          synthèse et une fois par note. Les afficher à deux niveaux annonçait une
+          hiérarchie que le produit ne défend pas : les justifications SONT
+          l'argument du projet, pas une annotation sous une barre.
+
+          ⚠️ **En LISTE, elles restent à 13 px atténuées**, et ça n'est pas une
+          incohérence : sur 200 lignes, la justification est un commentaire qu'on
+          survole, pas un texte qu'on lit. Le rôle change avec l'écran, la
+          typographie suit. */}
       {justification && (
-        <p className="mt-1 text-[0.8125rem] leading-relaxed text-muted-foreground">
+        <p
+          className={
+            aere
+              ? "mt-2.5 text-base leading-relaxed text-foreground"
+              : "mt-1 text-[0.8125rem] leading-relaxed text-muted-foreground"
+          }
+        >
           {justification}
         </p>
       )}

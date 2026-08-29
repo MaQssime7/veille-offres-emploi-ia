@@ -175,7 +175,7 @@ export default async function PageOffre({
                 au-delà de ce qui se lit confortablement, même règle que la
                 description intégrale. Dans un cadre, ce vide se lit comme une
                 marge ; c'est sans cadre qu'il se lisait comme une coupure. */}
-            <div className="carte-produit px-4 py-4">
+            <div className="carte-produit p-6">
               <p className="max-w-prose text-base leading-relaxed text-foreground">
                 {offre.resume}
               </p>
@@ -195,8 +195,8 @@ export default async function PageOffre({
             >
               Évaluation
             </h2>
-            <div className="carte-produit px-4 py-4">
-              <ContenuNotes offre={offre} />
+            <div className="carte-produit p-6">
+              <ContenuNotes offre={offre} aere />
             </div>
           </section>
         )}

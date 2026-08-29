@@ -22,7 +22,8 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` |
 | **Comment le site est protégé** : cookie, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts`, abondamment commentés |
 | **Comment l'interface ÉCRIT en base** : garde-fous, idempotence | `ecrireDansBase()` dans `interface/lib/supabase.ts` |
-| Statuts, note personnelle, **accords et dates en français** : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts` — ⚠️ **les trois seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
+| Statuts, note personnelle, **accords et dates en français**, filtres et classement de la liste, thème : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`, `interface/lib/theme.ts` — ⚠️ **les six seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
+| **Ce que la liste montre et dans quel ordre** : les cinq filtres (dont « Nouveau »), les trois classements, et la table de chaînes SQL qu'aucune valeur d'adresse n'atteint | `interface/lib/filtres.ts` et `interface/lib/tri.ts` pour les constantes · `interface/lib/offres.ts` pour `CLASSEMENTS`, qui **ne descend jamais** dans les deux premiers |
 | **L'état de santé de la veille** : les cinq états, le seuil d'alerte de 36 h, celui des 60 min qui démasque une collecte tuée | `interface/lib/veille.ts` — lecture et calcul séparés, `calculerEtat()` est une fonction pure. ⚠️ Les **dateurs** sont dans `francais.ts`, pas ici : purs, ils ne doivent pas être enfermés derrière `server-only` |
 
 **Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
@@ -108,9 +109,9 @@ REMPLACÉ.** ⚠️ **La PHASE 5 — l'écran du matin (`/`) — est le prochain
 et rien ne la précède plus.**
 Le site est en ligne derrière son mot de passe, collecte et notation tournent sur
 le cron. `/offres` est un **plan de travail** : par défaut, seules les offres
-« à traiter », avec trois autres filtres à un clic. **L'interface écrit en base** —
-statuts et note personnelle. **574 offres, 137 notées, 571 à traiter / 0 candidaté
-/ 3 écarté.**
+« à traiter », avec **quatre** autres filtres à un clic et **trois classements**.
+**L'interface écrit en base** — statuts et note personnelle. **574 offres,
+137 notées, 571 à traiter / 0 candidaté / 3 écarté.**
 
 ### ⚠️ Refonte du système de design — 29 août 2026, branche `refonte-design-pouf`
 
@@ -136,6 +137,33 @@ Décision de Maxime, validée devant l'écran. Voir § Design et `docs/DESIGN.md
   repeindre aurait été du travail jeté. Seuls ses libellés de police ont été
   corrigés, parce qu'ils nommaient Fraunces et Geist.
 
+### ✅ Filtres colorés, classement et thème — 29 août 2026, et ce que la phase 5 en hérite
+
+Dernier chantier avant la phase 5, demandé par Maxime devant l'écran. Récit complet
+dans `docs/JOURNAL.md`, décisions visuelles dans `docs/DESIGN.md`.
+
+- **Cinq pilules de filtre**, chacune à la teinte de ce qu'elle montre : à traiter
+  (violet) · **Nouveau** (jaune) · candidaté (menthe) · écarté (rose) · toutes
+  (sans teinte). ⚠️ **C'est un REVIREMENT** : la règle précédente interdisait de
+  teinter un onglet avec une couleur de signal, parce qu'une pilule menthe
+  ressemble au bouton « Candidaté », qui lui **écrit en base**. Ce qui les sépare
+  désormais est **le chiffre contre l'icône** — ne retirer ni l'un ni l'autre.
+- ⚠️ **« Nouveau » n'est PAS un statut** : il montre les offres de la dernière
+  collecte réussie, **tous statuts confondus**, et son compte ne s'additionne donc
+  pas avec les trois autres. Il voyage quand même dans `?statut=`, comme « toutes »,
+  pour ne pas casser les favoris existants.
+- **Menu « Trier »** à droite : intérêt (défaut) · accessibilité · plus récentes.
+  ⚠️ **Le classement change ce que l'écran MONTRE, pas seulement l'ordre** : avec le
+  plafond de 200 lignes, trier par date fait remonter des offres non notées et sort
+  de l'écran des offres mieux notées mais plus anciennes.
+- **Bouton de thème à trois états** — système → clair → sombre. Le choix vit dans
+  le navigateur, relu avant la peinture par le script du `<head>`, qui est la
+  **seule** copie de la règle « quel choix donne quel mode ».
+- ⚠️ **Une opacité se remesure sur la surface qui est VRAIMENT derrière**, et un
+  contrôle de contraste qui lit du `rgb()` là où Tailwind rend de l'`oklab()`
+  produit des chiffres faux. Les deux pièges ont mordu le 29 août ; **mesures et
+  méthode dans `docs/DESIGN.md` § Contrastes.**
+
 ### ✅ Le bandeau de `/offres` est fait — 29 août 2026, et ce qu'il lègue à la phase 5
 
 Le chantier de design qui devait précéder la phase 5 **est clos**. ⚠️ Le récit
@@ -144,9 +172,15 @@ système** — il n'en reste que la ligne du journal des décisions. Ce qui suit
 donc la seule trace de ce que la phase 5 doit reprendre :
 
 - **`/offres` porte une manchette** : ligne pleine largeur en `libelle-mono`, état
-  de la veille à gauche, horodatage à droite, filet, puis le titre
-  **« Plan de travail »**. Le sur-titre « Poste de travail » et le titre « Offres »
-  ont disparu.
+  de la veille à gauche, horodatage à droite, filet, puis le titre. Le sur-titre
+  « Poste de travail » et le titre « Offres » ont disparu.
+  ⚠️ **Le `h1` dit « Bonjour Maxime » depuis le 29 août au soir, et le titre
+  d'ONGLET reste « Plan de travail » — la divergence est voulue.** La règle qui
+  les liait valait tant que les deux *nommaient* l'écran ; un salut ne nomme rien.
+  L'onglet est ce qu'on lit dans l'historique et dans un favori.
+  ⚠️ **Le salut ne varie PAS avec l'heure** : le rendu est serveur, et deviner le
+  fuseau du visiteur est la classe de bug que `verifie` traque en rejouant les
+  tests en UTC.
 - ⚠️ **L'indicateur de veille EXISTE DÉJÀ et il est partagé** :
   `app/(site)/_composants/etat-veille.tsx`, posé au niveau du groupe `(site)`
   **exprès pour que `/` le prenne tel quel**. La phase 5 ne le reconstruit pas —
@@ -173,11 +207,13 @@ donc la seule trace de ce que la phase 5 doit reprendre :
   l'égalité de hauteur avec `loading.tsx` vérifiable dans le code au lieu de
   l'être à l'écran.
 - **Ce qui reste à faire côté phase 5** : l'écran `/` lui-même, et y poser la même
-  manchette.
+  manchette. ⚠️ **Le bouton de thème, lui, est déjà sur toutes les pages du groupe
+  `(site)`** — il est dans la barre du haut, pas dans l'écran. `/` l'aura sans rien
+  faire.
 
 | Brique | État |
 |---|---|
-| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte, `/offres` (filtres, tri, statuts), la fiche `/offres/[identifiant]` (statuts, note personnelle), mode sombre sur la préférence système |
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte, `/offres` (cinq filtres, trois classements, statuts), la fiche `/offres/[identifiant]` (statuts, note personnelle), **bouton de thème à trois états** (système / clair / sombre) |
 | Supabase | Région Paris. `executions_veille` et `offres`. RLS activé, droits vérifiés |
 | Migrations | **7**, toutes appliquées. La 6ᵉ ajoute `statut`, `statut_modifie_a`, `note_personnelle`, `note_modifiee_a` ; la 7ᵉ corrige une contrainte de la 6ᵉ prise en défaut par son propre test |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
@@ -198,12 +234,31 @@ donc la seule trace de ce que la phase 5 doit reprendre :
 | `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme trompeur : « base injoignable » alors que la base va bien |
 | ⚠️ **Deux onglets sur la même fiche** | Le dernier qui tape écrase la note de l'autre, sans avertissement. Un seul utilisateur : signalé, non corrigé. Le corriger demanderait un horodatage de version comparé avant écriture |
 
-⚠️ **Trois défauts de la fiche d'offre, MESURÉS le 29 août et volontairement
-LAISSÉS.** Décision de Maxime. **Ne pas les remesurer.** Barres de notes restées à
-la largeur de la liste · fiche muette sur les 434 offres non notées (**se résorbe
-seul** à mesure que la base se note) · les cinq titres de section ont le même
-poids. ⚠️ **La refonte du design ne les a PAS corrigés** — elle a changé les
+⚠️ **DEUX défauts de la fiche d'offre, MESURÉS le 29 août et volontairement
+LAISSÉS.** Décision de Maxime. **Ne pas les remesurer.** Fiche muette sur les 434
+offres non notées (**se résorbe seul** à mesure que la base se note) · les cinq
+titres de section ont le même poids.
+✅ **Le troisième — les barres de notes restées à la largeur de la liste — a été
+CORRIGÉ le soir même**, Maxime l'ayant rouvert : sur la fiche la jauge est
+désormais élargie (208 px, contre 88) et son chiffre passe à 14 px. ⚠️ **En liste elle
+garde ses 88 px fixes, et ce n'est pas négociable** : c'est cette largeur qui
+aligne les barres d'une ligne à l'autre, donc qui permet de comparer 200 offres
+sans lire les chiffres. ⚠️ **La refonte du design ne les a PAS corrigés** — elle a changé les
 formes et les couleurs, pas la hiérarchie de l'information.
+✅ **Deux AUTRES ont été corrigés le 29 août.** (1) La fiche était trop dense :
+marge des cartes portée de 16 à **24 px** (le rayon en fait 32), écarts internes
+desserrés. (2) Elle portait **quatre tailles de texte suivi** (16/15/14/13 px)
+pour des paragraphes qui se lisent tous pareil — ramenées à **16 px en encre**,
+résumé et justifications compris, parce que les deux disent ce que le modèle a
+compris de l'offre. (3) Toute l'échelle de la fiche a suivi, sinon le reste
+paraissait rapetissé. ⚠️ **Une taille ne se juge jamais seule** — l'intitulé
+revient à la valeur jugée « écrasante » la veille, parce que ce qui l'entoure a
+grandi. **Échelle complète dans `docs/DESIGN.md` § L'échelle des textes.** ⚠️ **La liste n'a PAS suivi, et ne doit pas suivre** :
+`ContenuNotes` porte une propriété `aere` — on balaye une liste, on lit une fiche.
+Détail et mesures dans `docs/DESIGN.md` §§ Échelle des textes et Densité.
+⚠️ **Une leçon de méthode en est sortie, qui vaut au-delà** : pour caler un
+squelette, **une médiane ne s'additionne pas** — la somme des médianes des six
+sections se trompait de 55 px sur le total. La moyenne, si.
 
 ⚠️ **Un défaut connu, laissé faute de correctif propre** : l'écriture des offres
 se fait par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de
@@ -246,8 +301,9 @@ Récit de l'enquête : `docs/JOURNAL.md` § 27 août.
 2. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le
    code, jamais les données : une branche qui migre ou supprime touche les vraies
    données.
-3. ⚠️ **`interface/lib/statuts.ts`, `interface/lib/notes.ts` et
-   `interface/lib/francais.ts` sont les trois seuls modules de `lib/` sans
+3. ⚠️ **`interface/lib/statuts.ts`, `interface/lib/notes.ts`,
+   `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`
+   et `interface/lib/theme.ts` sont les six seuls modules de `lib/` sans
    `import "server-only"`** — `utils.ts` mis à part, qui ne porte que le `cn()` de
    shadcn. C'est leur raison d'être : les composants clients ont besoin des mêmes
    constantes que le serveur (libellés de statut, borne de longueur de la note,
@@ -255,6 +311,18 @@ Récit de l'enquête : `docs/JOURNAL.md` § 27 août.
    tireraient `lib/supabase.ts` — donc la clé secrète — dans le graphe du
    navigateur. **Y mettre des constantes et des fonctions pures, jamais du code qui
    lit un secret.** Tout futur module partagé suit le même moule.
+   ⚠️ **Ce que `tri.ts` ne contient PAS est aussi important que ce qu'il contient** :
+   la chaîne de classement SQL reste dans `lib/offres.ts`. Le `?tri=` de l'adresse
+   est validé par `estTri()` puis sert de **clé** dans une table de trois chaînes
+   constantes — ses lettres n'atteignent jamais le `&order=` de la requête. Un
+   `order` est un endroit du chemin, pas une valeur qu'`options.egal` pourrait
+   encoder.
+   ⚠️ **`lib/filtres.ts` est né d'une revue, et le défaut qu'il répare était
+   DORMANT** : `adresse.ts`, une fonction pure posée à côté de composants clients,
+   importait `FILTRE_PAR_DEFAUT` depuis `lib/offres.ts` — donc `server-only`, donc
+   la clé Supabase. Rien ne cassait tant qu'aucun composant client ne l'importait.
+   **Une constante qu'un composant client pourrait un jour vouloir n'a rien à faire
+   dans un module qui lit un secret**, même si personne ne l'y cherche encore.
    ⚠️ **`lib/veille.ts` ne suit PAS ce moule et porte bien `server-only`** : il lit
    la base. Sa partie pure — `calculerEtat()`, `daterPassage()` — reste dans le même
    fichier parce qu'aucun composant client n'en a besoin ; le jour où l'un en aurait
@@ -268,7 +336,9 @@ Récit de l'enquête : `docs/JOURNAL.md` § 27 août.
    `<NotePersonnelle offre={offre} />` compileraient sans la moindre erreur et
    enverraient les vingt-deux colonnes dans la page — message d'erreur technique,
    `contact_nom`, note personnelle. **Refaire la mesure après chaque nouveau
-   composant client**, c'est le seul garde-fou qui reste. ✅ Refaite le 29 août :
+   composant client**, c'est le seul garde-fou qui reste. ✅ Refaite une seconde
+   fois le 29 août après `MenuTri` et `BasculeTheme` : douze colonnes cherchées sur
+   deux vues de la liste, zéro trouvée, témoin positif. ✅ Première passe du 29 août :
    douze noms de colonnes cherchés sur trois écrans, plus le **contenu** d'une note
    cherché dans `/offres` et dans la fiche d'une autre offre — aucun, témoin positif.
 5. ⚠️ **`options.egal` est la SEULE façon de faire entrer une valeur extérieure dans
@@ -513,7 +583,7 @@ which python                   # doit afficher .../veille-offres-emploi-ia/.venv
 
 ```bash
 # Interface — depuis interface/
-npm run verifie      # lint + typecheck + les 33 tests, DANS LES DEUX FUSEAUX
+npm run verifie      # lint + typecheck + les 39 tests, DANS LES DEUX FUSEAUX
 ```
 
 ⚠️ **`verifie` lance la suite deux fois, et la seconde est celle qui compte** :
@@ -696,6 +766,10 @@ Un jeton nomme un **rôle**, jamais une couleur : `bg-card` ne veut plus dire
 accessibilité et candidaté · rose pastel = écarté · jaune/ocre = le temporel
 (« nouveau », état de la veille) · rose foncé = erreur. **Une teinte qui sert à
 deux choses ne sert plus à rien.**
+⚠️ **Les pilules de filtre de `/offres` reprennent ces teintes**, chacune pour ce
+qu'elle filtre — c'est le revirement du 29 août, § État. Le déclencheur « Trier »
+prend le bleu parce que le classement par défaut EST l'intérêt : ce n'est pas un
+sixième rôle, c'est un contrôle.
 ⚠️ **`--ecarte` (rose pastel) et `--destructive` (rose foncé) ne sont PAS un
 doublon** : le second est du texte d'erreur, donc 4,5:1 obligatoire ; le premier
 est un fond de bouton sous de l'encre foncée.

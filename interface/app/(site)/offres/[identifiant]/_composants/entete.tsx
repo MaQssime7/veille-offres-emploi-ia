@@ -35,34 +35,48 @@ export function EnTeteOffre({
 
   return (
     <header className="mb-6 border-b border-border pb-6">
+      {/* ⚠️ **`text-lg` par-dessus `nom-entreprise`, et l'ordre compte.**
+          L'utilitaire fixe `font-size: 0.9375rem` (15 px) pour la liste ; sur la
+          fiche, l'entreprise se retrouvait **plus petite que le texte courant**
+          passé à 16 px, ce qui inversait la hiérarchie. Les deux classes se
+          disputent la même propriété à spécificité égale — exactement le piège
+          déjà rencontré avec `accentue` dans `cartouche.tsx` — donc la valeur
+          retenue dépend de la feuille compilée et **doit être vérifiée au DOM**,
+          pas supposée. Mesuré : 18 px. */}
       {offre.entreprise_nom ? (
-        <p className="nom-entreprise mb-2">
+        <p className="nom-entreprise mb-2 text-lg">
           {offre.entreprise_nom}
         </p>
       ) : (
         // Même traitement qu'en liste : l'italique met en retrait, jamais une
         // couleur affaiblie — mesurée à 3,32:1, sous le plancher de 4,5:1.
-        <p className="nom-entreprise mb-2 italic text-muted-foreground">
+        <p className="nom-entreprise mb-2 text-lg italic text-muted-foreground">
           Entreprise non communiquée
         </p>
       )}
 
-      {/* 20 px en mobile, 24 px en bureau. Descendu de 24/30 px le 28 août
-          2026 : à 30 px, l'intitulé écrasait tout le reste de la page.
+      {/* 24 px en mobile, 30 px en bureau — **remonté le 29 août 2026 au soir**,
+          après que le texte courant de la fiche est passé à 16 px. À 24 px,
+          l'intitulé n'avait plus qu'un rapport de 1,5 avec le corps de texte :
+          un titre se lit comme un titre parce qu'il domine, et il ne dominait
+          plus rien. ⚠️ **C'est le retour exact de la valeur abandonnée le
+          28 août** (« à 30 px, l'intitulé écrasait tout le reste ») — ce qui a
+          changé entre-temps, c'est ce qu'il y a autour : le reste a grandi
+          aussi. Une taille ne se juge jamais seule.
           ⚠️ **Le plancher des 20 px n'existe plus depuis la refonte du 29 août
           2026, et c'est la seule contrainte que le changement de police a
           levée.** Il tenait à Fraunces, un serif qui perdait le contraste de
           ses pleins et déliés en dessous de cette taille ; Fredoka est une
           sans-serif arrondie de graisse constante, qui reste lisible plus bas.
           Les tailles n'ont pas bougé pour autant — elles étaient bonnes. */}
-      <h1 className="font-display text-xl font-bold leading-tight text-foreground sm:text-2xl">
+      <h1 className="font-display text-2xl font-bold leading-tight text-foreground sm:text-3xl">
         {offre.intitule}
       </h1>
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
-        {offre.lieu_libelle && <Cartouche>{offre.lieu_libelle}</Cartouche>}
+        {offre.lieu_libelle && <Cartouche aere>{offre.lieu_libelle}</Cartouche>}
         {offre.type_contrat_libelle && (
-          <Cartouche>{offre.type_contrat_libelle}</Cartouche>
+          <Cartouche aere>{offre.type_contrat_libelle}</Cartouche>
         )}
         {/* ⚠️ **PAS accentué, et c'est une correction du 28 août 2026.** Il
             l'était : « quand cette nature s'affiche, c'est qu'elle contredit le
@@ -74,14 +88,14 @@ export function EnTeteOffre({
             je ne sais pas pourquoi le reste ne l'est pas ». La nature du
             contrat reste visible — elle a son cartouche — elle ne prend juste
             pas le repère d'un autre. */}
-        {nature && <Cartouche>{nature}</Cartouche>}
+        {nature && <Cartouche aere>{nature}</Cartouche>}
         {salaire ? (
-          <Cartouche accentue>{salaire}</Cartouche>
+          <Cartouche accentue aere>{salaire}</Cartouche>
         ) : (
-          <CartoucheAbsent>Salaire non précisé</CartoucheAbsent>
+          <CartoucheAbsent aere>Salaire non précisé</CartoucheAbsent>
         )}
         {datePubliee && (
-          <Cartouche>
+          <Cartouche aere>
             <time dateTime={offre.publiee_a}>{datePubliee}</time>
           </Cartouche>
         )}
@@ -107,6 +121,7 @@ export function EnTeteOffre({
         <BoutonsStatut
           identifiant={offre.identifiant}
           statut={offre.statut}
+          aere
         />
       </div>
     </header>

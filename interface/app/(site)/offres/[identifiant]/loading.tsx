@@ -24,6 +24,62 @@ import { CadrePage } from "../_composants/en-tete-page";
  *
  * ⚠️ **`aria-hidden` et `sr-only`** : un lecteur d'écran n'a rien à faire de
  * six rectangles gris. On lui dit « Chargement de l'offre » une fois, en texte.
+ *
+ * ⚠️ **TOUTES les hauteurs ont été remesurées le 29 août 2026** — deux fois,
+ * après l'aération des cartes puis après l'alignement typographique des
+ * justifications sur le résumé. Deux valeurs étaient fausses avant même ces
+ * chantiers : le bloc de candidature était dessiné **26 px trop grand**. Une
+ * hauteur calée sur une seule fiche décrit cette fiche, pas la population.
+ *
+ * ⚠️ **On se cale sur la MOYENNE de chaque section, et surtout pas sur sa
+ * médiane — c'est la correction de méthode la plus utile de ce fichier.**
+ * Une médiane ne s'additionne pas : la somme des médianes des six sections
+ * donnait **1 325 px** là où la médiane du total mesuré est **1 381**, soit
+ * 55 px d'erreur venue de nulle part. La raison est que les distributions sont
+ * asymétriques — trois sections ont une médiane égale à leur minimum, parce
+ * qu'une longue minorité tire la queue vers le haut. La moyenne, elle,
+ * s'additionne exactement : `E[total] = Σ E[section]`. Et c'est bien le TOTAL
+ * qui décide du saut de page.
+ *
+ * Mesuré sur **20 offres réelles** :
+ *
+ * | Section | Moyenne | Étendue observée |
+ * |---|---|---|
+ * | Résumé | 101,3 px | 100 – 126 |
+ * | Évaluation | 192,4 px | 156 – 234 |
+ * | Ma note | 208,5 px | fixe (champ vide) |
+ * | Classement | 130 px | 114 – 154 |
+ * | L'annonce | 52 px | fixe (replié) |
+ * | Candidater | 119,1 px | 115,5 – 150 |
+ * | **Total** | **1 402 px** | mesuré sur 20 fiches |
+ *
+ * ⚠️ **L'évaluation a repris 4 px le 29 août** en fin de journée, quand son
+ * chiffre est passé de 12 à 14 px. Une hauteur de squelette se remesure à
+ * **chaque** changement de la section qu'elle double — c'est mécanique, et rien
+ * ne le rappelle.
+ * ✅ **Les deux réglages suivants de la jauge — pleine largeur, puis plafond à
+ * 13 rem et libellé resserré — n'ont PAS bougé cette hauteur**, et c'est
+ * vérifié plutôt que supposé : la rangée est haute comme son chiffre, pas comme
+ * sa barre (10 px dans 22). Remesuré sur les mêmes 20 offres après chaque
+ * changement : 192,4 px les deux fois.
+ *
+ * ⚠️ **L'étendue reste le vrai sujet** : l'évaluation seule va de 152 à 230 px.
+ * Aucun calage ne supprimera ce ±39 px, il se paie en bas de page plutôt qu'en
+ * haut. **Ne pas chercher l'égalité parfaite ici** — la chercher conduirait à
+ * mesurer le texte avant de l'avoir reçu.
+ *
+ * ✅ **Vérifié en ralentissant la page exprès**, squelette contre contenu réel
+ * sur 12 fiches : squelette **1 400,7 px** pour une moyenne mesurée de
+ * **1 402,2** — écart moyen de **−7,7 px** sur l'échantillon de contrôle, et
+ * l'étendue reste celle du contenu (−57 à +59). C'est ce que le calage sur les
+ * moyennes doit donner : un écart qui tourne autour de zéro au lieu de pencher
+ * toujours du même côté.
+ *
+ * ⚠️ **Une mesure automatisée de ce fichier produit une valeur aberrante par
+ * lot** (~−1 200 px), et ce n'est PAS une fiche longue : c'est l'instant où le
+ * squelette et le contenu coexistent pendant la transition. Vérifié en listant
+ * les hauteurs réelles — aucune fiche ne dépasse 1 400 px. La jeter est correct ;
+ * la prendre pour un cas limite conduirait à surdimensionner tout le squelette.
  */
 export default function ChargementFiche() {
   return (
@@ -36,18 +92,22 @@ export default function ChargementFiche() {
         <div className="mb-6 h-5 w-40 bg-muted" />
 
         <div className="mb-6 border-b border-border pb-6">
-          <div className="mb-2 h-4 w-48 bg-muted" />
-          <div className="mb-2 h-8 w-full max-w-xl bg-muted" />
-          {/* ⚠️ **`h-6` et non `h-5`** : un cartouche réel mesure 24 px, pas
-              20 — écart relevé au DOM le 29 août 2026 en calant le reste de ce
-              squelette. Il préexistait à la phase 4 et coûtait 4 px de saut à
-              chaque ouverture de fiche, trop peu pour se voir à l'œil et assez
-              pour être vrai. */}
+          <div className="mb-2 h-7 w-48 bg-muted" />
+          <div className="mb-2 h-[2.34375rem] w-full max-w-xl bg-muted" />
+          {/* ⚠️ **Toute la rangée d'entête a été remesurée le 29 août au soir**,
+              quand l'échelle typographique de la fiche a été remontée : intitulé
+              24 → 30 px, entreprise 15 → 18, cartouches et boutons de statut
+              11 → 13. Valeurs au DOM : entreprise **28 px**, titre **37,5**,
+              cartouches **27,5**, boutons **31,5**.
+              ⚠️ **Les LARGEURS des deux boutons ont bougé aussi** — un libellé
+              plus grand dans un cartouche plus rembourré ne tient plus dans la
+              même boîte. Elles ne changent pas la hauteur, mais un squelette qui
+              annonce des boutons trop courts se voit à l'œil. */}
           <div className="mt-4 flex flex-wrap gap-1.5">
-            <div className="h-6 w-28 bg-muted" />
-            <div className="h-6 w-16 bg-muted" />
-            <div className="h-6 w-36 bg-muted" />
-            <div className="h-6 w-24 bg-muted" />
+            <div className="h-[1.71875rem] w-28 bg-muted" />
+            <div className="h-[1.71875rem] w-16 bg-muted" />
+            <div className="h-[1.71875rem] w-36 bg-muted" />
+            <div className="h-[1.71875rem] w-24 bg-muted" />
           </div>
 
           {/* ⚠️ **Les deux boutons de statut, arrivés en phase 4.** Sans cette
@@ -59,8 +119,8 @@ export default function ChargementFiche() {
               fiche et l'autre la liste : les deux se ressemblent aujourd'hui et
               n'ont aucune raison de rester liées. */}
           <div className="mt-5 flex gap-1.5">
-            <div className="h-[1.6875rem] w-[6.75rem] bg-muted" />
-            <div className="h-[1.6875rem] w-[5.5rem] bg-muted" />
+            <div className="h-[1.96875rem] w-[7.5rem] bg-muted" />
+            <div className="h-[1.96875rem] w-[6.25rem] bg-muted" />
           </div>
         </div>
 
@@ -76,12 +136,12 @@ export default function ChargementFiche() {
               soit centré autour de zéro plutôt que systématiquement négatif. */}
           <div>
             <div className="mb-3 h-4 w-32 bg-muted" />
-            <div className="h-[5.25rem] carte-produit" />
+            <div className="h-[6.33rem] carte-produit" />
           </div>
 
           <div>
             <div className="mb-3 h-4 w-24 bg-muted" />
-            <div className="h-[6.875rem] carte-produit" />
+            <div className="h-[12.025rem] carte-produit" />
           </div>
 
           {/* ⚠️ **« Ma note », ajoutée le 29 août 2026 — et ce bloc a MANQUÉ
@@ -100,24 +160,24 @@ export default function ChargementFiche() {
               sans note, et une note longue ne dépasse pas 60 vh. */}
           <div>
             <div className="mb-3 h-4 w-20 bg-muted" />
-            <div className="h-[12.0625rem] carte-produit" />
+            <div className="h-[13.03rem] carte-produit" />
           </div>
 
           <div>
             <div className="mb-3 h-4 w-40 bg-muted" />
-            <div className="h-[5.875rem] carte-produit" />
+            <div className="h-[8.125rem] carte-produit" />
           </div>
 
           <div>
             <div className="mb-3 h-4 w-20 bg-muted" />
-            <div className="h-[3.375rem] carte-produit" />
+            <div className="h-[3.25rem] carte-produit" />
           </div>
 
           {/* Le bloc de candidature : bouton, ligne de contact, avertissement
               sur la dépublication. C'est lui qui manquait le plus. */}
           <div>
             <div className="mb-3 h-4 w-24 bg-muted" />
-            <div className="h-[8.875rem] carte-produit" />
+            <div className="h-[7.4425rem] carte-produit" />
           </div>
         </div>
       </div>

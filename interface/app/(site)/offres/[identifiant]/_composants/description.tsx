@@ -36,7 +36,7 @@ export function DescriptionOffre({ texte }: { texte: string }) {
       {/* `list-none` retire le triangle par défaut du navigateur ; le chevron
           qui le remplace pivote à l'ouverture. `[&::-webkit-details-marker]`
           fait la même chose sur Safari, qui ignore `list-none`. */}
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-6 py-4 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden">
         <ChevronRight
           aria-hidden="true"
           // Le mouvement est coupé sous `prefers-reduced-motion` par la règle
@@ -49,13 +49,19 @@ export function DescriptionOffre({ texte }: { texte: string }) {
         </span>
       </summary>
 
-      <div className="border-t border-border px-4 py-4">
+      <div className="border-t border-border px-6 py-5">
         {/* `max-w-prose` borne la longueur de ligne : sur 1000 px de large, un
             paragraphe pleine largeur fait 150 caractères par ligne, au-delà de
             tout ce qui se lit confortablement.
             `break-words` empêche une URL de 90 caractères — il y en a — de
             pousser la page en débordement horizontal. */}
-        <p className="max-w-prose whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+        {/* ⚠️ **`text-base` comme le résumé et les justifications.** La fiche
+            portait quatre tailles de texte suivi — 16, 15, 14 et 13 px — pour
+            des paragraphes qui se lisent tous de la même façon. Ce n'était pas
+            un système, c'était de l'accumulation. Il en reste deux : 16 px pour
+            ce qui se lit, 15 px pour les valeurs courtes du classement, qui sont
+            des données étiquetées et non des phrases. */}
+        <p className="max-w-prose whitespace-pre-wrap break-words text-base leading-relaxed text-foreground">
           {prepare}
         </p>
       </div>

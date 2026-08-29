@@ -89,12 +89,41 @@ export function Renseignements({ offre }: { offre: OffreEnFiche }) {
 
       {/* `dl` et non un tableau : ce sont des paires libellé/valeur, pas des
           données à croiser en deux dimensions. Un lecteur d'écran annonce le
-          couple, ce qu'une grille de `div` ne ferait pas. */}
-      <dl className="grid gap-x-6 gap-y-2 carte-produit px-4 py-3 sm:grid-cols-[9rem_1fr]">
+          couple, ce qu'une grille de `div` ne ferait pas.
+
+          ⚠️ **Desserré le 29 août 2026, sur constat de Maxime devant l'écran.**
+          Les trois lignes étaient séparées de **8 px** pour un texte dont
+          l'interligne en fait 21 : les paires se touchaient presque, et le bloc
+          se lisait comme un pavé plutôt que comme une liste. À 14 px, l'écart
+          entre deux lignes redevient plus grand que l'écart à l'intérieur d'une
+          ligne — c'est ce rapport-là qui fait qu'on voit trois paires et non
+          six morceaux. */}
+      {/* ⚠️ **`items-baseline`, et c'est un décalage MESURÉ, pas un réglage à
+          l'œil.** Les deux cellules d'une paire commencent exactement au même
+          pixel — l'écart de leurs boîtes est nul — mais leurs **lignes de base**
+          étaient distantes de **6,8 px** : la hauteur de ligne du libellé fait
+          15,4 px et celle de la valeur 26. Le libellé flottait donc au-dessus du
+          texte qu'il désigne, et le défaut s'est creusé le jour où la valeur est
+          passée de 14 à 16 px. Relevé par Maxime.
+
+          ⚠️ **Aligner par le HAUT (`items-start`) ne l'aurait pas corrigé** —
+          c'est déjà ce que fait le défaut, et c'est précisément la cause. Ce que
+          l'œil apparie, ce sont les lignes de base, pas les bords des boîtes.
+          ⚠️ **Ni `items-center`** : sur une valeur qui passe à deux lignes, le
+          libellé se centrerait entre les deux et cesserait de désigner la
+          première. `baseline` s'accroche à la première ligne, quelle que soit la
+          hauteur de la cellule. */}
+      <dl className="grid items-baseline gap-x-6 gap-y-3.5 carte-produit p-6 sm:grid-cols-[9rem_1fr]">
         {lignes.map(({ libelle, valeur }) => (
           <div key={libelle} className="contents">
             <dt className="libelle-mono text-muted-foreground">{libelle}</dt>
-            <dd className="text-sm leading-relaxed text-foreground">
+            {/* ⚠️ **16 px comme le reste de la fiche.** Ces valeurs étaient
+                restées à 14 px, seul vestige de l'ancienne échelle : Maxime les
+                a repérées à l'œil (« c'est encore l'ancienne police »). Elles
+                avaient été classées « données étiquetées » plutôt que texte —
+                une distinction juste sur le papier, invisible à l'écran, et qui
+                ne survivait pas au voisinage d'un texte à 16. */}
+            <dd className="text-base leading-relaxed text-foreground">
               {valeur}
             </dd>
           </div>

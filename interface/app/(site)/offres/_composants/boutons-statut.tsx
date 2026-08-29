@@ -35,11 +35,19 @@ export function BoutonsStatut({
   identifiant,
   statut,
   compact = false,
+  aere = false,
 }: {
   identifiant: string;
   statut: Statut;
   /** En liste, les boutons se réduisent à leur icône sous 640 px. */
   compact?: boolean;
+  /**
+   * ⚠️ **`true` sur la fiche uniquement.** Les deux boutons y sont le geste
+   * principal de l'écran, sous un intitulé et un texte qui ont grandi ; à 11 px
+   * ils devenaient les plus petits éléments d'une page qu'ils commandent. En
+   * liste ils gardent leur taille : ils s'y répètent 200 fois.
+   */
+  aere?: boolean;
 }) {
   const [enCours, demarrer] = useTransition();
   const [echec, setEchec] = useState<string | null>(null);
@@ -135,6 +143,7 @@ export function BoutonsStatut({
           compact={compact}
           onClick={() => basculer("candidate")}
           teinte="candidate"
+          aere={aere}
         />
         <BoutonStatut
           cible="ecarte"
@@ -143,6 +152,7 @@ export function BoutonsStatut({
           compact={compact}
           onClick={() => basculer("ecarte")}
           teinte="ecarte"
+          aere={aere}
         />
       </div>
 
@@ -184,6 +194,7 @@ function BoutonStatut({
   compact,
   onClick,
   teinte,
+  aere = false,
 }: {
   cible: Statut;
   actif: boolean;
@@ -191,6 +202,7 @@ function BoutonStatut({
   compact: boolean;
   onClick: () => void;
   teinte: "candidate" | "ecarte";
+  aere?: boolean;
 }) {
   const libelle = LIBELLES_STATUT[cible];
 
@@ -308,10 +320,10 @@ function BoutonStatut({
       // ⚠️ **`outline-none` a été RETIRÉ de cette classe** : c'est lui qui
       // neutralisait le repli de `pouf.css` (`:focus-visible { outline: 3px }`).
       // Le remettre reproduirait le défaut en silence.
-      className={`relative z-10 inline-flex items-center gap-1.5 rounded-full font-mono text-[0.6875rem] font-bold uppercase tracking-wider transition-colors before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] focus-produit disabled:opacity-60 ${compact ? "p-2 sm:px-3 sm:py-1" : "px-3 py-1"} ${habit}`}
+      className={`relative z-10 inline-flex items-center gap-1.5 rounded-full font-mono font-bold uppercase tracking-wider transition-colors before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] focus-produit disabled:opacity-60 ${aere ? "px-4 py-1.5 text-[0.8125rem]" : "text-[0.6875rem]"} ${aere ? "" : compact ? "p-2 sm:px-3 sm:py-1" : "px-3 py-1"} ${habit}`}
       title={actif ? `Remettre « ${LIBELLES_STATUT.a_traiter} »` : libelle}
     >
-      <Icone className="size-3.5 shrink-0" aria-hidden="true" />
+      <Icone className={`shrink-0 ${aere ? "size-4" : "size-3.5"}`} aria-hidden="true" />
       <span className={compact ? "sr-only sm:not-sr-only" : undefined}>
         {libelle}
       </span>

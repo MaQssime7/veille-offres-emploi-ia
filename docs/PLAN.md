@@ -52,7 +52,7 @@ veille-offres-emploi-ia/
 | Adresse | Contenu |
 |---|---|
 | `/` | Le **compte rendu** de la nuit — offres de la dernière exécution réussie, statut « à traiter », intérêt ≥ 50, tri par intérêt décroissant |
-| `/offres` | Le **poste de travail** — tout ce qui a été collecté, filtre de statut dans l'adresse (`?statut=a-traiter\|candidate\|ecarte`) |
+| `/offres` | Le **plan de travail** — par défaut les seules offres « à traiter ». Cinq filtres et trois classements, tous dans l'adresse (`?statut=` · `?tri=`). ⚠️ Le libellé « poste de travail » et l'affichage de « tout ce qui a été collecté » datent d'avant la phase 4 |
 | `/offres/[identifiant]` | La fiche d'une offre |
 | `/connexion` | La porte |
 
@@ -423,7 +423,7 @@ Phase 3.
 |---|---|
 | 1. Le schéma | ✅ Migrations 6 et 7, éprouvées par 26 contrôles contre la base réelle |
 | 2. L'écriture et les boutons de statut | ✅ `ecrireDansBase()`, action serveur, boutons sur la liste et la fiche |
-| 3. Le filtre dans l'adresse | ✅ Quatre onglets, compteurs, deux états vides distincts |
+| 3. Le filtre dans l'adresse | ✅ Quatre onglets, compteurs, deux états vides distincts. ⚠️ **Cinq onglets depuis le 29 août au soir** (« Nouveau »), plus un menu de classement — hors périmètre de cette phase, voir `docs/JOURNAL.md` |
 | **4. La note personnelle** | ✅ Champ à enregistrement automatique, indicateur à quatre états, borne vérifiée à trois niveaux |
 
 ⚠️ **Un défaut découvert et corrigé en route** : trier une offre la retirait du filtre, les

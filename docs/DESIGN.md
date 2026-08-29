@@ -220,6 +220,32 @@ tombait à 4,34 et 3,61:1, sous le plancher.
 elle échappe à la vérification des paires de jetons. Toute opacité posée sur une
 teinte se mesure à part, dans les deux modes.
 
+**Pilules de filtre** — mêmes teintes, **autres opacités**, et c'est le même
+piège qui a resservi le 29 août 2026. Ces pilules sont posées sur le **fond de
+page**, pas sur une carte : en mode sombre le pastel se mélange vers `#12111a` au
+lieu de `#211f2b`, donc il assombrit bien plus. À 70 %, le violet de « À
+traiter » tombait à **4,11:1**, sous le plancher.
+
+| Pilule au repos | Clair (55 %) | Sombre (80 %) |
+|---|---|---|
+| À traiter — violet | 7,79:1 | 5,09:1 |
+| Nouveau — jaune | 9,95:1 | 7,88:1 |
+| Candidaté — menthe | 9,68:1 | 7,46:1 |
+| Écarté — rose | 8,51:1 | 6,03:1 |
+| Toutes — sans teinte | 5,00:1 | 8,95:1 |
+| Déclencheur « Trier » — bleu plein | 7,05:1 | 8,67:1 |
+
+⚠️ **Ces chiffres sont mesurés au pixel, pas seulement calculés** — composition
+sur un canvas dans le navigateur, parce que Tailwind rend ses couleurs opacifiées
+en `oklab()` et qu'un parseur qui y lit du `rgb()` sort des valeurs fausses (une
+première mesure annonçait 2,26:1 sur des pilules à 9,68:1).
+
+⚠️ **La pilule elle-même ne pèse que 1,04 à 1,69:1 contre le fond en mode
+clair**, très en dessous des 3:1 d'un objet d'interface. Elle est délimitée par le
+**coussin** — lèvre foncée et ombre portée — et non par sa couleur, exactement
+comme les boutons de statut. La remplacer par une bordure teintée ferait cinq
+contours de cinq couleurs dans 40 px de haut.
+
 ---
 
 ## L'architecture des jetons — la décision à comprendre avant de toucher au CSS
@@ -325,10 +351,12 @@ l'information tient sur la seule couleur. ⚠️ « intérêt », jamais
 « intéressement » : à côté d'un salaire, le second se lit comme une prime de
 participation.
 
-⚠️ **Largeur de libellé figée à 108 px** : « ACCESSIBILITÉ » en Geist Mono mesure
-104 px, soit zéro marge. C'est cette largeur qui aligne les barres d'une offre à
-l'autre, et cet alignement est ce qui permet de comparer deux offres d'un coup
-d'œil.
+⚠️ **Largeur de libellé figée à 108 px — EN LISTE seulement** : « ACCESSIBILITÉ »
+en Geist Mono mesure 104 px, soit zéro marge. C'est cette largeur qui aligne les
+barres d'une offre à l'autre, et cet alignement est ce qui permet de comparer deux
+offres d'un coup d'œil. **Sur la fiche le libellé reprend sa largeur naturelle** :
+il n'y a qu'une offre, donc rien à aligner d'une ligne à l'autre — voir § Les
+jauges de note.
 
 ⚠️ **La justification se lit à plat**, jamais repliée. Le 26 août, le barème
 d'accessibilité a été corrigé précisément parce qu'on a pu **lire** pourquoi le
@@ -341,6 +369,224 @@ Ils ressortent par la **forme**, jamais par la couleur. Le salaire se distingue
 par la graisse, parce que c'est celui qu'on cherche en premier. « Salaire non
 précisé » a son propre traitement — pilule creuse, filet pointillé, italique —
 parce que c'est **le cas majoritaire** : 65 % des offres réelles.
+
+⚠️ **Deux tailles depuis le 29 août 2026 : 11 px en liste, 13 px sur la fiche**
+(propriété `aere`, comme les notes). Le cartouche « absent » suit exactement le
+même rembourrage que le plein — sa bordure entrant dans la boîte, un padding
+différent le rendrait 2 px plus haut que ses voisins et décalerait la rangée.
+
+### Filtres et classement de `/offres`
+
+**Cinq pilules à gauche, un menu à droite**, sur une même rangée alignée sur les
+bords de la liste. En dessous de 640 px elles s'empilent — `flex-col` et non
+`flex-wrap`, sinon le menu se retrouverait collé à gauche sur sa propre ligne,
+c'est-à-dire aligné sur rien.
+
+| Pilule | Teinte | Ce qu'elle montre |
+|---|---|---|
+| À traiter | violet | le défaut — ce qui reste à faire |
+| Nouveau | jaune | les offres de la dernière collecte réussie |
+| Candidaté | menthe | le statut du même nom |
+| Écarté | rose | le statut du même nom |
+| Toutes | aucune | l'absence de filtre, marquée par un contour |
+
+**Repos** : pastel atténué, coussin **bombé**. **Engagé** : pastel plein, coussin
+**enfoncé**, graisse renforcée. C'est la grammaire des boutons de statut, reprise
+telle quelle : la couleur seule ne distingue rien puisque repos et engagé la
+partagent.
+
+⚠️ **REVIREMENT du 29 août 2026, demandé par Maxime.** La règle précédente
+interdisait de teinter un onglet avec une couleur de signal : une pilule menthe
+ressemble à un bouton « Candidaté », qui lui **écrit en base**. Le risque est
+réel ; ce qui sépare les deux objets est désormais **le chiffre contre l'icône** —
+la pilule porte un compte et aucune icône, le bouton une icône et aucun compte.
+⚠️ **Les retirer « pour gagner de la place » rendrait les deux indiscernables.**
+
+⚠️ **Le compte d'une pilule ne porte PAS d'opacité.** Il en avait une (70 %) pour
+se détacher du libellé : sur un pastel plein, l'encre atténuée tombait à
+**3,43:1**. La distinction passe par la seule graisse, qui ne coûte rien.
+
+**Le menu « Trier »** prend le bleu — la teinte de l'intérêt, qui est le
+classement par défaut. Ce n'est pas un sixième signal : les cinq autres teintes
+sont prises par les filtres d'à côté, en réutiliser une ferait croire à un filtre
+de plus. Le critère en cours est **écrit sur le bouton** (« Trier · Intérêt ») :
+sans lui, il faut ouvrir le menu pour savoir pourquoi une offre est en haut.
+
+⚠️ **Trier par accessibilité ne fusionne pas les deux notes** — c'est ce qui rend
+ce classement compatible avec le refus du score composite. On regarde une note
+*ou* l'autre, jamais leur moyenne, et le bouton dit laquelle.
+
+### Le titre de `/offres` : « Bonjour Maxime »
+
+⚠️ **Le `h1` et le titre d'onglet ont DIVERGÉ le 29 août 2026, délibérément.**
+La règle du projet voulait qu'ils coïncident — elle valait tant que tous deux
+*nommaient* l'écran, ce qui était le cas de « Plan de travail ». Un salut ne
+nomme rien : il s'adresse à quelqu'un. L'onglet garde donc « Plan de travail »,
+qui reste ce qu'on lit dans l'historique, dans un favori et entre deux onglets
+ouverts — les trois seuls endroits où ce titre sert.
+
+⚠️ **Il ne varie pas avec l'heure**, et c'est une décision : « Bonsoir » à 19 h
+supposerait de connaître le fuseau du visiteur au moment du rendu **serveur**,
+c'est-à-dire la classe exacte de bug que `npm run verifie` traque en rejouant
+toute la suite en UTC. Un salut faux à minuit coûterait plus que la variation
+n'apporte, sur un écran consulté le matin.
+
+### L'échelle des textes de la fiche — sept rôles, une seule progression
+
+⚠️ **Relevé par Maxime le 29 août 2026 : « c'est bizarre que le texte du résumé
+ne soit pas le même que celui des justifications ».** Il avait raison, et le
+défaut était plus large que le cas qu'il pointait — la fiche portait **quatre
+tailles de texte suivi** pour des paragraphes qui se lisent tous de la même
+façon : 16 px pour le résumé, 15 pour l'annonce intégrale, 14 pour le classement,
+13 pour les justifications. Ce n'était pas une échelle, c'était une accumulation :
+chaque bloc était arrivé avec la taille qui semblait juste au moment où on
+l'écrivait.
+
+| Rôle | Taille | Ce qui en relève |
+|---|---|---|
+| **Intitulé de l'offre** | 24 / **30 px** | le `h1` |
+| **Nom de l'entreprise** | **18 px** | juste au-dessus du titre |
+| **Texte qui se lit** | **16 px** | résumé · justifications · annonce intégrale · note personnelle · **valeurs du classement** |
+| **Chiffre d'une note** | 14 px mono | « 85 », « 55 » |
+| **Pilule** | 13 px mono | cartouches · boutons Candidaté / Écarté |
+| **Note de bas de page** | 12 px | l'avertissement sur la dépublication |
+| **Étiquette** | 11 px mono | « APPELLATION », « MÉTIER ROME », « INTÉRÊT » |
+
+⚠️ **L'échelle a été remontée en DEUX temps, et le second est la conséquence du
+premier.** Passer le texte courant de 13 à 16 px a laissé tout le reste en place :
+l'intitulé n'avait plus qu'un rapport de 1,5 avec le corps de texte, le nom de
+l'entreprise était **plus petit** que lui (15 contre 16), et les pilules à 11 px
+devenaient les plus petits éléments d'une page qu'elles commandent. Relevé par
+Maxime : « ça fait un peu petit là quoi, vu qu'on a augmenté la police ».
+
+⚠️ **Une taille ne se juge jamais seule.** L'intitulé revient exactement à la
+valeur abandonnée le 28 août — 30 px, « à 30 px l'intitulé écrasait tout le reste
+de la page ». Ce qui a changé, ce n'est pas le titre : c'est ce qu'il y a autour.
+
+⚠️ **Les valeurs du classement quittent le rôle « donnée étiquetée » (14 px) pour
+rejoindre le texte (16 px).** La distinction était juste sur le papier et
+invisible à l'écran : Maxime les a repérées comme « encore l'ancienne police ».
+Une catégorie qu'aucun lecteur ne perçoit n'est pas une catégorie.
+
+⚠️ **Dès que deux tailles se côtoient sur une même ligne, c'est la LIGNE DE BASE
+qui les apparie — pas le haut des boîtes.** Le classement le montre : ses deux
+cellules commençaient au même pixel (écart de boîte nul) et paraissaient pourtant
+décalées, parce que les hauteurs de ligne diffèrent — 15,4 px pour l'étiquette,
+26 pour la valeur, soit **6,8 px** entre les deux lignes de base. Relevé à l'œil
+par Maxime, confirmé au DOM. `items-baseline` ramène l'écart à zéro.
+⚠️ **Ni `items-start` — c'est le défaut lui-même — ni `items-center`**, qui sur
+une valeur de deux lignes centrerait l'étiquette entre les deux et cesserait de
+désigner la première. **La règle vaut partout où une étiquette mono jouxte un
+texte plus grand.**
+
+⚠️ **Le résumé et les justifications sont le MÊME genre de texte, et c'est le
+fond de l'affaire.** Les deux sont écrits par le modèle et disent ce qu'il a
+compris de l'offre — une fois en synthèse, une fois par note. Les afficher à deux
+niveaux annonçait une hiérarchie que le produit ne défend pas : **les
+justifications sont l'argument central du projet**, pas une annotation sous une
+barre.
+
+⚠️ **En LISTE, la justification reste à 13 px atténuée**, et ce n'est pas une
+incohérence : sur 200 lignes elle est un commentaire qu'on survole, pas un texte
+qu'on lit. Le rôle change avec l'écran, la typographie suit — c'est la même
+propriété `aere` qui porte les deux.
+
+### Les jauges de note — fixes en liste, élargies sur la fiche
+
+⚠️ **La largeur fixe de 88 px n'est pas un choix esthétique en liste : c'est ce
+qui aligne les barres d'une offre à l'autre**, et cet alignement est ce qui permet
+de comparer deux cents offres d'un coup d'œil sans lire les chiffres. Elle y
+reste.
+
+⚠️ **Sur la fiche, cet argument tombe — il n'y a qu'une offre.** La barre y passe
+donc de 88 à **208 px** dans une colonne de 428 : avant, la moitié de la colonne
+restait vide à droite du chiffre, sous une justification de pleine largeur.
+
+| | Liste | Fiche |
+|---|---|---|
+| Largeur de la jauge | 88 px, fixe | flexible, **plafonnée à 208 px** |
+| Largeur du libellé | 108 px, fixe | **naturelle** (54 px pour « Intérêt ») |
+| Épaisseur | 8 px | 10 px |
+| Chiffre | 11 px | **14 px** |
+
+⚠️ **Deux réglages successifs, tous deux demandés en regardant l'écran.** La
+jauge est d'abord passée en **pleine largeur, soit 290 px** : trop — « une barre
+plus large que la moitié du texte qu'elle surmonte se lit comme un objet à part
+entière plutôt que comme la mesure d'une note ». D'où le plafond de 13 rem, qui
+la ramène à **208 px** : c'est cette valeur-là qui est en place.
+
+⚠️ **Le libellé perd sa largeur fixe sur la fiche, et c'est le second défaut
+qu'elle causait** : « INTÉRÊT » ne mesure que 54 px dans une case de 108, d'où
+**48 px de blanc** entre le mot et sa jauge. En liste cette réserve aligne les
+barres d'une ligne à l'autre ; sur une fiche il n'y a rien à aligner.
+**Conséquence acceptée** : les deux jauges de la fiche ne commencent plus au même
+`x` (62 px pour « Intérêt », 108 pour « Accessibilité »). Chaque bloc libellé +
+jauge + chiffre se lit comme une unité, et les deux vivent dans deux colonnes
+séparées.
+
+⚠️ **Le chiffre grandit AVEC la barre, et c'est une conséquence, pas un ajout.**
+À 12 px au bout d'une jauge de 208 px et sous un texte de 16, il devenait le plus
+petit élément d'une rangée dont il est pourtant l'information principale — la
+barre, elle, porte `aria-hidden`. Le **libellé** reste à 11 px : c'est une
+étiquette, pas une donnée.
+
+✅ **La piste faiblement contrastée (1,73:1 et 1,31:1) se lit MIEUX en grand qu'en
+petit** — vérifié sur une note à 5/100 : 15 px de bleu franc sur 297 px de pastel,
+on voit immédiatement que la jauge est presque vide. L'agrandissement ne dégrade
+donc pas l'arbitrage du 29 août ; il le rend plus supportable.
+
+### Densité : la liste et la fiche ne se lisent pas pareil
+
+⚠️ **Deux densités, et les confondre était un défaut** — relevé par Maxime le
+29 août 2026 devant l'écran : « c'est un peu trop compacté, alors qu'il y a de la
+place ».
+
+| | Liste | Fiche |
+|---|---|---|
+| Ce qu'on y fait | balayer 200 lignes | lire **une** offre |
+| Ce que coûte l'air | du défilement, à chaque ligne | rien, la page est courte |
+| Intitulé · entreprise | inchangés | 30 px · 18 px |
+| Cartouches · boutons de statut | 11 px | **13 px** |
+| Marge des cartes | conservée | **24 px** (était 16) |
+| Écart entre les deux notes | 10 px vertical / 32 px horizontal | **24 / 48 px** |
+| Sous la barre de note | 4 px | **10 px** |
+| Lignes du classement | — | **14 px** (était 8) |
+
+⚠️ **La marge de 24 px n'est pas un arrondi : elle se lit contre le RAYON.** Les
+cartes du système ont 32 px de rayon ; à 16 px de marge, le texte passait plus
+près du bord que la courbe ne s'en écarte, et venait donc buter visuellement dans
+les coins. Une marge doit valoir au moins les trois quarts du rayon pour qu'un
+angle arrondi se lise comme une marge et non comme un rognage.
+
+⚠️ **L'écart sous une barre de note doit rester PLUS PETIT que l'interligne du
+paragraphe** (21 px) : à 24 px, la justification se détacherait de la note
+qu'elle explique et se lirait comme un texte indépendant. On perd alors le
+couple, qui est toute l'information.
+
+⚠️ **Les quatre autres cartes de la fiche ont suivi**, alors que seules deux
+étaient visées. Deux respirations différentes sur des cartes empilées se voient
+immédiatement — et c'est le genre d'écart qu'on ne sait plus justifier six mois
+plus tard.
+
+⚠️ **Ne pas unifier avec la liste** : ce serait lui rendre un air qu'elle n'a pas
+les moyens de payer. `ContenuNotes` porte donc une propriété `aere`, et non deux
+composants — les deux écrans doivent rester d'accord sur *ce qu'ils montrent*, ils
+n'ont aucune raison de l'être sur *l'espace qu'ils y mettent*.
+
+### Bouton de thème
+
+**Trois états, pas deux** : système → clair → sombre, en cycle. Deux états
+auraient supprimé le suivi automatique de macOS, qui était le comportement
+antérieur et reste le défaut. L'icône dit l'état actuel (moniteur, soleil, lune),
+l'infobulle dit l'effet du clic.
+
+Le choix vit dans le **navigateur** (`localStorage`), relu par le script du
+`<head>` avant la peinture — sinon la page clignoterait en clair avant de
+basculer. Conséquence assumée : il ne suit pas d'un appareil à l'autre. Deux
+onglets ouverts, en revanche, se synchronisent par l'événement `storage`.
+
+⚠️ **`/connexion` respecte le choix mais n'offre pas le bouton** : il vit dans le
+groupe `(site)`, qui est une serrure et pas un rangement.
 
 ### Boutons de statut
 
@@ -358,6 +604,14 @@ décoratif :**
 
 Le plancher interdit qu'une information tienne sur la seule couleur ; ici elle ne
 tient sur **aucune** couleur, ce qui est plus robuste qu'avant.
+
+⚠️ **11 px en liste, 13 px sur la fiche** — même propriété `aere` que les
+cartouches. Sur la fiche ils sont le geste principal de l'écran, sous un intitulé
+de 30 px : à 11 px ils en devenaient les plus petits éléments. En liste ils se
+répètent deux cents fois, chaque pixel de hauteur s'y paie en défilement.
+⚠️ **L'opacité du repos diffère entre les deux modes** — 55 % en clair, 70 % en
+sombre : atténuer éclaircit sur une carte blanche et **assombrit** sur une carte
+sombre. Voir § Contrastes.
 
 ### Ligne d'offre
 
@@ -431,7 +685,7 @@ Faites dans un navigateur, pas déduites.
 - Console : aucune erreur, aucun avertissement.
 - Fuite de données : douze noms de colonnes cherchés dans le HTML de la liste et
   de la fiche — **aucun**, avec témoin positif.
-- `npm run verifie` : lint, typecheck, 33 tests dans les deux fuseaux.
+- `npm run verifie` : lint, typecheck, 39 tests dans les deux fuseaux.
 
 **Non vérifié** : le rendu sur un vrai téléphone — 375 px simulé dans un
 navigateur de bureau ne reproduit ni l'écran haute densité, ni la barre du
@@ -461,3 +715,11 @@ Les décisions d'avant la refonte ne sont conservées que si elles tiennent enco
 | 29 août 2026 | Boutons de statut colorés au repos | Demande de Maxime. La distinction repos/engagé passe à la saturation, au relief et à l'icône |
 | 29 août 2026 | Le compte « M notées » retiré de `/offres` | À terme toute offre arrive notée : l'indicateur afficherait deux nombres égaux à longueur d'année |
 | 29 août 2026 | La piste des jauges est teintée, le filet retiré | Demande de Maxime : la barre ne porte plus qu'une seule couleur. Sous 3:1, acceptable tant que le chiffre reste écrit à côté |
+| 29 août 2026 (soir) | Les cinq pilules de filtre prennent la teinte de ce qu'elles filtrent | Demande de Maxime. **Revirement** : la règle interdisait d'employer une teinte de signal sur un onglet. Chiffre contre icône sépare désormais la pilule du bouton de statut |
+| 29 août 2026 (soir) | Menu « Trier » en bleu, à droite de la rangée | Le classement par défaut EST l'intérêt ; les cinq autres teintes sont prises par les filtres |
+| 29 août 2026 (soir) | Bouton de thème à trois états, choix dans le navigateur | Deux états auraient supprimé le suivi de macOS, qui était le comportement antérieur |
+| 29 août 2026 (soir) | Le `h1` de `/offres` devient « Bonjour Maxime », l'onglet reste « Plan de travail » | Demande de Maxime. Un salut ne nomme pas la page : l'onglet doit rester identifiable dans l'historique et les favoris |
+| 29 août 2026 (soir) | Deux densités sur la fiche et la liste (propriété `aere`) | On balaye une liste, on lit une fiche. Marges 24 px, textes 16 px, pilules 13 px sur la seule fiche |
+| 29 août 2026 (soir) | Résumé et justifications à la même typographie | Même auteur, même statut : deux niveaux annonçaient une hiérarchie que le produit ne défend pas |
+| 29 août 2026 (soir) | Échelle de la fiche remontée (intitulé 30, entreprise 18) | Conséquence du texte passé à 16 px. **Une taille ne se juge jamais seule** |
+| 29 août 2026 (soir) | `items-baseline` sur le classement France Travail | Les boîtes étaient alignées, les lignes de base décalées de 6,8 px. C'est la ligne de base que l'œil apparie |

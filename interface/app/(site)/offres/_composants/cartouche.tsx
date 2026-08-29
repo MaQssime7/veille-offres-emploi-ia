@@ -27,14 +27,24 @@ import { cn } from "@/lib/utils";
 export function Cartouche({
   children,
   accentue = false,
+  aere = false,
 }: {
   children: ReactNode;
   accentue?: boolean;
+  /**
+   * ⚠️ **`true` sur la fiche, `false` en liste — même partage que les notes.**
+   * Un cartouche de 11 px se lisait bien sous un intitulé de liste ; sous un
+   * texte de fiche passé à 16 px, il devenait un détail illisible. En liste il
+   * ne bouge pas : quatre cartouches × 200 lignes, chaque pixel de hauteur s'y
+   * paie en défilement.
+   */
+  aere?: boolean;
 }) {
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center rounded-full bg-muted px-2.5 py-0.5 font-mono text-[0.6875rem] leading-relaxed text-muted-foreground",
+        "inline-flex max-w-full items-center rounded-full bg-muted font-mono leading-relaxed text-muted-foreground",
+        aere ? "px-3 py-1 text-[0.8125rem]" : "px-2.5 py-0.5 text-[0.6875rem]",
         accentue && "font-semibold text-foreground",
       )}
     >
@@ -59,9 +69,23 @@ export function Cartouche({
  * retrait est portée par l'italique et le filet pointillé, qui ne coûtent
  * aucun contraste.
  */
-export function CartoucheAbsent({ children }: { children: ReactNode }) {
+export function CartoucheAbsent({
+  children,
+  aere = false,
+}: {
+  children: ReactNode;
+  aere?: boolean;
+}) {
   return (
-    <span className="inline-flex max-w-full items-center rounded-full border border-dashed border-input px-2.5 py-0.5 font-mono text-[0.6875rem] italic leading-relaxed text-muted-foreground">
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center rounded-full border border-dashed border-input font-mono italic leading-relaxed text-muted-foreground",
+        // ⚠️ La bordure est comptée dans la boîte : sans padding identique à
+        // `Cartouche`, le cartouche « absent » serait 2 px plus haut que ses
+        // voisins et la rangée entière se décalerait.
+        aere ? "px-3 py-1 text-[0.8125rem]" : "px-2.5 py-0.5 text-[0.6875rem]",
+      )}
+    >
       {children}
     </span>
   );

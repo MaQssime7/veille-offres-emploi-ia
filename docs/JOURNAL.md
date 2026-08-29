@@ -2899,3 +2899,284 @@ deux fuseaux.
 remplace — la repeindre aurait été du travail jeté. Seuls ses libellés de police
 ont été corrigés, parce qu'ils annonçaient « Fraunces » et « Geist » en Fredoka et
 Nunito.
+
+## 29 août 2026 (suite) — Filtres colorés, classement, thème
+
+Demande de Maxime, en regardant l'écran, juste avant d'ouvrir la phase 5 : donner
+aux filtres la forme des pilules de 1st-Pouf, ajouter un filtre « Nouveau », un
+menu de classement à droite, et un bouton de thème.
+
+### Ce qui a été construit
+
+| Ajout | Où il vit |
+|---|---|
+| Cinq pilules colorées, teinte du statut filtré | `_composants/filtres-statut.tsx` |
+| Filtre **« Nouveau »** — les offres de la dernière collecte réussie | `?statut=nouvelles`, `lib/offres.ts` |
+| Menu **« Trier »** : intérêt · accessibilité · plus récentes | `?tri=`, `_composants/menu-tri.tsx` |
+| Bouton de thème à **trois** états : système → clair → sombre | `_coquille/bascule-theme.tsx` |
+
+Deux modules partagés de plus, sur le moule de `statuts.ts` — constantes et
+fonctions pures, **sans `server-only`**, parce qu'un composant client en a besoin :
+`lib/tri.ts` et `lib/theme.ts`. La chaîne de classement SQL, elle, reste dans
+`lib/offres.ts` : le `?tri=` de l'adresse est validé puis sert de **clé** dans une
+table de trois chaînes constantes, il n'atteint jamais le `&order=`.
+
+### Le revirement assumé sur la couleur des filtres
+
+`filtres-statut.tsx` portait la règle inverse, écrite le matin même : « l'actif se
+marque par le fond violet, **jamais** par une teinte de signal — colorer l'onglet
+Candidaté en menthe le ferait ressembler à un bouton de statut alors qu'il n'en
+change aucun ». Maxime a tranché pour la couleur ; le risque décrit reste réel, et
+ce qui sépare les deux objets est désormais **le chiffre contre l'icône** : la
+pilule de filtre porte un compte et pas d'icône, le bouton de statut une icône et
+pas de compte. Les retirer « pour gagner de la place » les rendrait indiscernables.
+
+### Trois défauts trouvés en mesurant
+
+**1. Une opacité se remesure sur la surface qui est vraiment derrière.** Les
+boutons de statut s'atténuent à 55 % / 70 % — mais ils sont posés sur une carte
+blanche. Ces pilules-ci sont sur le fond de page, presque noir en mode sombre : à
+70 %, le violet de « À traiter » tombait à **4,11:1**, sous le plancher. Porté à
+**80 %** en sombre, les cinq repassent (5,09 à 7,88:1). La leçon avait déjà été
+écrite une fois dans `boutons-statut.tsx` ; elle vient de resservir telle quelle.
+
+**2. Une base entièrement morte s'annonçait comme une panne du seul journal des
+collectes.** Sur `?statut=nouvelles`, `lireDerniereExecution()` rendait `null`
+aussi bien quand la lecture échouait que quand aucune collecte n'avait jamais
+abouti. L'écran affichait alors « la liste des offres répond, mais pas le journal
+des collectes » — une affirmation **sur la liste, qui n'avait même pas été
+interrogée**. Vu en coupant Supabase pour de bon. La lecture rend désormais un
+résultat à deux branches : panne → « la base est injoignable », base vide →
+« aucune collecte n'a encore abouti ».
+
+**3. Le squelette annonçait des pilules de 29 px, elles en font 30,5.** Écart
+préexistant depuis la phase 4, invisible en développement où le squelette ne
+s'affiche jamais assez longtemps. Corrigé et vérifié en ralentissant la page
+exprès : **écart de 0 px** entre l'en-tête du squelette et celui de la page réelle,
+à 1280 px comme à 375 px.
+
+### Deux défauts vus à l'écran, pas dans le code
+
+À 375 px, le bouton « Trier » s'étirait sur toute la largeur (un réglage secondaire
+prenait l'allure du bouton principal), et le menu ouvert dépassait de l'écran —
+la coche du classement actif devenait invisible. Corrigés par `items-start` et une
+largeur bornée. L'arrivée du bouton de thème avait aussi fait casser « Veille IA »
+sur deux lignes dans la barre du haut.
+
+### Ce qui a été vérifié
+
+Cinq états de `/offres` traversés pour de vrai, dont deux en cassant l'accès à la
+base et un contre un **faux PostgREST** répondant « aucune ligne » à tout.
+Contrastes **mesurés au pixel** (composition sur canvas, parce que Tailwind rend
+ses couleurs en `oklab` et qu'un parseur naïf les lit de travers) : de 5,00 à
+12,17:1 en clair, de 6,03 à 14,83:1 en sombre — tous au-dessus du plancher.
+Focus clavier vérifié par tabulation réelle : `outline` 2 px à la couleur d'encre,
+là où un `ring` aurait été écrasé par le coussin. Cycle du thème éprouvé par cinq
+clics à **coordonnées fixes**. Mesure anti-fuite refaite après deux nouveaux
+composants clients : douze noms de colonnes cherchés, zéro trouvé, témoin positif.
+Console vide. `npm run verifie` au vert — 39 tests, dans les deux fuseaux.
+
+### Ce que `/code-review` a trouvé — quatre défauts, dont deux mesurés au DOM
+
+**1. Le bouton de thème devenait inerte si le navigateur refusait le stockage.**
+`basculer()` avalait l'échec d'écriture puis appelait `__poserTheme()`, **qui
+relit `localStorage`** : elle y retrouvait l'ancienne valeur et ne changeait ni la
+classe, ni l'attribut, ni l'icône. Rien ne se passait, sans message — exactement
+ce que le commentaire du composant disait vouloir éviter. Le clic passe désormais
+sa valeur en argument ; le stockage n'est plus qu'une mémoire pour le prochain
+chargement. Vérifié en forçant `setItem` à lever : le thème bascule quand même.
+
+**2. La bordure de l'onglet « Toutes » n'existait pas.** `border-transparent` en
+classe de base et `border-input` dans l'habit sont **deux utilitaires de même
+propriété et même spécificité** — c'est leur ordre dans la feuille compilée qui
+tranche, et le transparent gagnait. Mesuré : `border-color: rgba(0, 0, 0, 0)`
+dans les deux modes. Or c'est le seul onglet sans teinte : il ne restait que le
+creux du coussin, à 1,13:1, pour dire où finit la cible cliquable. La couleur vient
+maintenant de l'habit dans les cinq cas. Remesuré : **3,22:1 en clair, 9,39:1 en
+sombre**, et les largeurs sont inchangées.
+
+**3. `adresse.ts` se présentait comme pur et importait un module `server-only`.**
+Il allait chercher la seule constante `FILTRE_PAR_DEFAUT` dans `lib/offres.ts`,
+qui tire `lib/supabase.ts` — donc la clé secrète. Rien ne cassait tant qu'aucun
+composant client ne l'importait ; le premier à le faire serait tombé sur une
+erreur `server-only` incompréhensible. D'où **`lib/filtres.ts`**, cinquième module
+partagé sans `server-only`, qui porte aussi les libellés — lesquels étaient
+écrits deux fois, dans `page.tsx` et dans `filtres-statut.tsx`.
+
+**4. `totalBase` acceptait n'importe quel objet.** Typé `Record<string, …>`, il
+avalait sans broncher l'objet à cinq clés des onglets et aurait rendu
+574 + 7 + 574 = **1 155 offres**. Typé `Record<Statut, …>`, le compilateur dit
+maintenant ce que le commentaire exigeait déjà.
+
+⚠️ **Le garde-fou « chaque statut a son onglet » est passé d'un `throw` au rendu à
+un contrôle de TYPE**, dans `lib/filtres.ts`. Une vérification qui échoue à la
+compilation vaut mieux qu'une qui attend qu'on ouvre la page.
+
+### La fiche desserrée — même jour, sur constat devant l'écran
+
+« La bulle notation et la bulle classement France Travail sont un peu trop
+compactées, alors qu'il y a de la place. » Mesuré avant de toucher quoi que ce
+soit : les cartes avaient **16 px de marge intérieure pour 32 px de rayon**, et
+les trois lignes du classement étaient séparées de **8 px** pour un texte dont
+l'interligne en fait 21.
+
+Marge portée à 24 px sur **les six cartes** de la fiche — les deux visées et les
+quatre autres, parce que deux respirations différentes sur des cartes empilées se
+voient tout de suite. Écarts internes desserrés : 24/48 px entre les deux notes,
+10 px sous chaque barre, 14 px entre les lignes du classement.
+
+⚠️ **La liste, elle, n'a pas bougé — c'était la contrainte.** `ContenuNotes` sert
+les deux écrans ; il porte désormais une propriété `aere` plutôt qu'une valeur
+unique. Vérifié après coup : la liste garde ses 10/32 px et ses 4 px sous la
+barre. Aérer 200 lignes qu'on balaye le matin aurait coûté un tiers d'écran par
+ligne.
+
+**Le squelette de la fiche a été entièrement remesuré**, et deux de ses hauteurs
+étaient fausses avant même ce chantier : le bloc de candidature était dessiné
+**26 px trop grand**. La cause est une méthode, pas une étourderie — les valeurs
+avaient été calées sur **une** fiche, qui décrit cette fiche et pas la médiane.
+Remesuré sur **14 offres réelles**, puis vérifié en ralentissant la page exprès :
+écart **médian de −3,3 px** entre squelette et contenu, étendue −54 à +20, dix
+fiches en dessous et quatre au-dessus. Un écart centré, ce qui est le mieux
+atteignable tant que la hauteur dépend de la longueur d'un texte.
+
+### « Le texte du résumé n'est pas le même que celui des justifications »
+
+Constat de Maxime, le même jour. Vérifié au DOM avant de toucher quoi que ce
+soit, et le défaut était plus large que le cas qu'il pointait : la fiche portait
+**quatre tailles de texte suivi** — 16 px (résumé), 15 (annonce intégrale), 14
+(classement), 13 (justifications) — plus deux couleurs. Chaque bloc était arrivé
+avec la taille qui semblait juste au moment où on l'écrivait.
+
+Ramené à **quatre rôles** : 16 px encre pour ce qui se lit, 14 px pour les
+valeurs courtes du classement, 12 px atténué pour l'avertissement, 11 px mono
+pour les étiquettes. Détail dans `docs/DESIGN.md`.
+
+⚠️ **Ce qui décide, c'est que le résumé et les justifications ont le même
+auteur et le même statut** — ce que le modèle a compris de l'offre, une fois en
+synthèse et une fois par note. Deux niveaux typographiques annonçaient une
+hiérarchie que le produit ne défend pas : les justifications *sont* l'argument
+du projet. En liste, elles restent à 13 px atténuées, parce qu'on y survole au
+lieu de lire.
+
+### La médiane ne s'additionne pas — correction de méthode sur le squelette
+
+En recalant le squelette de la fiche après ces deux chantiers, une erreur de
+raisonnement est apparue, et elle valait plus que sa correction. Chaque section
+était calée sur **sa médiane**, ce qui est juste prise isolément. Mais la somme
+des six médianes donnait **1 325 px** là où la médiane du total mesuré est
+**1 381** : 55 px d'erreur venue de nulle part.
+
+La cause : les distributions sont asymétriques — trois sections ont une médiane
+**égale à leur minimum**, parce qu'une minorité de fiches longues tire la queue.
+Une médiane ne s'additionne pas ; une moyenne, si : `E[total] = Σ E[section]`. Et
+c'est bien le **total** qui décide du saut de page.
+
+Recalé sur les moyennes de **20 offres**, puis vérifié en ralentissant la page :
+squelette **1 363 px** contre des fiches de 1 303 à 1 400, écart moyen **+2,4 px**,
+médian −0,6. ⚠️ Deux valeurs du squelette étaient d'ailleurs fausses depuis le
+départ — le bloc de candidature était dessiné **26 px trop grand** — parce
+qu'elles avaient été calées sur **une** fiche, qui décrit cette fiche et pas la
+population.
+
+### Les jauges élargies — un défaut laissé le matin, rouvert le soir
+
+« La jauge fait un peu petit par rapport au texte. » C'est exactement le premier
+des trois défauts de la fiche **mesurés et volontairement laissés** plus tôt dans
+la journée : « barres de notes restées à la largeur de la liste ». Maxime le
+rouvre, et la mesure lui donne raison — 88 px de jauge sous une justification de
+428 px, soit la moitié de la colonne vide à droite du chiffre.
+
+⚠️ **Ce qui justifiait la largeur fixe ne vaut que pour la liste** : c'est elle
+qui aligne les barres d'une offre à l'autre, et cet alignement permet de comparer
+deux cents offres sans lire les chiffres. Sur une fiche, il n'y a qu'une offre.
+La barre y devient donc flexible (290 px à 1440, 154 à 375) et son chiffre passe
+de 12 à 14 px — sinon il devenait le plus petit élément d'une rangée dont il est
+l'information principale.
+
+✅ **Contrôle utile** : la piste faiblement contrastée se lit **mieux** en grand.
+Sur une note à 5/100, 15 px de bleu franc sur 297 px de pastel — on voit
+immédiatement que la jauge est presque vide. L'agrandissement rend l'arbitrage du
+matin plus supportable, pas moins.
+
+### Deuxième passe sur les jauges, et « Bonjour Maxime »
+
+« Elles sont trop larges là… et entre la jauge bleue et "Intérêt", il y a quand
+même un gros espace blanc. » Deux constats, deux causes distinctes :
+
+1. **290 px, c'était trop.** Plafonnée à **208 px** au-delà de 640 px de large.
+2. **Le blanc venait de la largeur fixe du libellé** — « INTÉRÊT » mesure 54 px
+   dans une case de 108, d'où 48 px de vide avant la jauge. Sur la fiche, le
+   libellé prend désormais sa largeur naturelle. **Conséquence assumée** : les
+   deux jauges ne démarrent plus au même `x`, ce qui ne gêne pas puisqu'elles
+   vivent dans deux colonnes distinctes.
+
+✅ **Vérifié plutôt que supposé** : ces deux réglages n'ont **pas** bougé la
+hauteur de la section — remesurée sur les mêmes 20 offres, 192,4 px avant comme
+après. Une rangée est haute comme son chiffre, pas comme sa barre (10 px dans
+22). Le squelette n'avait donc rien à reprendre.
+
+**Le `h1` de `/offres` devient « Bonjour Maxime »**, et le titre d'onglet reste
+« Plan de travail ». ⚠️ **Cette divergence casse une règle du projet, et c'est
+voulu** : elle exigeait que les deux coïncident *parce que tous deux nommaient
+l'écran*. Un salut ne nomme rien — un onglet « Bonjour Maxime » ne dirait plus de
+quelle page il s'agit dans l'historique ou dans un favori. Le salut ne varie pas
+avec l'heure : le rendu est serveur, et deviner le fuseau du visiteur est la
+classe de bug que `verifie` traque en rejouant les tests en UTC.
+
+### L'échelle de la fiche remontée — la seconde moitié du travail
+
+« Les bulles candidater et écarter font un peu petites vu qu'on a augmenté la
+police… on peut aussi augmenter l'intitulé et le nom de l'entreprise, pour que ce
+soit harmonieux et que ça respecte la hiérarchie. »
+
+Constat juste, et c'était la **conséquence non traitée** du passage du texte à
+16 px : l'intitulé n'avait plus qu'un rapport de 1,5 avec le corps de texte, le
+nom de l'entreprise était **plus petit** que lui (15 contre 16), et les pilules à
+11 px étaient devenues les plus petits éléments d'une page qu'elles commandent.
+
+| Élément | Avant | Après |
+|---|---|---|
+| Intitulé | 20 / 24 px | **24 / 30 px** |
+| Nom de l'entreprise | 15 px | **18 px** |
+| Valeurs du classement | 14 px | **16 px** |
+| Cartouches et boutons de statut | 11 px | **13 px** |
+
+⚠️ **L'intitulé revient exactement à la valeur abandonnée la veille** — « à 30 px,
+l'intitulé écrasait tout le reste de la page ». Ce qui a changé n'est pas le
+titre, c'est ce qu'il y a autour. **Une taille ne se juge jamais seule.**
+
+⚠️ **Tout passe par des propriétés `aere`**, comme les notes : `Cartouche`,
+`CartoucheAbsent` et `BoutonsStatut` servent les deux écrans. Vérifié après coup :
+la liste garde ses cartouches à 11 px, ses boutons à 11 px et son nom d'entreprise
+à 15 px.
+
+⚠️ **Un piège de cascade rencontré au passage** : `text-lg` posé par-dessus
+l'utilitaire `nom-entreprise`, qui fixe déjà `font-size`. Deux règles de même
+spécificité, départagées par l'ordre dans la feuille compilée — le même piège que
+`accentue` dans `cartouche.tsx`. Mesuré au DOM pour s'en assurer : 18 px.
+
+Squelette de la fiche remesuré une troisième fois, entête comprise : **1 400,7 px**
+pour une moyenne réelle de 1 402,2.
+
+### Le décalage du classement — un écart de lignes de base, pas de boîtes
+
+Dernier constat de Maxime sur la fiche : « un léger décalage entre les libellés
+et la description que tu viens d'agrandir ». Mesuré avant de corriger, et le
+diagnostic n'était pas celui qu'on croit : **les deux cellules commençaient
+exactement au même pixel** — l'écart entre leurs boîtes était nul. Ce qui était
+décalé, ce sont les **lignes de base** : 15,4 px de hauteur de ligne pour
+l'étiquette contre 26 pour la valeur, soit **6,8 px** de décrochage. Le défaut
+existait avant, il s'est creusé quand la valeur est passée de 14 à 16 px.
+
+`items-baseline` sur la grille ramène l'écart à **0,3 px** (résidu de calcul).
+⚠️ **`items-start` n'aurait rien changé** — c'est le comportement par défaut,
+donc la cause. **`items-center` aurait cassé le cas à deux lignes** : l'étiquette
+se serait centrée entre elles au lieu de désigner la première.
+
+**Ce que ça généralise** : dès que deux tailles de texte se côtoient sur une même
+ligne, ce que l'œil apparie est la ligne de base, jamais le bord des boîtes.
+
+✅ La moyenne du bloc reste à **130 px** — l'alignement redistribue l'espace dans
+la rangée sans changer sa hauteur. Le squelette n'avait rien à reprendre, et
+c'est vérifié plutôt que supposé.

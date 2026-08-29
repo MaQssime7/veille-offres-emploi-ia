@@ -43,7 +43,7 @@ export function Postuler({ offre }: { offre: OffreEnFiche }) {
         Candidater
       </h2>
 
-      <div className="flex flex-col gap-3 carte-produit px-4 py-4">
+      <div className="flex flex-col gap-3 carte-produit p-6">
         <div className="flex flex-wrap gap-2">
           {offre.url_origine && (
             <LienExterne href={offre.url_origine} principal>
