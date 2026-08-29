@@ -6,6 +6,7 @@ import {
   ecrireDansBase,
   interrogerBase,
 } from "@/lib/supabase";
+import { normaliserNote } from "./notes";
 import { STATUTS, type Statut } from "./statuts";
 
 /**
@@ -462,6 +463,32 @@ export type OffreEnFiche = {
   contact_nom: string | null;
   contact_url_postulation: string | null;
   statut: Statut;
+  /**
+   * La note libre de Maxime. `null` tant qu'il n'a rien écrit.
+   *
+   * ⚠️ **DONNÉE PERSONNELLE au sens du projet, et la seule qu'il produise
+   * lui-même.** Elle ne se lit QUE ici, sur la fiche qui l'affiche — jamais
+   * dans `COLONNES_LISTE`, jamais dans un journal (ceux de GitHub Actions
+   * sont publics, le dépôt l'étant), jamais dans un export. Même règle que
+   * `contact_nom`, énoncée dans `docs/PRD.md` § Données personnelles.
+   *
+   * ⚠️ **Vide et `null` sont la même chose, garanti par la contrainte
+   * `note_personnelle_non_vide`.** Le code n'a donc jamais à tester les deux :
+   * s'il reçoit une chaîne, elle contient au moins un caractère non blanc.
+   */
+  note_personnelle: string | null;
+  /**
+   * Le dernier enregistrement réussi de la note.
+   *
+   * ⚠️ **Sans cette date, l'indicateur d'état ne vaut rien** (US-13). Après un
+   * rechargement, « Enregistré » tout court ne se distingue pas d'un
+   * « Enregistré » affiché par erreur : c'est l'heure qui prouve que la base a
+   * bien reçu quelque chose, et quand.
+   *
+   * `null` va toujours de pair avec une note `null` — la contrainte
+   * `note_ecrite_est_datee` l'impose dans ce sens-là.
+   */
+  note_modifiee_a: string | null;
 };
 
 const COLONNES_FICHE = [
@@ -496,6 +523,12 @@ const COLONNES_FICHE = [
   "contact_nom",
   "contact_url_postulation",
   "statut",
+  // ⚠️ **Ces deux colonnes entrent ICI et NULLE PART AILLEURS.** Critère
+  // d'acceptation du plan : « les notes personnelles ne sortent de la base que
+  // là où elles s'affichent ». Les ajouter à `COLONNES_LISTE` les ferait
+  // voyager dans un document de 200 lignes pour n'être rendues nulle part.
+  "note_personnelle",
+  "note_modifiee_a",
 ].join(",");
 
 /**
@@ -555,7 +588,15 @@ export type ResultatFiche =
  * ne se reproduira pas tout seul.
  */
 export async function lireOffre(identifiant: string): Promise<ResultatFiche> {
-  if (!FORMAT_IDENTIFIANT.test(identifiant)) {
+  // ⚠️ **`typeof` AVANT l'expression régulière, et ce n'est pas du zèle.**
+  // `FORMAT_IDENTIFIANT.test(1234567)` convertit son argument en chaîne et
+  // renvoie `true` : un nombre passerait le contrôle, puis `.toUpperCase()`
+  // lèverait un `TypeError`. Ces fonctions promettent de ne jamais lever ; un
+  // `POST` d'action serveur forgé avec un identifiant numérique les ferait
+  // mentir, et l'écran afficherait « session expirée ou réseau coupé », qui est
+  // faux. Relevé en revue le 29 août 2026 — même contrôle que celui déjà fait
+  // sur le texte de la note dans `definirNote`.
+  if (typeof identifiant !== "string" || !FORMAT_IDENTIFIANT.test(identifiant)) {
     return {
       ok: false,
       motif: "introuvable",
@@ -619,7 +660,8 @@ export async function changerStatut(
   identifiant: string,
   statut: Statut,
 ): Promise<ResultatEcriture> {
-  if (!FORMAT_IDENTIFIANT.test(identifiant)) {
+  // ⚠️ `typeof` avant l'expression régulière — voir `lireOffre`.
+  if (typeof identifiant !== "string" || !FORMAT_IDENTIFIANT.test(identifiant)) {
     return {
       ok: false,
       motif: "introuvable",
@@ -632,6 +674,67 @@ export async function changerStatut(
       statut,
       statut_modifie_a:
         statut === "a_traiter" ? null : new Date().toISOString(),
+    },
+    egal: { identifiant: identifiant.toUpperCase() },
+  });
+}
+
+
+/**
+ * Enregistrer la note personnelle d'une offre.
+ *
+ * Entre : un identifiant venu de l'extérieur, et le contenu brut du champ —
+ * dont la longueur a déjà été refusée par l'action serveur si elle dépassait
+ * `LONGUEUR_MAX_NOTE`.
+ * Sort : `{ ok: true }`, ou un motif que l'action traduira à l'écran.
+ * Casse : ne lève jamais — mêmes garanties que `changerStatut`.
+ *
+ * ⚠️ **Le vide est normalisé AVANT d'écrire, et c'est la raison d'être de
+ * `normaliserNote`.** Un champ à enregistrement automatique envoie « » ou
+ * « \n » dès qu'on efface sa note : la contrainte `note_personnelle_non_vide`
+ * répondrait 400, et l'indicateur afficherait « échec » sur le geste le plus
+ * banal qui soit. Le vide n'a qu'une représentation en base, `NULL`.
+ *
+ * ⚠️ **Effacer la note efface AUSSI sa date**, exactement comme repasser une
+ * offre en « à traiter » efface `statut_modifie_a`. La colonne dit « quand
+ * cette note a été enregistrée » : sans note, garder une heure d'hier
+ * afficherait « Enregistré le 29 août à 14:32 » sous un champ vide. La
+ * contrainte `note_ecrite_est_datee` n'interdit pas ce cas — c'est ici que le
+ * choix se fait, et il se voit.
+ *
+ * ⚠️ **L'écriture est IDEMPOTENTE, et c'est ce qui rend la reprise réseau
+ * sûre** : on pose le texte complet, jamais un ajout au texte existant. Deux
+ * envois de la même frappe laissent la base dans le même état. Le jour où
+ * quelqu'un voudrait « ajouter à la note » par ce chemin, cette propriété
+ * tomberait et une reprise dupliquerait le texte sans que rien n'avertisse.
+ *
+ * ⚠️ **Aucune journalisation du texte, nulle part.** `ecrireDansBase` ne
+ * journalise que le nom de la table, précisément pour ce cas : la note est la
+ * seule donnée personnelle que Maxime produit, et les journaux d'un hébergeur
+ * ne sont pas un endroit où elle a le droit d'être.
+ */
+export async function enregistrerNote(
+  identifiant: string,
+  texte: string,
+): Promise<ResultatEcriture> {
+  // ⚠️ `typeof` avant l'expression régulière — voir `lireOffre`.
+  if (typeof identifiant !== "string" || !FORMAT_IDENTIFIANT.test(identifiant)) {
+    return {
+      ok: false,
+      motif: "introuvable",
+      explication: "Cet identifiant ne ressemble à aucune offre.",
+    };
+  }
+
+  const note = normaliserNote(texte);
+
+  return ecrireDansBase("offres", {
+    valeurs: {
+      note_personnelle: note,
+      // Écrite dans la MÊME requête que le texte : la contrainte
+      // `note_ecrite_est_datee` refuse en 400 une note sans date. C'est le
+      // moteur qui tient la règle, pas la discipline de ce fichier.
+      note_modifiee_a: note === null ? null : new Date().toISOString(),
     },
     egal: { identifiant: identifiant.toUpperCase() },
   });

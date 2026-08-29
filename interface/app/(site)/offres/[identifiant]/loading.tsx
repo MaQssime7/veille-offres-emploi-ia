@@ -5,8 +5,8 @@ import { CadrePage } from "../_composants/en-tete-page";
  *
  * ⚠️ **Son seul rôle est d'occuper la place**, pour que l'arrivée du contenu ne
  * fasse pas sauter la page. Il reprend donc les hauteurs réelles de la fiche :
- * lien de retour, entête, résumé, notes, renseignements, description, et le
- * bloc de candidature.
+ * lien de retour, entête, résumé, notes, **note personnelle**, renseignements,
+ * description, et le bloc de candidature.
  *
  * ⚠️ **Les hauteurs sont mesurées, pas estimées — et l'exactitude est
  * impossible ici, contrairement à la liste.** Première version : 641 px contre
@@ -82,6 +82,25 @@ export default function ChargementFiche() {
           <div>
             <div className="mb-3 h-4 w-24 bg-muted" />
             <div className="h-28 border border-border bg-card" />
+          </div>
+
+          {/* ⚠️ **« Ma note », ajoutée le 29 août 2026 — et ce bloc a MANQUÉ
+              d'être oublié.** Relevé en revue : la fiche est passée de cinq à
+              six sections sans que ce squelette ne bouge, ce qui aurait rendu
+              **222 px** de saut à l'arrivée du contenu, juste au milieu de la
+              page. C'est le troisième saut de ce fichier après 297 px et 93 px.
+              ⚠️ **La leçon vaut plus que la correction : ce fichier ne se
+              rappelle pas tout seul.** Toute section ajoutée à `page.tsx` doit
+              être ajoutée ici dans le même geste, sinon le défaut est invisible
+              en développement — où le contenu arrive en 80 ms et où le squelette
+              ne s'affiche presque jamais.
+              12,1875 rem = 195 px, la hauteur mesurée au DOM du cadre avec son
+              champ vide (146 px), son indicateur et ses marges. **C'est le cas
+              médian et non un compromis** : les 574 offres sont aujourd'hui
+              sans note, et une note longue ne dépasse pas 60 vh. */}
+          <div>
+            <div className="mb-3 h-4 w-20 bg-muted" />
+            <div className="h-[12.1875rem] border border-border bg-card" />
           </div>
 
           <div>

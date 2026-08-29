@@ -9,14 +9,22 @@
  * mal formé ou inexistant), la base injoignable, et le chargement
  * (`loading.tsx`).
  *
- * ⚠️ **Toute la chaîne est en composants serveur, et c'est une propriété à
- * préserver.** Cette page lit `contact_nom` — la seule donnée nominative du
- * projet. Tant qu'aucun composant client n'est posé ici, seules les valeurs
- * réellement rendues traversent vers le navigateur : les props, elles, ne
- * traversent pas. Le dépliage de la description utilise le `<details>` natif
- * précisément pour ne pas casser ça (voir `_composants/description.tsx`).
- * La phase 4 posera des boutons de statut, donc des composants clients : il
- * faudra alors leur passer les champs un par un, jamais l'objet `offre`.
+ * ⚠️ **La chaîne N'EST PLUS entièrement en composants serveur, et ce qui
+ * protégeait la page est devenu une discipline.** Jusqu'à la phase 4, aucune
+ * prop ne traversait vers le navigateur : seules les valeurs réellement rendues
+ * le faisaient. Deux composants clients sont désormais posés ici — les boutons
+ * de statut dans l'entête, et le champ de note — et cette page lit les deux
+ * seules catégories de données personnelles du projet : `contact_nom`, et la
+ * note que Maxime écrit lui-même.
+ *
+ * **La règle qui remplace la propriété perdue : on passe des champs, un par un,
+ * jamais l'objet `offre`.** `<NotePersonnelle offre={offre} />` compilerait sans
+ * la moindre erreur et enverrait les 22 colonnes dans le document. Le seul
+ * garde-fou restant est la mesure — chercher les colonnes interdites dans le
+ * document reçu par le navigateur, après chaque nouveau composant client.
+ *
+ * Le dépliage de la description reste en `<details>` natif : aucune raison d'en
+ * faire un composant client de plus (voir `_composants/description.tsx`).
  */
 
 import type { Metadata } from "next";
@@ -33,6 +41,7 @@ import { BaseInjoignable } from "../_composants/etats";
 import { ContenuNotes, etatNotation } from "../_composants/notes";
 import { DescriptionOffre } from "./_composants/description";
 import { EnTeteOffre } from "./_composants/entete";
+import { NotePersonnelle } from "./_composants/note-personnelle";
 import { Postuler } from "./_composants/postuler";
 import { Renseignements } from "./_composants/renseignements";
 
@@ -191,6 +200,18 @@ export default async function PageOffre({
             </div>
           </section>
         )}
+
+        {/* ⚠️ **Trois props scalaires, jamais `offre`.** Ce composant est
+            client : tout ce qu'on lui passe part dans le document envoyé au
+            navigateur. Voir l'avertissement en tête de fichier.
+            La note se place juste après l'évaluation du modèle — ce que Maxime
+            en pense à côté de ce que la machine en pense — et avant l'annonce,
+            pour qu'elle soit visible sans dérouler la fiche. */}
+        <NotePersonnelle
+          identifiant={offre.identifiant}
+          noteInitiale={offre.note_personnelle}
+          dateInitiale={offre.note_modifiee_a}
+        />
 
         <Renseignements offre={offre} />
 

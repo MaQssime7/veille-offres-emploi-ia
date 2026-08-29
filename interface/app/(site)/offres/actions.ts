@@ -23,7 +23,8 @@
 import { revalidatePath } from "next/cache";
 
 import { exigerSession } from "@/lib/acces";
-import { changerStatut } from "@/lib/offres";
+import { changerStatut, enregistrerNote } from "@/lib/offres";
+import { LONGUEUR_MAX_NOTE, normaliserNote } from "@/lib/notes";
 import { estStatut } from "@/lib/statuts";
 
 /**
@@ -102,4 +103,121 @@ export async function definirStatut(
   revalidatePath("/offres", "layout");
 
   return { ok: true };
+}
+
+
+/**
+ * Ce que rend l'enregistrement d'une note : comme `ResultatAction`, plus
+ * l'heure réellement écrite en base.
+ *
+ * ⚠️ **L'heure vient du SERVEUR, pas du navigateur.** Le champ pourrait
+ * afficher `new Date()` à la réception, et ce serait presque toujours juste —
+ * mais « presque » ne convient pas ici : c'est cette heure qui prouve à Maxime
+ * que la base a reçu quelque chose (US-13). Une horloge de navigateur en
+ * avance de dix minutes afficherait une heure d'enregistrement qui n'a jamais
+ * existé.
+ *
+ * `enregistreA` vaut `null` quand la note vient d'être effacée : il n'y a plus
+ * rien à dater, et la colonne `note_modifiee_a` est remise à `NULL` avec elle.
+ */
+export type ResultatNote =
+  | { ok: true; enregistreA: string | null }
+  | { ok: false; message: string };
+
+/**
+ * Écrire la note personnelle d'une offre.
+ *
+ * Entre : un identifiant et un texte, tous deux venus du navigateur.
+ * Sort : `{ ok: true }` avec l'heure d'écriture, ou un message affichable.
+ * Casse : ne lève jamais pour une panne de base — `exigerSession()` peut lever
+ * pour rediriger, et c'est voulu.
+ *
+ * ⚠️ **Le `maxLength` du champ ne protège de RIEN**, et c'est le seul point
+ * vraiment contre-intuitif de cette fonction. Un attribut HTML se retire en
+ * trois clics dans les outils du navigateur, et cette action s'invoque de toute
+ * façon par un `POST` que rien n'oblige à partir de notre page. La borne est
+ * vérifiée ici, côté serveur, et une troisième fois par la contrainte
+ * `note_personnelle_bornee` en base. Le champ, lui, ne fait qu'éviter à Maxime
+ * de taper 20 001 caractères pour rien.
+ *
+ * ⚠️ **Le paramètre est typé `string` et son type est revérifié à l'exécution.**
+ * TypeScript disparaît à la compilation : l'appelant réel peut envoyer un
+ * nombre, un objet ou `undefined`. Sans ce test, `texte.trim()` lèverait et
+ * l'utilisateur récolterait une erreur de plateforme au lieu d'un message.
+ *
+ * ⚠️ **`revalidatePath` est indispensable, et l'argument inverse était FAUX.**
+ * Première version : « rien d'autre à l'écran ne dépend de la note, revalider
+ * ferait un re-rendu complet à chaque pause de frappe pour réafficher ce que le
+ * champ montre déjà ». Le raisonnement tient sur l'affichage courant et rate
+ * l'historique. **Mesuré le 29 août 2026** : écrire une note, partir vers
+ * `/offres` par un lien, revenir par le **bouton retour** du navigateur — Next
+ * restaure la fiche depuis son cache de navigation, `NotePersonnelle` remonte
+ * avec la valeur d'AVANT l'écriture, et **le champ réapparaît vide**. La note
+ * est bien en base, mais l'écran affirme le contraire : le pire des deux
+ * mondes pour un critère de succès qui porte sur « ne pas croire à tort ».
+ *
+ * ⚠️ **Le chemin est le MOTIF de route, pas l'adresse concrète.** `/offres/[identifiant]`
+ * couvre toutes les fiches, y compris celle ouverte avec un identifiant en
+ * minuscules — que `lireOffre` accepte et normalise. Passer
+ * `/offres/${identifiant}` laisserait cette variante en cache périmé.
+ *
+ * ⚠️ **`"page"` et non `"layout"`**, contrairement à `definirStatut` : le statut
+ * change ce qu'affiche la LISTE (compteurs, filtre), la note non — elle ne sort
+ * de la base que sur la fiche. Invalider le layout rechargerait `/offres` pour
+ * rien à chaque pause de frappe.
+ */
+export async function definirNote(
+  identifiant: string,
+  texte: string,
+): Promise<ResultatNote> {
+  // ⚠️ Première ligne, sans exception. Hors de tout try/catch.
+  await exigerSession();
+
+  if (typeof texte !== "string") {
+    console.error("[note] valeur refusée — le texte reçu n'est pas une chaîne");
+    return { ok: false, message: "Cette note n’a pas pu être lue." };
+  }
+
+  if (texte.length > LONGUEUR_MAX_NOTE) {
+    // ⚠️ **Le journal porte la longueur, jamais le texte.** La note est une
+    // donnée personnelle : la recopier dans les journaux du serveur la ferait
+    // sortir de la base par la porte de service.
+    console.error(`[note] refusée — ${texte.length} caractères`);
+    return {
+      ok: false,
+      message: `Note trop longue : ${LONGUEUR_MAX_NOTE.toLocaleString("fr-FR")} caractères au maximum.`,
+    };
+  }
+
+  const resultat = await enregistrerNote(identifiant, texte);
+
+  if (!resultat.ok) {
+    const message =
+      resultat.motif === "introuvable"
+        ? "Cette offre n’existe plus."
+        : resultat.motif === "refusee"
+          ? "La base a refusé cette note."
+          : resultat.motif === "configuration"
+            ? "Le site n’est pas correctement configuré."
+            : "Enregistrement impossible : la base n’a pas répondu.";
+    return { ok: false, message };
+  }
+
+  // ⚠️ **La même heure que celle écrite en base ?** Non : `enregistrerNote`
+  // pose `new Date()` au moment de l'écriture, et on en reconstruit une ici,
+  // quelques millisecondes plus tard. L'écart est invisible à la minute
+  // affichée, et le faire remonter depuis PostgREST coûterait un `return
+  // =representation` — donc la ligne entière renvoyée, `charge_brute`
+  // comprise. On préfère la milliseconde d'écart au méga-octet inutile.
+  revalidatePath("/offres/[identifiant]", "page");
+
+  //
+  // ⚠️ **`normaliserNote` et pas un `trim()` recopié ici** : c'est elle qui
+  // décide ce qu'est une note vide, et deux définitions du vide finiraient par
+  // diverger — l'écran dirait « enregistré à 14:32 » sur une note que la base
+  // a stockée en `NULL`.
+  return {
+    ok: true,
+    enregistreA: normaliserNote(texte) === null ? null : new Date().toISOString(),
+  };
 }

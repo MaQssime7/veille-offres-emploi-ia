@@ -48,6 +48,42 @@ export function formaterDate(iso: string, maintenant: Date): string | null {
     : AVEC_ANNEE.format(date);
 }
 
+const JOUR_MOIS_HEURE = new Intl.DateTimeFormat("fr-FR", {
+  timeZone: FUSEAU,
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/**
+ * Le jour et l'heure d'un enregistrement.
+ *
+ * Entre : un horodatage ISO — celui que l'action serveur vient de renvoyer, ou
+ * `note_modifiee_a` relu en base au chargement de la fiche.
+ * Sort : « 29 août à 14:32 », ou `null` sur une date illisible : l'indicateur
+ * dit alors « Enregistré » tout court plutôt qu'« Invalid Date ».
+ * Casse : rien.
+ *
+ * ⚠️ **Le fuseau est explicite ICI AUSSI, et pour une raison de plus qu'en
+ * liste.** Cette fonction est la seule de ce fichier appelée depuis un
+ * composant **client** : il est rendu une première fois sur le serveur (en UTC)
+ * puis hydraté dans le navigateur (à Paris). Sans fuseau figé, les deux rendus
+ * produiraient deux textes différents et React signalerait une erreur
+ * d'hydratation en console — que le plancher du projet interdit.
+ *
+ * ⚠️ **La date, pas seulement l'heure.** « Enregistré à 14:32 » sur une fiche
+ * rouverte trois jours plus tard se lit comme « à l'instant ». C'est exactement
+ * la confusion que l'US-13 veut empêcher : l'indicateur existe pour prouver ce
+ * que la base détient, pas pour rassurer.
+ */
+export function formaterEnregistrement(iso: string): string | null {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return JOUR_MOIS_HEURE.format(date);
+}
+
 /**
  * Nettoyage **cosmétique** du libellé de salaire, et rien de plus.
  *
