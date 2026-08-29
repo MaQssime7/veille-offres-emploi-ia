@@ -400,16 +400,16 @@ toute seule.
 
 ### Critères d'acceptation
 
-- [ ] Trois statuts : à traiter *(par défaut)*, candidaté, écarté — changement en **un clic**, depuis la liste et depuis la fiche
-- [ ] Un statut modifié **persiste après rechargement et après fermeture du navigateur** — critère de succès n° 7
-- [ ] Le filtre de statut est **dans l'adresse** : `/offres?statut=candidate` se met en favori et survit au bouton retour
-- [ ] Le filtre par défaut n'affiche que « à traiter » ; candidaté et écarté restent accessibles
-- [ ] Chaque statut porte **une icône ou un symbole en plus de sa couleur**
+- [x] Trois statuts : à traiter *(par défaut)*, candidaté, écarté — changement en **un clic**, depuis la liste et depuis la fiche
+- [x] Un statut modifié **persiste après rechargement et après fermeture du navigateur** — critère de succès n° 7
+- [x] Le filtre de statut est **dans l'adresse** : `/offres?statut=candidate` se met en favori et survit au bouton retour
+- [x] Le filtre par défaut n'affiche que « à traiter » ; candidaté et écarté restent accessibles
+- [x] Chaque statut porte **une icône ou un symbole en plus de sa couleur**
 - [ ] La note personnelle s'enregistre **sans bouton**, avec un indicateur d'état visible
 - [ ] Réseau coupé pendant la saisie : **un message d'échec apparaît et le texte n'est pas effacé** — critère de succès n° 6
 - [ ] Une note de 5 000 caractères s'enregistre et se réaffiche intégralement
-- [ ] Deux clics rapides sur un bouton de statut ne produisent pas deux écritures
-- [ ] **Aucune requête ne fait `SELECT *` sur `offres`** — les notes personnelles ne sortent de la base que là où elles s'affichent
+- [x] Deux clics rapides sur un bouton de statut ne produisent pas deux écritures
+- [x] **Aucune requête ne fait `SELECT *` sur `offres`** — les notes personnelles ne sortent de la base que là où elles s'affichent
 - [ ] **États** : aucune offre dans le filtre choisi · enregistrement en cours · échec d'enregistrement · note vide · 200 offres filtrées
 - [ ] 375 px, mode sombre, focus clavier visible, console propre
 

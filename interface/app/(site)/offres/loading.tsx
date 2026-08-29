@@ -91,6 +91,24 @@ export default function ChargementOffres() {
         <p className="font-mono text-xs text-muted-foreground">
           Chargement des offres…
         </p>
+
+        {/* ⚠️ **Les quatre onglets de filtre, arrivés en phase 4 — et c'est le
+            saut que `en-tete-page.tsx` annonçait par écrit** : « la première
+            modification de l'en-tête (le filtre de statut de la phase 4, par
+            exemple) réintroduit en silence le saut que ce repli servait à
+            éviter ». Le commentaire avait raison et il a suffi à ne pas
+            l'oublier — c'est exactement ce qu'on attend d'un commentaire.
+
+            ⚠️ **Les largeurs imitent les libellés réels** (« À traiter »,
+            « Candidaté », « Écarté », « Toutes ») plutôt que d'être égales :
+            quatre rectangles identiques annonceraient une barre qui n'arrive
+            jamais. */}
+        <div aria-hidden="true" className="flex flex-wrap gap-1.5">
+          <div className="h-[1.8125rem] w-28 animate-pulse bg-muted" />
+          <div className="h-[1.8125rem] w-28 animate-pulse bg-muted" />
+          <div className="h-[1.8125rem] w-24 animate-pulse bg-muted" />
+          <div className="h-[1.8125rem] w-24 animate-pulse bg-muted" />
+        </div>
       </EnTetePage>
 
       <div className="border border-border bg-card" aria-hidden="true">

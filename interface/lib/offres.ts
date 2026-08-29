@@ -6,7 +6,7 @@ import {
   ecrireDansBase,
   interrogerBase,
 } from "@/lib/supabase";
-import type { Statut } from "./statuts";
+import { STATUTS, type Statut } from "./statuts";
 
 /**
  * La lecture des offres pour l'écran `/offres`.
@@ -184,8 +184,44 @@ export type ResultatListe =
       notees: number | null;
       /** Pour le marqueur « Nouveau ». `null` si on n'a pas pu le savoir. */
       derniereExecution: number | null;
+      /**
+       * Combien d'offres dans chaque statut, **toute la base et pas seulement
+       * les 200 affichées**.
+       *
+       * ⚠️ **Ces compteurs ne sont pas décoratifs : sans eux, les filtres non
+       * choisis sont des portes aveugles.** Cliquer « Candidaté » pour découvrir
+       * une liste vide est un aller-retour perdu, et sur un écran consulté dix
+       * minutes le matin ça compte. Le chiffre répond à la US-10 (« savoir où
+       * j'en suis ») avant même qu'on ait cliqué.
+       *
+       * `null` sur un statut dont le comptage a échoué : l'onglet se tait alors
+       * au lieu d'afficher zéro, qui voudrait dire « il n'y en a aucune ».
+       */
+      comptes: Record<Statut, number | null>;
     }
   | { ok: false; motif: MotifEchec; explication: string };
+
+/**
+ * Ce que la liste peut montrer : un statut, ou tout.
+ *
+ * ⚠️ **`"toutes"` n'est PAS un statut**, et c'est pour ça qu'il vit ici et non
+ * dans `STATUTS`. Le mettre dans la liste des statuts le rendrait écrivable en
+ * base — or aucune offre n'est « toutes ». C'est un mode d'affichage, il
+ * n'appartient qu'à cet écran.
+ */
+export type FiltreListe = Statut | "toutes";
+
+/**
+ * Le filtre par défaut, quand l'adresse ne dit rien.
+ *
+ * ⚠️ **« À traiter » et non « toutes », et ce n'est pas un détail de
+ * commodité.** L'écran devient un plan de travail : ce qui reste à faire. Une
+ * offre triée disparaît, ce qui est exactement le geste que la phase 4 existe
+ * pour offrir. ⚠️ **Effet de bord à connaître** : ça desserre le plafond de 200
+ * sans le résoudre — tant qu'aucune offre n'est triée, les 567 restent « à
+ * traiter » et la troncature mord pareil.
+ */
+export const FILTRE_PAR_DEFAUT: FiltreListe = "a_traiter";
 
 /**
  * L'identifiant de la dernière exécution réussie.
@@ -239,29 +275,86 @@ async function compterNotees(): Promise<number | null> {
   return resultat.ok ? resultat.total : null;
 }
 
-export async function listerOffres(): Promise<ResultatListe> {
+/**
+ * Combien d'offres portent ce statut, dans toute la base.
+ *
+ * ⚠️ **Le statut passe par `options.egal`, jamais par le chemin.** Il vient de
+ * la barre d'adresse : `estStatut()` l'a déjà validé chez l'appelant, mais la
+ * règle du projet ne fait pas d'exception pour une valeur « déjà vérifiée » —
+ * c'est précisément ce genre d'exception qui rouvre les injections. Ici la
+ * valeur vient en fait de `STATUTS`, une constante du code, et on l'encode
+ * quand même : la discipline vaut plus que le cas particulier.
+ *
+ * ⚠️ **Aucun index sur `statut`, et c'est délibéré au 29 août 2026.** Ces trois
+ * comptages sont des parcours complets, mais sur **567 lignes** Postgres les
+ * fait en microsecondes. À y penser vers 50 000 lignes — soit, au rythme de
+ * 208 offres par mois, dans une vingtaine d'années. Poser l'index maintenant
+ * coûterait une migration pour un gain non mesurable.
+ */
+async function compterParStatut(statut: Statut): Promise<number | null> {
+  const resultat = await interrogerBase<{ identifiant: string }>(
+    "offres?select=identifiant&limit=1",
+    { compter: true, egal: { statut } },
+  );
+
+  return resultat.ok ? resultat.total : null;
+}
+
+/**
+ * La liste des offres, filtrée par statut.
+ *
+ * Entre : un filtre déjà validé par l'appelant — la page le lit dans l'adresse
+ * et le passe par `estStatut()` avant d'arriver ici.
+ * Sort : jusqu'à 200 offres, les compteurs de chaque statut, et de quoi
+ * marquer « Nouveau ».
+ * Casse : ne lève jamais. Un échec de comptage laisse `null` et l'écran se tait
+ * sur ce point plutôt que d'afficher un chiffre faux.
+ *
+ * ⚠️ **Le total renvoyé est celui du FILTRE, pas de la base.** C'est ce qu'il
+ * faut : « 42 offres · 42 affichées » décrit la liste qu'on regarde. Le total
+ * général se reconstitue en additionnant les trois compteurs, et l'onglet
+ * « Toutes » l'affiche directement.
+ */
+export async function listerOffres(
+  filtre: FiltreListe = FILTRE_PAR_DEFAUT,
+): Promise<ResultatListe> {
   const requeteOffres = interrogerBase<OffreEnListe>(
     `offres?select=${COLONNES_LISTE}` +
       `&order=${CLASSEMENT}&limit=${PLAFOND_AFFICHAGE}`,
-    { compter: true },
+    {
+      compter: true,
+      // ⚠️ **Le filtre n'est ajouté que s'il en est un.** « Toutes » n'est pas
+      // un statut : lui chercher un `statut=eq.toutes` rendrait zéro ligne, et
+      // la page afficherait « aucune offre » sur une base pleine.
+      ...(filtre === "toutes" ? {} : { egal: { statut: filtre } }),
+    },
   );
 
-  // Les trois requêtes partent ensemble : enchaînées, elles tripleraient
+  // Toutes les requêtes partent ensemble : enchaînées, elles multiplieraient
   // l'attente avant le premier pixel pour aucune raison — aucune ne dépend du
   // résultat des autres.
-  const [offres, derniereExecution, notees] = await Promise.all([
+  const [offres, derniereExecution, notees, ...parStatut] = await Promise.all([
     requeteOffres,
     lireDerniereExecution(),
     compterNotees(),
+    ...STATUTS.map(compterParStatut),
   ]);
 
   if (!offres.ok) {
     return offres;
   }
 
+  // ⚠️ `STATUTS.map` ci-dessus et cette reconstruction se lisent ensemble :
+  // l'ordre du tableau vient de la même constante, donc les deux ne peuvent
+  // pas se désaligner — ce qu'un objet écrit à la main finirait par faire.
+  const comptes = Object.fromEntries(
+    STATUTS.map((statut, rang) => [statut, parStatut[rang]]),
+  ) as Record<Statut, number | null>;
+
   return {
     ok: true,
     offres: offres.lignes,
+    comptes,
     // ⚠️ Pas de repli sur `lignes.length` ici : une liste tronquée à 200 dont
     // l'en-tête de comptage manque annoncerait « 200 offres collectées »
     // comme si c'était toute la base. `null` remonte l'ignorance jusqu'à

@@ -74,6 +74,46 @@ export function AucuneOffre() {
 }
 
 /**
+ * Le filtre choisi ne contient aucune offre — alors que la base, elle, en a.
+ *
+ * ⚠️ **C'est un état DISTINCT de « la base est vide », et les confondre serait
+ * un vrai défaut.** Depuis la phase 4, `/offres` n'affiche par défaut que les
+ * offres « à traiter » : le jour où Maxime aura tout trié, il verra un écran
+ * vide. Lui servir « la collecte tourne chaque nuit, les premières annonces
+ * apparaîtront au prochain passage » lui ferait croire à une panne de collecte
+ * un matin où il a simplement fini son travail. Le même mot pour deux
+ * situations est ce qui rend un écran vide anxiogène.
+ *
+ * ⚠️ **Le message nomme le filtre et rappelle où sont les autres offres.** Un
+ * état vide qui ne dit pas comment en sortir est une impasse — d'autant que le
+ * filtre par défaut ne laisse aucune trace dans l'adresse, donc rien à l'écran
+ * ne rappelle qu'un filtre est actif hormis la barre d'onglets.
+ */
+export function AucuneOffreDansCeFiltre({
+  libelle,
+  totalBase,
+}: {
+  /** Le libellé du filtre actif, tel qu'il s'écrit sur son onglet. */
+  libelle: string;
+  /** Combien d'offres existent tous statuts confondus. `null` si inconnu. */
+  totalBase: number | null;
+}) {
+  return (
+    <Panneau
+      icone={<Inbox className="size-6" aria-hidden="true" />}
+      titre={`Aucune offre « ${libelle} »`}
+    >
+      <p>
+        La base répond et contient
+        {totalBase !== null ? ` ${totalBase} offre${totalBase >= 2 ? "s" : ""}` : " des offres"}
+        , mais aucune ne porte ce statut pour l’instant. Les autres filtres
+        ci-dessus restent accessibles.
+      </p>
+    </Panneau>
+  );
+}
+
+/**
  * La base n'a pas répondu.
  *
  * ⚠️ **Le détail technique ne descend jamais jusqu'ici.** Le corps d'une erreur

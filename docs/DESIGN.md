@@ -724,6 +724,34 @@ Descendu de **24/30 px à 20/24 px** : à 30 px il écrasait le reste de la page
 ⚠️ **20 px est un plancher, pas un choix** — « le serif ne descend jamais sous
 20 px ». Le réduire encore imposerait de passer à Geist.
 
+### ⚠️ Défaut découvert le 29 août 2026 — la liste se décale sous le curseur
+
+**Trier une offre la retire du filtre « à traiter », et toutes les suivantes remontent d'un
+cran.** Un second clic au même endroit de l'écran trie donc **une autre offre**, sans que
+rien ne l'ait annoncé.
+
+**Découvert en testant autre chose** : quatre clics rapides destinés à éprouver le double
+clic ont candidaté **quatre offres différentes**. Le test visait « la première ligne », qui
+n'était plus la même à chaque clic — exactement ce que vit un utilisateur qui clique deux
+fois de suite.
+
+⚠️ **Ce n'est PAS le défaut de double écriture**, qui lui est réglé : trois clics simultanés
+sur la même offre n'envoient qu'un seul POST, et l'opération est de toute façon idempotente.
+C'est un défaut de **cible mouvante**, et il ne se produit que dans un filtre d'où l'offre
+sort — donc jamais sur la fiche, jamais dans l'onglet « Toutes ».
+
+**Deux remèdes possibles, non tranchés :**
+
+| Remède | Ce qu'il coûte |
+|---|---|
+| Garder la ligne triée à sa place, marquée, jusqu'au prochain chargement | La liste ne dit plus la vérité entre deux rafraîchissements ; il faut un état « je viens de trier ceci » dans un composant client |
+| Laisser tel quel | Un mauvais clic reste réparable — l'offre est dans un autre filtre, et son bouton la ramène. Mais rien ne signale qu'il a eu lieu |
+
+⚠️ **À trancher avec Maxime, sur usage réel** : le geste est plus tolérable qu'il n'y paraît
+tant que la liste est longue et que les lignes font 200 px de haut — deux clics au même
+pixel supposent de ne pas regarder l'écran. Il le deviendra moins le jour où les offres à
+traiter se compteront sur les doigts d'une main.
+
 ### Défaut connu, non corrigé
 
 **La colonne gauche de la fiche est creuse** tant que la description n'est pas dépliée :

@@ -17,23 +17,68 @@
 import type { Metadata } from "next";
 
 import { exigerSession } from "@/lib/acces";
-import { listerOffres } from "@/lib/offres";
+import { FILTRE_PAR_DEFAUT, type FiltreListe, listerOffres } from "@/lib/offres";
+import { LIBELLES_STATUT, estStatut } from "@/lib/statuts";
 
 import { CadrePage, EnTetePage } from "./_composants/en-tete-page";
-import { AucuneOffre, BaseInjoignable } from "./_composants/etats";
+import {
+  AucuneOffre,
+  AucuneOffreDansCeFiltre,
+  BaseInjoignable,
+} from "./_composants/etats";
+import { FiltresStatut } from "./_composants/filtres-statut";
 import { LigneOffre } from "./_composants/ligne-offre";
 
 export const metadata: Metadata = {
   title: "Offres — Veille offres emploi IA",
 };
 
-export default async function PageOffres() {
+/**
+ * Quel filtre l'adresse demande.
+ *
+ * Entre : la valeur brute de `?statut=`, écrite par n'importe qui dans la barre
+ * d'adresse.
+ * Sort : un filtre sûr. **Tout ce qui n'est pas reconnu retombe sur le défaut**
+ * — jamais une page d'erreur.
+ *
+ * ⚠️ **Retomber sur le défaut plutôt que refuser, et c'est un choix.** Une
+ * adresse mal tapée (`?statut=candidat`, `?statut=ecartés`) ou un vieux favori
+ * doit ouvrir une liste utilisable, pas un mur. Le contraire se défendrait sur
+ * une fiche — `/offres/XXX` renvoie bien « introuvable » — parce qu'une fiche
+ * DÉSIGNE une chose précise qui existe ou non. Un filtre ne désigne rien : il
+ * restreint, et « je n'ai pas compris ta restriction » se répare en ne
+ * restreignant rien de particulier.
+ *
+ * ⚠️ **`"toutes"` est accepté ici mais n'est pas un statut** — il ne doit donc
+ * pas passer par `estStatut()`, qui refuserait à raison une valeur qu'aucune
+ * offre ne peut porter en base.
+ */
+function filtreDemande(valeur: string | string[] | undefined): FiltreListe {
+  // ⚠️ Un tableau arrive dès que l'adresse répète le paramètre
+  // (`?statut=a&statut=b`) : sans ce cas, `estStatut` recevrait un tableau et
+  // renverrait `false`, ce qui marche par accident. On le traite explicitement.
+  const brut = Array.isArray(valeur) ? valeur[0] : valeur;
+
+  if (brut === "toutes") return "toutes";
+  if (estStatut(brut)) return brut;
+  return FILTRE_PAR_DEFAUT;
+}
+
+export default async function PageOffres({
+  searchParams,
+}: PageProps<"/offres">) {
   // ⚠️ Première ligne, sans exception. `proxy.ts` a déjà écarté le visiteur
   // sans cookie ; c'est cette ligne-ci qui protège les offres, au plus près de
   // ce qui les affiche.
   await exigerSession();
 
-  const resultat = await listerOffres();
+  // ⚠️ `searchParams` est une **promesse** depuis Next 15 : l'oublier donnerait
+  // un objet toujours vide, donc un filtre qui ne s'applique jamais — sans
+  // erreur pour le signaler.
+  const parametres = await searchParams;
+  const filtre = filtreDemande(parametres.statut);
+
+  const resultat = await listerOffres(filtre);
 
   // Une seule heure de référence pour toute la page : sinon deux lignes rendues
   // à cheval sur minuit ne dateraient pas du même jour.
@@ -48,8 +93,22 @@ export default async function PageOffres() {
               affichees={resultat.offres.length}
               total={resultat.total}
               notees={resultat.notees}
+              filtre={filtre}
             />
           </p>
+        )}
+
+        {/* ⚠️ **La barre reste affichée même quand le filtre est vide**, et
+            c'est ce qui évite l'impasse : sans elle, un filtre sans résultat
+            n'offrirait aucun moyen d'en sortir. Elle est en revanche masquée si
+            la base est injoignable — filtrer ce qu'on n'a pas pu lire n'a aucun
+            sens, et les compteurs seraient tous à `null`. */}
+        {resultat.ok && (
+          <FiltresStatut
+            actif={filtre}
+            comptes={resultat.comptes}
+            total={totalBase(resultat.comptes)}
+          />
         )}
       </EnTetePage>
 
@@ -59,7 +118,18 @@ export default async function PageOffres() {
           explication={resultat.explication}
         />
       ) : resultat.offres.length === 0 ? (
-        <AucuneOffre />
+        // ⚠️ **Deux états vides, jamais un seul.** « La base est vide » est
+        // l'écran du tout premier matin ; « ce filtre est vide » est celui d'un
+        // matin où tout a été trié. Les confondre ferait croire à une panne de
+        // collecte un jour où le travail est simplement fini.
+        totalBase(resultat.comptes) === 0 ? (
+          <AucuneOffre />
+        ) : (
+          <AucuneOffreDansCeFiltre
+            libelle={filtre === "toutes" ? "Toutes" : LIBELLES_STATUT[filtre]}
+            totalBase={totalBase(resultat.comptes)}
+          />
+        )
       ) : (
         <div className="border border-border bg-card">
           {resultat.offres.map((offre) => (
@@ -79,6 +149,26 @@ export default async function PageOffres() {
       )}
     </CadrePage>
   );
+}
+
+/**
+ * Le total de la base, reconstitué en additionnant les trois statuts.
+ *
+ * ⚠️ **Additionner est exact ici, et ne le serait pas ailleurs.** `statut` est
+ * `not null` et sa contrainte n'admet que trois valeurs : toute offre est
+ * comptée une fois et une seule. Le jour où un quatrième statut apparaîtrait
+ * sans être ajouté à `STATUTS`, cette somme deviendrait fausse en silence —
+ * c'est pourquoi la liste est unique et partagée, et que la base la refuserait
+ * de toute façon.
+ *
+ * ⚠️ **Un seul comptage à `null` rend le total inconnu**, pas partiel : annoncer
+ * « 400 offres » quand on n'a pas pu en compter une catégorie serait pire que
+ * de se taire.
+ */
+function totalBase(comptes: Record<string, number | null>): number | null {
+  const valeurs = Object.values(comptes);
+  if (valeurs.some((v) => v === null)) return null;
+  return valeurs.reduce((somme: number, v) => somme + (v as number), 0);
 }
 
 /**
@@ -107,10 +197,12 @@ function CompteAffiche({
   affichees,
   total,
   notees,
+  filtre,
 }: {
   affichees: number;
   total: number | null;
   notees: number | null;
+  filtre: FiltreListe;
 }) {
   const segments: string[] = [];
 
@@ -118,7 +210,15 @@ function CompteAffiche({
     // On ne connaît pas le total : on ne parle que de ce qu'on montre.
     segments.push(`${affichees} ${accorder(affichees, "offre")} ${accorder(affichees, "affichée")}`);
   } else {
-    segments.push(`${total} ${accorder(total, "offre")} ${accorder(total, "collectée")}`);
+    // ⚠️ **« collectées » ne vaut plus que sans filtre.** Ce total est celui du
+    // filtre depuis la phase 4 : écrire « 42 offres collectées » sur l'onglet
+    // « Candidaté » affirmerait que la collecte n'a ramené que 42 offres. Le
+    // mot change avec ce qu'il compte réellement.
+    segments.push(
+      filtre === "toutes"
+        ? `${total} ${accorder(total, "offre")} ${accorder(total, "collectée")}`
+        : `${total} ${accorder(total, "offre")}`,
+    );
   }
 
   if (notees !== null) {
