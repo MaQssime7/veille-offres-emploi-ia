@@ -36,9 +36,9 @@ import { cache } from "react";
 import { exigerSession } from "@/lib/acces";
 import { lireOffre } from "@/lib/offres";
 
-import { CadrePage } from "../_composants/en-tete-page";
-import { BaseInjoignable } from "../_composants/etats";
-import { ContenuNotes, etatNotation } from "../_composants/notes";
+import { CadrePage } from "../../_composants/cadre-page";
+import { BaseInjoignable } from "../../_composants/etats";
+import { ContenuNotes, etatNotation } from "../../_composants/notes";
 import { DescriptionOffre } from "./_composants/description";
 import { EnTeteOffre } from "./_composants/entete";
 import { NotePersonnelle } from "./_composants/note-personnelle";

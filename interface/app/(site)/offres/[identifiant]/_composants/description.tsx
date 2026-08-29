@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 
-import { preparerDescription } from "../../_composants/formats";
+import { preparerDescription } from "../../../_composants/formats";
 
 /**
  * La description intégrale de l'annonce, repliée par défaut.

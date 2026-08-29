@@ -1,6 +1,7 @@
 import { SqueletteEtatVeille } from "../_composants/etat-veille";
-import { CadrePage, EnTetePage } from "./_composants/en-tete-page";
-import { HAUTEURS_SQUELETTE, RYTHME_LIGNE } from "./_composants/rythme";
+import { CadrePage } from "../_composants/cadre-page";
+import { EnTetePage } from "./_composants/en-tete-page";
+import { HAUTEURS_SQUELETTE, RYTHME_LIGNE } from "../_composants/rythme";
 
 /**
  * Le squelette du bloc de notes, sous les cartouches.

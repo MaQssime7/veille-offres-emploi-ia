@@ -1,7 +1,7 @@
 import { FileQuestion } from "lucide-react";
 import Link from "next/link";
 
-import { CadrePage } from "../_composants/en-tete-page";
+import { CadrePage } from "../../_composants/cadre-page";
 
 /**
  * Il n'y a rien à cette adresse.

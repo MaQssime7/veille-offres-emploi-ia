@@ -37,17 +37,18 @@ import { lireEtatVeille } from "@/lib/veille";
 
 import { LigneEtatVeille } from "../_composants/etat-veille";
 import { adresseListe } from "./_composants/adresse";
-import { CadrePage, EnTetePage } from "./_composants/en-tete-page";
+import { CadrePage } from "../_composants/cadre-page";
+import { EnTetePage } from "./_composants/en-tete-page";
 import {
   AucuneOffre,
   AucuneOffreDansCeFiltre,
   BaseInjoignable,
   NouveautesInconnues,
-} from "./_composants/etats";
+} from "../_composants/etats";
 import { MenuTri } from "./_composants/menu-tri";
 import { FiltresStatut } from "./_composants/filtres-statut";
-import { LigneOffre } from "./_composants/ligne-offre";
-import { VerrouTri } from "./_composants/verrou-tri";
+import { LigneOffre } from "../_composants/ligne-offre";
+import { VerrouTri } from "../_composants/verrou-tri";
 
 /**
  * ⚠️ **Le titre d'onglet suit le `h1`, et le lien de navigation ne le suit

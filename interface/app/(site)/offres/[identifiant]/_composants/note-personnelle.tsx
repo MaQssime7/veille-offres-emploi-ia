@@ -34,8 +34,8 @@ import { Check, Loader2, PenLine, TriangleAlert } from "lucide-react";
 
 import { LONGUEUR_MAX_NOTE } from "@/lib/notes";
 
-import { definirNote } from "../../actions";
-import { formaterEnregistrement } from "../../_composants/formats";
+import { definirNote } from "../../../actions";
+import { formaterEnregistrement } from "../../../_composants/formats";
 
 /**
  * Le temps de silence après la dernière frappe avant d'écrire en base.

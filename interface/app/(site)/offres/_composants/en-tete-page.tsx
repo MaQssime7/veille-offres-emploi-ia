@@ -102,17 +102,8 @@ export function EnTetePage({
   );
 }
 
-/** L'enveloppe de l'écran, à la largeur du jeton `--largeur-page`. */
-export function CadrePage({
-  children,
-  ...reste
-}: React.ComponentProps<"main">) {
-  return (
-    <main
-      className="mx-auto w-full max-w-(--largeur-page) flex-1 px-4 py-8 sm:px-6 sm:py-10"
-      {...reste}
-    >
-      {children}
-    </main>
-  );
-}
+/*
+ * ⚠️ **`CadrePage` a QUITTÉ ce fichier le 30 août 2026** — elle vit désormais
+ * dans `app/(site)/_composants/cadre-page.tsx`. Elle enveloppe tous les écrans
+ * du site, y compris `/`, qui n'a rien à faire de l'en-tête de `/offres`.
+ */

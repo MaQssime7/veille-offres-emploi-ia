@@ -1,6 +1,6 @@
 import type { OffreEnFiche } from "@/lib/offres";
 
-import { formaterLangue } from "../../_composants/formats";
+import { formaterLangue } from "../../../_composants/formats";
 
 /**
  * Ce que France Travail sait de l'offre, au-delà de ce que l'annonce raconte.

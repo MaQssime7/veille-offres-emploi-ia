@@ -1,4 +1,4 @@
-import { CadrePage } from "../_composants/en-tete-page";
+import { CadrePage } from "../../_composants/cadre-page";
 
 /**
  * Le repli de chargement de la fiche.

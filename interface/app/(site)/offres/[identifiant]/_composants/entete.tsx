@@ -1,13 +1,13 @@
 import type { OffreEnFiche } from "@/lib/offres";
 
-import { Cartouche, CartoucheAbsent } from "../../_composants/cartouche";
+import { Cartouche, CartoucheAbsent } from "../../../_composants/cartouche";
 import {
   formaterDate,
   formaterSalaire,
   formaterSalaireAnnuel,
-} from "../../_composants/formats";
-import { BoutonsStatut } from "../../_composants/boutons-statut";
-import { CartoucheEnAttente, etatNotation } from "../../_composants/notes";
+} from "../../../_composants/formats";
+import { BoutonsStatut } from "../../../_composants/boutons-statut";
+import { CartoucheEnAttente, etatNotation } from "../../../_composants/notes";
 
 /**
  * Le haut de la fiche : entreprise, intitulé, rangée de métadonnées.
