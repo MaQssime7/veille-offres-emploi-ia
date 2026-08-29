@@ -112,7 +112,8 @@ la même chose finissent en deux tables et deux fonctions.
 **Phases 1, 2 et 3 CLOSES. La phase 4 — statuts et notes personnelles — est démarrable immédiatement.**
 Le site est en ligne derrière son mot de passe, la collecte et la notation sont toutes deux sur
 le cron, et `/offres` affiche **les deux notes avec leurs justifications à plat, classées par
-intérêt décroissant**. **560 offres, 126 notées**, 1 échec provoqué volontairement puis rattrapé.
+intérêt décroissant**. La **fiche `/offres/[identifiant]`** est livrée.
+**567 offres, 133 notées** au 28 août 2026 au soir.
 
 ⚠️ **La phase 2 est close à 14 critères sur 15, et le quinzième est REPORTÉ, pas oublié** —
 l'état de l'écran à 200 offres notées, vérifié en simulation seulement. Reporté par décision de
@@ -121,16 +122,9 @@ rouvrir la phase 2 pour ça, et ne pas le traiter comme une dette bloquante.**
 Les critères de collecte ont été refondus le 26 août, **remesurés à fond le 28** (50 termes),
 et **seul le CDI est collecté depuis le 28**.
 
-⚠️ **Le cron GitHub Actions part avec des heures de retard, quand il part.** Nuit du 26 au 27 :
-rien. Nuit du 27 au 28 : rien non plus à 08 h 11 UTC. Le seul déclenchement planifié à ce jour
-est parti le **27 à 12 h 54 UTC, soit 10 h 32 après son heure de 02:23**. Comportement documenté
-de GitHub Actions sur dépôt public gratuit ; la minute non ronde (23) était déjà une parade et
-n'a pas suffi.
-✅ **Les données n'en souffrent pas** — la fenêtre part de la dernière collecte réussie, une nuit
-sautée est rattrapée par la suivante. ⚠️ **Ce que ça coûte vraiment, c'est l'usage** : un cron
-qui tourne à midi livre un écran vide au moment où Maxime le consulte le matin.
-⚠️ **Ne rien « corriger » avant d'avoir observé une troisième nuit** — décidé avec Maxime le
-28 août. Un second cron de secours est de la complexité posée sur une supposition.
+⚠️ **Le cron ne part jamais à l'heure** — +10 h 32 puis +12 h 02 sur les deux déclenchements
+planifiés observés. Les données n'en souffrent pas, l'usage si. Détail, parade et rustine :
+§ « Le cron ne part jamais à l'heure » plus bas.
 
 | Brique | État |
 |---|---|
@@ -142,135 +136,50 @@ qui tourne à midi livre un écran vide au moment où Maxime le consulte le mati
 | Modules | `collecte.py` · `notation.py` (`--limite`, `--modele`, `--effort`, `--lot`, `--rome`, `--collecte`, **`--derniere-collecte`**, `--au-hasard`, `--renoter`, `--sans-ecrire`, `--sans-appeler`) · `salaire.py` · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
 
-**Le seul reliquat de la phase 2, reporté volontairement.** Les deux autres vérifications ont été
-fermées les 27 et 28 août ; celle-ci attend le temps, pas de l'argent.
+**Le seul reliquat de la phase 2, reporté volontairement** — les deux autres ont été fermées les
+27 et 28 août (récit dans `docs/JOURNAL.md`). Celui-ci attend le temps, pas de l'argent.
 
 | Ce qui reste | Comment le fermer | Coût |
 |---|---|---|
-| ✅ ~~L'appel payant depuis le runner GitHub n'a jamais été exercé~~ | **FERMÉ le 27 août 2026.** Le cron s'est déclenché (run `33074159137`) : collecte 19 s → 25 offres, notation 2 min 09 → **25 notées, aucun échec**, 89 160 tokens lus en cache. Chaîne complète prouvée en conditions réelles, ~15 centimes. ⚠️ **Il est parti à 12 h 54 UTC au lieu de 02:23 — 10 h 32 de retard.** Le retard ne coûte rien aux données (la fenêtre se répare seule) mais livre un écran vide au moment de la consultation du matin | fait |
-| ✅ ~~Le rattachement par `custom_id` de l'API Batches~~ | **FERMÉ le 28 août 2026** — lot `msgbatch_016Vf4…`, 3 offres de métiers étrangers l'un à l'autre, 5 min 06, 0 échec. Chaque justification parle bien du métier de son offre : l'appariement positionnel aurait décalé. ⚠️ Vérification **sémantique**, pas mécanique — compter trois notes écrites n'aurait rien prouvé | fait |
-| ⚠️ **L'état « 200 offres notées » à l'écran** | Vérifié **en simulation** le 26 août (98 dupliquées jusqu'à 200) : 39 567 px de haut, 5 699 nœuds, 153 Ko transférés, 70 ms de recalcul, aucun débordement. Sur données réelles il manque **74 offres** (126 notées au 28 août).<br>⚠️ **NE PAS forcer en payant, et c'est un raisonnement, pas une économie.** 200 est aussi le seuil où l'écran casse : au-delà, les 200 lignes affichées sont les 200 meilleures de tous les temps et **les offres du matin disparaissent**. Payer pour l'atteindre revient à payer pour déclencher un défaut connu dont le remède est en phase 4. Au rythme actuel (~7 notées/nuit) il tombe seul vers le **8 septembre**.<br>⚠️ Si on force quand même : sur les 434 offres non notées, **82 ne sont pas des CDI** — les noter au hasard paierait des offres que Maxime ne regardera pas, `notation.py` n'ayant pas de filtre de contrat | ~44 centimes, **déconseillé** |
+| ⚠️ **L'état « 200 offres notées » à l'écran** | Vérifié **en simulation** le 26 août (98 dupliquées jusqu'à 200) : 39 567 px de haut, 5 699 nœuds, 153 Ko transférés, 70 ms de recalcul, aucun débordement. Sur données réelles il manque **67 offres** (133 notées au 28 août au soir).<br>⚠️ **NE PAS forcer en payant, et c'est un raisonnement, pas une économie.** 200 est aussi le seuil où l'écran casse : au-delà, les 200 lignes affichées sont les 200 meilleures de tous les temps et **les offres du matin disparaissent**. Payer pour l'atteindre revient à payer pour déclencher un défaut connu dont le remède est en phase 4. Au rythme actuel (~7 notées/nuit) il tombe seul vers le **8 septembre**.<br>⚠️ Si on force quand même : sur les 434 offres non notées, **82 ne sont pas des CDI** — les noter au hasard paierait des offres que Maxime ne regardera pas, `notation.py` n'ayant pas de filtre de contrat | ~44 centimes, **déconseillé** |
 
 ⚠️ **Les deux premières ont été fermées les 27 et 28 août.** La troisième n'est pas refusée non
 plus : elle est **volontairement laissée au temps**, pour la raison donnée dans le tableau.
 Toute dépense se redemande avant d'être lancée.
 
-### ⚠️ Le cron a été sauté dans la nuit du 26 au 27 août — et ce n'est pas notre code
+### ⚠️ Le cron ne part jamais à l'heure — comportement établi, pas incident
 
-**Constaté le 27 août à 11 h 40 UTC** : le cron de 02:23 UTC n'avait produit **aucune
-exécution**, neuf heures après son heure. Vérifié :
+**Trois nuits observées, deux déclenchements planifiés, aucun à l'heure.**
 
-| | |
-|---|---|
-| Workflow avec `schedule` sur `main` | depuis le 26/08 **12 h 11 UTC**, soit 14 h d'avance |
-| Exécution manuelle à 12 h 12 UTC le 26 | verte — le workflow était bien enregistré |
-| Exécutions `--event=schedule` | ⚠️ **PÉRIMÉ — c'était vrai le 27 au matin.** Le cron a fini par partir le **27 à 12 h 54 UTC** (run `33074159137`), soit 10 h 32 après son heure. Il n'était pas sauté, il était retardé |
-| Dépôt archivé · désactivé · Actions coupées | non · non · non |
+| Nuit | Heure prévue | Heure réelle | Retard |
+|---|---|---|---|
+| 26 → 27 août | 02:23 UTC | 12 h 54 | **+10 h 32** |
+| 27 → 28 août | 02:23 UTC | 14 h 25 | **+12 h 02** |
 
-C'est un comportement **documenté** de GitHub Actions : les workflows planifiés ne sont pas
-garantis, ils peuvent être retardés en période de charge ou abandonnés purement, et c'est plus
-fréquent sur les dépôts publics gratuits. La minute non ronde (23) était déjà une parade ;
-elle n'a pas suffi.
+C'est un comportement **documenté** de GitHub Actions : les workflows planifiés
+ne sont pas garantis, et le retard est plus fréquent sur dépôt public gratuit.
+La minute non ronde (23) était déjà une parade ; elle n'a pas suffi.
 
-✅ **Les données sont robustes à ça, par conception, et il faut le savoir avant de « réparer ».**
-La fenêtre de collecte part de **la dernière collecte réussie**, jamais de « hier » : une nuit
-sautée est rattrapée par la suivante, qui collecte 48 h d'un coup, et la notation suit. **Aucune
-offre n'est perdue** — vérifié le 27 août, la fenêtre s'est ouverte toute seule sur 16 h.
+✅ **Les données sont robustes à ça, par conception.** La fenêtre de collecte part
+de la **dernière collecte réussie**, jamais de « hier » : une nuit sautée est
+rattrapée par la suivante, qui collecte 48 h d'un coup. Aucune offre n'est perdue.
+⚠️ **Ce que ça coûte, c'est l'usage** : un cron qui tourne l'après-midi livre un
+écran vide au moment où Maxime le consulte, le matin.
 
-⚠️ **Ce qu'il faut surveiller** : plusieurs nuits sautées d'affilée font grossir le volume, et
-la **limite de 60** du workflow finirait par mordre — vers 4 ou 5 nuits consécutives. Quand elle
-mord, `notation.py` émet un avertissement, et **les offres laissées ne repassent pas** en mode
-`--derniere-collecte`.
+⚠️ **Ce qu'il faut surveiller** : plusieurs nuits sautées d'affilée font grossir
+le volume, et la **limite de 60** du workflow finirait par mordre — vers 4 ou
+5 nuits consécutives. Quand elle mord, `notation.py` avertit, et **les offres
+laissées ne repassent pas** en mode `--derniere-collecte`.
 
-⚠️ **LES TROIS NUITS SONT OBSERVÉES, et le constat est stable — 28 août 2026, 13 h 42 UTC.**
-Sur deux déclenchements planifiés attendus, **un seul est arrivé, avec 10 h 32 de retard** ; celui
-du 28 n'était toujours pas parti **11 h 19 après son heure**. Ce n'est donc pas un incident, c'est
-le régime normal de GitHub Actions sur ce dépôt.
+⚠️ **La parade n'est PAS un second cron** : il serait retardé pareil, c'est la
+file d'attente qui décale, pas l'horaire. C'est un **déclencheur externe appelant
+l'API GitHub**, avec un jeton restreint au seul droit de lancer un workflow —
+soit exactement le mécanisme prévu au critère d'acceptation de la **phase 6**
+pour le bouton « Enrichir ». Le construire avant, c'est le construire deux fois.
+✅ **Rustine en attendant** : `gh workflow run` à la main le matin.
 
-⚠️ **La parade n'est PAS un second cron** — il serait retardé pareil, c'est la file d'attente des
-dépôts publics gratuits qui décale, pas l'horaire. La seule parade efficace est un **déclencheur
-externe appelant l'API GitHub**, avec un jeton restreint au seul droit de lancer un workflow —
-c'est-à-dire **exactement le mécanisme prévu au critère d'acceptation de la phase 6** pour le
-bouton « Enrichir ». Le construire avant, c'est le construire deux fois.
-✅ **Rustine disponible en attendant** : `gh workflow run` à la main le matin.
-
-⚠️ **L'écran est l'instrument de mesure des critères de collecte, et c'est pour ça qu'il passait
-en premier.** Les justifications à plat rendent lisible d'un coup d'œil ce qu'un mot-clé ramène :
-« Conducteur d'engins Polyvalent » noté **0/100** avec sa justification est visible en deux
-secondes dans la liste, là où il fallait lire le terminal ligne à ligne. Le chantier sur `deploiement`,
-`automatisation`, `RPA` et le faux positif `IA`/`IPR-IA` **a été mesuré et clos le 28 août** —
-voir plus bas ; cette page reste l'instrument de mesure pour la suite.
-
-⚠️ **La clé `ANTHROPIC_API_KEY` est posée et active à DEUX endroits** — `.env` à la racine
-pour les lancements à la main, et les **secrets GitHub Actions** depuis le 26 août 2026, où
-elle alimente la notation nocturne. 5 $ de crédit, ~60 centimes consommés. **Jamais chez
-Vercel** : le site ne note rien, il lit des notes déjà écrites.
-⚠️ **Pour la reposer sans jamais l'afficher ni la faire entrer dans une conversation** :
-`printf '%s' "$(grep '^ANTHROPIC_API_KEY=' .env | cut -d= -f2- | tr -d '\n')" | gh secret set ANTHROPIC_API_KEY`.
-Même geste que le `pbcopy` de la § Sécurité — la valeur ne s'affiche nulle part.
-
-⚠️ **Huit choses à ne pas redécouvrir :**
-
-1. **Le coût réel d'une notation : ~0,6 centime par offre**, cache chaud, Sonnet 5 au tarif
-   d'introduction. Mesuré sur 97 appels. Une offre = ~4 500 tokens d'entrée dont 3 715 de
-   préfixe mis en cache, ~250 de sortie. Noter les **434** offres restantes coûterait ~2,60 $ en
-   direct, ~1,30 $ en Batches — et **354 seulement** si l'on s'en tient aux CDI, le filtre
-   s'appliquant aussi à la file de notation depuis le 28 août.
-   ✅ **L'API Batches est validée** (28 août, lot de 3 offres) et rend en **5 min**, pas en
-   l'heure annoncée. ⚠️ Elle n'est rentable qu'à **plusieurs offres** : sur un lot d'une seule,
-   `cache_lecture` vaut zéro — on paie l'écriture du préfixe sans jamais le relire. Appels
-   directs pour régler le prompt, Batches pour le volume.
-   ⚠️ **Prévenir Maxime avant tout appel facturé**, toujours, avec le nombre d'appels et
-   l'ordre de grandeur. `models.list()` et `count_tokens()` sont gratuits — s'en servir sans
-   demander. `--sans-appeler` affiche le prompt et compte ses tokens sans rien dépenser.
-
-2. ⚠️ **Le cache de prompt a un plancher de 1024 tokens chez Sonnet 5, et EN DESSOUS IL NE DIT
-   RIEN.** Pas d'erreur, pas de message : `cache_read_input_tokens` reste simplement à zéro et
-   chaque offre repaie le préfixe. Le préfixe actuel fait **3 144 tokens**, donc le cache mord
-   — vérifié, `cache_read` = 3 715 dès le deuxième appel. `notation.py` journalise les quatre
-   compteurs à chaque appel et avertit si aucune lecture n'a lieu sur plusieurs offres.
-   ⚠️ Toute modification de `criteres_pertinence.txt` invalide le cache : le premier appel
-   suivant repaie le préfixe au tarif plein. C'est normal et ça ne coûte qu'une fois.
-
-3. ⚠️ **Le champ `experience_libelle` de France Travail est FAUX une fois sur deux.** Mesuré :
-   sur 3 offres vérifiées ligne à ligne, 2 portaient « Débutant accepté » ou « 2 An(s) » alors
-   que le texte de l'annonce exigeait « 3 ans minimum ». **Toute logique bâtie sur ce champ —
-   filtre, tri, seuil — sera fausse une fois sur deux.** Les critères de notation demandent
-   explicitement de suivre le TEXTE et de signaler la contradiction. C'est aussi l'argument
-   qui justifie de faire lire les annonces par un modèle plutôt que de les filtrer sur leurs
-   métadonnées.
-
-4. ⚠️ **Le barème d'accessibilité a été corrigé le 26 août, et la leçon est générale : quand le
-   modèle s'écarte du barème, c'est souvent le barème qui a tort.** L'ancien classait
-   l'expérience en facteur n°1 et les technologies en n°5 ; sur une annonce réseau « débutant
-   accepté » exigeant Cisco/Aruba/Palo Alto, il commandait 90-100 alors que la chance réelle
-   est nulle. Le modèle avait mis 40. Deux facteurs dominent désormais à égalité — expérience
-   **et** adéquation technique — et les repères chiffrés ne valent que pour une pile familière.
-   Effet vérifié en renotant les mêmes offres : seules bougent celles dont la pile est
-   étrangère.
-5. ⚠️ **La base ne s'efface pas.** Question posée et tranchée le 26 août : garder toutes les
-   offres (373 alors, **535 depuis la recollecte du soir**), ne noter qu'un échantillon. Effacer et noter peu sont deux choses **sans rapport** —
-   la notation est incrémentale (« une offre déjà notée n'est jamais renotée »). Quatre raisons
-   de garder : France Travail **dépublie** ses annonces et une offre effacée ne revient jamais
-   (c'est la raison d'être de `charge_brute`) · ces 373 offres **sont** le jeu de test mesuré,
-   dont des formes de salaire présentes sur **une seule offre** · l'écran de suivi
-   d'exploitation a besoin de l'historique, qui ne se reconstitue pas · et les offres anciennes
-   se noient d'elles-mêmes (~1 500 de plus d'ici octobre, tri par date décroissante).
-   **Si des offres périmées gênent à l'écran, c'est un filtre d'affichage qu'il faut, pas une
-   suppression.**
-6. **Le salaire : 9 familles de forme, et DEUX libellés faux à la source.** `pipeline/salaire.py`
-   les traite — 129 montants retenus sur 373, 242 absents, 2 écartés. Les deux écartés :
-   « Mensuel de 45000 à 60000 Euros sur 12 mois » (× 12 = 540 000 à 720 000 €/an, une offre
-   d'**ingénieur IA**) et « Annuel de 35.0 Euros ». ⚠️ **Renoncer plutôt que deviner** : on ne
-   les requalifie pas, on les écarte avec un motif et le libellé d'origine reste affiché.
-   ⚠️ **Ne pas coder une liste fermée** de périodes — trois formes sont apparues en cinq jours.
-   Une période inconnue rend `periode_inconnue:<mot>` et un avertissement, jamais une exception
-   ni une conversion inventée. Le seuil de plausibilité vit **dans ce module et nulle part
-   ailleurs**, surtout pas dupliqué en contrainte SQL.
-7. **Les libellés de notes s'écrivent en toutes lettres** — « Intérêt », « Accessibilité ».
-   C'est ce choix qui fonde `--largeur-page: 1000px` ; coder `INT`/`ACC` démentirait la mesure.
-8. **Le rythme vertical de la ligne vit dans `_composants/rythme.ts`**, partagé avec le
-   squelette de chargement. Le modifier ailleurs fait sauter la page sans aucune erreur.
+**Le récit complet de l'enquête** — ce qui a été vérifié le 27 août, et pourquoi
+on a d'abord cru à un cron sauté : `docs/JOURNAL.md` § 27 août 2026.
 
 ### Les critères de collecte — refondus le 26 août, et le chantier n'est pas fini
 

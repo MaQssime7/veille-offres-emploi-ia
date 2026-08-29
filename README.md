@@ -361,4 +361,28 @@ Deux décisions d'ingénierie qui se défendent :
 
 Coût réel mesuré : **0,6 centime par offre**, cache chaud.
 
-**Prochaine étape** : la phase 3, la fiche d'une offre.
+### La fiche d'une offre — phase 3, livrée le 28 août 2026
+
+`/offres/[identifiant]` : entête, résumé, les deux notes avec leurs
+justifications, le classement France Travail, la description intégrale repliée,
+et comment candidater.
+
+Trois choix qui se défendent en entretien :
+
+- **Colonne unique, et c'est mesuré.** Le `DESIGN.md` prévoyait deux colonnes, la
+  droite portant l'enrichissement — qui n'arrive qu'en phase 6. Le résumé fait
+  122 caractères en médiane et manque sur les offres non notées : deux colonnes
+  laisseraient 404 px de vide sur toute la hauteur.
+- **Aucun composant client, donc aucune fuite.** La page lit `contact_nom`, la
+  seule donnée nominative du projet. Tant que toute la chaîne reste en composants
+  serveur, les props ne traversent pas vers le navigateur — seul le rendu
+  traverse. C'est pourquoi le dépliage de la description utilise le `<details>`
+  natif plutôt qu'un composant à état : mesuré, zéro occurrence des colonnes
+  sensibles dans le document reçu.
+- **Deux verrous indépendants sur l'identifiant**, qui vient de la barre
+  d'adresse : format refusé avant la base, valeur encodée au point de passage
+  unique. L'injection a été rejouée contre la vraie base — sans encodage, un
+  `&select=*` placé avant le `select` légitime rend 44 colonnes dont l'archive
+  complète.
+
+**Prochaine étape** : la phase 4, les statuts et les notes personnelles.
