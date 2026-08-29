@@ -1,12 +1,18 @@
 /**
- * `/offres` — le poste de travail : tout ce que la collecte a ramené.
+ * `/offres` — le poste de travail.
  *
- * Premier écran du produit qui lit vraiment la base. Quatre états, tous
- * atteignables : base vide, chargement, base injoignable, et la liste.
+ * ⚠️ **Ce n'est plus « tout ce que la collecte a ramené » depuis la phase 4** :
+ * l'écran est devenu un **plan de travail** et n'affiche par défaut que les
+ * offres « à traiter ». Les trois autres filtres sont à un clic, dans l'adresse.
+ *
+ * Cinq états, tous atteignables : base vide, **filtre vide**, chargement, base
+ * injoignable, et la liste. ⚠️ Les deux premiers sont distincts et le rester
+ * est important — « la base est vide » est l'écran du tout premier matin,
+ * « ce filtre est vide » celui d'un matin où tout a été trié. Les confondre
+ * ferait croire à une panne de collecte un jour où le travail est fini.
  *
  * Depuis la phase 2, la liste est classée par **intérêt décroissant** et chaque
- * offre porte ses deux notes avec leur justification. Les statuts et le lien
- * vers la fiche arrivent en phases 3 et 4.
+ * offre porte ses deux notes avec leur justification.
  *
  * ⚠️ Pas de `robots: noindex` déclaré ici : il l'est une fois pour toutes dans
  * le layout du groupe `(site)`, donc pour toute page présente ou future

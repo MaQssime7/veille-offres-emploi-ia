@@ -2197,3 +2197,247 @@ et « pile technique totalement étrangère » était le vrai obstacle.
 - **Les parcours du cron** (déclenchement, secret masqué dans les journaux
   publics) demandent un déclenchement GitHub Actions et une dépense d'API. Fermés
   le 27 août, non rejoués ce jour.
+
+---
+
+## 29 août 2026 — La fiche reçoit son cadre, puis la phase 4 s'ouvre : l'interface écrit
+
+Séance en deux temps. D'abord une retouche de la fiche d'offre, volontairement
+étroite. Ensuite l'ouverture de la phase 4, dont trois étapes sur quatre sont
+livrées.
+
+### Le résumé reçoit le cadre de ses voisins — et trois défauts sont mesurés puis laissés
+
+Maxime voulait « finir de designer un peu la fiche ». Or `docs/DESIGN.md` porte
+une décision de lui, du 28 août : **le rééquilibrage de la fiche est reporté après
+la phase 6**, parce que les phases 4 et 6 vont y poser des boutons de statut, une
+note personnelle et un bloc d'enrichissement de quarante lignes — régler
+l'équilibre d'une page qui va gagner deux blocs majeurs, c'est le régler deux fois.
+La même note laissait une porte : « sauf si l'usage quotidien révèle un défaut
+précis ».
+
+La séance a donc cherché des **défauts précis**, en regardant quatre offres réelles
+couvrant les cas riche, creux et non noté, en bureau et à 375 px, dans les deux
+modes. Rien n'était cassé : aucune erreur console, aucun débordement, focus visible.
+Quatre défauts de conception, en revanche :
+
+1. **Les barres de notes en fiche sont celles de la liste** — 88 px dans un bloc de
+   952, soit 9 % de la largeur, y compris sur l'offre notée 85. C'est un **écart au
+   `DESIGN.md`**, qui prescrit « en fiche, barres larges ». Les 88 px ont une raison
+   — aligner 200 lignes pour comparer — et cette raison n'existe pas sur une page
+   qui montre une seule offre.
+2. **Sur une offre non notée, la fiche ne montre rien.** Vérifié sur `6141371` : ni
+   résumé ni évaluation, et les 2 929 caractères de description repliés derrière un
+   clic. La page tient en un demi-écran. **434 offres sur 567**, soit 76 % de la base.
+3. **Le résumé était le seul des cinq blocs sans cadre**, et son paragraphe s'arrêtait
+   à 690 px sur 952 — il se lisait comme un texte tronqué.
+4. **Les cinq titres de section ont le même poids** : « ÉVALUATION », que le produit
+   fabrique, se présente comme « CLASSEMENT FRANCE TRAVAIL », qui est du référentiel
+   recopié.
+
+**Arbitrage de Maxime : seul le n° 3 est corrigé**, et on passe à la phase 4. Les
+trois autres sont consignés dans `docs/DESIGN.md` avec leurs mesures, pour ne pas
+être remesurés. ⚠️ Le n° 2 **se résorbe tout seul** à mesure que la base se note.
+
+Le cadre posé, `max-w-prose` est **conservé** : sans lui la ligne ferait ~150
+caractères, au-delà du confort de lecture. Le vide à droite subsiste mais, dans un
+cadre, il se lit comme une marge — c'est sans cadre qu'il coupait.
+
+### Phase 4, étape 1 — le schéma, et un bug attrapé par son propre test
+
+Conçu avec Maxime. Deux questions lui ont été posées, deux décisions prises :
+**les deux colonnes de date sont conservées** (un historique ne se reconstitue pas ;
+sans elles la liste des candidatures ne peut se classer que par note d'intérêt là
+où « savoir où j'en suis » est chronologique), et **le filtre par défaut n'affiche
+que « à traiter »**.
+
+Migration 6 : `statut` (`not null default 'a_traiter'`), `statut_modifie_a`,
+`note_personnelle`, `note_modifiee_a`.
+
+⚠️ **Le `default 'a_traiter'` n'entorse pas la règle `NULL` ≠ `false`** : cette règle
+interdit d'inventer une donnée absente, or « à traiter » est *réellement* l'état de
+toute offre qui vient d'arriver. La valeur par défaut décrit la vérité au lieu de la
+deviner. ⚠️ **Aucun `default now()` sur les dates**, en revanche : il aurait affirmé
+que les 567 offres existantes ont été triées le matin de la migration.
+
+**Le test d'acceptation a trouvé un bug dans la migration qu'il testait.** La
+contrainte « une note vide doit être `NULL` » était écrite `btrim(note) <> ''`. Or
+`btrim` à un seul argument **ne retire que les espaces** — ni saut de ligne, ni
+tabulation. Une note réduite à `"   \n"` passait : **HTTP 204** là où les six autres
+violations rendaient 400.
+
+⚠️ **Le cas est loin d'être théorique** : un champ à enregistrement automatique — ce
+que l'étape 4 va construire — produit exactement ça quand on efface son texte en
+laissant un retour à la ligne. La note aurait été « vide à l'écran, renseignée en
+base », et l'indicateur aurait dit « enregistré » pour du néant.
+
+Migration 7, corrective — **la 6 n'est pas réécrite, elle est déjà dans la base**.
+Reformulée en `~ '[^[:space:]]'`, « contient au moins un caractère non blanc », qui
+n'a aucune liste de caractères à oublier. ⚠️ **La leçon** : formuler une contrainte
+en « contient du contenu » plutôt qu'en « n'est pas vide après nettoyage ».
+
+**26 contrôles contre la base réelle** : lecture des défauts sur les 567 lignes,
+écriture des trois statuts, note de 5 000 caractères accentués, cinq formes de blancs
+refusées, une note entourée de blancs acceptée, et chaque contrainte violée une par
+une. Vérifié séparément qu'**une recollecte nocturne n'écrase ni le statut ni la
+note** : la même offre représentée avec un intitulé différent → 0 ligne écrite,
+statut intact. `resolution=ignore-duplicates` protégeait déjà, mais ça se prouve.
+
+### Étape 2 — la première écriture de l'interface
+
+Jusqu'ici, seul `pipeline/stockage.py` écrivait, seul et de nuit. `interrogerBase()`
+n'avait ni méthode HTTP ni corps de requête.
+
+`ecrireDansBase()` est sa sœur, avec **trois différences qui ne sont pas
+cosmétiques** : le nom de table ne peut porter aucune valeur extérieure ; les valeurs
+partent dans le corps JSON, donc sans encodage ni ordre de paramètres PostgREST dont
+dépendrait la sécurité ; et **le filtre est obligatoire** — un `PATCH` sans filtre
+réécrit toute la table, PostgREST l'accepte sans broncher, et les 567 offres
+passeraient candidatées d'un coup sans erreur ni retour arrière.
+
+⚠️ **`lib/statuts.ts` est le premier module de `lib/` SANS `import "server-only"`, et
+c'est sa raison d'être.** Les composants clients ont besoin des mêmes trois valeurs
+que le serveur ; s'ils importaient `lib/offres.ts` pour les obtenir, ils tireraient
+`lib/supabase.ts` — donc la clé secrète — dans le graphe du navigateur. **Séparer les
+constantes du code qui lit les secrets est ce qui rend la frontière tenable.**
+
+⚠️ **Premiers composants clients du projet**, donc rupture de la propriété mesurée en
+phase 2. Ce qui la remplace est une **discipline de props** : `identifiant` et
+`statut`, jamais l'objet `offre`. Vérifié — dix colonnes interdites cherchées dans le
+document reçu par le navigateur, sur les deux écrans, témoin positif : aucune.
+
+⚠️ **Le double clic n'est pas bloqué sur le bouton, l'opération est idempotente** :
+poser `statut = 'candidate'` deux fois donne le même état final. Un bouton désactivé
+se contourne, la nature de l'opération non.
+
+`useOptimistic` sert deux fois : le retour immédiat, **et le retour à la vérité en cas
+d'échec** — il retombe seul sur la valeur de la prop quand la transition s'achève. Un
+`useState` aurait gardé le mensonge à l'écran.
+
+Vérifié en cliquant, pas en relisant : écriture confirmée en base depuis la fiche et
+depuis la liste, bascule qui efface la date, clic en liste qui n'ouvre pas la fiche
+malgré le lien étendu (`z-10`), et **session expirée simulée en vidant le cookie** —
+message affiché, statut revenu à sa valeur réelle.
+
+Cible tactile portée de **36×24 à 32×48 px** sous 640 px. ⚠️ L'extension est
+**verticale seulement** : les boutons sont espacés de 6 px, une extension horizontale
+ferait se chevaucher leurs zones et viser « Candidaté » écarterait l'offre une fois
+sur deux. **Une cible trop grande est un pire défaut que la cible trop petite qu'elle
+corrige.**
+
+Trois sauts de mise en page mesurés et corrigés : rangée du haut de la liste (12 px,
+**deux valeurs selon la largeur** — 27 px en bureau, 32 px sous 640 px où les boutons
+deviennent carrés), entête de fiche (52 px), squelette du résumé resté sur une barre
+nue après le cadre posé le matin même (93 px). **145 px de saut ramenés à ~1 px.**
+
+### Étape 3 — le filtre vit dans l'adresse
+
+`/offres` n'affiche plus que les offres « à traiter ». Trois autres filtres à un clic,
+chacun avec son compte.
+
+⚠️ **Des `<Link>` et non des boutons**, parce que c'est le critère d'acceptation
+lui-même : « se met en favori et survit au bouton retour ». Des boutons à état React
+donneraient le même écran et perdraient les deux. **L'adresse est le seul endroit
+qu'un navigateur sait conserver.**
+
+⚠️ **Le filtre par défaut n'écrit rien** — `/offres`, jamais `/offres?statut=a_traiter`.
+Deux adresses pour un même écran fabriquent deux entrées d'historique et un paramètre
+qui traîne dans tous les liens partagés.
+
+⚠️ **Une valeur inconnue retombe sur le défaut**, alors qu'un identifiant d'offre
+invalide rend « introuvable ». La distinction n'est pas arbitraire : une fiche
+**désigne** une chose qui existe ou non, un filtre ne désigne rien — il restreint, et
+une restriction incomprise se répare en ne restreignant rien de particulier.
+
+⚠️ **Deux états vides désormais, et les confondre aurait été un vrai défaut** : « la
+base est vide » est l'écran du premier matin, « ce filtre est vide » celui d'un matin
+où tout a été trié. Servir le premier message au second cas ferait croire à une panne
+de collecte un jour où le travail est simplement fini.
+
+Un comptage échoué laisse son onglet **muet** plutôt qu'il n'affiche zéro. Vérifié
+pour de vrai : le `PGRST303` du développement a fait tomber un comptage, l'onglet
+s'est tu et « Toutes » aussi — un total partiel étant faux.
+
+Éprouvé sur **huit formes d'adresse** : accentuée, inconnue, vide, répétée, injection
+`%26select=*`, 500 caractères. Aucune ne casse, aucune ne fuit.
+
+⚠️ **Aucun index sur `statut`, délibérément** : trois comptages par affichage sont des
+parcours complets, mais sur 574 lignes Postgres les fait en microsecondes. Seuil à
+surveiller ~50 000 lignes, soit une vingtaine d'années au rythme de 208 offres/mois.
+
+### Le défaut de la cible mouvante, et l'erreur de mesure qui a suivi
+
+**Découvert en testant autre chose.** Quatre clics rapides destinés à éprouver le
+double clic ont candidaté **quatre offres différentes** : trier une offre la retire du
+filtre, les suivantes remontent d'un cran, et le clic suivant atteint une autre offre.
+
+Maxime a demandé de le corriger avant de continuer. `_composants/verrou-tri.tsx` :
+pendant qu'une écriture est en vol, **tous** les boutons de la liste sont désactivés.
+⚠️ **Le verrou porte sur la liste entière et non sur la ligne** — le bouton dangereux
+n'est pas celui qu'on vient de cliquer, c'est celui qui prendra sa place, et on ne
+sait pas lequel c'est. Un compteur et non un booléen : deux écritures peuvent se
+chevaucher, et la première à revenir rouvrirait la liste alors que la seconde est en
+vol.
+
+⚠️ **PREMIÈRE VERSION FAUSSE, et l'erreur vaut d'être retenue.** Elle relâchait le
+verrou dans un `finally`, dès le retour de l'appel serveur. Mesuré au DOM :
+
+| Instant après le clic | État |
+|---|---|
+| +0 à +30 ms | tous les boutons verrouillés |
+| **+80 ms** | **le `finally` a relâché — les voisins redeviennent cliquables** |
+| +900 ms | la ligne disparaît, les suivantes remontent |
+
+**Le verrou tenait 30 ms pour un défaut survenant à 900.** La bonne borne est
+`enCours` de `useTransition`, qui reste vrai jusqu'à ce que le rendu soit **appliqué
+au DOM** — l'instant exact du décalage. Le nettoyage de l'effet joue aussi au
+démontage, ce qui n'est pas un détail : le composant disparaît avec sa ligne, et sans
+ce retour de fonction son verrou ne serait jamais relâché — plus aucun bouton ne
+répondrait jusqu'au rechargement.
+
+⚠️ **PIÈGE DE MÉTHODE, qui a fait croire que le correctif ne marchait pas.** Le test
+rejouait le geste avec un sélecteur (`première ligne, bouton "Candidaté"`). Or ce
+sélecteur cesse de correspondre dès le premier clic — le titre du bouton devient
+« Remettre… » — donc **Playwright attend patiemment que la liste se réorganise avant
+de cliquer**, c'est-à-dire précisément ce que le correctif doit empêcher. **Pour
+éprouver une cible mouvante, il faut cliquer à des coordonnées fixes**, comme une
+souris qui ne bouge pas.
+
+Mesures du correctif, même geste avant et après :
+
+| Geste | Avant | Après |
+|---|---|---|
+| 4 clics au même pixel, sans pause | **4 offres triées** | **1** |
+| Double clic humain (180 ms) | **2 offres triées** | **1** |
+| 3 tris délibérés à 1,3 s d'écart | 3 | **3** — aucune régression |
+
+⚠️ **Ce que ça coûte** : trier en rafale impose d'attendre un aller-retour entre chaque
+(~200 à 400 ms). C'est le prix d'un clic qui atteint toujours l'offre visée.
+
+### Une justification du DESIGN.md devenue fausse
+
+La « collision connue et acceptée » de l'olive — note d'accessibilité *et* statut
+candidaté — était excusée par : « les deux ne se croisent jamais dans la même ligne,
+puisqu'une offre candidatée quitte la liste du matin ». **Le filtre de cette phase la
+dément** : `/offres?statut=candidate` affiche précisément des lignes candidatées avec
+leur note d'accessibilité en olive à côté.
+
+La collision reste acceptée, mais **pour une autre raison** : une jauge horizontale de
+88 px précédée du mot « ACCESSIBILITÉ » et un bouton carré à coche ne se confondent
+pas. ⚠️ **La leçon vaut plus que le cas : une collision de teintes justifiée par
+« ces deux choses ne se rencontrent jamais » se périme dès qu'un écran les réunit — et
+c'est exactement ce que fait un filtre.**
+
+### Ce qui reste, et l'état à la reprise
+
+**Étape 4 seule restante** : la note personnelle, enregistrement sans bouton,
+indicateur d'état visible. C'est là que se joue le **critère de succès n° 6** — réseau
+coupé pendant la saisie, le texte ne doit pas être effacé et l'échec doit se voir.
+
+**Base au 29 août 2026** : 574 offres, 140 notées, **574 à traiter / 0 candidaté /
+0 écarté** — toutes les offres triées pendant les tests ont été remises à leur état
+d'origine, vérifié par comptage.
+
+Quatre commits : `3e3ee57` (cadre du résumé), `d6e04ef` (migrations 6 et 7),
+`e185a1b` (la première écriture), `372210f` (le filtre dans l'adresse), `ed3fac5`
+(le verrou de tri).

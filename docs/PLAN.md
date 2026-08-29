@@ -417,6 +417,19 @@ toute seule.
 
 Phase 3.
 
+### ⚠️ État au 29 août 2026 — trois étapes sur quatre livrées
+
+| Étape | État |
+|---|---|
+| 1. Le schéma | ✅ Migrations 6 et 7, éprouvées par 26 contrôles contre la base réelle |
+| 2. L'écriture et les boutons de statut | ✅ `ecrireDansBase()`, action serveur, boutons sur la liste et la fiche |
+| 3. Le filtre dans l'adresse | ✅ Quatre onglets, compteurs, deux états vides distincts |
+| **4. La note personnelle** | ⏳ **RESTE À FAIRE** — les quatre critères non cochés ci-dessus sont tous à elle |
+
+⚠️ **Un défaut découvert et corrigé en route** : trier une offre la retirait du filtre, les
+suivantes remontaient d'un cran, et un second clic au même endroit triait une autre offre.
+Corrigé par `_composants/verrou-tri.tsx`. Récit et mesures dans `docs/JOURNAL.md` § 29 août.
+
 ---
 
 ## Phase 5 : L'écran du matin

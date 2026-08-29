@@ -21,6 +21,8 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | **Ce que vaut chaque critère de collecte**, mesuré | `pipeline/codes_rome.txt` (vide, et porte la mesure qui l'a vidé) et `pipeline/mots_cles.txt` — ⚠️ **ne jamais éditer sans relire ces commentaires** : ils listent les termes déjà mesurés et écartés.<br>⚠️ **Un TROISIÈME critère existe et n'est pas un `.txt` : `TYPE_CONTRAT` dans `pipeline/config.py`**, qui écarte 22 % du volume. C'est une entorse assumée à la règle « les critères sont des données » — il tient en une valeur, et sa liste blanche doit rester collée au référentiel de l'API. Mais **chercher les critères dans les seuls fichiers texte fait manquer celui qui coupe le plus** |
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` (`.agents/skills/`) |
 | **Comment le site est protégé** : cookie de session, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts` — abondamment commentés, **seule source de vérité** |
+| **Comment l'interface ÉCRIT en base** : garde-fous, motifs d'échec, idempotence | `ecrireDansBase()` dans `interface/lib/supabase.ts` — depuis le 29 août 2026 |
+| Les trois statuts d'une offre : liste, libellés, validation | `interface/lib/statuts.ts` — ⚠️ **seul module de `lib/` sans `server-only`**, et c'est délibéré |
 
 **Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
 comportement sur *n'importe quelle* tâche du projet. Toute référence propre à un
@@ -107,45 +109,106 @@ la même chose finissent en deux tables et deux fonctions.
 À rouvrir avant toute décision produit.
 <!-- produit:end -->
 
-## État actuel — 28 août 2026
+## État actuel — 29 août 2026
 
-**Phases 1, 2 et 3 CLOSES. La phase 4 — statuts et notes personnelles — est démarrable immédiatement.**
+**Phases 1, 2 et 3 CLOSES. La PHASE 4 est EN COURS : trois étapes sur quatre livrées.**
 Le site est en ligne derrière son mot de passe, la collecte et la notation sont toutes deux sur
-le cron, et `/offres` affiche **les deux notes avec leurs justifications à plat, classées par
-intérêt décroissant**. La **fiche `/offres/[identifiant]`** est livrée.
-**567 offres, 133 notées** au 28 août 2026 au soir.
+le cron. `/offres` est devenu un **plan de travail** — il n'affiche par défaut que les offres
+« à traiter », avec trois autres filtres à un clic. **L'interface écrit désormais en base.**
+**574 offres, 140 notées, 574 à traiter / 0 candidaté / 0 écarté** au 29 août 2026.
 
-⚠️ **La phase 2 est close à 14 critères sur 15, et le quinzième est REPORTÉ, pas oublié** —
-l'état de l'écran à 200 offres notées, vérifié en simulation seulement. Reporté par décision de
-Maxime le 28 août, pour un motif qui n'est pas l'économie : voir le tableau plus bas. **Ne pas
-rouvrir la phase 2 pour ça, et ne pas le traiter comme une dette bloquante.**
-Les critères de collecte ont été refondus le 26 août, **remesurés à fond le 28** (50 termes),
-et **seul le CDI est collecté depuis le 28**.
+### ⚠️ CE QUI RESTE À FAIRE — étape 4 de la phase 4, et rien d'autre
 
-⚠️ **Le cron ne part jamais à l'heure** — +10 h 32 puis +12 h 02 sur les deux déclenchements
-planifiés observés. Les données n'en souffrent pas, l'usage si. Détail, parade et rustine :
-§ « Le cron ne part jamais à l'heure » plus bas.
+**La note personnelle** : champ libre par offre, enregistrement **sans bouton**, indicateur
+d'état visible. C'est là que se joue le **critère de succès n° 6** — réseau coupé pendant la
+saisie, le texte ne doit pas être effacé et l'échec doit se voir.
+
+Les quatre critères non cochés de `docs/PLAN.md` § Phase 4 sont tous à elle, plus la passe
+d'états et la passe visuelle finale. **Tout le reste de la phase est fait et vérifié.**
+
+⚠️ **Ce que l'étape 4 doit reprendre du travail déjà posé, sans le refaire :**
+
+| Déjà en place | Où |
+|---|---|
+| L'écriture en base (`PATCH` PostgREST, filtre obligatoire) | `ecrireDansBase()` dans `interface/lib/supabase.ts` |
+| La colonne `note_personnelle` et ses **trois contraintes** | migrations 6 et 7, déjà appliquées |
+| Le motif « action serveur + `exigerSession()` + validation » | `interface/app/(site)/offres/actions.ts` |
+| Le motif « composant client, props scalaires » | `_composants/boutons-statut.tsx` |
+
+⚠️ **`note_personnelle` n'est PAS encore dans `COLONNES_FICHE`** — à ajouter là, et **jamais
+dans `COLONNES_LISTE`** : critère d'acceptation du plan, « les notes personnelles ne sortent de
+la base que là où elles s'affichent ».
+
+⚠️ **Trois contraintes de base à connaître avant d'écrire le champ**, toutes éprouvées :
+`note_personnelle_bornee` (20 000 caractères), `note_personnelle_non_vide` (**le vide n'a qu'une
+représentation, `NULL`** — le code doit normaliser avant d'écrire), et `note_ecrite_est_datee`
+(écrire la note **sans** `note_modifiee_a` rend 400).
+
+⚠️ **Le piège que la migration 7 a déjà attrapé pour vous** : un champ à enregistrement
+automatique produit `"   \n"` quand on efface son texte. Sans normalisation côté code, la base
+refuse en 400 et l'indicateur dirait « échec » sur un geste parfaitement normal.
 
 | Brique | État |
 |---|---|
-| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte (`/connexion`, `proxy.ts`, session signée), l'écran `/offres` **avec les deux notes**, la **fiche `/offres/[identifiant]`**, mode sombre sur la préférence système |
-| Supabase | Région Paris. `executions_veille` et `offres` créées et alimentées. RLS activé, droits vérifiés |
-| Migrations | **5**, toutes appliquées — `supabase/migrations/`. La 5ᵉ ajoute la notation (deux notes, justifications, salaire annualisé, compteurs de tokens, colonne `etape`) |
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte, `/offres` **avec filtres de statut et boutons de tri**, la fiche `/offres/[identifiant]`, mode sombre sur la préférence système |
+| Supabase | Région Paris. `executions_veille` et `offres`. RLS activé, droits vérifiés |
+| Migrations | **7**, toutes appliquées. La 6ᵉ ajoute `statut`, `statut_modifie_a`, `note_personnelle`, `note_modifiee_a` ; la 7ᵉ corrige une contrainte de la 6ᵉ prise en défaut par son propre test |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
-| `pipeline/` | Collecte **et notation** livrées, **toutes deux sur le cron** GitHub Actions à 02:23 UTC (4 h 23 à Paris l'été) — deux jobs enchaînés, la notation ne tournant que si la collecte a réussi. ✅ **Chaîne complète prouvée le 27 août** par le cron (`33074159137`) : 25 offres collectées, 25 notées. Critères dans `mots_cles.txt` (**7 termes** — `RPA` et `deploiement` retirés le 28, `chatbot` ajouté) et `codes_rome.txt` (**vide depuis le 26 août, délibérément**). ⚠️ **Seul le CDI est collecté** depuis le 28 (`TYPE_CONTRAT`) |
-| Modules | `collecte.py` · `notation.py` (`--limite`, `--modele`, `--effort`, `--lot`, `--rome`, `--collecte`, **`--derniere-collecte`**, `--au-hasard`, `--renoter`, `--sans-ecrire`, `--sans-appeler`) · `salaire.py` · `criteres_pertinence.txt` |
+| `pipeline/` | Collecte **et notation** sur le cron GitHub Actions à 02:23 UTC. Critères dans `mots_cles.txt` (**7 termes**) et `codes_rome.txt` (**vide, délibérément**). ⚠️ **Seul le CDI est collecté** (`TYPE_CONTRAT`) |
+| Modules | `collecte.py` · `notation.py` · `salaire.py` · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
 
-**Le seul reliquat de la phase 2, reporté volontairement** — les deux autres ont été fermées les
-27 et 28 août (récit dans `docs/JOURNAL.md`). Celui-ci attend le temps, pas de l'argent.
+### ⚠️ Ce que la phase 4 a changé dans l'architecture — quatre faits opposables
+
+1. ⚠️ **L'INTERFACE ÉCRIT EN BASE depuis le 29 août 2026.** Avant, seul le pipeline Python
+   écrivait, seul et de nuit. `ecrireDansBase()` est la sœur de `interrogerBase()` avec **trois
+   différences non cosmétiques** : le nom de table ne peut porter aucune valeur extérieure · les
+   valeurs partent dans le **corps JSON** (donc ni encodage à faire, ni ordre de paramètres
+   PostgREST dont dépendrait la sécurité) · **le filtre est obligatoire**, un `PATCH` sans filtre
+   réécrivant toute la table sans que PostgREST bronche.
+   ⚠️ **La reprise réseau y est sûre parce que l'écriture est IDEMPOTENTE** — on pose des valeurs
+   absolues, jamais un incrément. **C'est une propriété de ce que l'appelant écrit, pas de la
+   fonction** : le jour où quelqu'un incrémentera un compteur par ce chemin, la reprise le
+   comptera deux fois et rien ne l'avertira.
+2. ⚠️ **LA PROPRIÉTÉ « tout en composants serveur » EST TOMBÉE, et ce qui la remplace est une
+   discipline.** Les boutons de statut sont des composants clients. On ne leur passe que
+   `identifiant` et `statut` — **jamais l'objet `offre`**. Vérifié le 29 août : dix colonnes
+   interdites cherchées dans le document reçu par le navigateur, sur les deux écrans, témoin
+   positif — aucune. ⚠️ Mais `<BoutonsStatut offre={offre} />` **compilerait sans erreur** et
+   enverrait les vingt colonnes dans la page.
+3. ⚠️ **`interface/lib/statuts.ts` est le SEUL module de `lib/` sans `import "server-only"`, et
+   c'est sa raison d'être.** Les composants clients ont besoin des mêmes constantes que le
+   serveur ; s'ils importaient `lib/offres.ts`, ils tireraient `lib/supabase.ts` — donc la clé
+   secrète — dans le graphe du navigateur. **Y mettre les constantes partagées, jamais du code
+   qui lit un secret.** L'étape 4 devra en faire autant si elle partage des valeurs.
+4. ⚠️ **`VerrouTri` est un composant client qui enveloppe des enfants serveur** — motif à
+   connaître : les 200 lignes restent rendues sur le serveur et ne font que traverser le
+   fournisseur. Rien ne bascule dans le navigateur hormis le contexte.
+
+### ⚠️ Deux pièges de MÉTHODE découverts le 29 août, qui valent au-delà de leur cas
+
+1. ⚠️ **Un test qui re-résout son sélecteur à chaque clic ne teste pas un double clic** — il
+   attend sagement que l'interface se stabilise, c'est-à-dire exactement ce que l'utilisateur ne
+   fait pas. **Pour éprouver une cible mouvante, cliquer à des coordonnées fixes**
+   (`page.mouse.click(x, y)`). Ça a fait croire pendant une demi-heure qu'un correctif correct ne
+   marchait pas.
+2. ⚠️ **La fin d'une action serveur n'est PAS la fin du re-rendu.** Mesuré : réponse à +80 ms,
+   réorganisation de la liste à +900 ms. Un verrou relâché dans un `finally` tient donc **30 ms
+   pour un défaut qui survient à 900**. La bonne borne est `enCours` de `useTransition`, vrai
+   jusqu'à ce que le rendu soit **appliqué au DOM**.
+
+### ⚠️ Le seul reliquat de la phase 2, reporté volontairement
 
 | Ce qui reste | Comment le fermer | Coût |
 |---|---|---|
-| ⚠️ **L'état « 200 offres notées » à l'écran** | Vérifié **en simulation** le 26 août (98 dupliquées jusqu'à 200) : 39 567 px de haut, 5 699 nœuds, 153 Ko transférés, 70 ms de recalcul, aucun débordement. Sur données réelles il manque **67 offres** (133 notées au 28 août au soir).<br>⚠️ **NE PAS forcer en payant, et c'est un raisonnement, pas une économie.** 200 est aussi le seuil où l'écran casse : au-delà, les 200 lignes affichées sont les 200 meilleures de tous les temps et **les offres du matin disparaissent**. Payer pour l'atteindre revient à payer pour déclencher un défaut connu dont le remède est en phase 4. Au rythme actuel (~7 notées/nuit) il tombe seul vers le **8 septembre**.<br>⚠️ Si on force quand même : sur les 434 offres non notées, **82 ne sont pas des CDI** — les noter au hasard paierait des offres que Maxime ne regardera pas, `notation.py` n'ayant pas de filtre de contrat | ~44 centimes, **déconseillé** |
+| ⚠️ **L'état « 200 offres notées » à l'écran** | Vérifié **en simulation** le 26 août : 39 567 px de haut, 5 699 nœuds, 153 Ko transférés, 70 ms de recalcul, aucun débordement. Sur données réelles il manque **60 offres** (140 notées au 29 août).<br>⚠️ **NE PAS forcer en payant, et c'est un raisonnement, pas une économie.** 200 est aussi le seuil où l'écran casse. ✅ **MAIS le filtre de la phase 4 desserre le problème** : `/offres` n'affiche plus que les « à traiter », donc les offres triées libèrent leur place. ⚠️ **Il ne le résout pas** — tant que rien n'est trié, les 574 restent « à traiter » et la troncature mord pareil. Au rythme actuel le seuil tombe seul vers le **8 septembre** | ~40 centimes, **déconseillé** |
 
-⚠️ **Les deux premières ont été fermées les 27 et 28 août.** La troisième n'est pas refusée non
-plus : elle est **volontairement laissée au temps**, pour la raison donnée dans le tableau.
-Toute dépense se redemande avant d'être lancée.
+⚠️ **La fiche d'offre : trois défauts MESURÉS le 29 août et volontairement LAISSÉS.** Décision de
+Maxime — détail et chiffres dans `docs/DESIGN.md`. **Ne pas les remesurer.** Les barres de notes
+en fiche sont restées à la largeur de la liste (88 px sur 952, alors que le `DESIGN.md` prescrit
+« en fiche, barres larges ») · la fiche est muette sur les 434 offres non notées, dont la
+description est repliée — **ce défaut-là se résorbe tout seul** à mesure que la base se note ·
+les cinq titres de section ont le même poids.
 
 ### ⚠️ Le cron ne part jamais à l'heure — comportement établi, pas incident
 
@@ -261,12 +324,12 @@ décide plus rien.** Ne pas la rouvrir « pour voir ».
 | ~~Tri par note : piège `NULLS FIRST`~~ | ✅ **Traité le 26 août** — `note_interet.desc.nullslast` dans `interface/lib/offres.ts`, avec départage complet jusqu'à `identifiant` pour que deux chargements classent les ex æquo pareil |
 | ~~API Batches : rattachement par `custom_id`~~ | ✅ **CLOS le 28 août 2026.** Lot de 3 offres (`msgbatch_016Vf4…`), 5 min 06, 0 échec, appariement vérifié sur le contenu des justifications. ⚠️ **Mesure à retenir** : `cache_lecture` = 7 430 sur ce lot de 3, contre **zéro** sur le lot d'une offre — les Batches ne sont rentables qu'à plusieurs, sinon on paie l'écriture du cache sans jamais le relire |
 | ~~Critères de collecte non finis~~ | ✅ **Mesurés et clos le 28 août** (50 termes balayés). `deploiement` et `RPA` retirés, `chatbot` ajouté, `IA`/`IPR-IA` quantifié à 3 offres/mois et jugé non corrigeable. ⚠️ **Seul `intelligence artificielle` reste en suspens** — voir § État actuel. ⚠️ Et la qualité d'`automatisation` (11 nettes/mois) est toujours **inconnue**, faute d'une seule offre notée |
-| ⚠️ **Le plafond de 200 tuera l'affichage des offres du jour** | Relevé en revue le 26 août. Depuis le tri par intérêt, les 200 lignes affichées sont **les 200 meilleures de tous les temps**. Au 28 août, **126** offres sont notées, donc **74** places reviennent aux plus récentes et les offres de la nuit s'affichent. **Le jour où plus de 200 offres portent une note, elles disparaissent** — d'intérêt médian 10, elles ne rentrent plus — et le marqueur « Nouveau » devient du code que rien n'atteint. Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut sans jamais céder leur place. ⚠️ **L'échéance est un compte, pas une date : elle tombe quand `notees` dépasse 200.** À trancher en phase 4 avec les filtres — le remède change ce que cet écran *est*, et le PRD confie déjà le compte rendu de la nuit à `/` |
+| ⚠️ **Le plafond de 200 — DESSERRÉ le 29 août, pas résolu** | Depuis le tri par intérêt, les 200 lignes affichées sont **les 200 meilleures de tous les temps** : le jour où plus de 200 offres portent une note, celles de la nuit disparaissent. ✅ **Le filtre de la phase 4 desserre le problème** — `/offres` n'affiche que les « à traiter », donc chaque offre triée libère sa place. ⚠️ **Il ne le résout pas** : tant que rien n'est trié, les 574 offres restent « à traiter » et la troncature mord à l'identique. **L'échéance reste un compte, pas une date.** Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut. À revoir si le cas se produit vraiment |
 | Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | ⚠️ **Devenu inatteignable le 26 août** : le bug ne se déclenche que sur une offre **déjà notée**, donc uniquement en `--renoter` — outil désormais mis de côté, une offre n'étant notée qu'une fois. Il n'est donc **pas urgent**, et ne pas le présenter comme tel. L'analyse et le correctif à faire vivent en commentaire dans `pipeline/notation.py` au-dessus de `apercevoir()`, **au point d'usage** : celui qui ressortira `--renoter` tombera dessus, ce qu'une ligne dans ce tableau ne garantit pas |
 | Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver (`docs/HEBERGEMENT.md`) |
 | `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme : « base injoignable » alors que la base va bien |
-| Largeur contre barre latérale | Les 1000 px figés ne laissent pas la place aux 208 px de filtres prévus en phase 4 — à trancher là-bas (`docs/DESIGN.md`) |
-| En-tête de `/offres` | Ne plaît pas à Maxime. Reporté **après la phase 4**, quand les filtres y auront pris place |
+| ~~Largeur contre barre latérale~~ | ✅ **CLOS le 29 août 2026, et la question ne s'est jamais posée.** Le `DESIGN.md` prévoyait une barre latérale de 208 px, arithmétiquement incompatible avec les 1000 px. Les filtres sont finalement une **rangée d'onglets horizontale sous le titre** : aucune largeur perdue, et ils tiennent à 375 px en passant sur deux lignes. La colonne latérale n'est pas reportée, elle est **sans objet** |
+| En-tête de `/offres` | Ne plaît pas à Maxime. ⚠️ **Les filtres y ont pris place le 29 août** — la condition du report est donc levée, et la question se rouvre dès la phase 4 close |
 
 ⚠️ **Huit règles opposables, qui ne se déduisent d'aucun fichier :**
 
@@ -291,14 +354,18 @@ décide plus rien.** Ne pas la rouvrir « pour voir ».
    `.env.local` **sans y toucher** — vérifié par empreinte MD5 avant et après, le 26 août 2026.
    C'est la parade concrète à la règle « ne jamais faire entrer un secret dans la
    conversation » : la passe visuelle n'a plus besoin de connaître le vrai mot de passe.
-6. ⚠️ **Ne jamais passer l'objet `offre` entier à un composant client.** Aujourd'hui toute la
-   chaîne de `/offres` **et de `/offres/[identifiant]`** est en composants serveur : leurs props
-   ne traversent pas la frontière, et c'est **mesuré** — `notation_motif_echec`, `execution_id` et `salaire_annuel_min`
-   apparaissent **0 fois** dans le document reçu par le navigateur, contre 194 fois pour un
-   texte réellement affiché. **La phase 4 casse cette propriété** en posant des boutons de
-   statut, donc des composants clients. Leur passer `offre` enverrait **toutes** les colonnes
-   lues dans le navigateur — le message d'erreur technique, et surtout la note personnelle le
-   jour où elle existera. Leur passer les champs dont ils ont besoin, un par un.
+6. ⚠️ **Ne jamais passer l'objet `offre` entier à un composant client.**
+   ⚠️ **CE QUI ÉTAIT ANNONCÉ EST ARRIVÉ LE 29 AOÛT 2026** : cette règle disait « la phase 4
+   cassera cette propriété ». C'est fait — les boutons de statut sont des composants clients, et
+   `/offres` n'est plus intégralement rendu sur le serveur.
+   **La protection n'est donc plus une propriété de l'architecture, c'est une discipline de
+   props** : on passe `identifiant` et `statut`, un par un, jamais l'objet. Revérifié le 29 août
+   sur les deux écrans — dix colonnes interdites cherchées dans le document reçu par le
+   navigateur, témoin positif : **aucune**.
+   ⚠️ **Ce qui rend la règle fragile désormais** : `<BoutonsStatut offre={offre} />` compilerait
+   sans la moindre erreur et enverrait les vingt colonnes dans la page — le message d'erreur
+   technique, `contact_nom`, et la note personnelle dès qu'elle existera. **Refaire la mesure
+   après chaque nouveau composant client**, c'est le seul garde-fou qui reste.
 
 7. ⚠️ **`options.egal` est la SEULE façon de faire entrer une valeur extérieure dans une
    requête** (`interface/lib/supabase.ts`). Elle encode ; le `chemin`, lui, ne doit porter que
@@ -397,7 +464,8 @@ document** : deux descriptions du même schéma divergent toujours.
 réécrire ne défait rien et fait diverger git de la réalité. On corrige par une migration
 suivante. C'est arrivé le 20 août — voir `docs/JOURNAL.md`.
 
-**Deux tables sur quatre existent** : `executions_veille`, `offres`.
+**Deux tables sur quatre existent** : `executions_veille`, `offres`. **Sept migrations
+appliquées** — les deux dernières datent du 29 août : statuts et note personnelle.
 `enrichissements` et `etapes_enrichissement` sont **reportées à la phase 6** — entorse
 assumée au critère d'acceptation du `PLAN.md`, validée en séance : leur forme dépend de ce
 que l'agent produira réellement, et rien ne les alimente d'ici là.
