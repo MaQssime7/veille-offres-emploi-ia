@@ -62,10 +62,17 @@ export function EnTeteOffre({
         {offre.type_contrat_libelle && (
           <Cartouche>{offre.type_contrat_libelle}</Cartouche>
         )}
-        {/* Accentué comme le salaire : quand cette nature s'affiche, c'est
-            qu'elle contredit le contrat annoncé, et c'est l'information la plus
-            décisive de la rangée. */}
-        {nature && <Cartouche accentue>{nature}</Cartouche>}
+        {/* ⚠️ **PAS accentué, et c'est une correction du 28 août 2026.** Il
+            l'était : « quand cette nature s'affiche, c'est qu'elle contredit le
+            contrat annoncé ». L'argument était bon et la conséquence mauvaise —
+            le `DESIGN.md` réserve la graisse au salaire, « parce que c'est
+            celui qu'on cherche en premier », et une distinction qui repose sur
+            l'unicité cesse de fonctionner dès qu'un second élément la partage.
+            Relevé par Maxime en regardant la page : « le salaire est en gras,
+            je ne sais pas pourquoi le reste ne l'est pas ». La nature du
+            contrat reste visible — elle a son cartouche — elle ne prend juste
+            pas le repère d'un autre. */}
+        {nature && <Cartouche>{nature}</Cartouche>}
         {salaire ? (
           <Cartouche accentue>{salaire}</Cartouche>
         ) : (

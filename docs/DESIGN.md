@@ -559,6 +559,27 @@ normalisation existera.
 deux barres de notes en phase 2, puis le statut en phase 4. Le combler serait à refaire.
 Vérifié le 26 août avec des barres simulées en place : elles s'y logent sans rien pousser.
 
+### ⏳ La fiche d'offre reste à retravailler — échéance ouverte
+
+✅ **Le jeu de couleurs est VALIDÉ** (Maxime, 28 août 2026), et **la liste est
+jugée bonne en l'état**. Ne pas y revenir sans raison.
+
+⏳ **La FICHE, elle, n'est pas finie** — couleurs et surtout hiérarchie. Verdict
+de Maxime après l'avoir regardée : « ce n'est pas encore ça ». Aucun défaut
+précis n'a été nommé ; c'est l'équilibre d'ensemble qui ne convainc pas.
+
+⚠️ **Cette échéance ne se traite PAS maintenant, et pour une raison qui n'est pas
+le manque de temps** : la phase 4 va poser sur cette page des boutons de statut
+et une note personnelle, la phase 6 un bloc d'enrichissement de quarante lignes.
+Régler l'équilibre d'une page qui va gagner deux blocs majeurs, c'est le régler
+deux fois. **Échéance : après la phase 6**, quand la fiche aura tout son
+contenu — et pas avant, sauf si l'usage quotidien révèle un défaut précis.
+
+⚠️ **Ce qui, en revanche, se décide MAINTENANT et pas après** : l'ordre des
+blocs, parce que les phases 4 et 6 vont s'insérer dedans. Ordre actuel, jugé
+correct par Maxime : entête → résumé → les deux notes → classement France
+Travail → l'annonce repliée → candidater.
+
 ### Deux teintes entrent dans la palette — 28 août 2026
 
 Décision de Maxime, après avoir regardé les écrans remplis. La palette passe de
