@@ -459,6 +459,39 @@ précisé » a son propre traitement, en cartouche vide et italique.
 L'**entreprise en tête**, au-dessus du titre, en capitales de chasse fixe. Le marqueur
 « Nouveau » à côté d'elle — pas à droite, où il se cognait aux barres de notes.
 
+### Le champ de note personnelle — quatre états
+
+Livré le 29 août 2026 sur la fiche, entre l'évaluation du modèle et le classement
+France Travail : ce que Maxime en pense, à côté de ce que la machine en pense.
+
+| État | Ce qui s'affiche |
+|---|---|
+| Aucune note | Placeholder « Un contact, une date de relance, une impression… », indicateur **muet** — le champ vide dit déjà qu'il est vide |
+| Frappe en attente d'écriture | ✎ **Modification non enregistrée**, en ocre `--signal-fort` |
+| Écriture en cours | ⟳ **Enregistrement…**, ocre, rotation coupée sous `prefers-reduced-motion` |
+| Écrit | ✓ **Enregistré le 29 août à 12:47** — en `--muted-foreground`, jamais en olive |
+| Effacé | ✓ **Note effacée** — effacer est une écriture, elle doit se voir |
+| Échec | Cadre `--destructive`, icône d'alerte, message, et un bouton **Réessayer** |
+
+⚠️ **Pourquoi « Enregistré » n'est PAS en olive**, alors que le vert serait le
+réflexe : l'olive porte déjà la note d'accessibilité **et** le statut « candidaté ».
+Une troisième signification la viderait de sens. La règle « une teinte, un rôle »
+prime sur la convention du vert pour le succès — le mot « Enregistré » et sa coche
+portent l'information à eux seuls.
+
+⚠️ **L'ocre est cohérent avec son rôle** : c'est la teinte du temporel, celle du
+marqueur « Nouveau ». « En train de s'écrire » et « pas encore écrit » en relèvent.
+
+⚠️ **Le champ grandit avec son contenu jusqu'à 60 vh** (540 px mesurés), puis
+défile. Ce n'est pas du confort : à hauteur fixe, une note de 5 000 caractères
+tenait dans **148 px**, soit cinq lignes visibles sur soixante, dans un ascenseur
+imbriqué dans la page. Hauteur au repos : **146 px** (5 lignes), section entière
+**222 px** — c'est ce dernier chiffre que `loading.tsx` doit reproduire.
+
+⚠️ **La bordure du champ est `--input`, pas `--border`** : c'est une bordure de
+composant d'interface, elle doit tenir 3:1. Mesuré au canvas le 29 août : **5,5:1**
+en clair, **3,3:1** en sombre.
+
 ### Bloc d'enrichissement — quatre états
 
 1. **Pas encore lancé** : bloc vide, texte explicatif, bouton « Enrichir cette offre ».
@@ -517,10 +550,10 @@ coût se calcule à l'affichage.
 | Largeur maximale de contenu · **1000 px** | ✅ **mesurée et figée** — voir ci-dessous |
 | Densité de la ligne **en attente de note** · **95 px en bureau** *(91 avant le 28 août)*, **146 px sous 640 px** | ✅ **mesurées et figées** — ⚠️ ne jamais reprendre les 91 px pour dimensionner un repli, une pagination ou une hauteur virtuelle : sur mobile la ligne fait 60 % de plus |
 | Densité de la ligne **notée** · **199 px en bureau** *(195 avant le 28 août)*, **361 px sous 640 px** (médianes) | ✅ **remesurée le 28 août 2026** sur les 97 offres notées — ⚠️ **c'est une médiane, pas une constante** : la hauteur dépend de la longueur des deux justifications et va de 174 à 218 px en bureau, de 289 à 472 px en mobile. Aucun calcul ne doit supposer une ligne de hauteur fixe |
-| Barre latérale de filtres · 208 px | ⏳ hypothèse — **à mesurer en phase 4**. ⚠️ **Arithmétiquement incompatible avec les 1000 px figés** : 1000 − 48 de gouttières − 208 laisse 744 px de liste, sous les 820 px où 34 lignes sur 200 cassent déjà. La mesure des 1000 px a été faite **en colonne unique**. La phase 4 devra soit élargir la page, soit poser les filtres autrement qu'en colonne — pas reconduire ce chiffre |
+| ~~Barre latérale de filtres · 208 px~~ | ❌ **SANS OBJET depuis le 29 août 2026 — la question ne s'est jamais posée.** L'incompatibilité arithmétique annoncée ici (1000 − 48 − 208 = 744 px de liste, sous les 820 px où 34 lignes cassent) n'a pas eu à être arbitrée : les filtres de la phase 4 sont une **rangée d'onglets horizontale sous le titre**. Aucune largeur perdue, et ils tiennent à 375 px en passant sur deux lignes. La colonne latérale n'est pas reportée, elle est abandonnée |
 | Panneau d'enrichissement · 316 px | ⏳ hypothèse — **à mesurer en phase 6** |
-| Fiche d'offre, colonne d'enrichissement · 404 px | ⏳ hypothèse — **à mesurer en phase 3** |
-| Bascule « sous 1000 px » | ❌ **caduque, à re-dériver en phase 4.** Ce seuil datait de `--largeur-page: 1180px` : « sous 1000 px » désignait alors une zone intermédiaire réelle. La page valant désormais 1000 px, il signifierait « toute fenêtre plus étroite que le maximum », donc presque toutes. Aujourd'hui le code n'utilise que `sm:` (640 px), au-dessous duquel la ligne se replie |
+| Fiche d'offre, colonne d'enrichissement · 404 px | ⏳ **reportée en phase 6, et c'est une décision** : la phase 3 a livré la fiche **en colonne unique**, parce que la colonne de droite n'aurait rien eu à porter avant l'enrichissement — 404 px de vide sur toute la hauteur. Ne pas repasser en deux colonnes tant qu'il n'y a rien à mettre à droite |
+| ~~Bascule « sous 1000 px »~~ | ❌ **CADUQUE, et tranchée par les faits le 29 août 2026.** Le seuil datait de `--largeur-page: 1180px`, où « sous 1000 px » désignait une zone intermédiaire réelle ; la page valant désormais 1000 px, il signifierait « toute fenêtre plus étroite que le maximum ». La phase 4 s'est close sans le re-dériver et sans en avoir eu besoin : **le code n'utilise que `sm:` (640 px)**, seul point de repli, et les quatre passes visuelles à 375 px n'ont montré aucun débordement. Un seul point de bascule suffit |
 
 - **Approche** : grille stricte.
 - **Largeur maximale de contenu** : **1000 px**, jeton `--largeur-page`.

@@ -1,119 +1,129 @@
 # Recherches lancées chaque nuit contre l'API France Travail — une par ligne.
+# Les lignes vides et celles commençant par # sont ignorées.
 #
-# ⚠️ Ce que la recherche par mots-clés sait faire, et ne sait pas faire.
-# Mesuré le 21 août 2026, REMESURÉ le 26 août :
+# ─────────────────────────────────────────────────────────────────────────────
+# CE QUE LA RECHERCHE FAIT VRAIMENT — mesuré le 28 août 2026
+# ─────────────────────────────────────────────────────────────────────────────
 #
-#   · Elle N'INDEXE PAS la description. Un mot pris dans le corps d'une annonce
-#     ne la retrouve pas. Elle porte sur l'intitulé, le libellé ROME,
-#     l'appellation et les compétences normalisées.
-#   · Les expressions à plusieurs mots sont dangereuses : « avant-vente »
-#     ramène 299 postes de conseiller de vente, le moteur ayant matché « vente ».
+# Le moteur ne fait PAS de correspondance textuelle : il ÉLARGIT AU DOMAINE.
+# Sur 40 offres rendues par « intelligence artificielle », 26 ne contiennent le
+# terme NULLE PART — ni dans l'intitulé, ni dans le libellé ROME, ni dans
+# l'appellation, ni dans la description, ni ailleurs dans la charge brute.
+# Il n'est pas non plus compositionnel : « intelligence artificielle » rend
+# 168 offres, « intelligence » 64, « artificielle » 43, leur union 64.
 #
-# ⚠️ CORRECTION DU 26 AOÛT 2026 — le commentaire précédent affirmait que le
-# vocabulaire est « FERMÉ et FRANÇAIS », et que « GenAI », « LLM », « chatbot »,
-# « MLOps » renvoient tous zéro. Deux erreurs :
+#   · Un terme ramène des offres qui ne le contiennent pas.
+#   · Chercher « X Y » ne se prédit pas en mesurant « X » puis « Y ».
+#   · Donc UN CRITÈRE SE MESURE, JAMAIS NE SE DÉDUIT — parce que l'index est
+#     OPAQUE, et non parce qu'il serait étroit.
 #
-#   1. Le vocabulaire s'ouvre. Sur 30 jours glissants : GenAI ramène 3 offres,
-#      LLM 1, copilot 2, prompt 1, RAG 1. Encore marginal, mais plus nul — donc
-#      à remesurer périodiquement plutôt qu'à tenir pour acquis.
-#   2. Surtout : « FRANÇAIS » était FAUX et coûtait cher. « AI » en anglais
-#      ramène 33 offres sur 30 jours dont 28 qu'AUCUN autre critère ne trouvait —
-#      « AI Engineer », « Generative AI & Agentic Engineer », « AI Lead
-#      Engineer », « Consultant Data et AI Engineer, jeune diplômé ». Beaucoup
-#      d'employeurs franciliens rédigent leurs annonces en anglais. Le projet a
-#      cherché « IA » pendant dix jours sans jamais chercher « AI ».
+# ⚠️ Ceci CORRIGE une note antérieure qui énumérait les champs indexés
+# (« intitulé, libellé ROME, appellation, compétences ») : l'énumération donnait
+# l'illusion d'un contrat qui n'existe pas.
 #
-# ⚠️ Trois termes MESURÉS ET ÉCARTÉS, à ne pas réintroduire au flair :
-#   · « machine learning » : 53 offres nouvelles, mais data scientist,
-#     bioinformaticien, analyste quantitatif en finance. Le PRD refuse la
-#     modélisation — c'est un autre métier.
-#   · « data » : 275 offres nouvelles, postes de données pures. Même motif.
-#   · « AI engineer » : 14 offres, toutes déjà ramenées par « AI ». Inutile.
+# Ce qui reste vrai :
+#   · Les expressions à plusieurs mots sont dangereuses — « avant-vente » ramène
+#     299 postes de conseiller de vente, le moteur ayant matché « vente ».
+#   · Le libellé ROME et l'appellation SONT bien atteints : c'est ainsi que
+#     « IA » ramène 3 « Inspecteur » par mois, appellation « Inspecteur(trice)
+#     pédago rég, inspect académie (IPR-IA) », ROME K2117, notées 2, 2 et 3.
+#     ⚠️ NON CORRIGEABLE : le seul moyen serait de retirer « IA », qui ramène
+#     par ailleurs l'offre notée 85. Défaut à connaître, pas à corriger.
+#   · Une offre dont l'IA n'apparaît que dans la description reste invisible à
+#     toute liste de mots-clés, quelle qu'elle soit.
 #
-# Donc : des termes COURTS, français OU anglais, et on vérifie ce qu'ils
-# ramènent — volume ET intitulés — avant de les ajouter.
+# Méthode complète : docs/API_FRANCE_TRAVAIL.md.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# LE PIÈGE DE MÉTHODE, qui vaut plus que toutes les listes ci-dessous
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# L'apport net n'est pas une propriété du TERME, mais du couple
+# (terme, configuration). Vérifié : en retirant « intelligence artificielle »,
+# « low-code » et « no-code » passent de 0 à 1.
+#
+# ⚠️ Et c'est arrivé : les mesures du 28 août ont été prises avec « RPA » et
+# « deploiement » encore dans la liste, retirés à la main dans la foulée.
+# Lire la conséquence dans le bon sens — un apport net ne peut que MONTER quand
+# la liste rétrécit :
+#
+#   · Reste vrai : aucun terme n'a été écarté sur un chiffre trop élevé, et les
+#     volumes BRUTS ne dépendent pas de la configuration.
+#   · Devient FAUX : « ces termes sont inutiles ». Un terme mesuré à 0 avant un
+#     retrait peut valoir plus que 0 aujourd'hui.
+#
+# ⚠️ Les plus susceptibles d'avoir changé sont ceux du même gisement que « RPA »
+# et « deploiement » : low-code, no-code, automatisation intelligente, workflow.
+# À remesurer en premier si on rouvre le sujet, pas à traiter comme écartés.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# CE QUI A ÉTÉ MESURÉ, ET ÉCARTÉ — ne pas réintroduire au flair
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Écartés parce qu'ils ramènent le MAUVAIS MÉTIER (le PRD refuse la
+# modélisation et la donnée pure) :
+#   · machine learning  53 offres — data scientist, bioinformaticien, quant
+#   · data             275 offres — postes de données pures
+#   · AWS 5 · Databricks 4 · Dataiku 1 — data engineering pur
+#
+# Écartés pour HOMONYMIE — le mot désigne autre chose dans le langage courant :
+#   · agents                2 718 offres/mois — accueil, sécurité, entretien.
+#                           Le piège d'expansion le plus coûteux rencontré
+#   · deploiement           30 nettes/mois — télécom et BTP : « Conducteur
+#                           d'engins », « CHEF D'ÉQUIPE FTTH », « PMO SAP ».
+#                           Une seule notée : 0/100. RETIRÉ le 28 août
+#   · ingénieur solutions   10 nettes — ingénieurs COMMERCIAUX (impression,
+#                           logistique). Le mot « solutions » trompe
+#   · transformation digitale 15 nettes — conseil CTO Advisory, pas de l'IA
+#   · démonstrateur         3 nettes — vendeurs en grand magasin
+#   · Make 1 (un maquilleur) · workflow 1 (calibration industrielle)
+#
+# Écartés pour APPORT NET NUL — ils ne trouvent rien que la liste ci-dessous ne
+# trouve déjà (balayage du 28 août 2026, 50 termes, 30 jours glissants) :
+#   consultant IA · IA générative · générative · intégration IA · copilot ·
+#   RAG · prompt · multi-agents · MLOps · low-code · no-code ·
+#   agentic (ses 3 offres sont déjà prises par « agentique ») · AI engineer (14,
+#   toutes ramenées par « AI »)
+#
+# Écartés pour VOLUME BRUT NUL — ce vocabulaire n'existe pas sur France Travail :
+#   LLM · GPT · OpenAI · LangChain · Hugging Face · embeddings · fine-tuning ·
+#   NLP · computer vision · deep learning · Azure AI · Palantir · n8n · Zapier ·
+#   forward deployed · customer engineer · présales · POC
+#
+# ⚠️ Une note du 26 août voyait « le vocabulaire s'ouvrir » (GenAI 3, LLM 1,
+# copilot 2, prompt 1, RAG 1). Deux jours plus tard : LLM 0, copilot 1. CES
+# VALEURS À 1 OU 2 SONT DU BRUIT STATISTIQUE, pas une tendance. Ne pas
+# construire dessus, et ne pas les re-tester tous les quatre matins.
+#
+# ⚠️ « RPA » — 3 nettes/mois (« Développeur RPA UiPath »), AUCUNE notée, donc
+# qualité jamais mesurée. Retiré le 28 août pour volume marginal.
+#
+# ⚠️ LA CORRECTION LA PLUS COÛTEUSE, à ne jamais réintroduire à l'envers : le
+# vocabulaire n'est ni fermé ni français. « AI » en anglais ramène 33 offres sur
+# 30 jours dont 28 QU'AUCUN AUTRE CRITÈRE NE TROUVAIT — « AI Engineer »,
+# « Generative AI & Agentic Engineer », « Consultant Data et AI Engineer, jeune
+# diplômé ». Le projet a cherché « IA » pendant dix jours sans chercher « AI ».
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# LA LISTE
+# ─────────────────────────────────────────────────────────────────────────────
 
-# ⚠️ BALAYAGE DU 28 AOÛT 2026 — 50 termes testés, un seul retenu.
-# Le rappel est SATURÉ : tout le lexique IA spécialisé a un apport net de ZÉRO,
-# c'est-à-dire qu'il ne trouve pas une seule offre que la liste ci-dessous ne
-# trouve déjà. Mesuré sur 30 jours glissants, apport net contre cette liste :
-#
-#   consultant IA 0 · IA générative 0 · générative 0 · intégration IA 0 ·
-#   copilot 0 · RAG 0 · prompt 0 · multi-agents 0 · MLOps 0 · low-code 0 ·
-#   no-code 0 · agentic 0 (les 3 offres sont déjà prises par « agentique »)
-#
-# Et le vocabulaire anglais pointu N'EXISTE PAS sur France Travail — volume brut
-# nul sur 30 jours : LLM · GPT · OpenAI · LangChain · Hugging Face · embeddings ·
-# fine-tuning · NLP · computer vision · deep learning · Azure AI · Palantir ·
-# n8n · Zapier · forward deployed · customer engineer · présales · POC.
-#
-# ⚠️ Ceci CORRIGE la note du 26 août qui voyait « le vocabulaire s'ouvrir »
-# (LLM 1, copilot 2, prompt 1, RAG 1). Deux jours plus tard : LLM 0, copilot 1.
-# Ces valeurs à 1 ou 2 sont du BRUIT STATISTIQUE, pas une tendance. Ne pas
-# construire dessus, et ne pas re-tester ces termes tous les quatre matins.
-#
-# ⚠️ Termes MESURÉS ET ÉCARTÉS le 28 août, à ne pas réintroduire au flair :
-#   · « agents » : 2 718 offres. Agent d'accueil, agent de sécurité, agent
-#     d'entretien. Le piège d'expansion le plus coûteux rencontré jusqu'ici.
-#   · « transformation digitale » : 15 offres nettes, toutes du conseil CTO
-#     Advisory — pas de l'IA.
-#   · « ingénieur solutions » : 10 nettes, toutes des ingénieurs COMMERCIAUX
-#     (solutions d'impression, logistique). Le mot « solutions » trompe.
-#   · « démonstrateur » : 3 nettes, des vendeurs en grand magasin.
-#   · « Make » : 1 nette, un maquilleur. « workflow » : 1 nette, de la
-#     calibration industrielle.
-#   · « AWS » 5, « Databricks » 4, « Dataiku » 1 : du data engineering pur,
-#     écarté par le PRD au même titre que « data scientist ».
-#
-# ⚠️ Et un piège de méthode, qui vaut plus que ces listes : l'apport net n'est
-# pas une propriété du TERME, mais du couple (terme, configuration). Vérifié —
-# en retirant « intelligence artificielle », « low-code » et « no-code » passent
-# de 0 à 1. Tout retrait de cette liste périme les mesures ci-dessus.
-#
-# ⚠️⚠️ ET C'EST ARRIVÉ LE JOUR MÊME. Les mesures ci-dessus ont été prises avec
-# `RPA` et `deploiement` encore dans la liste ; Maxime les a retirés à la main
-# dans la foulée. **Les chiffres « apport net 0 » ci-dessus valent donc pour une
-# configuration qui n'existe plus, et il faut lire la conséquence dans le bon
-# sens.**
-#
-# Un apport net ne peut que MONTER quand la liste rétrécit — ce que la liste ne
-# trouve plus, un autre terme peut désormais le trouver seul. Donc :
-#
-#   · Ce qui reste vrai : aucun terme n'a été écarté sur un chiffre trop élevé.
-#     Les volumes bruts, eux, ne dépendent pas de la configuration.
-#   · **Ce qui devient FAUX : « ces termes sont inutiles ».** Un terme mesuré à
-#     0 avant le retrait peut valoir plus que 0 aujourd'hui. C'est exactement ce
-#     qui a été vérifié — en retirant « intelligence artificielle », `low-code`
-#     et `no-code` passent de 0 à 1.
-#
-# ⚠️ Donc les termes les plus susceptibles d'avoir changé sont **ceux qui
-# touchaient au même gisement que `RPA` et `deploiement`** : `low-code`,
-# `no-code`, `automatisation intelligente`, `workflow`. À remesurer en premier
-# si on rouvre le sujet — pas à traiter comme définitivement écartés.
-#
-# ⚠️ DEUX TERMES RETIRÉS LE 28 AOÛT 2026, avec leur mesure — sans quoi ils
-# reviendraient au flair, ce que ce fichier existe précisément pour empêcher :
-#
-#   · « deploiement » — 30 offres nettes/mois, homonymie télécom/BTP. Ramenait
-#     « Conducteur d'engins Polyvalent » (noté 0/100), « Câbleur Électronique
-#     Itinérant », « CHEF D'ÉQUIPE FTTH IDF », « Technicien déploiement Sûreté
-#     Électronique », « PMO Déploiement SAP S4 HANA ». Une seule de ses offres
-#     avait été notée : 0/100. Le mot désigne le déploiement de réseaux et de
-#     chantiers, pas celui d'un modèle.
-#   · « RPA » — 3 offres nettes/mois seulement : « Développeur RPA UIPATH »,
-#     « Consultant RPA UiPath », « RPA/91/EPINAY ». Aucune n'avait été notée,
-#     donc leur qualité n'a jamais été mesurée. Volume marginal.
-#
-# ⚠️ « automatisation » a été mesuré le même jour et GARDÉ : 11 offres nettes,
-# aucune notée à ce jour — QA/tests, DevOps CI/CD, robotique industrielle. Sa
-# qualité reste donc INCONNUE, ce n'est pas la même chose que « bonne ».
-
+# ⚠️ 127 offres nettes/mois pour une moyenne de 8/100 et un maximum de 15 sur
+# 27 notées, zéro au-dessus de 30 : le profil exact qui a fait tomber les codes
+# ROME. Et on ne perdrait rien — les 9 offres notées ≥ 25 sont toutes rattrapées
+# par « IA » ou « AI », vérifié une par une. Maxime a choisi de le GARDER le
+# 28 août 2026. Seul critère encore en suspens ; ne pas le retirer sans lui.
 intelligence artificielle
 IA
 AI
 GenAI
 agentique
+
+# ⚠️ 11 offres nettes/mois, AUCUNE notée à ce jour — QA/tests, DevOps CI/CD,
+# robotique industrielle. Sa qualité est INCONNUE, ce qui n'est pas la même
+# chose que « bonne ».
 automatisation
-# Ajouté le 28 août 2026 : 1 offre nette par mois — « Ingénieur front office
+
+# Ajouté le 28 août 2026 : 1 offre nette par mois, « Ingénieur front office
 # chatbot ». Seul terme retenu sur les 50 balayés ce jour-là.
 chatbot

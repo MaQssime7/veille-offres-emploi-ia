@@ -7,29 +7,30 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 
 | Sujet | Où |
 |---|---|
-| **Pourquoi** une décision de cadrage est ce qu'elle est · questions encore ouvertes | `docs/DECISIONS.md` |
+| **Pourquoi** une décision de cadrage est ce qu'elle est · questions ouvertes | `docs/DECISIONS.md` |
 | **Schéma de la base** : tables, colonnes, contraintes, et le *pourquoi* de chacune | `supabase/migrations/` — **seule source de vérité, jamais recopiée ailleurs** |
 | API France Travail : authentification, pagination, quota, cas limites | `docs/API_FRANCE_TRAVAIL.md` |
-| **Mise en ligne** : variables Vercel, migrations Supabase, secrets GitHub Actions — commandes et pièges | `docs/HEBERGEMENT.md` |
+| **Mise en ligne** : variables Vercel, migrations Supabase, secrets GitHub Actions | `docs/HEBERGEMENT.md` |
 | API Anthropic : modèles, paramètres, sortie structurée, cache, batches | référence `/claude-api` |
 | Claude Agent SDK : surface d'API | `code.claude.com/docs/en/agent-sdk` |
 | Ce que le produit doit faire · ce qu'il refuse de faire | `docs/PRD.md` |
-| Identité visuelle : jetons, contrastes vérifiés, composants propres au produit | `docs/DESIGN.md` |
-| Dans quel ordre le construire · contenu de test · parcours à repasser | `docs/PLAN.md` |
+| Identité visuelle : jetons, contrastes vérifiés, composants | `docs/DESIGN.md` |
+| Dans quel ordre construire · contenu de test · parcours à repasser | `docs/PLAN.md` |
 | Ce qui s'est passé et pourquoi, dans l'ordre | `docs/JOURNAL.md` |
-| **Comment le modèle note** : profil, postes visés, barèmes des deux notes | `pipeline/criteres_pertinence.txt` — **c'est une donnée, pas du code** : s'édite à la main, se relit dans git. ⚠️ Deux marqueurs : `//` = commentaire retiré avant l'envoi, `##` = titre envoyé au modèle |
-| **Ce que vaut chaque critère de collecte**, mesuré | `pipeline/codes_rome.txt` (vide, et porte la mesure qui l'a vidé) et `pipeline/mots_cles.txt` — ⚠️ **ne jamais éditer sans relire ces commentaires** : ils listent les termes déjà mesurés et écartés.<br>⚠️ **Un TROISIÈME critère existe et n'est pas un `.txt` : `TYPE_CONTRAT` dans `pipeline/config.py`**, qui écarte 22 % du volume. C'est une entorse assumée à la règle « les critères sont des données » — il tient en une valeur, et sa liste blanche doit rester collée au référentiel de l'API. Mais **chercher les critères dans les seuls fichiers texte fait manquer celui qui coupe le plus** |
-| Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` (`.agents/skills/`) |
-| **Comment le site est protégé** : cookie de session, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts` — abondamment commentés, **seule source de vérité** |
-| **Comment l'interface ÉCRIT en base** : garde-fous, motifs d'échec, idempotence | `ecrireDansBase()` dans `interface/lib/supabase.ts` — depuis le 29 août 2026 |
-| Les trois statuts d'une offre : liste, libellés, validation | `interface/lib/statuts.ts` — ⚠️ **seul module de `lib/` sans `server-only`**, et c'est délibéré |
+| **Comment le modèle note** : profil, postes visés, barèmes | `pipeline/criteres_pertinence.txt` — **c'est une donnée, pas du code**. ⚠️ `//` = commentaire retiré avant l'envoi, `##` = titre envoyé au modèle |
+| **Ce que vaut chaque critère de collecte**, mesuré terme par terme | `pipeline/mots_cles.txt` et `pipeline/codes_rome.txt` (vide, et porte la mesure qui l'a vidé) — voir § Collecte |
+| Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` |
+| **Comment le site est protégé** : cookie, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts`, abondamment commentés |
+| **Comment l'interface ÉCRIT en base** : garde-fous, idempotence | `ecrireDansBase()` dans `interface/lib/supabase.ts` |
+| Statuts et note personnelle : constantes partagées serveur/navigateur | `interface/lib/statuts.ts` et `interface/lib/notes.ts` — ⚠️ **les deux seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
 
 **Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
 comportement sur *n'importe quelle* tâche du projet. Toute référence propre à un
-module — paramètres d'API, schémas, procédures — part dans `docs/` avec un
-pointeur impératif ici. Une section qui dépasse une vingtaine de lignes de détail
-technique doit sortir. Sans cette règle, ce fichier fait 800 lignes dans un mois
-et personne ne le lit plus.
+module — paramètres d'API, schémas, procédures, mesures de critères — part dans
+`docs/` ou dans le fichier de données concerné, avec un pointeur impératif ici.
+Une section qui dépasse une vingtaine de lignes de détail technique doit sortir.
+Sans cette règle, ce fichier fait 800 lignes dans un mois et personne ne le lit
+plus — c'est arrivé, il en faisait 955 le 29 août 2026.
 
 ## Le projet
 
@@ -39,17 +40,15 @@ de pertinence → présenter un classement dans une interface web.
 
 **Deux usages, pas un seul.** Le projet sert à Maxime pour sa recherche d'emploi
 *et* de vitrine technique en entretien — le dépôt est public
-(https://github.com/MaQssime7/veille-offres-emploi-ia). Conséquences concrètes :
+(https://github.com/MaQssime7/veille-offres-emploi-ia). Conséquences :
 
 - Le code sera lu par un recruteur ou un lead technique. Nommage explicite,
   fonctions courtes, pas de fichier fourre-tout.
 - L'historique Git compte autant que le code. Commits atomiques, messages en
   français qui expliquent le *pourquoi*.
-- Le README est la première chose lue. Il doit rester à jour quand
-  l'architecture bouge.
+- Le README est la première chose lue. Il doit rester à jour.
 
-<!-- produit:start -->
-## Produit — Veille offres emploi IA
+## Produit
 
 **Le problème** : trier à la main des dizaines d'annonces France Travail chaque
 matin pour en garder deux ou trois, rater silencieusement celles dont l'intitulé
@@ -57,479 +56,381 @@ est banal, puis passer un quart d'heure par offre à comprendre à qui on a affa
 
 **Pour qui** : un utilisateur unique — Maxime, jeune diplômé ENSEA, six mois en
 cabinet de conseil IA, en recherche active en Île-de-France, qui consulte dix
-minutes le matin et ouvre parfois le site en entretien pour le montrer.
+minutes le matin et ouvre parfois le site en entretien.
 
-**Hors périmètre, opposable** : mail et notifications · lettre de motivation et
-argumentaire de candidature · candidature automatique · toute source d'offres
-autre que France Travail · toute zone hors Île-de-France · comptes utilisateurs
-et rôles · suivi de candidature avancé (calendrier, relances, CV) · réglage des
-critères depuis l'interface · modification manuelle des notes du modèle · analyse
-du marché de l'emploi (tendances, salaires, graphiques sectoriels) · application
-mobile installable · démo publique à données fictives · traduction et offres hors
-France · import de CV et appariement de compétences.
+**Hors périmètre, opposable** : mail et notifications · lettre de motivation ·
+candidature automatique · toute source autre que France Travail · toute zone hors
+Île-de-France · comptes utilisateurs et rôles · suivi de candidature avancé
+(calendrier, relances, CV) · réglage des critères depuis l'interface ·
+modification manuelle des notes du modèle · analyse du marché de l'emploi
+(tendances, salaires, graphiques) · application mobile installable · démo
+publique à données fictives · traduction et offres hors France · import de CV.
 
-Le PRD fait autorité sur le périmètre : ce qui figure ici ne se construit pas, même
-si ça semble une bonne idée sur le moment. Une demande qui tombe dedans se signale
-**avant** d'être satisfaite, elle ne se glisse pas dans une phase.
+Le PRD fait autorité : ce qui figure ici ne se construit pas, même si ça semble
+une bonne idée sur le moment. Une demande qui tombe dedans se signale **avant**
+d'être satisfaite, elle ne se glisse pas dans une phase.
 
-**Évolutions prévues — ni v1, ni refusées.** Deux items, et chacun **contraint la v1
-dès maintenant** : ne pas construire l'écran n'excuse pas de ne pas capturer sa
+**Évolutions prévues — ni v1, ni refusées.** Chacune **contraint la v1 dès
+maintenant** : ne pas construire l'écran n'excuse pas de ne pas capturer sa
 matière.
 
 | Évolution | Ce que ça impose dès la v1 |
 |---|---|
 | Écran de suivi d'exploitation (exécutions, réussite, durée, coût) | Tracer chaque exécution et chaque enrichissement dès le premier jour, en **compteurs bruts** jamais en euros. Un historique ne se reconstitue pas |
-| Conversation avec l'agent **sur une offre enrichie** — challenger sa fiche | Fiche d'enrichissement stockée en **champs séparés**, pas en texte rédigé · identifiant d'offre stable · enveloppe de consommation par offre en **tokens cumulés**, décidée avant la première table |
+| Conversation avec l'agent **sur une offre enrichie** | Fiche stockée en **champs séparés**, pas en texte rédigé · identifiant d'offre stable · enveloppe par offre en **tokens cumulés** |
 
-⚠️ Ne pas confondre l'écran de suivi d'exploitation, prévu, avec l'**analyse du
-marché de l'emploi** (tendances, salaires, graphiques), refusée. Et la conversation
-ne doit pas devenir la porte de service par laquelle rentre ce que le hors périmètre
-refuse.
+⚠️ **Quatre règles de vocabulaire et de périmètre, qui ne se déduisent d'aucun
+fichier :**
 
-⚠️ **Ne jamais nommer cet écran « analytics ».** Le mot recouvre les deux à la fois —
-celui qui est prévu et celui qui est refusé — et c'est par ce glissement qu'un graphe
-de salaires finit par entrer « tant qu'on y est ». Le nom est **écran de suivi
-d'exploitation**, et il ne parle que du système : exécutions, réussite, durée,
-volumes, consommation. Jamais du marché de l'emploi.
-
-⚠️ **La conversation porte sur *une* offre, jamais sur toute la base.** L'agent
-global en page d'accueil a été explicitement refusé le 16 août 2026 et versé au hors
-périmètre : son contexte et son coût ne sont pas bornables. Ne pas le réintroduire.
-
-⚠️ **La borne de conversation se compte en tokens cumulés, jamais en nombre de
-messages.** Le contexte est renvoyé au modèle à chaque tour : la consommation croît
-quadratiquement avec les échanges. À 100 %, la saisie se bloque définitivement sur
-cette offre — pas de bouton de réinitialisation, sinon ce n'est plus une borne.
-
-⚠️ **Vocabulaire figé : « enrichissement », jamais « enquête ».** Le terme couvre
-l'étape du pipeline, l'action dans l'interface et la fiche produite. Deux mots pour
-la même chose finissent en deux tables et deux fonctions.
+1. **Ne jamais nommer l'écran de suivi « analytics ».** Le mot recouvre à la fois
+   celui qui est prévu et l'analyse du marché de l'emploi, qui est **refusée** —
+   c'est par ce glissement qu'un graphe de salaires finit par entrer « tant qu'on
+   y est ». Il ne parle que du système : exécutions, réussite, durée, volumes,
+   consommation. Jamais du marché.
+2. **La conversation porte sur *une* offre, jamais sur toute la base.** L'agent
+   global en page d'accueil a été explicitement refusé le 16 août 2026 : son
+   contexte et son coût ne sont pas bornables. Ne pas le réintroduire.
+3. **La borne de conversation se compte en tokens cumulés, jamais en nombre de
+   messages** : le contexte est renvoyé au modèle à chaque tour, la consommation
+   croît quadratiquement. À 100 %, la saisie se bloque définitivement sur cette
+   offre — pas de réinitialisation, sinon ce n'est plus une borne.
+4. **Vocabulaire figé : « enrichissement », jamais « enquête ».** Le terme couvre
+   l'étape du pipeline, l'action dans l'interface et la fiche produite. Deux mots
+   pour la même chose finissent en deux tables et deux fonctions.
 
 **Cadrage complet** : `docs/PRD.md` — 37 user stories, 13 critères de succès.
-À rouvrir avant toute décision produit.
-<!-- produit:end -->
 
-## État actuel — 29 août 2026
+## État au 29 août 2026
 
-**Phases 1, 2 et 3 CLOSES. La PHASE 4 est EN COURS : trois étapes sur quatre livrées.**
-Le site est en ligne derrière son mot de passe, la collecte et la notation sont toutes deux sur
-le cron. `/offres` est devenu un **plan de travail** — il n'affiche par défaut que les offres
-« à traiter », avec trois autres filtres à un clic. **L'interface écrit désormais en base.**
-**574 offres, 140 notées, 574 à traiter / 0 candidaté / 0 écarté** au 29 août 2026.
-
-### ⚠️ CE QUI RESTE À FAIRE — étape 4 de la phase 4, et rien d'autre
-
-**La note personnelle** : champ libre par offre, enregistrement **sans bouton**, indicateur
-d'état visible. C'est là que se joue le **critère de succès n° 6** — réseau coupé pendant la
-saisie, le texte ne doit pas être effacé et l'échec doit se voir.
-
-Les quatre critères non cochés de `docs/PLAN.md` § Phase 4 sont tous à elle, plus la passe
-d'états et la passe visuelle finale. **Tout le reste de la phase est fait et vérifié.**
-
-⚠️ **Ce que l'étape 4 doit reprendre du travail déjà posé, sans le refaire :**
-
-| Déjà en place | Où |
-|---|---|
-| L'écriture en base (`PATCH` PostgREST, filtre obligatoire) | `ecrireDansBase()` dans `interface/lib/supabase.ts` |
-| La colonne `note_personnelle` et ses **trois contraintes** | migrations 6 et 7, déjà appliquées |
-| Le motif « action serveur + `exigerSession()` + validation » | `interface/app/(site)/offres/actions.ts` |
-| Le motif « composant client, props scalaires » | `_composants/boutons-statut.tsx` |
-
-⚠️ **`note_personnelle` n'est PAS encore dans `COLONNES_FICHE`** — à ajouter là, et **jamais
-dans `COLONNES_LISTE`** : critère d'acceptation du plan, « les notes personnelles ne sortent de
-la base que là où elles s'affichent ».
-
-⚠️ **Trois contraintes de base à connaître avant d'écrire le champ**, toutes éprouvées :
-`note_personnelle_bornee` (20 000 caractères), `note_personnelle_non_vide` (**le vide n'a qu'une
-représentation, `NULL`** — le code doit normaliser avant d'écrire), et `note_ecrite_est_datee`
-(écrire la note **sans** `note_modifiee_a` rend 400).
-
-⚠️ **Le piège que la migration 7 a déjà attrapé pour vous** : un champ à enregistrement
-automatique produit `"   \n"` quand on efface son texte. Sans normalisation côté code, la base
-refuse en 400 et l'indicateur dirait « échec » sur un geste parfaitement normal.
+**Phases 1 à 4 CLOSES. La prochaine est la PHASE 5 : l'écran du matin (`/`).**
+Le site est en ligne derrière son mot de passe, collecte et notation tournent sur
+le cron. `/offres` est un **plan de travail** : par défaut, seules les offres
+« à traiter », avec trois autres filtres à un clic. **L'interface écrit en base** —
+statuts et note personnelle. **574 offres, 140 notées, 574 à traiter / 0 candidaté
+/ 0 écarté.**
 
 | Brique | État |
 |---|---|
-| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte, `/offres` **avec filtres de statut et boutons de tri**, la fiche `/offres/[identifiant]`, mode sombre sur la préférence système |
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte, `/offres` (filtres, tri, statuts), la fiche `/offres/[identifiant]` (statuts, note personnelle), mode sombre sur la préférence système |
 | Supabase | Région Paris. `executions_veille` et `offres`. RLS activé, droits vérifiés |
 | Migrations | **7**, toutes appliquées. La 6ᵉ ajoute `statut`, `statut_modifie_a`, `note_personnelle`, `note_modifiee_a` ; la 7ᵉ corrige une contrainte de la 6ᵉ prise en défaut par son propre test |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
-| `pipeline/` | Collecte **et notation** sur le cron GitHub Actions à 02:23 UTC. Critères dans `mots_cles.txt` (**7 termes**) et `codes_rome.txt` (**vide, délibérément**). ⚠️ **Seul le CDI est collecté** (`TYPE_CONTRAT`) |
+| `pipeline/` | Collecte **et** notation sur le cron GitHub Actions à 02:23 UTC. ⚠️ **Seul le CDI est collecté** (`TYPE_CONTRAT` dans `config.py`) |
 | Modules | `collecte.py` · `notation.py` · `salaire.py` · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
 
-### ⚠️ Ce que la phase 4 a changé dans l'architecture — quatre faits opposables
+### Ce qui reste ouvert
 
-1. ⚠️ **L'INTERFACE ÉCRIT EN BASE depuis le 29 août 2026.** Avant, seul le pipeline Python
-   écrivait, seul et de nuit. `ecrireDansBase()` est la sœur de `interrogerBase()` avec **trois
-   différences non cosmétiques** : le nom de table ne peut porter aucune valeur extérieure · les
-   valeurs partent dans le **corps JSON** (donc ni encodage à faire, ni ordre de paramètres
-   PostgREST dont dépendrait la sécurité) · **le filtre est obligatoire**, un `PATCH` sans filtre
-   réécrivant toute la table sans que PostgREST bronche.
-   ⚠️ **La reprise réseau y est sûre parce que l'écriture est IDEMPOTENTE** — on pose des valeurs
-   absolues, jamais un incrément. **C'est une propriété de ce que l'appelant écrit, pas de la
-   fonction** : le jour où quelqu'un incrémentera un compteur par ce chemin, la reprise le
-   comptera deux fois et rien ne l'avertira.
-2. ⚠️ **LA PROPRIÉTÉ « tout en composants serveur » EST TOMBÉE, et ce qui la remplace est une
-   discipline.** Les boutons de statut sont des composants clients. On ne leur passe que
-   `identifiant` et `statut` — **jamais l'objet `offre`**. Vérifié le 29 août : dix colonnes
-   interdites cherchées dans le document reçu par le navigateur, sur les deux écrans, témoin
-   positif — aucune. ⚠️ Mais `<BoutonsStatut offre={offre} />` **compilerait sans erreur** et
-   enverrait les vingt colonnes dans la page.
-3. ⚠️ **`interface/lib/statuts.ts` est le SEUL module de `lib/` sans `import "server-only"`, et
-   c'est sa raison d'être.** Les composants clients ont besoin des mêmes constantes que le
-   serveur ; s'ils importaient `lib/offres.ts`, ils tireraient `lib/supabase.ts` — donc la clé
-   secrète — dans le graphe du navigateur. **Y mettre les constantes partagées, jamais du code
-   qui lit un secret.** L'étape 4 devra en faire autant si elle partage des valeurs.
-4. ⚠️ **`VerrouTri` est un composant client qui enveloppe des enfants serveur** — motif à
-   connaître : les 200 lignes restent rendues sur le serveur et ne font que traverser le
-   fournisseur. Rien ne bascule dans le navigateur hormis le contexte.
+| Sujet | État |
+|---|---|
+| ⚠️ **En-tête de `/offres` — LA QUESTION EST OUVERTE MAINTENANT** | Ne plaît pas à Maxime. Le report était conditionné à la fin de la phase 4, close depuis le 29 août. **À poser avant d'entamer la phase 5**, qui construit `/` : les deux écrans portent le même bandeau, le refaire deux fois serait le refaire deux fois |
+| ⚠️ **Le plafond de 200 lignes — desserré, pas résolu** | La liste montre les 200 meilleures de tous les temps : le jour où plus de 200 offres portent une note, celles de la nuit disparaissent. Le filtre de la phase 4 desserre (une offre triée libère sa place) mais ne résout pas : tant que rien n'est trié, les 574 restent « à traiter ». **L'échéance est un compte, pas une date.** Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut. ⚠️ **Ne pas forcer en payant** (~40 centimes pour noter 60 offres de plus) : c'est un raisonnement, pas une économie — 200 est aussi le seuil où l'écran casse. Simulation dans `docs/PLAN.md` § Phase 2 |
+| ⚠️ **`intelligence artificielle` : le seul critère non arbitré** | 127 offres nettes/mois pour une moyenne de 8/100 et un maximum de 15 sur 27 notées — le profil exact qui a fait tomber les codes ROME. Et on ne perdrait rien : les 9 offres ≥ 25 sont toutes rattrapées par `IA` ou `AI`, vérifié une par une. Maxime l'a **gardé** le 28 août. ⚠️ **Ne pas le retirer seul** |
+| Qualité d'`automatisation` | 11 offres nettes/mois, **aucune notée** : sa qualité est **inconnue**, ce qui n'est pas la même chose que « bonne » |
+| Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | Inatteignable depuis le 26 août — le bug ne se déclenche que sur une offre déjà notée. L'analyse et le correctif vivent en commentaire dans `pipeline/notation.py` au-dessus de `apercevoir()`, **au point d'usage** : celui qui ressortira `--renoter` tombera dessus |
+| Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver (`docs/HEBERGEMENT.md`) |
+| `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme trompeur : « base injoignable » alors que la base va bien |
+| ⚠️ **Deux onglets sur la même fiche** | Le dernier qui tape écrase la note de l'autre, sans avertissement. Un seul utilisateur : signalé, non corrigé. Le corriger demanderait un horodatage de version comparé avant écriture |
 
-### ⚠️ Deux pièges de MÉTHODE découverts le 29 août, qui valent au-delà de leur cas
-
-1. ⚠️ **Un test qui re-résout son sélecteur à chaque clic ne teste pas un double clic** — il
-   attend sagement que l'interface se stabilise, c'est-à-dire exactement ce que l'utilisateur ne
-   fait pas. **Pour éprouver une cible mouvante, cliquer à des coordonnées fixes**
-   (`page.mouse.click(x, y)`). Ça a fait croire pendant une demi-heure qu'un correctif correct ne
-   marchait pas.
-2. ⚠️ **La fin d'une action serveur n'est PAS la fin du re-rendu.** Mesuré : réponse à +80 ms,
-   réorganisation de la liste à +900 ms. Un verrou relâché dans un `finally` tient donc **30 ms
-   pour un défaut qui survient à 900**. La bonne borne est `enCours` de `useTransition`, vrai
-   jusqu'à ce que le rendu soit **appliqué au DOM**.
-
-### ⚠️ Le seul reliquat de la phase 2, reporté volontairement
-
-| Ce qui reste | Comment le fermer | Coût |
-|---|---|---|
-| ⚠️ **L'état « 200 offres notées » à l'écran** | Vérifié **en simulation** le 26 août : 39 567 px de haut, 5 699 nœuds, 153 Ko transférés, 70 ms de recalcul, aucun débordement. Sur données réelles il manque **60 offres** (140 notées au 29 août).<br>⚠️ **NE PAS forcer en payant, et c'est un raisonnement, pas une économie.** 200 est aussi le seuil où l'écran casse. ✅ **MAIS le filtre de la phase 4 desserre le problème** : `/offres` n'affiche plus que les « à traiter », donc les offres triées libèrent leur place. ⚠️ **Il ne le résout pas** — tant que rien n'est trié, les 574 restent « à traiter » et la troncature mord pareil. Au rythme actuel le seuil tombe seul vers le **8 septembre** | ~40 centimes, **déconseillé** |
-
-⚠️ **La fiche d'offre : trois défauts MESURÉS le 29 août et volontairement LAISSÉS.** Décision de
-Maxime — détail et chiffres dans `docs/DESIGN.md`. **Ne pas les remesurer.** Les barres de notes
-en fiche sont restées à la largeur de la liste (88 px sur 952, alors que le `DESIGN.md` prescrit
-« en fiche, barres larges ») · la fiche est muette sur les 434 offres non notées, dont la
-description est repliée — **ce défaut-là se résorbe tout seul** à mesure que la base se note ·
+⚠️ **Trois défauts de la fiche d'offre, MESURÉS le 29 août et volontairement
+LAISSÉS.** Décision de Maxime, chiffres dans `docs/DESIGN.md`. **Ne pas les
+remesurer.** Barres de notes restées à la largeur de la liste · fiche muette sur
+les 434 offres non notées (**se résorbe seul** à mesure que la base se note) ·
 les cinq titres de section ont le même poids.
+
+⚠️ **Un défaut connu, laissé faute de correctif propre** : l'écriture des offres
+se fait par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de
+transaction. Si un lot échoue, les précédents sont écrits et rattachés à une
+exécution `echec` ; `recoller_offres_orphelines` les récupère la nuit suivante.
 
 ### ⚠️ Le cron ne part jamais à l'heure — comportement établi, pas incident
 
-**Trois nuits observées, deux déclenchements planifiés, aucun à l'heure.**
+Trois nuits observées, deux déclenchements planifiés, **aucun à l'heure** :
++10 h 32, puis +12 h 02. C'est un comportement **documenté** de GitHub Actions,
+plus fréquent sur dépôt public gratuit. La minute non ronde (23) était déjà une
+parade ; elle n'a pas suffi.
 
-| Nuit | Heure prévue | Heure réelle | Retard |
-|---|---|---|---|
-| 26 → 27 août | 02:23 UTC | 12 h 54 | **+10 h 32** |
-| 27 → 28 août | 02:23 UTC | 14 h 25 | **+12 h 02** |
+✅ **Les données sont robustes à ça, par conception** : la fenêtre de collecte part
+de la **dernière collecte réussie**, jamais de « hier ». Une nuit sautée est
+rattrapée par la suivante, qui collecte 48 h d'un coup. ⚠️ **Ce que ça coûte,
+c'est l'usage** : un cron qui tourne l'après-midi livre un écran vide le matin.
 
-C'est un comportement **documenté** de GitHub Actions : les workflows planifiés
-ne sont pas garantis, et le retard est plus fréquent sur dépôt public gratuit.
-La minute non ronde (23) était déjà une parade ; elle n'a pas suffi.
-
-✅ **Les données sont robustes à ça, par conception.** La fenêtre de collecte part
-de la **dernière collecte réussie**, jamais de « hier » : une nuit sautée est
-rattrapée par la suivante, qui collecte 48 h d'un coup. Aucune offre n'est perdue.
-⚠️ **Ce que ça coûte, c'est l'usage** : un cron qui tourne l'après-midi livre un
-écran vide au moment où Maxime le consulte, le matin.
-
-⚠️ **Ce qu'il faut surveiller** : plusieurs nuits sautées d'affilée font grossir
-le volume, et la **limite de 60** du workflow finirait par mordre — vers 4 ou
-5 nuits consécutives. Quand elle mord, `notation.py` avertit, et **les offres
-laissées ne repassent pas** en mode `--derniere-collecte`.
+⚠️ **À surveiller** : plusieurs nuits sautées d'affilée font grossir le volume, et
+la **limite de 60** du workflow finirait par mordre — vers 4 ou 5 nuits. Quand
+elle mord, `notation.py` avertit, et **les offres laissées ne repassent pas** en
+mode `--derniere-collecte`.
 
 ⚠️ **La parade n'est PAS un second cron** : il serait retardé pareil, c'est la
-file d'attente qui décale, pas l'horaire. C'est un **déclencheur externe appelant
-l'API GitHub**, avec un jeton restreint au seul droit de lancer un workflow —
-soit exactement le mécanisme prévu au critère d'acceptation de la **phase 6**
-pour le bouton « Enrichir ». Le construire avant, c'est le construire deux fois.
-✅ **Rustine en attendant** : `gh workflow run` à la main le matin.
+file d'attente qui décale. C'est un **déclencheur externe appelant l'API GitHub**
+avec un jeton restreint au seul droit de lancer un workflow — soit exactement le
+mécanisme prévu en **phase 6** pour le bouton « Enrichir ». Le construire avant,
+c'est le construire deux fois. ✅ **Rustine** : `gh workflow run` le matin.
+Récit de l'enquête : `docs/JOURNAL.md` § 27 août.
 
-**Le récit complet de l'enquête** — ce qui a été vérifié le 27 août, et pourquoi
-on a d'abord cru à un cron sauté : `docs/JOURNAL.md` § 27 août 2026.
+## ⚠️ Neuf règles opposables, qui ne se déduisent d'aucun fichier
 
-### Les critères de collecte — refondus le 26 août, et le chantier n'est pas fini
+1. **La page d'accueil `/` est une page de contrôle temporaire** posée par
+   `/installe` — pas un écran du produit. Ne pas construire dessus. Elle vit dans
+   `app/(site)/page.tsx`, composant serveur qui appelle `exigerSession()` puis rend
+   `_controle/page-de-controle.tsx`. En la remplaçant, **garder la première ligne** :
+   c'est elle qui referme la porte.
+   ⚠️ **Le groupe `(site)` n'est pas de l'organisation, c'est une serrure.**
+   `/connexion` est délibérément *hors* du groupe. Ne jamais l'y déplacer.
+2. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le
+   code, jamais les données : une branche qui migre ou supprime touche les vraies
+   données.
+3. ⚠️ **`interface/lib/statuts.ts` et `interface/lib/notes.ts` sont les deux seuls
+   modules de `lib/` sans `import "server-only"`** — `utils.ts` mis à part, qui ne
+   porte que le `cn()` de shadcn. C'est leur raison d'être : les composants clients
+   ont besoin des mêmes constantes que le serveur (libellés de statut, borne de
+   longueur de la note) ; s'ils allaient les chercher dans `lib/offres.ts`, ils
+   tireraient `lib/supabase.ts` — donc la clé secrète — dans le graphe du
+   navigateur. **Y mettre des constantes et des fonctions pures, jamais du code qui
+   lit un secret.** Tout futur module partagé suit le même moule.
+4. ⚠️ **Ne jamais passer l'objet `offre` entier à un composant client.**
+   La propriété « tout en composants serveur » est **tombée le 29 août 2026** : les
+   boutons de statut et le champ de note sont des composants clients. Ce qui la
+   remplace est une **discipline de props** — on passe `identifiant`, `statut`,
+   `noteInitiale`, un par un.
+   ⚠️ **Ce qui rend la règle fragile** : `<BoutonsStatut offre={offre} />` ou
+   `<NotePersonnelle offre={offre} />` compileraient sans la moindre erreur et
+   enverraient les vingt-deux colonnes dans la page — message d'erreur technique,
+   `contact_nom`, note personnelle. **Refaire la mesure après chaque nouveau
+   composant client**, c'est le seul garde-fou qui reste. ✅ Refaite le 29 août :
+   douze noms de colonnes cherchés sur trois écrans, plus le **contenu** d'une note
+   cherché dans `/offres` et dans la fiche d'une autre offre — aucun, témoin positif.
+5. ⚠️ **`options.egal` est la SEULE façon de faire entrer une valeur extérieure dans
+   une requête** (`interface/lib/supabase.ts`). Elle encode ; le `chemin` ne doit
+   porter que des constantes du code. **Mesuré le 28 août** : sans encodage,
+   `identifiant=eq.X&select=*` placé *avant* le `select` légitime rend **44 colonnes
+   dont `charge_brute`** — PostgREST retient le **premier** `select` mais le
+   **dernier** `limit`. Une protection par l'ordre des paramètres existe donc, et
+   c'est une **coïncidence**, pas une garantie.
+6. ⚠️ **L'écriture depuis l'interface est IDEMPOTENTE, et c'est une propriété de ce
+   que l'appelant écrit, pas de `ecrireDansBase()`.** On pose des valeurs absolues,
+   jamais un incrément — c'est ce qui rend la reprise réseau sûre. Le jour où
+   quelqu'un incrémentera un compteur par ce chemin, la reprise le comptera deux
+   fois et rien ne l'avertira.
+   ⚠️ Trois différences non cosmétiques avec `interrogerBase()` : le nom de table ne
+   peut porter aucune valeur extérieure · les valeurs partent dans le **corps JSON**
+   · **le filtre est obligatoire**, un `PATCH` sans filtre réécrivant toute la table
+   sans que PostgREST bronche.
+7. ⚠️ **`useOptimistic` est le bon patron pour un STATUT et le mauvais pour un
+   TEXTE.** Il retombe sur la valeur du serveur en fin de transition : parfait pour
+   ramener un statut à la vérité de la base après un échec, destructeur pour un
+   paragraphe en cours de frappe, qu'il effacerait sous les doigts. **Le bon patron
+   dépend de qui détient la vérité.**
+8. ⚠️ **Une écriture depuis l'interface exige `revalidatePath`, même quand rien
+   d'autre à l'écran n'en dépend.** Le raisonnement inverse a été tenu, mesuré, et
+   il était faux : revenir sur la fiche par un **lien** montrait bien la note,
+   revenir par le **bouton retour** rendait le champ vide. `"page"` suffit pour la
+   note (elle ne sort pas de sa fiche) ; `"layout"` reste nécessaire pour le statut,
+   qui change la liste. Le chemin est le **motif de route**
+   (`/offres/[identifiant]`), pas l'adresse concrète — sinon la fiche ouverte avec
+   un identifiant en minuscules reste en cache périmé.
+9. ⚠️ **Le vide d'un champ à enregistrement automatique est `"   \n"`, pas `""`.**
+   `normaliserNote()` (`interface/lib/notes.ts`) le ramène à `NULL` avant d'écrire,
+   sinon la contrainte `note_personnelle_non_vide` rend 400 sur le geste le plus
+   banal — effacer. ⚠️ Corollaire : **le contrôle du code est plus strict que celui
+   de la base dans les deux sens** (`trim()` > `~ '[^[:space:]]'`, et
+   `String.length` en UTF-16 ≥ `length()` en points de code). C'est le seul sens qui
+   évite un 400 que rien n'annoncerait.
 
-**Question CLOSE : le bruit des codes ROME.** Elle était ouverte depuis le 26 août au matin
-(« H1206 ramène 111 offres pour 6 pertinentes »). Tranchée le soir même, sur mesure :
-**les six codes ROME sont retirés**, ils apportaient 445 offres nettes par mois pour zéro
-offre au-dessus de 30 sur 50 notées au hasard. Détail dans `pipeline/codes_rome.txt`, qui
-porte la mesure entière.
+## ⚠️ Cinq pièges de MÉTHODE, qui valent au-delà de leur cas
 
-**Effet mesuré de la nouvelle configuration**, sur 15 offres tirées au hasard dans la collecte
-de reconfiguration, comparées aux 82 notées sous l'ancienne :
-
-| | Nouvelle config | Ancienne |
-|---|---|---|
-| Volume collecté | 294 offres/mois | 707 |
-| Moyenne d'intérêt | **16,2** | 7,7 |
-| Médiane | **10** | 5 |
-| Offres au-dessus de 50 | **7 %** | 1 % |
-| Coût de notation | ~1,75 $/mois | ~4,20 $ |
-
-⚠️ **CE TABLEAU EST PÉRIMÉ — il décrit la configuration du 26 août.** Depuis, `deploiement` et
-`RPA` sont sortis, `chatbot` est entré, et seul le CDI est collecté. **Chiffres au 28 août, à
-utiliser à la place** : **208 offres/mois** (266 sans le filtre de contrat, qui en écarte 22 %),
-soit **~1,25 $/mois** de notation. Les colonnes de qualité (moyenne, médiane, % au-dessus de 50)
-n'ont **pas** été remesurées depuis : elles restent celles du 26 août, sur 15 offres.
-
-✅ **CHANTIER MESURÉ LE 28 AOÛT 2026. Le rappel est saturé : le problème n'est pas ce que la
-collecte rate, c'est ce qu'elle ramène en trop.** 50 termes balayés sur 30 jours.
-
-1. ✅ **Tout le lexique IA spécialisé a un apport net de ZÉRO** — il ne trouve pas une seule
-   offre que les mots-clés actuels ne trouvent déjà : `consultant IA`, `IA générative`,
-   `générative`, `intégration IA`, `copilot`, `RAG`, `prompt`, `multi-agents`, `MLOps`,
-   `low-code`, `no-code`, `agentic`. **Ne pas les re-tester** sans avoir d'abord changé la
-   liste (voir le piège de méthode plus bas).
-2. ✅ **Le vocabulaire anglais pointu N'EXISTE PAS** — volume brut nul : `LLM`, `GPT`,
-   `OpenAI`, `LangChain`, `Hugging Face`, `embeddings`, `NLP`, `computer vision`,
-   `deep learning`, `Azure AI`, `n8n`, `Zapier`, `forward deployed`, `customer engineer`.
-   ⚠️ **Ceci DÉMENT la note du 26 août** qui voyait « le vocabulaire s'ouvrir » (LLM 1,
-   copilot 2, RAG 1). Deux jours après : LLM 0, copilot 1. **Ces valeurs à 1 ou 2 sont du
-   bruit statistique, pas une tendance** — ne pas remesurer tous les quatre matins.
-3. ✅ **`IA` → `IPR-IA` : quantifié, et c'est marginal.** 3 offres/mois, notées 2, 2 et 3.
-   Le match vient de l'**appellation** `Inspecteur(trice) pédago rég, inspect académie
-   (IPR-IA)`, ROME K2117 — pas de l'intitulé, d'où l'échec des recherches précédentes.
-   Le corriger supposerait de retirer `IA`, qui ramène l'offre à 85. **Défaut à connaître,
-   pas à corriger.**
-4. ✅ **`deploiement` mesuré : 30 offres nettes/mois, homonymie télécom/BTP** — « Conducteur
-   d'engins », « Câbleur Électronique », « CHEF D'ÉQUIPE FTTH », « PMO Déploiement SAP ».
-   **`automatisation`** : 11 nettes, QA/tests et DevOps CI/CD, aucune notée. **`RPA`** :
-   3 nettes, « Développeur RPA UiPath ».
-5. ✅ **Un seul terme retenu sur 50 : `chatbot`** (+1 offre/mois, « Ingénieur front office
-   chatbot »), ajouté le 28 août.
-
-⚠️ **LE PIÈGE DE MÉTHODE, qui vaut plus que ces listes : l'apport net n'est pas une propriété
-du TERME, mais du couple (terme, configuration).** Vérifié — en retirant `intelligence
-artificielle`, `low-code` et `no-code` passent de 0 à 1. **Tout retrait de la liste périme
-les mesures ci-dessus.**
-
-⚠️ **RESTE À TRANCHER — la seule recommandation non appliquée au 28 août.** `intelligence
-artificielle` ramène **127 offres nettes/mois pour une moyenne de 8/100 et un maximum de 15**
-sur 27 notées, zéro au-dessus de 30 : c'est le profil exact qui a fait tomber les codes ROME.
-Et **on ne perdrait rien** — les 9 offres notées ≥25 sont toutes rattrapées par `IA` ou `AI`,
-vérifié une par une. Avec `deploiement`, le retrait ferait passer le volume de **296 à 141
-offres/mois**.
-⚠️ **Partiellement arbitré le 28 août** : Maxime a retiré `deploiement` (et `RPA`) à la main,
-mais **a gardé `intelligence artificielle`**. C'est donc la seule question encore ouverte, et
-la projection 296 → 141 ci-dessus ne se réalisera jamais telle quelle. **Ne pas le retirer seul.**
-
-✅ **Question CLOSE le 26 août 2026 : c'est Sonnet 5, et Opus 5 ne sera pas testé.** Décision
-de Maxime. Le motif est bon et il faut le retenir plutôt que la conclusion : le prompt est
-calibré, les 97 notations produites sont conformes et lisibles, et l'écart de coût (~2,30 $/mois)
-ne justifie pas de repayer 97 offres pour arbitrer un doute que personne n'a. **Une question
-ouverte n'a pas à être fermée par une mesure — elle peut l'être en constatant qu'elle ne
-décide plus rien.** Ne pas la rouvrir « pour voir ».
-
-### Ce qui reste ouvert
-
-| | |
-|---|---|
-| ~~Tri par note : piège `NULLS FIRST`~~ | ✅ **Traité le 26 août** — `note_interet.desc.nullslast` dans `interface/lib/offres.ts`, avec départage complet jusqu'à `identifiant` pour que deux chargements classent les ex æquo pareil |
-| ~~API Batches : rattachement par `custom_id`~~ | ✅ **CLOS le 28 août 2026.** Lot de 3 offres (`msgbatch_016Vf4…`), 5 min 06, 0 échec, appariement vérifié sur le contenu des justifications. ⚠️ **Mesure à retenir** : `cache_lecture` = 7 430 sur ce lot de 3, contre **zéro** sur le lot d'une offre — les Batches ne sont rentables qu'à plusieurs, sinon on paie l'écriture du cache sans jamais le relire |
-| ~~Critères de collecte non finis~~ | ✅ **Mesurés et clos le 28 août** (50 termes balayés). `deploiement` et `RPA` retirés, `chatbot` ajouté, `IA`/`IPR-IA` quantifié à 3 offres/mois et jugé non corrigeable. ⚠️ **Seul `intelligence artificielle` reste en suspens** — voir § État actuel. ⚠️ Et la qualité d'`automatisation` (11 nettes/mois) est toujours **inconnue**, faute d'une seule offre notée |
-| ⚠️ **Le plafond de 200 — DESSERRÉ le 29 août, pas résolu** | Depuis le tri par intérêt, les 200 lignes affichées sont **les 200 meilleures de tous les temps** : le jour où plus de 200 offres portent une note, celles de la nuit disparaissent. ✅ **Le filtre de la phase 4 desserre le problème** — `/offres` n'affiche que les « à traiter », donc chaque offre triée libère sa place. ⚠️ **Il ne le résout pas** : tant que rien n'est trié, les 574 offres restent « à traiter » et la troncature mord à l'identique. **L'échéance reste un compte, pas une date.** Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut. À revoir si le cas se produit vraiment |
-| Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | ⚠️ **Devenu inatteignable le 26 août** : le bug ne se déclenche que sur une offre **déjà notée**, donc uniquement en `--renoter` — outil désormais mis de côté, une offre n'étant notée qu'une fois. Il n'est donc **pas urgent**, et ne pas le présenter comme tel. L'analyse et le correctif à faire vivent en commentaire dans `pipeline/notation.py` au-dessus de `apercevoir()`, **au point d'usage** : celui qui ressortira `--renoter` tombera dessus, ce qu'une ligne dans ce tableau ne garantit pas |
-| Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver (`docs/HEBERGEMENT.md`) |
-| `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme : « base injoignable » alors que la base va bien |
-| ~~Largeur contre barre latérale~~ | ✅ **CLOS le 29 août 2026, et la question ne s'est jamais posée.** Le `DESIGN.md` prévoyait une barre latérale de 208 px, arithmétiquement incompatible avec les 1000 px. Les filtres sont finalement une **rangée d'onglets horizontale sous le titre** : aucune largeur perdue, et ils tiennent à 375 px en passant sur deux lignes. La colonne latérale n'est pas reportée, elle est **sans objet** |
-| En-tête de `/offres` | Ne plaît pas à Maxime. ⚠️ **Les filtres y ont pris place le 29 août** — la condition du report est donc levée, et la question se rouvre dès la phase 4 close |
-
-⚠️ **Huit règles opposables, qui ne se déduisent d'aucun fichier :**
-
-1. **La page d'accueil `/` est une page de contrôle temporaire** posée par `/installe` — pas un
-   écran du produit. Ne pas construire dessus. ⚠️ Elle vit dans `app/(site)/page.tsx`, un
-   composant serveur qui appelle `exigerSession()` puis rend `_controle/page-de-controle.tsx`.
-   En la remplaçant, **garder la première ligne** : c'est elle qui referme la porte.
-   ⚠️ **Le groupe `(site)` n'est pas de l'organisation, c'est une serrure.** `/connexion` est
-   délibérément *hors* du groupe — voir § Sécurité. Ne jamais l'y déplacer.
-2. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le code, jamais
-   les données : une branche qui migre ou supprime touche les vraies données.
-3. **Chez Vercel, exactement 4 variables** : `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
-   `MOT_DE_PASSE_SITE`, `SECRET_SESSION`. Ni la clé Anthropic ni les identifiants France
-   Travail — le pipeline tourne chez GitHub Actions, et les garder offrirait une clé facturée
-   à qui entrerait dans le compte. Détail : `docs/HEBERGEMENT.md`.
-4. **`interface/.env.local` détient l'unique copie des deux secrets du site.** Non versionné,
-   nulle part ailleurs. ⚠️ **Un agent de revue qui lance l'app écrit dans ce fichier** — c'est
-   arrivé le 21 août, les secrets ont dû être régénérés.
-5. ⚠️ **Pour regarder l'app sans jamais lire le mot de passe réel** : relancer le serveur avec
-   `MOT_DE_PASSE_SITE='une-valeur-de-test' npm run dev`. Next.js ne remplace **jamais** une
-   variable déjà présente dans l'environnement, donc la valeur de test l'emporte sur
-   `.env.local` **sans y toucher** — vérifié par empreinte MD5 avant et après, le 26 août 2026.
-   C'est la parade concrète à la règle « ne jamais faire entrer un secret dans la
-   conversation » : la passe visuelle n'a plus besoin de connaître le vrai mot de passe.
-6. ⚠️ **Ne jamais passer l'objet `offre` entier à un composant client.**
-   ⚠️ **CE QUI ÉTAIT ANNONCÉ EST ARRIVÉ LE 29 AOÛT 2026** : cette règle disait « la phase 4
-   cassera cette propriété ». C'est fait — les boutons de statut sont des composants clients, et
-   `/offres` n'est plus intégralement rendu sur le serveur.
-   **La protection n'est donc plus une propriété de l'architecture, c'est une discipline de
-   props** : on passe `identifiant` et `statut`, un par un, jamais l'objet. Revérifié le 29 août
-   sur les deux écrans — dix colonnes interdites cherchées dans le document reçu par le
-   navigateur, témoin positif : **aucune**.
-   ⚠️ **Ce qui rend la règle fragile désormais** : `<BoutonsStatut offre={offre} />` compilerait
-   sans la moindre erreur et enverrait les vingt colonnes dans la page — le message d'erreur
-   technique, `contact_nom`, et la note personnelle dès qu'elle existera. **Refaire la mesure
-   après chaque nouveau composant client**, c'est le seul garde-fou qui reste.
-
-7. ⚠️ **`options.egal` est la SEULE façon de faire entrer une valeur extérieure dans une
-   requête** (`interface/lib/supabase.ts`). Elle encode ; le `chemin`, lui, ne doit porter que
-   des constantes du code. **Mesuré le 28 août** : sans encodage, `identifiant=eq.X&select=*`
-   placé *avant* le `select` légitime rend **44 colonnes dont `charge_brute`** — PostgREST
-   retient le **premier** `select` mais le **dernier** `limit`. Une protection par l'ordre des
-   paramètres existe donc, et elle est une **coïncidence**, pas une garantie.
-8. ⚠️ **La fiche d'offre est en COLONNE UNIQUE, et la question se rouvre en phase 6.** Le
-   `DESIGN.md` prévoyait deux colonnes, la droite portant l'enrichissement — qui n'existe pas
-   avant la phase 6. Mesuré le 28 août : le résumé fait **122 caractères en médiane** (et non
-   trois lignes) et il est **absent des 434 offres non notées**. Ne pas repasser en deux
-   colonnes tant qu'il n'y a rien à mettre à droite.
-
-⚠️ **Un défaut connu, laissé ouvert faute de correctif propre** : l'écriture des offres se fait
-par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de transaction. Si un lot
-échoue, les précédents sont écrits et rattachés à une exécution marquée `echec`. Le recollage
-(`recoller_offres_orphelines`) les récupère la nuit suivante. À rouvrir si le cas se produit.
-
-**Les décisions de cadrage, de design et de plan sont acquises — ne pas les rouvrir.** Elles
-sont dans `docs/DECISIONS.md`, `docs/DESIGN.md` et `docs/PLAN.md` ; leur histoire est dans
-**`docs/JOURNAL.md`**.
+1. **Un maximum observé n'est pas une borne, c'est un échantillon** — et il ne peut
+   que monter. Quatre mesures concordantes ont fait écrire que « l'intitulé très
+   long n'existe pas » (94 caractères au maximum) ; la cinquième en a trouvé un de
+   **223**. Ne jamais écrire qu'un cas « n'existe pas » sur la foi d'un maximum ;
+   écrire ce qu'on a vu, avec la taille de l'échantillon et la date.
+2. **Un test qui re-résout son sélecteur à chaque clic ne teste pas un double
+   clic** — il attend sagement que l'interface se stabilise, c'est-à-dire exactement
+   ce que l'utilisateur ne fait pas. **Pour éprouver une cible mouvante, cliquer à
+   des coordonnées fixes** (`page.mouse.click(x, y)`).
+3. **La fin d'une action serveur n'est PAS la fin du re-rendu.** Mesuré : réponse à
+   +80 ms, réorganisation de la liste à +900 ms. Un verrou relâché dans un `finally`
+   tient donc **30 ms pour un défaut qui survient à 900**. La bonne borne est
+   `enCours` de `useTransition`, vrai jusqu'à ce que le rendu soit **appliqué au
+   DOM**.
+4. **« J'ai mesuré » ne vaut rien si on ne dit pas QUEL chemin on a mesuré.** Revenir
+   sur une fiche par un lien et y revenir par le bouton retour sont deux gestes que
+   l'utilisateur ne distingue pas et deux mécanismes différents : le premier montrait
+   la note, le second rendait le champ vide. J'avais conclu « pas besoin de
+   `revalidatePath` » sur la foi du premier ; `/code-review` a maintenu le constat et
+   la seconde mesure lui a donné raison.
+5. **Une section ajoutée à un écran doit être ajoutée à son squelette dans le même
+   geste.** `loading.tsx` n'a aucun lien mécanique avec la page qu'il double : rien
+   ne signale l'oubli, et le défaut est **invisible en développement**, où le serveur
+   répond en 80 ms et où le squelette ne s'affiche jamais assez longtemps pour être
+   vu. Trois sauts déjà — 297 px, 93 px, 222 px. Le calage se vérifie **par le
+   calcul** (les hauteurs y sont fixes) contre la section réelle mesurée au DOM.
 
 ## Collecte — cinq faits mesurés, opposables
 
-Mesurés contre l'API réelle le 21 août 2026, **remesurés et corrigés le 26 puis le
-28 août** — les points 1 et 5 datent du 28 et sont les plus structurants. Détail et méthode dans `docs/API_FRANCE_TRAVAIL.md`. **Ne pas les
-redécouvrir, ne pas les contredire de mémoire.**
+Mesurés contre l'API réelle, remesurés et corrigés le 26 puis le 28 août 2026.
+Méthode et détail dans `docs/API_FRANCE_TRAVAIL.md`. **Ne pas les redécouvrir, ne
+pas les contredire de mémoire.**
 
-1. ⚠️ **CORRIGÉ LE 28 AOÛT — le moteur ne fait PAS de correspondance textuelle, il
-   élargit au domaine.** Ce point énumérait les champs indexés (« l'intitulé, le
-   libellé ROME, l'appellation et le champ `competences` ») ; l'énumération donnait
-   l'illusion d'un contrat qui n'existe pas. Mesuré : sur 40 offres rendues par
-   `intelligence artificielle` en propre, **26 ne contiennent le terme nulle part** —
-   ni dans ces quatre champs, ni dans la description, ni ailleurs dans la charge
-   brute. Et le moteur n'est pas compositionnel : `intelligence artificielle` rend
-   168 offres, `intelligence` 64, `artificielle` 43, leur union **64** — donc 125
-   des 168 ne viennent d'aucun des deux mots seuls.
-   **Trois conséquences opposables** : un terme ramène des offres qui ne le
-   contiennent pas · chercher `X Y` ne se prédit pas en mesurant `X` et `Y` · donc
-   **un critère se mesure, jamais ne se déduit** — même règle qu'avant, mais parce
-   que l'index est *opaque*, pas parce qu'il est étroit.
-   ⚠️ **Corollaire coûteux** : un terme générique ratisse un domaine entier.
-   `agents` rend **2 718 offres/mois** (agent d'accueil, agent de sécurité).
-   Reste vrai : une offre au titre banal peut échapper à toute liste de mots-clés.
-2. ⚠️ **CORRIGÉ LE 26 AOÛT — le vocabulaire n'est ni fermé ni français.** L'ancienne
-   version de ce point disait le contraire, et c'était l'erreur la plus coûteuse de
-   la configuration : **`AI` en anglais ramène 28 offres nettes par mois** qu'aucun
-   autre critère ne trouvait. `GenAI`, `LLM`, `copilot`, `prompt` et `RAG` ne
-   renvoient plus zéro non plus. Ce qui reste vrai : les expressions à plusieurs mots
-   sont dangereuses — `avant-vente` ramène 299 postes de vendeur, le moteur ayant
-   matché « vente ».
-3. ⚠️ **CORRIGÉ LE 26 AOÛT — les codes ROME ne rattrapent PAS ce que le lexique rate.**
-   `codes_rome.txt` existait pour ça et le raisonnement était juste ; la mesure l'a
-   démenti. Les six codes apportaient 445 offres nettes par mois pour **zéro offre
-   au-dessus de 30 sur 50 notées au hasard**. Tous retirés. Le fichier reste en place,
-   **vide et valide** (`config.charger()` l'autorise), avec la mesure qui l'a vidé.
+1. ⚠️ **Le moteur ne fait PAS de correspondance textuelle, il élargit au
+   domaine.** Sur 40 offres rendues par `intelligence artificielle`, **26 ne
+   contiennent le terme nulle part** — ni dans l'intitulé, ni dans la description,
+   ni ailleurs dans la charge brute. Et il n'est pas compositionnel :
+   `intelligence artificielle` rend 168 offres, `intelligence` 64, `artificielle`
+   43, leur union **64**.
+   **Trois conséquences** : un terme ramène des offres qui ne le contiennent pas ·
+   chercher `X Y` ne se prédit pas en mesurant `X` et `Y` · donc **un critère se
+   mesure, jamais ne se déduit** — parce que l'index est *opaque*, pas parce qu'il
+   est étroit.
+   ⚠️ **Corollaire coûteux** : un terme générique ratisse un domaine entier —
+   `agents` rend **2 718 offres/mois** (agent d'accueil, agent de sécurité). Et une
+   offre au titre banal peut échapper à toute liste de mots-clés.
+2. ⚠️ **Le vocabulaire n'est ni fermé ni français.** `AI` en anglais ramène 28
+   offres nettes par mois qu'aucun autre critère ne trouvait. Ce qui reste vrai :
+   les expressions à plusieurs mots sont dangereuses — `avant-vente` ramène 299
+   postes de vendeur, le moteur ayant matché « vente ».
+3. ⚠️ **Les codes ROME ne rattrapent PAS ce que le lexique rate.** Le raisonnement
+   était juste, la mesure l'a démenti : 445 offres nettes par mois pour **zéro
+   offre au-dessus de 30 sur 50 notées au hasard**. Tous retirés. Le fichier reste
+   **vide et valide**, avec la mesure qui l'a vidé.
    ⚠️ Corollaire non évident : **un code ROME dont le libellé contient un mot déjà
-   cherché n'apporte rien**, la recherche indexant ce libellé. `M1889` « Ingénieur en
-   Intelligence Artificielle » a la meilleure qualité mesurée de tous les codes et un
-   apport net de **zéro**.
-4. ⚠️ **Un critère ne s'ajoute jamais sans mesurer ce qu'il ramène** — ni mot-clé, ni
-   code ROME. Et mesurer veut dire **deux choses** : le volume *net* (ce que les
-   autres critères ne trouvent pas déjà) **et** la qualité, en notant un échantillon
-   **tiré au hasard** (`--rome CODE --au-hasard`, `--collecte ID --au-hasard`).
-   Prendre les N plus récentes n'est pas un échantillon : elles viennent d'une seule
-   journée de collecte.
+   cherché n'apporte rien** — `M1889` « Ingénieur en Intelligence Artificielle » a
+   la meilleure qualité mesurée de tous les codes et un apport net de **zéro**.
+4. ⚠️ **Un critère ne s'ajoute jamais sans mesurer ce qu'il ramène.** Mesurer veut
+   dire **deux choses** : le volume *net* (ce que les autres critères ne trouvent
+   pas déjà) **et** la qualité, en notant un échantillon **tiré au hasard**
+   (`--au-hasard`). Prendre les N plus récentes n'est pas un échantillon : elles
+   viennent d'une seule journée.
 5. ⚠️ **SEUL LE CDI EST COLLECTÉ depuis le 28 août 2026** — `TYPE_CONTRAT` dans
-   `pipeline/config.py`, filtré **côté serveur** par le paramètre `typeContrat`. Écarte
-   22 % du volume : 39 CDD par mois (dont 27 alternances), 16 intérims, 3 professions
-   libérales. Décidé par Maxime, **qui a vu et accepté le coût** : 11 des 20 meilleures
-   offres notées auraient été écartées, dont un CDD Institut Curie à 75. Ne pas rouvrir.
-   ⚠️ **Ce filtre est IRRÉVERSIBLE POUR LE PASSÉ, et sa perte est silencieuse.** France
-   Travail dépublie : le remettre à `None` rouvre l'avenir, jamais les semaines écoulées,
-   et **rien en base ne témoigne de ce qui n'a pas été collecté**. Même logique que « la
-   base ne s'efface pas », en pire — ici on ne voit pas le trou.
-   ⚠️ **`typeContrat` est la SEULE métadonnée sûre à filtrer** : renseignée sur 560 offres
-   sur 560. `qualification` est vide sur 86 des 123 offres notées, et 11 des 20 meilleures
-   sont dans ce trou — filtrer sur « Cadre » perdrait 70 % des bonnes offres. Avec
-   `experience_libelle` (faux une fois sur deux), c'est l'argument central du projet :
-   **les métadonnées France Travail sont trop lacunaires pour trier, d'où un modèle qui
-   lit le texte.**
+   `pipeline/config.py`, filtré **côté serveur**. Écarte 22 % du volume. Décidé par
+   Maxime, **qui a vu et accepté le coût** : 11 des 20 meilleures offres notées
+   auraient été écartées. Ne pas rouvrir.
+   ⚠️ **Ce filtre est IRRÉVERSIBLE POUR LE PASSÉ, et sa perte est silencieuse.**
+   France Travail dépublie : le remettre à `None` rouvre l'avenir, jamais les
+   semaines écoulées, et **rien en base ne témoigne de ce qui n'a pas été
+   collecté**.
+   ⚠️ **`typeContrat` est la SEULE métadonnée sûre à filtrer** : renseignée sur
+   560 offres sur 560. `qualification` est vide sur 86 des 123 offres notées, et 11
+   des 20 meilleures sont dans ce trou. Avec `experience_libelle` (faux une fois
+   sur deux), c'est **l'argument central du projet : les métadonnées France Travail
+   sont trop lacunaires pour trier, d'où un modèle qui lit le texte.**
+
+⚠️ **Les critères eux-mêmes sont des DONNÉES, et leurs mesures vivent avec eux** —
+`pipeline/mots_cles.txt` (7 termes) et `pipeline/codes_rome.txt` (vide). **Ne jamais
+les éditer sans relire leurs commentaires** : ils portent, terme par terme, ce qui a
+été mesuré et écarté, et le piège qui compte le plus — **l'apport net n'est pas une
+propriété du terme, mais du couple (terme, configuration)**, donc tout retrait de la
+liste périme les mesures précédentes.
+⚠️ **Un TROISIÈME critère existe et n'est pas un `.txt` : `TYPE_CONTRAT` dans
+`pipeline/config.py`.** Chercher les critères dans les seuls fichiers texte fait
+manquer celui qui coupe le plus.
 
 **Les postes visés** sont ceux qui *branchent* un modèle chez un client — Forward
 Deployed Engineer, AI Solutions Engineer, consultant IA, ingénieur d'intégration.
 **Pas** les postes de modélisation (`machine learning`, `data scientist`, `deep
-learning`) : autre métier, autres entreprises. Corrigé par Maxime le 21 août après
-que je me sois trompé de cible.
+learning`) : autre métier, autres entreprises. Corrigé par Maxime le 21 août.
 
-## Base de données — ce qui change mon comportement
+✅ **Question CLOSE le 26 août : c'est Sonnet 5, et Opus 5 ne sera pas testé.**
+Retenir le motif plutôt que la conclusion : le prompt est calibré, les notations
+produites sont conformes, et l'écart de coût (~2,30 $/mois) ne justifie pas de
+repayer 97 offres pour arbitrer un doute que personne n'a. **Une question ouverte
+peut être fermée en constatant qu'elle ne décide plus rien.** Ne pas la rouvrir.
 
-**Source de vérité du schéma : `supabase/migrations/`.** Les fichiers sont abondamment
-commentés — chaque décision y est expliquée. **Ne jamais recopier le schéma dans un autre
-document** : deux descriptions du même schéma divergent toujours.
+## Base de données
 
-⚠️ **Une migration déjà appliquée ne se modifie jamais.** Elle est dans la base : la
-réécrire ne défait rien et fait diverger git de la réalité. On corrige par une migration
-suivante. C'est arrivé le 20 août — voir `docs/JOURNAL.md`.
+**Source de vérité du schéma : `supabase/migrations/`**, abondamment commenté.
+**Ne jamais recopier le schéma ailleurs** : deux descriptions du même schéma
+divergent toujours.
 
-**Deux tables sur quatre existent** : `executions_veille`, `offres`. **Sept migrations
-appliquées** — les deux dernières datent du 29 août : statuts et note personnelle.
-`enrichissements` et `etapes_enrichissement` sont **reportées à la phase 6** — entorse
-assumée au critère d'acceptation du `PLAN.md`, validée en séance : leur forme dépend de ce
-que l'agent produira réellement, et rien ne les alimente d'ici là.
+⚠️ **Une migration déjà appliquée ne se modifie jamais.** Elle est dans la base :
+la réécrire ne défait rien et fait diverger git de la réalité. On corrige par une
+migration suivante. C'est arrivé le 20 août.
+
+⚠️ **Syntaxe valide ne veut pas dire « ça marche ».** Le 20 août, une migration
+irréprochable a créé deux tables que le serveur ne pouvait pas lire. **Après chaque
+migration : tenter de lire, d'écrire, et de violer chaque contrainte.** Procédure
+complète dans `docs/HEBERGEMENT.md`.
+
+**Deux tables sur quatre existent** : `executions_veille`, `offres`.
+`enrichissements` et `etapes_enrichissement` sont **reportées à la phase 6** —
+entorse assumée, validée en séance : leur forme dépend de ce que l'agent produira,
+et rien ne les alimente d'ici là.
 
 **Huit règles opposables, toutes déjà appliquées :**
 
 1. **`timestamptz` partout, jamais `timestamp`.** GitHub Actions tourne en UTC, le
-   navigateur est à Paris : sans fuseau, une collecte de 4 h s'affiche « 02:00 » en été.
-2. **Ce qui se calcule ne se stocke pas.** Pas de colonne `duree` (`terminee_a -
-   demarree_a`), pas de date de collecte sur l'offre (le lien vers l'exécution la porte).
-3. **`NULL` ≠ `false`.** `NULL` veut dire « non renseigné », `false` veut dire « renseigné
-   à non ». Un `default false` sur un champ souvent absent fabrique de la donnée qui
-   n'existe pas.
-4. **La ligne d'`executions_veille` s'écrit au démarrage** (`issue = 'en_cours'`), se
-   complète à la fin. Une ligne restée `en_cours` est une exécution tuée net : le pipeline
-   les referme en `echec` à son démarrage suivant, et **un `en_cours` ne compte jamais
-   comme une réussite** côté interface.
-5. **`offres.charge_brute` est une archive, jamais lue pour afficher.** Elle existe parce
-   que France Travail dépublie ses offres. Les colonnes extraites sont les seules valeurs
+   navigateur est à Paris : sans fuseau, une collecte de 4 h s'affiche « 02:00 ».
+2. **Ce qui se calcule ne se stocke pas.** Pas de colonne `duree`, pas de date de
+   collecte sur l'offre (le lien vers l'exécution la porte).
+3. **`NULL` ≠ `false`.** `NULL` = « non renseigné », `false` = « renseigné à non ».
+   Un `default false` sur un champ souvent absent fabrique de la donnée qui n'existe
+   pas.
+4. **La ligne d'`executions_veille` s'écrit au démarrage** (`issue = 'en_cours'`),
+   se complète à la fin. Une ligne restée `en_cours` est une exécution tuée net : le
+   pipeline les referme en `echec` à son démarrage suivant, et **un `en_cours` ne
+   compte jamais comme une réussite** côté interface.
+5. **`offres.charge_brute` est une archive, jamais lue pour afficher.** Elle existe
+   parce que France Travail dépublie. Les colonnes extraites sont les seules valeurs
    de travail.
-6. **`contact_nom` et `contact_url_postulation` sont en colonnes nommées**, jamais dans
-   `charge_brute` — pour rester repérables et supprimables. Tout le reste du champ
-   `contact` est **écarté à la collecte**, avant écriture. Voir `docs/PRD.md`
-   § « Données personnelles ».
-7. ⚠️ **`executions_veille.etape` n'est pas du rangement, c'est un correctif de bug.**
-   `derniere_execution_reussie()` borne la fenêtre de collecte sur la dernière ligne
-   `issue = 'reussite'`. Sans le filtre `etape = 'collecte'`, une notation réussie à 14 h
-   ferait repartir la collecte de la nuit suivante de 14 h au lieu de la veille : **les offres
-   publiées entre les deux seraient perdues, sans la moindre erreur** — ni exception, ni job
-   rouge. `derniere_execution_reussie()` et `recoller_offres_orphelines()` filtrent dessus.
-   Vérifié en plantant une notation réussie datée de maintenant : la fenêtre ne bouge pas.
-8. **`NULL` sur une note veut dire « pas encore notée », jamais « zéro ».** Trois contraintes
-   rendent physiquement impossible d'écrire une note sans sa justification — le plancher
-   d'accessibilité interdit qu'une information tienne sur la seule couleur, et une règle gravée
-   dans le moteur vaut mieux qu'une discipline de code. `notation_tentatives` borne la
-   facturation : sans compteur, une offre qui fait systématiquement échouer l'appel serait
-   retentée chaque nuit, payante à chaque fois.
+6. **`contact_nom` et `contact_url_postulation` sont en colonnes nommées**, jamais
+   dans `charge_brute` — pour rester repérables et supprimables. Tout le reste du
+   champ `contact` est **écarté à la collecte**, avant écriture.
+7. ⚠️ **`executions_veille.etape` n'est pas du rangement, c'est un correctif de
+   bug.** Sans le filtre `etape = 'collecte'`, une notation réussie à 14 h ferait
+   repartir la collecte de la nuit suivante de 14 h au lieu de la veille : **les
+   offres publiées entre les deux seraient perdues, sans la moindre erreur** — ni
+   exception, ni job rouge.
+8. **`NULL` sur une note veut dire « pas encore notée », jamais « zéro ».** Trois
+   contraintes rendent physiquement impossible d'écrire une note sans sa
+   justification — le plancher d'accessibilité interdit qu'une information tienne
+   sur la seule couleur, et une règle gravée dans le moteur vaut mieux qu'une
+   discipline de code. `notation_tentatives` borne la facturation : sans compteur,
+   une offre qui fait systématiquement échouer l'appel serait retentée chaque nuit,
+   payante à chaque fois.
 
-**Autorisation — deux verrous indépendants, vérifiés :** RLS activé sans aucune politique,
-*et* tous droits retirés à `anon` et `authenticated`. Une politique ajoutée par erreur
-n'ouvrirait donc toujours rien. Seul `service_role` (la clé `sb_secret_…`) a des droits.
+**Autorisation — deux verrous indépendants, vérifiés** : RLS activé sans aucune
+politique, *et* tous droits retirés à `anon` et `authenticated`. Une politique
+ajoutée par erreur n'ouvrirait donc toujours rien. Seul `service_role` (la clé
+`sb_secret_…`) a des droits.
+**La colonne qui dit à qui la donnée appartient : aucune, délibérément** — un seul
+utilisateur, une seule porte ; une telle colonne porterait la même valeur partout et
+donnerait l'illusion d'un contrôle.
 
 ## Stack
 
 Tranchée le 16 août 2026. Justifications dans `docs/DECISIONS.md` § 3.
 
-- **Python 3.11+** pour le pipeline, environnement virtuel dédié (voir Commandes).
-- **Supabase** (Postgres hébergé) pour la persistance. **Pas SQLite** : une
-  interface hébergée ne peut pas lire un fichier posé sur le Mac de Maxime.
-- **Next.js + shadcn/ui sur Vercel** pour l'interface.
-- **GitHub Actions** (cron) pour le déclenchement quotidien — 6 h de durée par
-  exécution contre 300 s chez Vercel, gratuit et illimité sur dépôt public, et le
-  workflow est versionné donc visible d'un recruteur.
-  ⚠️ **Ne pas justifier ce choix par « Vercel ne fait pas de Python » : c'est faux.**
-  Vercel exécute du Python et propose des sandboxes conçus pour les agents, démarrant
-  en millisecondes. Ce qu'on laisse sur la table, c'est la latence au clic sur
-  « Enrichir » — un arbitrage assumé, pas une impossibilité technique.
-- **API France Travail** Offres d'emploi v2 · **API Anthropic** pour l'évaluation.
+- **Python 3.11+** pour le pipeline, environnement virtuel dédié.
+- **Supabase** (Postgres hébergé). **Pas SQLite** : une interface hébergée ne peut
+  pas lire un fichier posé sur le Mac de Maxime.
+- **Next.js 16 + shadcn/ui sur Vercel** pour l'interface. ⚠️ Next 16 a renommé
+  `middleware.ts` en `proxy.ts` (et `config` en `proxyConfig`) : **avant d'écrire du
+  Next.js, s'appuyer sur la skill `next-best-practices`** plutôt que sur des
+  réflexes de Next 14.
+- **GitHub Actions** (cron) pour le déclenchement quotidien — 6 h par exécution
+  contre 300 s chez Vercel, gratuit sur dépôt public, et le workflow est versionné
+  donc visible d'un recruteur.
+  ⚠️ **Ne pas justifier ce choix par « Vercel ne fait pas de Python » : c'est
+  faux.** Vercel exécute du Python et propose des sandboxes conçus pour les agents.
+  Ce qu'on laisse sur la table, c'est la latence au clic sur « Enrichir » — un
+  arbitrage assumé, pas une impossibilité technique.
+- **API France Travail** Offres d'emploi v2 · **`claude-sonnet-5`** pour la notation
+  (cache de prompt + Batches) · **Claude Agent SDK** pour l'enrichissement.
+
+**Routes** : `/` le compte rendu de la nuit · `/offres` le poste de travail (filtre
+de statut dans l'adresse) · `/offres/[identifiant]` la fiche · `/connexion` la
+porte. L'identifiant est celui de France Travail, **validé avant d'atteindre la
+base**.
+
+**Enrichissement** : **exclusivement manuel** — rien ne s'enrichit sans un clic.
+Une **enveloppe quotidienne de 300 000 tokens** borne la dépense : fichier de
+configuration versionné, **vérifiée côté serveur**, calculée en sommant les traces
+du jour et non dans un compteur qui divergerait. **La notation nocturne n'y entre
+pas** — la borner ferait rater des offres un matin de forte collecte.
 
 ## Commandes
 
 Le `python3` par défaut de cette machine est celui d'Anaconda (`/opt/anaconda3`).
-**Ne pas installer les dépendances du projet dedans** — elles se mélangeraient à
-l'installation Anaconda globale et deviendraient impossibles à démêler.
+**Ne pas installer les dépendances du projet dedans.**
 
 ```bash
 python3 -m venv .venv          # une seule fois
@@ -538,405 +439,249 @@ pip install -r requirements.txt
 which python                   # doit afficher .../veille-offres-emploi-ia/.venv/bin/python
 ```
 
-Si `which python` pointe vers `/opt/anaconda3`, l'environnement n'est pas activé
-et toute installation partira au mauvais endroit. `.venv/` est exclu par le
-`.gitignore`.
-
-### Lancer le pipeline
-
 ```bash
-source .venv/bin/activate
-python -m pipeline.collecte                   # la collecte nocturne : fenêtre automatique
-python -m pipeline.collecte --sans-ecrire     # tout sauf l'écriture, pour vérifier sans risque
-python -m pipeline.collecte --depuis-jours 7  # remplissage manuel, N strictement positif
-```
+python -m pipeline.collecte                   # fenêtre automatique depuis la dernière réussite
+python -m pipeline.collecte --sans-ecrire     # tout sauf l'écriture
+python -m pipeline.collecte --depuis-jours 7  # remplissage manuel
 
-Code de sortie **0** = réussite, **1** = échec — c'est lui qui fera rougir le job GitHub
-Actions. La trace part en base dans `executions_veille`, dans les deux cas.
-
-⚠️ **Les critères de collecte sont des données, pas du code** : `pipeline/mots_cles.txt` et
-`pipeline/codes_rome.txt`. Ils s'éditent sans toucher aux modules — mais **jamais sans
-mesurer d'abord ce que le nouveau terme ramène** (voir § Collecte).
-
-### Lancer la notation
-
-```bash
-source .venv/bin/activate
 python -m pipeline.notation --sans-appeler --limite 1   # GRATUIT : affiche le prompt, compte les tokens
-python -m pipeline.notation --limite 15                 # note 15 offres, appels directs
-python -m pipeline.notation --derniere-collecte         # LE MODE DU CRON : que les offres de la dernière collecte
-python -m pipeline.notation --lot                       # via l'API Batches : moitié prix, jusqu'à 1 h annoncée
-python -m pipeline.notation --sans-ecrire --limite 1    # appelle le modèle, n'écrit rien en base
+python -m pipeline.notation --derniere-collecte         # LE MODE DU CRON
+python -m pipeline.notation --lot                       # via l'API Batches : moitié prix
+python -m pipeline.notation --sans-ecrire --limite 1    # appelle le modèle, n'écrit rien
 ```
 
-⚠️ **Tout ce qui n'est pas `--sans-appeler` est FACTURÉ. Prévenir Maxime avant, toujours**,
-avec le nombre d'appels et l'ordre de grandeur (~0,6 centime par offre, cache chaud).
-`models.list()` et `count_tokens()` sont gratuits — s'en servir librement.
+Code de sortie **0** = réussite, **1** = échec — c'est lui qui fait rougir le job
+GitHub Actions. La trace part en base dans `executions_veille`, dans les deux cas.
 
-**Les drapeaux de mesure** — liste complète dans `--help`, deux portent une leçon :
+⚠️ **Tout ce qui n'est pas `--sans-appeler` est FACTURÉ. Prévenir Maxime avant,
+toujours**, avec le nombre d'appels et l'ordre de grandeur (~0,6 centime par offre,
+cache chaud). `models.list()` et `count_tokens()` sont gratuits.
 
-- ⚠️ **`--au-hasard`** tire l'échantillon au sort au lieu de prendre les plus récentes. Sans
-  lui, une « mesure » porte sur une seule journée de collecte et ne dit rien du gisement.
-- ⚠️ **`--renoter`** reprend les offres **déjà notées**, et il est **MIS DE CÔTÉ depuis le
-  26 août 2026** : il a servi à régler `criteres_pertinence.txt` en itérant sur les mêmes
-  offres, ce travail est fait, et une offre n'est désormais notée **qu'une seule fois**. Le
-  drapeau reste en place pour le jour où un barème changera vraiment.
-  ⚠️ **Il porte un bug connu, à corriger avant de le ressortir** — l'analyse complète est en
-  commentaire dans `pipeline/notation.py`, juste au-dessus de `apercevoir()`, c'est-à-dire là
-  où on tombera dessus. Résumé : un échec de renotation viole `echec_sans_note` (400), et le
-  correctif n'est **pas** d'effacer la note existante mais de n'écrire aucun motif.
+**Trois drapeaux portent une leçon** — liste complète dans `--help` :
 
-- ⚠️ **`--derniere-collecte`** restreint la notation aux offres de la **dernière collecte
-  réussie** — c'est le mode du cron nocturne, et c'est lui qui borne la dépense à ce qui vient
-  d'arriver. Il résout l'identifiant **par la base**, jamais par un canal GitHub Actions : les
+- ⚠️ **`--au-hasard`** tire l'échantillon au sort au lieu de prendre les plus
+  récentes. Sans lui, une « mesure » porte sur une seule journée de collecte.
+- ⚠️ **`--derniere-collecte`** restreint la notation aux offres de la dernière
+  collecte réussie : c'est lui qui borne la dépense à ce qui vient d'arriver. Il
+  résout l'identifiant **par la base**, jamais par un canal GitHub Actions, donc les
   deux étapes restent lançables séparément et dans n'importe quel ordre.
-  ⚠️ Il s'exclut de `--collecte` et de `--renoter`, et le CLI refuse les combinaisons plutôt
-  que d'en privilégier une en silence.
-- ⚠️ **`--sans-appeler` reçoit les mêmes filtres que la notation réelle depuis le 26 août.**
-  Avant, `--sans-appeler --rome H1206` affichait le prompt d'une offre **quelconque** sans
-  rien signaler : un aperçu qui ne montre pas l'offre qu'on s'apprête à envoyer est pire que
-  pas d'aperçu.
+- ⚠️ **`--renoter` est MIS DE CÔTÉ depuis le 26 août** : il a servi à régler
+  `criteres_pertinence.txt` en itérant sur les mêmes offres, ce travail est fait, et
+  une offre n'est désormais notée **qu'une seule fois**. Il porte un bug connu, dont
+  l'analyse est en commentaire dans `pipeline/notation.py` au-dessus de
+  `apercevoir()` — c'est-à-dire là où on tombera dessus.
 
 **La recette de mesure d'un critère**, celle qui a fait tomber les codes ROME :
-
-1. Volume brut contre l'API (gratuit) — combien d'offres sur 30 jours.
-2. **Volume NET** — combien que les autres critères ne trouvent pas déjà. Un critère à fort
-   volume et apport net nul est inutile ; c'est le piège dans lequel `M1889` est tombé.
-3. Collecter, puis `--au-hasard` sur un échantillon, puis lire les notes. **Le volume ne dit
-   rien de la qualité** — `H1206` ramenait 238 offres/mois pour zéro au-dessus de 30.
-
-### Migrations Supabase
-
-⚠️ **Procédure complète dans `docs/HEBERGEMENT.md` § Migrations Supabase** — commandes
-`npx supabase`, validation par l'analyseur de PostgreSQL, et les deux pièges qui bloquent
-ou exposent le mot de passe. **Deux règles restent ici parce qu'elles se perdraient :**
-
-- **Une migration déjà appliquée ne se modifie jamais.** On corrige par une suivante.
-- ⚠️ **Syntaxe valide ne veut pas dire « ça marche ».** Le 20 août, une migration
-  irréprochable a créé deux tables que le serveur ne pouvait pas lire. **Après chaque
-  migration : tenter de lire, d'écrire, et de violer chaque contrainte.**
-
-## API France Travail
-
-⚠️ **Avant d'écrire une ligne du client de collecte, lire
-`docs/API_FRANCE_TRAVAIL.md`.** Les paramètres d'authentification, de pagination
-et de quota y sont **vérifiés en conditions réelles** — ne pas les rechercher à
-nouveau, ne pas les improviser. Les pièges qui font échouer *silencieusement* y
-sont documentés avec leur symptôme : scope exact, identifiants dans le corps et
-non en en-tête Basic, HTTP 206 sur réponse partielle, plafond de pagination,
-déduplication sur l'identifiant de l'offre.
-
-## La partie IA — la frontière est la décision centrale
-
-**Décision de Maxime (15 août 2026) : le Claude Agent SDK est retenu, et
-l'objectif d'apprentissage prime.** Ne pas rouvrir cette décision.
-
-Les deux outils coexistent dans ce projet, et les confondre est l'erreur à ne pas
-commettre :
-
-| | Ce que c'est | Ce qu'il fait ici |
-|---|---|---|
-| `claude-agent-sdk` | Claude Code en bibliothèque : boucle d'agent, outils Read/Write/Edit/Bash/Glob/Grep/WebSearch/WebFetch, MCP, sous-agents, permissions | L'enrichissement : une tâche ouverte et multi-étapes sur les offres retenues |
-| `anthropic` (API Messages) | Un appel, une réponse structurée | La notation en volume : une offre → deux notes |
-
-**Le placement de cette frontière est l'argument d'entretien le plus fort du
-projet.** Un agent posé sur une classification — une entrée, une sortie, aucune
-exploration — est plus lent, plus cher et non déterministe pour aucun gain, et un
-lead technique qui connaît le SDK le verra. Un agent posé sur une tâche ouverte
-— chercher l'entreprise, lire son site, croiser, rédiger une fiche — est
-exactement ce pour quoi le SDK existe.
-
-Découpage en trois étapes (collecte / notation / enrichissement) : voir le README
-et `docs/DECISIONS.md` § 3. **Validé au cadrage du 16 août 2026** — le comportement
-produit de l'enrichissement est fixé dans `docs/PRD.md`.
-
-⚠️ **Avant d'écrire du code Agent SDK, lire la documentation officielle**
-(`code.claude.com/docs/en/agent-sdk`). La référence `/claude-api` couvre l'API
-Messages et les Managed Agents — **pas** le Agent SDK. Improviser sa surface
-d'API produit du code faux. Le SDK fournit la boucle d'agent et les outils,
-**pas l'hébergement**.
-
-⚠️ **Avant d'écrire du code appelant l'API Anthropic, charger `/claude-api`.**
-Les identifiants de modèles et les paramètres changent ; un identifiant inventé
-renvoie une 404.
+volume brut contre l'API (gratuit) → **volume NET** (ce que les autres critères ne
+trouvent pas déjà ; un critère à fort volume et apport net nul est inutile) →
+collecte, puis `--au-hasard` sur un échantillon, puis lecture des notes. **Le volume
+ne dit rien de la qualité.**
 
 ## Sécurité — non négociable
 
 Les clés de ce projet donnent accès à un compte facturé et à une base de données.
 
-1. **Aucune clé en clair dans le code, jamais.** Les secrets vivent dans `.env`,
-   lu via `os.environ`. `.env` est exclu par le `.gitignore` — vérifier la sortie
-   de `git status` avant chaque commit ; si `.env` y apparaît, s'arrêter.
-2. **Aucune clé dans la conversation, les logs ou un message d'erreur.** Un
-   `print(config)` qui affiche le jeton finit dans un terminal, une capture
-   d'écran, un dépôt public.
-   ⚠️ **Y compris par la sélection dans l'éditeur.** Quand un fichier est ouvert dans
-   l'IDE, **le texte sélectionné m'est transmis automatiquement**. Le 21 août 2026, une
-   sélection dans `interface/.env.local` a fait entrer `MOT_DE_PASSE_SITE` dans la
-   conversation. Ce n'est pas une faute d'inattention, c'est le fonctionnement normal de
-   l'intégration — donc la parade est une habitude, pas de la vigilance :
-   **ne jamais demander à Maxime d'ouvrir un fichier de secrets, ni de recopier une
-   valeur.** Quand il lui en faut une, la déposer dans son presse-papiers
-   (`grep '^NOM=' fichier | cut -d= -f2- | tr -d '\n' | pbcopy`) : rien ne s'affiche,
-   rien ne transite.
-3. **Le dépôt est public.** Des robots scannent GitHub en continu à la recherche
-   de clés commitées et les exploitent en minutes, aux frais du propriétaire. Une
-   clé poussée par erreur reste dans l'historique Git même après suppression du
-   fichier : la **révoquer**, pas seulement la supprimer.
-4. **Supabase : la clé secrète (`sb_secret_…`, `SUPABASE_SECRET_KEY`) contourne *toutes*
-   les règles de sécurité** — jamais dans une variable `NEXT_PUBLIC_*`, jamais dans un
-   composant client, jamais commitée. RLS activé sur toutes les tables, et **le navigateur
-   ne parle jamais directement à Supabase** : tout passe par le serveur.
-   ⚠️ Les deux générations de clés et celles restées actives à tort :
-   `docs/HEBERGEMENT.md` § Les clés Supabase.
-5. **Aucun déclenchement d'agent accessible publiquement sans garde-fou.** Un
-   bouton en ligne qui lance un agent Claude sans protection est une facture
-   ouverte : un robot qui scanne les URL peut l'actionner en boucle. Tranché au
-   cadrage : le site entier est derrière un mot de passe unique vérifié **côté
-   serveur**, couvrant les pages *et* les adresses servant des données — protéger
-   la page en laissant l'adresse de données ouverte ne protège rien.
-   ⚠️ **Posé le 21 août, trois règles opposables :**
-   - **Toute page et toute action serveur appelle `exigerSession()`
-     (`interface/lib/acces.ts`) en première ligne** — seule exception, `connecter()`
-     qui *est* la porte. Le proxy est la commodité, `exigerSession()` est la serrure.
-     ⚠️ **La raison la plus concrète n'est pas la CVE-2025-29927** : une action
-     serveur s'invoque par un `POST` avec en-tête `Next-Action` sur une route, et
-     `/connexion` est la seule que le proxy laisse passer sans cookie. Une action
-     déclarée là s'exécuterait sans session, **sans rien contourner**.
-     **Mesuré le 21 août** : Next 16 refuse d'exécuter sur `/connexion` une action
-     déclarée dans une autre route (manifeste par route) — mais ça se rouvre dès
-     qu'un composant partagé rendu par `/connexion` importera une action sensible,
-     et ce cloisonnement n'est pas un contrat de sécurité documenté.
-   - **Ne jamais ajouter de `matcher` à `proxy.ts`.** Il protège *tout* par défaut ;
-     les trois exceptions sont dans le code. Un matcher rouvrirait la question à
-     chaque adresse ajoutée.
-   - **Un `POST` d'action serveur ne se redirige jamais** : le proxy lui répond
-     **401**. Redirigé, le navigateur suit jusqu'à `/connexion`, reçoit un corps
-     vide, et le bouton cliqué ne fait *rien du tout* — sans erreur ni renvoi vers
-     la porte. Cas réel : session expirée la nuit, onglet resté ouvert.
-   - **`import "server-only"` en tête de tout module qui lit un secret.** Sans lui,
-     un composant client peut importer le module et tirer `node:crypto` dans le
-     graphe du navigateur ; la panne est alors incompréhensible.
-   - **Les secrets du site vivent dans `interface/.env.local`**, pas dans le `.env`
-     de la racine, qui appartient au pipeline Python. Deux périmètres, deux fichiers.
-     ⚠️ **Un agent de revue qui lance l'app écrit dans ce fichier** — c'est arrivé le
-     21 août, les secrets ont dû être régénérés. Ne jamais y laisser l'unique copie
-     d'une valeur.
-6. **Données personnelles : périmètre restreint et explicite.** Les offres sont
-   publiques ; les coordonnées de contact qu'elles contiennent parfois ne le sont
-   pas au sens du RGPD. **Deux champs seulement sont conservés**, parce qu'ils
-   servent directement à candidater : `contact.nom` et `contact.urlPostulation`.
-   Adresses postales (`coordonnees1/2/3`), courriels et tout autre élément
-   d'identification sont **écartés à la collecte, avant écriture** — jamais
-   filtrés à l'affichage : filtré à l'affichage, un champ est quand même en base
-   et dans les journaux. Ces deux champs vivent en **colonnes nommées, jamais
-   dans l'archive JSON brute** — une colonne se cherche, s'exclut d'un export et
-   se vide d'une requête ; noyée dans un bloc JSON, la donnée voyage partout où
-   le bloc voyage. ⚠️ **Ils s'affichent sur la fiche d'une offre depuis le 28 août
-   2026** — décision de Maxime : le site est derrière son mot de passe et n'a
-   qu'un utilisateur, et ces champs n'existent que pour candidater. **Le reste
-   de la règle tient** : jamais dans un journal — ceux de GitHub Actions sont
-   **publics** — ni dans un export, ni sur une page publique, ni dans la liste
-   `/offres`, qui ne les lit pas. Les notes personnelles ajoutées par Maxime sur une offre relèvent de
-   la même règle — ne pas les exposer, ne pas les journaliser, ne pas les faire
-   sortir de la base.
-   ⚠️ **Tranché le 20 août 2026 sur mesure, pas sur intuition** : sur 235 offres
-   réelles, `contact.courriel` ne contient **aucune adresse** (le champ porte une
-   phrase), `contact.nom` est présent sur 9 % des offres et ne nomme une personne
-   que dans 3 % des cas. La règle absolue précédente (« pas de données
-   personnelles ») interdisait aussi `urlPostulation`, qui n'en est pas une.
+1. **Aucune clé en clair dans le code, jamais.** Les secrets vivent dans `.env`, lu
+   via `os.environ`, exclu par le `.gitignore` — vérifier `git status` avant chaque
+   commit ; si `.env` y apparaît, s'arrêter.
+2. **Aucune clé dans la conversation, les logs ou un message d'erreur.**
+   ⚠️ **Y compris par la sélection dans l'éditeur.** Quand un fichier est ouvert
+   dans l'IDE, **le texte sélectionné m'est transmis automatiquement** ; le 21 août,
+   une sélection dans `interface/.env.local` a fait entrer `MOT_DE_PASSE_SITE` dans
+   la conversation. Ce n'est pas une inattention, c'est le fonctionnement normal de
+   l'intégration — donc la parade est une habitude : **ne jamais demander à Maxime
+   d'ouvrir un fichier de secrets, ni de recopier une valeur.** Quand il lui en faut
+   une, la déposer dans son presse-papiers
+   (`grep '^NOM=' fichier | cut -d= -f2- | tr -d '\n' | pbcopy`).
+3. **Le dépôt est public.** Des robots scannent GitHub en continu et exploitent les
+   clés commitées en minutes. Une clé poussée par erreur reste dans l'historique Git
+   après suppression du fichier : la **révoquer**, pas seulement la supprimer.
+4. **La clé secrète Supabase (`sb_secret_…`) contourne *toutes* les règles de
+   sécurité** — jamais dans une variable `NEXT_PUBLIC_*`, jamais dans un composant
+   client, jamais commitée. **Le navigateur ne parle jamais directement à Supabase.**
+5. ⚠️ **Aucune variable `NEXT_PUBLIC_` sur ce projet** : ce préfixe publie la valeur
+   dans le code source de la page sans le moindre message d'erreur.
+6. **Chez Vercel, exactement 4 variables** : `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
+   `MOT_DE_PASSE_SITE`, `SECRET_SESSION`. Ni la clé Anthropic ni les identifiants
+   France Travail — le pipeline tourne chez GitHub Actions, et les garder offrirait
+   une clé facturée à qui entrerait dans le compte.
+7. **`interface/.env.local` détient l'unique copie des deux secrets du site**, non
+   versionné, nulle part ailleurs. ⚠️ **Un agent de revue qui lance l'app écrit dans
+   ce fichier** — c'est arrivé le 21 août, les secrets ont dû être régénérés.
+8. ⚠️ **Pour regarder l'app sans jamais lire le mot de passe réel** : relancer le
+   serveur avec `MOT_DE_PASSE_SITE='une-valeur-de-test' npm run dev`. Next.js ne
+   remplace **jamais** une variable déjà présente dans l'environnement, donc la
+   valeur de test l'emporte sur `.env.local` **sans y toucher** — vérifié par
+   empreinte MD5 avant et après.
+
+**Quatre règles d'accès, posées le 21 août :**
+
+- **Toute page et toute action serveur appelle `exigerSession()`
+  (`interface/lib/acces.ts`) en première ligne** — seule exception, `connecter()`
+  qui *est* la porte. Le proxy est la commodité, `exigerSession()` est la serrure.
+  ⚠️ **La raison la plus concrète n'est pas la CVE-2025-29927** : une action serveur
+  s'invoque par un `POST` avec en-tête `Next-Action` sur une route, et `/connexion`
+  est la seule que le proxy laisse passer sans cookie. Une action déclarée là
+  s'exécuterait sans session, **sans rien contourner**.
+- **Ne jamais ajouter de `matcher` à `proxy.ts`.** Il protège *tout* par défaut ;
+  les trois exceptions sont dans le code. Un matcher rouvrirait la question à chaque
+  adresse ajoutée.
+- **Un `POST` d'action serveur ne se redirige jamais** : le proxy lui répond
+  **401**. Redirigé, le navigateur suit jusqu'à `/connexion`, reçoit un corps vide,
+  et le bouton cliqué ne fait *rien du tout* — sans erreur ni renvoi vers la porte.
+  Cas réel : session expirée la nuit, onglet resté ouvert.
+- **`import "server-only"` en tête de tout module qui lit un secret.** Sans lui, un
+  composant client peut l'importer et tirer `node:crypto` dans le graphe du
+  navigateur ; la panne est alors incompréhensible.
+
+**Données personnelles : périmètre restreint et explicite.** Les offres sont
+publiques ; les coordonnées qu'elles contiennent parfois ne le sont pas au sens du
+RGPD. **Deux champs seulement sont conservés**, parce qu'ils servent directement à
+candidater : `contact.nom` et `contact.urlPostulation`. Adresses postales,
+courriels et tout autre élément d'identification sont **écartés à la collecte, avant
+écriture** — jamais filtrés à l'affichage : filtré à l'affichage, un champ est quand
+même en base et dans les journaux.
+⚠️ **Tranché sur mesure, pas sur intuition** : sur 235 offres réelles,
+`contact.courriel` ne contient **aucune adresse**, `contact.nom` est présent sur 9 %
+des offres et ne nomme une personne que dans 3 % des cas.
+⚠️ **Ils s'affichent sur la fiche depuis le 28 août** — décision de Maxime : le site
+est derrière son mot de passe et n'a qu'un utilisateur. **Le reste tient** : jamais
+dans un journal — ceux de GitHub Actions sont **publics** — ni dans un export, ni
+dans la liste `/offres`. **Les notes personnelles de Maxime relèvent de la même
+règle.**
 
 Si un secret a déjà été commité : le révoquer côté France Travail / Anthropic /
 Supabase **avant** de nettoyer l'historique. Le nettoyage seul ne protège rien.
+
+## La partie IA — la frontière est la décision centrale
+
+**Décision de Maxime (15 août 2026) : le Claude Agent SDK est retenu, et l'objectif
+d'apprentissage prime.** Ne pas rouvrir.
+
+Les deux outils coexistent, et les confondre est l'erreur à ne pas commettre :
+
+| | Ce que c'est | Ce qu'il fait ici |
+|---|---|---|
+| `claude-agent-sdk` | Claude Code en bibliothèque : boucle d'agent, outils, MCP, sous-agents, permissions | L'enrichissement : une tâche ouverte et multi-étapes |
+| `anthropic` (API Messages) | Un appel, une réponse structurée | La notation en volume : une offre → deux notes |
+
+**Le placement de cette frontière est l'argument d'entretien le plus fort du
+projet.** Un agent posé sur une classification — une entrée, une sortie, aucune
+exploration — est plus lent, plus cher et non déterministe pour aucun gain, et un
+lead technique qui connaît le SDK le verra. Un agent posé sur une tâche ouverte —
+chercher l'entreprise, lire son site, croiser, rédiger une fiche — est exactement ce
+pour quoi le SDK existe.
+
+⚠️ **Avant d'écrire du code Agent SDK, lire la documentation officielle**
+(`code.claude.com/docs/en/agent-sdk`). La référence `/claude-api` couvre l'API
+Messages et les Managed Agents — **pas** le Agent SDK.
+⚠️ **Avant d'écrire du code appelant l'API Anthropic, charger `/claude-api`.** Les
+identifiants de modèles changent ; un identifiant inventé renvoie une 404.
+⚠️ **Mesure à retenir sur les Batches** : `cache_lecture` = 7 430 sur un lot de 3
+offres, contre **zéro** sur un lot d'une seule — les Batches ne sont rentables qu'à
+plusieurs, sinon on paie l'écriture du cache sans jamais le relire.
+
+## Design
+
+**Ce qu'on retient** : un instrument de décision, pas un tableau de bord. On voit
+tout de suite quoi lire en premier, et pourquoi. **Direction** : éditorial
+technique — chaud dans la matière (beige papier, serif, encre brune), froid dans la
+précision (densité, chasse fixe, filets).
+
+**Polices** : titrage **Fraunces 700** · texte et interface **Geist** · données et
+code **Geist Mono**. Le serif ne descend jamais sous 20 px.
+**Icônes** : **lucide**, figé à l'installation. **Ne jamais en mélanger un second.**
+**Jetons** : `interface/app/globals.css` est la source de vérité. Jamais de couleur
+en dur, toujours les jetons sémantiques.
+
+**Quatre teintes de signal, un rôle chacune** : brun-encre = action principale et
+note d'intérêt · ocre = le temporel (« nouveau », enregistrement en cours) · olive =
+accessibilité et candidaté · brique = erreur et écarté. **Une teinte qui sert à deux
+choses ne sert plus à rien** — d'où le refus d'un « Enregistré » vert pour la note.
+
+⚠️ **Trois pièges qui ne se voient pas à l'œil** (détail dans `docs/DESIGN.md`) :
+`--border` (filet décoratif, sans exigence) n'est pas `--input` (bordure de champ,
+3:1 obligatoire) · `--accent` chez shadcn est la surface de survol, pas une couleur
+vive · l'ocre existe en deux valeurs parce qu'il doit être clair sous un texte foncé
+et foncé dans une jauge.
+
+⚠️ **shadcn pose des ombres par défaut** sur `Card`, `Popover` et les menus. Les
+retirer : ce produit n'a **aucune ombre**, uniquement des filets. La hiérarchie
+repose donc entièrement sur la typographie.
+
+⚠️ **Le libellé devant chaque barre de note ne se retire jamais**, même pour gagner
+de la place : sans lui l'information tient sur la seule couleur. En toutes lettres —
+**« Intérêt » et « Accessibilité »**. ⚠️ « intérêt », jamais « intéressement » : à
+côté d'un salaire, le second se lit comme une prime de participation.
+
+**Interdits** : Inter, Roboto, Poppins, Montserrat, Space Grotesk · Instrument Serif
+(un seul poids, le gras y est synthétique) · dégradé violet · boutons en dégradé ·
+trois colonnes d'icônes dans des ronds colorés · tout centré · arrondis en bulle ·
+`system-ui` en titrage.
+
+**Plancher d'accessibilité, opposable** : texte 4,5:1 · interface 3:1 · focus
+clavier toujours visible · mouvement coupé sous `prefers-reduced-motion` · jamais
+l'information par la seule couleur. Un choix qui casse ça est un défaut, pas un
+parti pris. **Recalculer les contrastes à chaque changement de couleur.**
+
+**Mise en page figée le 26 août** : `--largeur-page: 1000px`. Le seuil n'est pas un
+arrondi : en dessous, les offres **qui affichent un salaire** cassent sur deux
+lignes.
+⚠️ **La fiche est en COLONNE UNIQUE, et la question se rouvre en phase 6.** Le
+`DESIGN.md` prévoyait deux colonnes, la droite portant l'enrichissement — qui
+n'existe pas avant la phase 6. Ne pas y repasser tant qu'il n'y a rien à mettre à
+droite.
+
+⚠️ **Le contenu de test est du contenu RÉEL, en base — à utiliser plutôt qu'à
+réinventer** : `docs/PLAN.md` § Contenu de test. **Un fait à ne pas redécouvrir** :
+le vide est le cas normal (36 % sans entreprise, 65 % sans salaire, mais le lieu
+toujours renseigné).
+
+**Détail et justifications** : `docs/DESIGN.md`.
 
 ## Convention de travail
 
 - Français partout : messages de commit, docstrings, noms de variables métier
   (`offres_pertinentes`, pas `relevant_offers`).
-- Un module = une responsabilité. `client_france_travail.py`, `evaluation.py`,
-  `stockage.py`, `synthese.py` — pas de `main.py` de 400 lignes.
+- Un module = une responsabilité. Pas de `main.py` de 400 lignes.
 - Toute fonction qui appelle le réseau gère explicitement l'échec. Pas de
   `try/except` nu qui avale l'erreur.
 
 ### Capitaliser les notions apprises
 
-Quand Maxime demande de noter une notion technique comprise en séance, elle va dans
-**`~/Documents/Coffre Obsidian/Maxime M/Apprentissage/`**, **dans le sous-dossier du sujet**
-(`Supabase/`, `Outillage/`… — lister le dossier avant d'écrire, il en crée au fil de l'eau).
-Pas dans `docs/` : `docs/` porte le projet, ce dossier porte le savoir transférable.
+Quand Maxime demande de noter une notion comprise en séance, elle va dans
+**`~/Documents/Coffre Obsidian/Maxime M/Apprentissage/`**, **dans le sous-dossier du
+sujet** (lister le dossier avant d'écrire). Pas dans `docs/` : `docs/` porte le
+projet, ce dossier porte le savoir transférable.
 
-**Une notion = un fichier.** Ne jamais grouper deux sujets parce qu'ils sont tombés dans la
-même conversation : ils ne se relisent pas au même moment. *(Erreur commise le 20 août avec
-« CLI, MCP et migrations », découpée en deux à sa demande.)*
+**Une notion = un fichier.** Ne jamais grouper deux sujets parce qu'ils sont tombés
+dans la même conversation : ils ne se relisent pas au même moment. **Concises**, il
+en aura beaucoup. Frontmatter `title` / `tags` / `aliases` · un callout
+`> [!tip] En une phrase` en tête · tableaux et blocs de code plutôt que des
+paragraphes · un `> [!danger] Le piège` à la fin · wikilinks vers les autres notes.
+**Les tags portent ce que les dossiers ne peuvent pas** — la sécurité traverse la
+base, le serveur et le navigateur.
 
-**Concises**, il en aura beaucoup. Frontmatter `title` / `tags` / `aliases` · un callout
-`> [!tip] En une phrase` en tête · tableaux et blocs de code plutôt que des paragraphes ·
-un `> [!danger] Le piège` à la fin · wikilinks vers les autres notes.
-
-**Les tags portent ce que les dossiers ne peuvent pas** — la sécurité traverse la base, le
-serveur et le navigateur. Un dossier par sujet principal, plusieurs tags par note.
-
-La version *projet* de la même notion (pourquoi **ce** projet a tranché ainsi) reste dans
-`docs/DECISIONS.md`. Les deux se complètent, aucune ne remplace l'autre.
+La version *projet* de la même notion reste dans `docs/DECISIONS.md`.
 
 ### Répartition du travail — tranché le 20 août 2026
 
-Maxime **n'écrit pas le code**, et c'est une position argumentée, pas un renoncement :
-écrire est dévalué puisque l'IA écrit, ce qui compte est de savoir **que ça existe, à quoi
-ça sert et comment ça casse**, pour localiser une panne et savoir quoi demander.
+Maxime **n'écrit pas le code**, et c'est une position argumentée : écrire est
+dévalué puisque l'IA écrit, ce qui compte est de savoir **que ça existe, à quoi ça
+sert et comment ça casse**, pour localiser une panne et savoir quoi demander.
 
 Ce que ça m'impose, et qui n'est pas négociable :
 
-1. **Une note de diagnostic à la fin de chaque phase**, dans `Apprentissage/`. Pas une
-   explication ligne par ligne — il ne la rouvrirait jamais. Les quelques **formes** de
-   code que le projet utilise vraiment · **la phrase française** que chacune dit · **comment
-   chacune casse** · **le symptôme à l'écran** de chaque panne.
-2. **Trois questions à la fin de chaque module.** S'il bloque sur une, la lecture manque là,
-   et il faut le savoir avant l'entretien.
-3. ⚠️ **Écrire est dévalué, lire ne l'est pas** — c'est *plus* important qu'avant, puisqu'il
-   produit dix fois plus de code. Son propre critère (« savoir où est le problème ») repose
-   entièrement dessus. Une lecture d'un module à voix haute par phase.
-4. ⚠️ **Ne jamais annoncer qu'une chose marche sans l'avoir lancée.** Son seul garde-fou est
-   de pouvoir demander « tu l'as lancé, ou tu l'as juste relu ? ». Le 20 août, une migration
-   validée par l'analyseur officiel de PostgreSQL a créé deux tables illisibles par le
-   serveur : le défaut n'est apparu qu'en essayant d'écrire.
-
-<!-- design:start -->
-## Design — Veille offres emploi IA
-
-**Ce qu'on retient** : un instrument de décision, pas un tableau de bord. On voit
-tout de suite quoi lire en premier, et pourquoi.
-
-**Direction** : éditorial technique — décoration intentionnelle, mise en page en
-grille stricte, mouvement minimal fonctionnel. Chaud dans la matière (beige papier,
-serif, encre brune), froid dans la précision (densité, chasse fixe, filets).
-
-**Polices** : titrage **Fraunces 700** · texte et interface **Geist** · données et
-libellés **Geist Mono** · code **Geist Mono**. Une seule fonderie, Google Fonts.
-Le serif ne descend jamais sous 20 px — en dessous, Geist.
-
-**Icônes** : **lucide** — figé à l'installation (`shadcn apply --only` accepte
-`theme` et `font`, jamais `icon`). **Ne jamais en mélanger un second.**
-
-**Jetons** : `interface/app/globals.css` — c'est la source de vérité. Jamais de couleur en
-dur, toujours les jetons sémantiques (`bg-primary`, `text-muted-foreground`). Un
-seul `--radius`, les autres en dérivent. Bloc CSS prêt à coller dans
-`docs/DESIGN.md`.
-
-**Quatre teintes de signal, un rôle chacune** : brun-encre = action principale et
-note d'intérêt · ocre = le temporel (« nouveau », enrichissement en cours) ·
-olive = accessibilité et candidaté · brique = erreur et écarté. Une teinte qui sert
-à deux choses ne sert plus à rien.
-
-⚠️ **Trois pièges qui ne se voient pas à l'œil**, détaillés dans `docs/DESIGN.md` :
-`--border` (filet décoratif, sans exigence) n'est pas `--input` (bordure de champ,
-3:1 obligatoire) · `--accent` chez shadcn est la surface de survol, pas une couleur
-vive · l'ocre existe en deux valeurs (`--signal`, `--signal-fort`) parce qu'il doit
-être clair sous un texte foncé et foncé dans une jauge.
-
-⚠️ **shadcn pose des ombres par défaut** sur `Card`, `Popover` et les menus. Les
-retirer : ce produit n'a **aucune ombre**, uniquement des filets. Conséquence, la
-hiérarchie repose entièrement sur la typographie.
-
-⚠️ **Le libellé devant chaque barre de note ne se retire jamais**, même pour gagner de
-la place : sans lui l'information tient sur la seule couleur. Il s'écrit **en toutes
-lettres — « Intérêt » et « Accessibilité »**, décidé le 26 août 2026 après mesure : les
-abréviations `INT` / `ACC` sont abandonnées. ⚠️ **« intérêt », jamais « intéressement »** :
-à côté d'un salaire, le second se lit comme une prime de participation aux bénéfices.
-
-⚠️ **Le contenu de test est du contenu RÉEL, en base — à utiliser plutôt qu'à réinventer.**
-Chiffres, formes de salaire et cas limites : `docs/PLAN.md` § Contenu de test. **Un fait à ne
-pas redécouvrir** : le vide est le cas normal (36 % sans entreprise, 65 % sans salaire, mais
-le lieu toujours renseigné).
-
-⚠️ **CORRIGÉ LE 26 AOÛT AU SOIR — « l'intitulé très long n'existe pas » était FAUX.** Cette
-ligne affirmait « 94 caractères au maximum, médiane 40 », mesuré sur 373 offres. Remesuré sur
-**535** : **223 caractères au maximum**, médiane 43, et 3 offres au-dessus de 94. Le record est
-un « Stage de fin d'études / Alternance - Sujet de stage : Accompagner les transformations
-majeures… » qui se déroule sur **6 lignes à 375 px** (vérifié, rien ne casse).
-
-**La leçon vaut plus que le chiffre : une mesure de cas limite se périme à chaque recollecte.**
-Un maximum observé n'est pas une borne, c'est un échantillon — et il ne peut que monter. Ne
-jamais écrire qu'un cas « n'existe pas » sur la foi d'un maximum ; écrire ce qu'on a vu, avec
-la taille de l'échantillon et la date.
-
-**Mise en page mesurée et figée le 26 août 2026** : `--largeur-page: 1000px`, ligne d'offre
-de **91 px en bureau et 146 px sous 640 px** — ne jamais reprendre les 91 px pour dimensionner
-un repli. Le seuil de 1000 px n'est pas un arrondi : en dessous, les offres **qui affichent un
-salaire** cassent sur deux lignes.
-
-⚠️ **Le vide à droite de la ligne est une réserve, pas un défaut** — il accueille les notes en
-phase 2 puis le statut en phase 4. Ne pas le combler.
-
-**Cinq valeurs restent des hypothèses**, chacune avec son échéance (phases 3, 4 et 6), dont
-une **arithmétiquement incompatible** avec les 1000 px : `docs/DESIGN.md` § Mise en page, qui
-porte aussi la méthode de mesure.
-
-**Interdits sur ce projet** : Inter, Roboto, Poppins, Montserrat, Space Grotesk et
-les autres polices sur-utilisées · Instrument Serif (un seul poids, le gras y est
-synthétique) · dégradé violet · boutons en dégradé · trois colonnes d'icônes dans
-des ronds colorés · tout centré · arrondis en bulle · `system-ui` en titrage.
-
-**Plancher d'accessibilité, opposable** : texte 4,5:1 · interface 3:1 · focus
-clavier toujours visible · mouvement coupé sous `prefers-reduced-motion` · jamais
-l'information par la seule couleur. Un choix qui casse ça est un défaut, pas un
-parti pris. **Recalculer les contrastes à chaque changement de couleur** —
-`docs/design-preview.html` le fait dans la page.
-
-**Détail et justifications** : `docs/DESIGN.md`
-
-<!-- archi:start -->
-## Architecture — Veille offres emploi IA
-
-**Stack** : Python 3.11+ (`pipeline/`) · Next.js + shadcn/ui sur Vercel (`interface/`) ·
-Supabase/Postgres dès le premier jour · GitHub Actions (cron nocturne + déclenchement des
-agents) · mot de passe unique, ni comptes ni rôles · API France Travail v2 ·
-**`claude-sonnet-5`** pour la notation (cache de prompt + Batches) · Claude Agent SDK pour
-l'enrichissement.
-
-⚠️ **Next 16 a renommé `middleware.ts` en `proxy.ts`** (et `config` en `proxyConfig`).
-Plus largement, ses conventions ont bougé : **avant d'écrire du Next.js, s'appuyer sur la
-skill `next-best-practices`** plutôt que sur des réflexes de Next 14.
-
-**Frontend** : template `next` · moteur des composants **`radix`** · pas de monorepo ·
-icônes lucide — **figés à l'installation**. ⚠️ Vercel doit être réglé sur
-`Root Directory = interface`.
-
-**Routes** : `/` le compte rendu de la nuit · `/offres` le poste de travail (filtre de
-statut dans l'adresse) · `/offres/[identifiant]` la fiche · `/connexion` la porte.
-L'identifiant est celui de France Travail, **validé avant d'atteindre la base**.
-
-**Schéma, cible à terme** : `executions_veille` · `offres` · `enrichissements` · `etapes_enrichissement`. ⚠️ **Seules les deux premières existent** — voir § « Base de données », et `supabase/migrations/` pour ce qui est réellement en base.
-Pas d'accents dans les noms. Une offre est rattachée à l'exécution qui l'a trouvée ; elle a
-**au plus un** enrichissement (une relance remplace la fiche). Deux compteurs de tokens sur
-l'offre : `tokens_cumules` et `tokens_conversation`.
-**La colonne qui dit à qui la donnée appartient : aucune, délibérément** — un seul
-utilisateur, une seule porte ; une telle colonne porterait la même valeur partout et
-donnerait l'illusion d'un contrôle.
-
-**Autorisation, opposable** : RLS activé sur toutes les tables, **aucune politique** ; le
-navigateur ne parle jamais à Supabase. Un **`proxy.ts`** unique protège **tout par défaut**,
-avec trois exceptions en liste blanche — énumérer les adresses à protéger laisserait toute
-adresse ajoutée plus tard ouverte sans rien signaler. Une seule fonction fait le contrôle,
-tous les accès passent par elle — recopier la vérification garantit qu'un accès finira par
-être oublié. **Un écran qui masque un bouton ne protège rien : le contrôle qui compte est
-côté serveur** (le double clic sur « Enrichir » se bloque en base, pas sur le bouton).
-
-**Enrichissement** : **exclusivement manuel** — rien ne s'enrichit sans un clic, et
-l'automatique nocturne est en Évolutions prévues, pas au hors périmètre. Une **enveloppe
-quotidienne de 300 000 tokens** borne la dépense : fichier de configuration versionné,
-**vérifiée côté serveur**, calculée en sommant les traces du jour et non dans un compteur
-qui divergerait. **La notation nocturne n'y entre pas** — la borner ferait rater des offres
-un matin de forte collecte.
-
-**Secrets** : `.env` local non versionné · secrets GitHub Actions pour le pipeline ·
-variables Vercel pour le site · **rien dans le navigateur, et aucune variable
-`NEXT_PUBLIC_` sur ce projet** — ce préfixe publie la valeur dans le code source de la page
-sans le moindre message d'erreur. Le site ne détient aucune clé de modèle. Un secret
-commité reste dans l'historique git après suppression du fichier : le **révoquer**, pas
-seulement le supprimer.
-
-**Plan, contenu de test et parcours à repasser** : `docs/PLAN.md` — à rouvrir avant de
-démarrer une phase et avant toute mise en ligne.
-<!-- archi:end -->
-<!-- design:end -->
+1. **Une note de diagnostic à la fin de chaque phase**, dans `Apprentissage/`. Pas
+   une explication ligne par ligne — il ne la rouvrirait jamais. Les quelques
+   **formes** de code que le projet utilise vraiment · **la phrase française** que
+   chacune dit · **comment chacune casse** · **le symptôme à l'écran**.
+2. **Trois questions à la fin de chaque module.** S'il bloque sur une, la lecture
+   manque là, et il faut le savoir avant l'entretien.
+3. ⚠️ **Écrire est dévalué, lire ne l'est pas** — c'est *plus* important qu'avant,
+   puisqu'il produit dix fois plus de code. Une lecture d'un module à voix haute par
+   phase.
+4. ⚠️ **Ne jamais annoncer qu'une chose marche sans l'avoir lancée.** Son seul
+   garde-fou est de pouvoir demander « tu l'as lancé, ou tu l'as juste relu ? ». Le
+   20 août, une migration validée par l'analyseur officiel de PostgreSQL a créé deux
+   tables illisibles par le serveur : le défaut n'est apparu qu'en essayant d'écrire.

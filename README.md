@@ -373,16 +373,50 @@ Trois choix qui se défendent en entretien :
   droite portant l'enrichissement — qui n'arrive qu'en phase 6. Le résumé fait
   122 caractères en médiane et manque sur les offres non notées : deux colonnes
   laisseraient 404 px de vide sur toute la hauteur.
-- **Aucun composant client, donc aucune fuite.** La page lit `contact_nom`, la
-  seule donnée nominative du projet. Tant que toute la chaîne reste en composants
-  serveur, les props ne traversent pas vers le navigateur — seul le rendu
-  traverse. C'est pourquoi le dépliage de la description utilise le `<details>`
-  natif plutôt qu'un composant à état : mesuré, zéro occurrence des colonnes
-  sensibles dans le document reçu.
+- **Aucun composant client à ce stade, donc aucune fuite possible.** La page lit
+  `contact_nom`, la seule donnée nominative du projet. Tant que toute la chaîne
+  reste en composants serveur, les props ne traversent pas vers le navigateur —
+  seul le rendu traverse. D'où le dépliage de la description en `<details>` natif
+  plutôt qu'un composant à état. **La phase 4 a levé cette propriété** : voir
+  ci-dessous ce qui la remplace.
 - **Deux verrous indépendants sur l'identifiant**, qui vient de la barre
   d'adresse : format refusé avant la base, valeur encodée au point de passage
   unique. L'injection a été rejouée contre la vraie base — sans encodage, un
   `&select=*` placé avant le `select` légitime rend 44 colonnes dont l'archive
   complète.
 
-**Prochaine étape** : la phase 4, les statuts et les notes personnelles.
+### Trier sa matinée — phase 4, livrée le 29 août 2026
+
+Trois statuts en un clic (à traiter, candidaté, écarté) depuis la liste comme
+depuis la fiche, un filtre qui vit **dans l'adresse**, et une note libre par offre
+qui s'enregistre sans bouton. C'est la première fois que l'interface **écrit** en
+base : jusque-là, seul le pipeline Python écrivait, seul et de nuit.
+
+Quatre choix qui se défendent en entretien :
+
+- **La propriété « tout en composants serveur » est tombée, et ce qui la remplace
+  est une discipline de props.** Les boutons de statut et le champ de note sont
+  des composants clients : on ne leur passe que des valeurs scalaires —
+  `identifiant`, `statut` — jamais l'objet `offre`, qui enverrait ses vingt-deux
+  colonnes dans le document. `<BoutonsStatut offre={offre} />` compilerait sans la
+  moindre erreur. **Le seul garde-fou restant est la mesure**, refaite après chaque
+  nouveau composant client : douze noms de colonnes interdites cherchés dans le
+  document reçu par le navigateur, plus le contenu d'une note cherché dans la liste
+  et sur la fiche d'une autre offre — aucun, avec témoin positif.
+- **L'état optimiste est le bon patron pour un statut et le mauvais pour un
+  texte.** `useOptimistic` retombe sur la valeur du serveur en fin de transition :
+  parfait pour ramener un statut à la vérité de la base après un échec, destructeur
+  pour un paragraphe en cours de frappe, qu'il effacerait sous les doigts. Le bon
+  patron dépend de qui détient la vérité.
+- **Le vide d'un champ à enregistrement automatique n'est pas la chaîne vide.**
+  Effacer une note produit `"   \n"` : sans normalisation en `NULL` avant écriture,
+  la contrainte de la base répond 400 et l'écran affiche « échec » sur le geste le
+  plus banal qui soit. La borne de 20 000 caractères est vérifiée trois fois —
+  attribut HTML (confort), action serveur (le contrôle qui compte), contrainte en
+  base (le dernier mot) — parce qu'un attribut HTML se retire en trois clics.
+- **Un clic qui atteint toujours l'offre visée.** Trier une offre la retire du
+  filtre et les suivantes remontent d'un cran : un second clic au même endroit
+  triait une autre offre. Le verrou suit `useTransition` et non la fin de l'appel
+  serveur — mesuré, la réponse arrive à +80 ms et la liste se réorganise à +900 ms.
+
+**Prochaine étape** : la phase 5, l'écran du matin — le compte rendu de la nuit.
