@@ -47,13 +47,14 @@ export function EnTeteOffre({
         </p>
       )}
 
-      {/* ⚠️ **20 px en mobile, 24 px en bureau — et 20 px est un PLANCHER, pas
-          un choix libre.** `docs/DESIGN.md` : « le serif ne descend jamais sous
-          20 px, en dessous c'est Geist ». En dessous de cette taille, Fraunces
-          perd le contraste de ses pleins et déliés et se lit mal.
-          Descendu de 24/30 px à 20/24 px le 28 août 2026 : à 30 px, l'intitulé
-          écrasait tout le reste de la page. On est désormais au plancher — le
-          réduire encore imposerait de changer de police. */}
+      {/* 20 px en mobile, 24 px en bureau. Descendu de 24/30 px le 28 août
+          2026 : à 30 px, l'intitulé écrasait tout le reste de la page.
+          ⚠️ **Le plancher des 20 px n'existe plus depuis la refonte du 29 août
+          2026, et c'est la seule contrainte que le changement de police a
+          levée.** Il tenait à Fraunces, un serif qui perdait le contraste de
+          ses pleins et déliés en dessous de cette taille ; Fredoka est une
+          sans-serif arrondie de graisse constante, qui reste lisible plus bas.
+          Les tailles n'ont pas bougé pour autant — elles étaient bonnes. */}
       <h1 className="font-display text-xl font-bold leading-tight text-foreground sm:text-2xl">
         {offre.intitule}
       </h1>

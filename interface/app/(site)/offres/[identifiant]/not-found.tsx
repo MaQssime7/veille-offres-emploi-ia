@@ -20,7 +20,7 @@ import { CadrePage } from "../_composants/en-tete-page";
 export default function OffreIntrouvable() {
   return (
     <CadrePage>
-      <div className="flex flex-col items-start gap-3 border border-border bg-card px-5 py-8 sm:px-8 sm:py-10">
+      <div className="flex flex-col items-start gap-3 carte-produit px-5 py-8 sm:px-8 sm:py-10">
         <span className="text-muted-foreground">
           <FileQuestion className="size-6" aria-hidden="true" />
         </span>
@@ -35,7 +35,7 @@ export default function OffreIntrouvable() {
         </div>
         <Link
           href="/offres"
-          className="mt-2 inline-flex items-center border border-border px-3 py-2 text-sm font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-accent"
+          className="mt-2 inline-flex items-center rounded-full border border-input px-4 py-2 text-sm font-bold text-foreground transition-colors focus-produit hover:bg-accent"
         >
           Revenir à toutes les offres
         </Link>

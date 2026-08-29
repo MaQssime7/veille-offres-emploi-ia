@@ -280,7 +280,7 @@ export function NotePersonnelle({
         Ma note
       </h2>
 
-      <div className="border border-border bg-card px-4 py-4">
+      <div className="carte-produit px-4 py-4">
         {/* ⚠️ **`aria-labelledby` vers le titre de section, plutôt qu'un
             `<label>` de plus.** Un champ sans nom accessible est annoncé
             « zone de saisie » et rien d'autre ; un second libellé au-dessus du
@@ -309,7 +309,7 @@ export function NotePersonnelle({
           // réécrit à chaque frappe. Laisser la poignée de redimensionnement
           // donnerait une prise qui ne tient pas — le champ reviendrait à sa
           // hauteur calculée dès le caractère suivant.
-          className="max-h-[60vh] min-h-28 w-full resize-none overflow-auto rounded-lg border border-input bg-transparent px-3 py-2 text-base leading-relaxed outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+          className="max-h-[60vh] min-h-28 w-full resize-none overflow-auto rounded-lg border border-input bg-transparent px-3 py-2 text-base leading-relaxed transition-colors placeholder:text-muted-foreground dark:bg-input/30"
         />
 
         <div className="mt-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
@@ -358,7 +358,7 @@ export function NotePersonnelle({
               type="button"
               onClick={() => void enregistrer()}
               disabled={envoiEnCours}
-              className="inline-flex items-center border border-input bg-transparent px-2.5 py-1 font-mono text-[0.6875rem] font-semibold uppercase tracking-wider outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+              className="inline-flex items-center rounded-full border border-input bg-transparent px-3 py-1 font-mono text-[0.6875rem] font-bold uppercase tracking-wider transition-colors hover:bg-accent hover:text-foreground focus-produit disabled:opacity-60"
             >
               Réessayer
             </button>

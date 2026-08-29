@@ -2795,3 +2795,107 @@ obstacles ont demandé du travail, tous deux d'infrastructure et non de logique 
 comparais une collecte du 28 août à un « maintenant » du 30, soit deux jours d'écart
 — « avant-hier » était donc la bonne réponse. Le cas symétrique a été ajouté, pour
 que le test prouve les deux sens.
+
+---
+
+## 29 août 2026 — Le système de design est remplacé : 1st-Pouf
+
+Branche `refonte-design-pouf`. Maxime avait repéré un registre shadcn tiers,
+[1st-Pouf](https://1st-pouf.worksonmy.dev), et voulait sa direction artistique :
+pastel, arrondie, colorée. Une contrainte, posée d'emblée : **la donnée ne change
+pas**, seule l'apparence.
+
+### Ce qu'on a vérifié avant d'accepter
+
+Un registre tiers est du code téléchargé depuis un domaine qu'on ne contrôle pas.
+Avant d'installer quoi que ce soit :
+
+- **71 éléments** (40 composants, 28 blocs), hébergé sur Vercel, licence MIT,
+  adapté de `novusgfx/retro-design-system`. Code très commenté, et l'auteur a
+  corrigé un défaut d'accessibilité de sa source — du texte blanc sur pastel qui
+  échouait à 1,25:1.
+- **Son mode sombre s'active par la classe `.dark` sur `<html>`** — exactement ce
+  que le projet posait déjà. Zéro adaptation.
+- **Contrastes** : les 36 paires calculées avant d'écrire une ligne. Tout le texte
+  passe, en clair comme en sombre. **Un seul échec, systématique** : les pastels
+  comme objets graphiques en mode clair, de 1,06 à 1,99:1 contre 3:1 requis.
+- **Dépendances** : le composant `Icon` tire `@tabler/icons-react`, que le projet
+  interdit. L'auteur ayant centralisé la carte rôle → glyphe dans un seul fichier,
+  le contourner était trivial. Aucune dépendance npm n'a été ajoutée.
+
+### Deux surprises qu'il fallait mesurer pour trouver
+
+**La vitrine ne livre pas ce qu'elle montre.** Le titrage arrondi de la page
+d'accueil du registre est en **Fredoka**, or `pouf.css` ne déclare que **Nunito** :
+Fredoka n'habille que le site de documentation. Sans un chargement explicite,
+l'interface aurait perdu son trait le plus reconnaissable — sans aucune erreur.
+
+**La densité, elle, ne s'est pas dégradée.** C'était le risque principal : une DA
+à cartes coussin sur une liste de 200 lignes. Mesuré au DOM : **235 px par ligne
+contre 228, soit +7 %**, là où on redoutait +50 %.
+
+### La décision d'architecture : un dictionnaire, pas une réécriture
+
+`app/globals.css` traduit le vocabulaire shadcn (`bg-card`,
+`text-muted-foreground`) vers les couleurs de pouf. L'alternative — réécrire les
+3 900 lignes de TSX avec le vocabulaire de pouf — n'a pas été retenue : un
+remplacement massif ne se vérifie qu'à la fin, et **un écran oublié ne lève aucune
+erreur, il s'affiche en couleurs par défaut**. Avec le dictionnaire, tous les
+écrans ont fonctionné dès la première seconde et se sont raffinés un par un.
+
+C'est aussi ce qui rend le prochain changement de système possible : un jeton nomme
+un **rôle**, jamais une couleur.
+
+### Trois défauts trouvés en mesurant, dont deux étaient de notre fait
+
+**1. `--muted` veut dire deux choses opposées.** Surface atténuée chez shadcn,
+couleur de texte chez pouf. La première version du dictionnaire a écrasé leur gris
+de texte par un lavande très clair : **les cartouches se sont affichées vides et
+les justifications sont devenues illisibles.** Aucune erreur de compilation, aucun
+avertissement. Trouvé en regardant l'écran, pas autrement.
+
+**2. `ring` et `cushion` sont incompatibles — et ça a coûté le focus clavier.**
+Les utilitaires `cushion-*` posent un `box-shadow` brut ; les `ring-*` de Tailwind
+passent par cette même propriété. Le coussin gagne. Mesuré au DOM : l'anneau de
+focus était **présent dans la classe et absent du style calculé**
+(`outline-style: none`) — sur les boutons de statut, les onglets de filtre **et les
+cartes de la liste**, c'est-à-dire à l'endroit où l'on parcourt deux cents lignes
+au clavier. Corrigé en passant tout le focus sur `outline`, qui n'entre pas en
+conflit avec `box-shadow`. Vérifié par tabulation réelle : 2 px à 10,32:1.
+
+Ce défaut a aussi tué le premier correctif tenté : cerner d'un anneau le bouton de
+statut engagé. Écrit, mesuré, constaté absent, remplacé par une différence de
+saturation.
+
+**3. Les pastels sont invisibles comme jauges.** D'où **deux jetons par note** : la
+variante nue pour les fonds de pastille, où le texte porte l'information ; la
+variante `-barre`, assombrie et mesurée à 3,52:1, pour les jauges. Le problème est
+propre au mode clair — en sombre, les mêmes pastels tiennent 9 à 15:1.
+
+### Ce que Maxime a demandé en cours de route
+
+- **Les boutons « Candidaté » et « Écarté » portent leur couleur en permanence**,
+  y compris au repos, pour colorer la liste. Conséquence non demandée mais
+  nécessaire : la couleur ne distinguant plus l'état engagé, trois autres signaux
+  ont dû le porter — saturation (55 % / plein), relief (bombé / enfoncé), icône
+  (coche / flèche de retour).
+- **Le compte « M notées » retiré du haut de `/offres`** : à terme toute offre
+  arrive notée, l'indicateur afficherait deux nombres égaux à longueur d'année. La
+  requête de comptage a été supprimée avec l'affichage — laissée branchée, elle
+  aurait continué de coûter un aller-retour à Supabase à chaque chargement.
+- **Les blocs de la fiche arrondis** comme les cartes de la liste. Ils étaient
+  restés à angles droits, y compris dans le squelette de chargement et la page
+  « offre introuvable ».
+
+### Vérifications
+
+Relevé des champs affichés figé **avant** la refonte, revérifié après : la donnée
+n'a pas bougé. Mesure anti-fuite refaite (douze noms de colonnes cherchés dans le
+HTML de la liste et de la fiche, témoin positif) : rien. 375 px sans débordement.
+Mode sombre sur les deux écrans. Console vide. `npm run verifie` au vert dans les
+deux fuseaux.
+
+**Non redessinée volontairement** : la page de contrôle `/`, que la phase 5
+remplace — la repeindre aurait été du travail jeté. Seuls ses libellés de police
+ont été corrigés, parce qu'ils annonçaient « Fraunces » et « Geist » en Fredoka et
+Nunito.

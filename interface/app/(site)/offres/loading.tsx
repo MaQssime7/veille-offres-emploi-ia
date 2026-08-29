@@ -42,21 +42,21 @@ function SqueletteNotes() {
           <div key={colonne}>
             <div className="flex items-center gap-2">
               <div
-                className={`w-[6.5rem] shrink-0 bg-muted ${HAUTEURS_SQUELETTE.rangeeNote}`}
+                className={`rounded-full w-[6.5rem] shrink-0 bg-muted ${HAUTEURS_SQUELETTE.rangeeNote}`}
               />
               <div
-                className={`w-[5.5rem] shrink-0 bg-muted ${HAUTEURS_SQUELETTE.rangeeNote}`}
+                className={`rounded-full w-[5.5rem] shrink-0 bg-muted ${HAUTEURS_SQUELETTE.rangeeNote}`}
               />
             </div>
             <div className="mt-1 space-y-1">
               <div
-                className={`w-full bg-muted ${HAUTEURS_SQUELETTE.justification}`}
+                className={`rounded-full w-full bg-muted ${HAUTEURS_SQUELETTE.justification}`}
               />
               <div
-                className={`w-full bg-muted ${HAUTEURS_SQUELETTE.justification}`}
+                className={`rounded-full w-full bg-muted ${HAUTEURS_SQUELETTE.justification}`}
               />
               <div
-                className={`w-2/3 bg-muted ${HAUTEURS_SQUELETTE.justification}`}
+                className={`rounded-full w-2/3 bg-muted ${HAUTEURS_SQUELETTE.justification}`}
               />
             </div>
           </div>
@@ -114,19 +114,26 @@ export default function ChargementOffres() {
            jamais. */
         filtres={
           <div aria-hidden="true" className="flex flex-wrap gap-1.5">
-            <div className="h-[1.8125rem] w-28 animate-pulse bg-muted" />
-            <div className="h-[1.8125rem] w-28 animate-pulse bg-muted" />
-            <div className="h-[1.8125rem] w-24 animate-pulse bg-muted" />
-            <div className="h-[1.8125rem] w-24 animate-pulse bg-muted" />
+            <div className="h-[1.8125rem] w-28 animate-pulse rounded-full bg-muted" />
+            <div className="h-[1.8125rem] w-28 animate-pulse rounded-full bg-muted" />
+            <div className="h-[1.8125rem] w-24 animate-pulse rounded-full bg-muted" />
+            <div className="h-[1.8125rem] w-24 animate-pulse rounded-full bg-muted" />
           </div>
         }
       />
 
-      <div className="border border-border bg-card" aria-hidden="true">
+      {/* ⚠️ **Le même `flex flex-col gap-2` que la page, et l'écart de 8 px en
+          fait partie.** Depuis la refonte du 29 août 2026 la liste est une pile
+          de cartes espacées : un squelette resté en bloc unique cloisonné de
+          filets aurait montré quatre lignes collées, puis la page se serait
+          détendue de 8 px par ligne à l'arrivée des offres. Le fond `bg-card`
+          et les rayons viennent de `RYTHME_LIGNE.article`, partagé avec la
+          ligne réelle — ils n'ont pas à être répétés ici. */}
+      <div className="flex flex-col gap-2" aria-hidden="true">
         {Array.from({ length: 4 }, (_, rang) => (
           <div
             key={rang}
-            className={`animate-pulse border-b border-border last:border-b-0 ${RYTHME_LIGNE.article}`}
+            className={`animate-pulse ${RYTHME_LIGNE.article}`}
           >
             {/* ⚠️ **La barre grise garde la hauteur du TEXTE (15 px), c'est la
                 RANGÉE qui prend celle des boutons (27 px).** Grossir la barre
@@ -137,16 +144,16 @@ export default function ChargementOffres() {
                 imite le contenu. */}
             <div className={`${RYTHME_LIGNE.rangeeEntete} ${RYTHME_LIGNE.margeEntreprise}`}>
               <div
-                className={`w-40 max-w-[60%] bg-muted ${HAUTEURS_SQUELETTE.entreprise}`}
+                className={`rounded-full w-40 max-w-[60%] bg-muted ${HAUTEURS_SQUELETTE.entreprise}`}
               />
             </div>
             <div
-              className={`w-80 max-w-[85%] bg-muted ${RYTHME_LIGNE.margeIntitule} ${HAUTEURS_SQUELETTE.intitule}`}
+              className={`rounded-full w-80 max-w-[85%] bg-muted ${RYTHME_LIGNE.margeIntitule} ${HAUTEURS_SQUELETTE.intitule}`}
             />
             <div className="flex flex-wrap gap-1.5">
-              <div className={`w-24 bg-muted ${HAUTEURS_SQUELETTE.cartouche}`} />
-              <div className={`w-16 bg-muted ${HAUTEURS_SQUELETTE.cartouche}`} />
-              <div className={`w-40 max-w-[55%] bg-muted ${HAUTEURS_SQUELETTE.cartouche}`} />
+              <div className={`rounded-full w-24 bg-muted ${HAUTEURS_SQUELETTE.cartouche}`} />
+              <div className={`rounded-full w-16 bg-muted ${HAUTEURS_SQUELETTE.cartouche}`} />
+              <div className={`rounded-full w-40 max-w-[55%] bg-muted ${HAUTEURS_SQUELETTE.cartouche}`} />
             </div>
 
             <SqueletteNotes />

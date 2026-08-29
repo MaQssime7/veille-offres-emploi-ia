@@ -30,8 +30,18 @@
  * message d'erreur.
  */
 export const RYTHME_LIGNE = {
-  /** Marges intérieures de l'article. */
-  article: "px-4 py-2.5 sm:px-5",
+  /**
+   * Marges intérieures de l'article, et sa forme depuis la refonte du
+   * 29 août 2026.
+   *
+   * ⚠️ **Le rembourrage du bas est plus grand que celui du haut (`pt-3 pb-4`),
+   * et ce n'est pas une faute de frappe.** L'ombre coussin de 1st-Pouf
+   * (`cushion-row`) peint un rebord de 6 px **à l'intérieur** de la carte, en
+   * bas. Un rembourrage symétrique se lit donc comme trop serré du bas : le
+   * rebord mange l'espace blanc. On biaise de la moitié du rebord, ce que la
+   * feuille de pouf recommande explicitement pour ses conteneurs clairs.
+   */
+  article: "carte-produit px-4 pt-3 pb-4 sm:px-5",
   /**
    * La rangée du haut : nom d'entreprise, marqueur « Nouveau », et depuis la
    * phase 4 les deux boutons de statut poussés à droite.
@@ -64,10 +74,13 @@ export const RYTHME_LIGNE = {
   /**
    * Le bloc des deux notes, sous les cartouches.
    *
-   * ⚠️ **Le filet est le séparateur, pas une ombre ni un fond.** Le produit
-   * n'a aucune ombre — la hiérarchie repose entièrement sur la typographie et
-   * les filets (`docs/DESIGN.md`). Poser un fond gris pour isoler les notes
-   * introduirait une troisième surface dans une ligne qui n'en a que deux.
+   * ⚠️ **Le filet reste le séparateur, alors même que le produit a maintenant
+   * des ombres.** Depuis la refonte du 29 août 2026, le coussin de 1st-Pouf
+   * sépare les CARTES les unes des autres ; à l'intérieur d'une carte, il n'y a
+   * rien à empiler — un second coussin autour des notes ferait une carte dans
+   * la carte, c'est-à-dire deux niveaux de relief pour une seule hiérarchie.
+   * Poser un fond pour isoler les notes introduirait de la même façon une
+   * troisième surface dans une ligne qui n'en a que deux.
    */
   blocNotes: "mt-2.5 border-t border-border pt-2.5",
 } as const;

@@ -40,8 +40,18 @@ export function LigneOffre({
     // remonte le focus du lien jusqu'à la ligne entière, sinon l'anneau de
     // focus n'entourerait que les quelques mots de l'intitulé et la navigation
     // au clavier deviendrait illisible sur une liste de 200 lignes.
+    // ⚠️ **`hover:cushion-row-hover` et non un changement de fond.** Depuis la
+    // refonte, la ligne est une carte posée sur la page : la survoler doit la
+    // faire monter, pas la teinter. Un `hover:bg-accent` sur une carte blanche
+    // la ferait virer au lavande, c'est-à-dire se confondre avec le fond de
+    // page qu'elle est censée surplomber.
     <article
-      className={`relative border-b border-border transition-colors last:border-b-0 hover:bg-accent has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-inset ${RYTHME_LIGNE.article}`}
+      // ⚠️ **Le focus de la ligne passe par `outline`, jamais par `ring`.**
+      // La carte porte un `cushion-row` — un `box-shadow` brut — et les
+      // `ring-*` de Tailwind passent par cette même propriété : l'anneau était
+      // purement et simplement écrasé. C'est le pire endroit où perdre le
+      // focus, puisque c'est ici qu'on parcourt deux cents lignes au clavier.
+      className={`relative transition-shadow hover:cushion-row-hover has-[a:focus-visible]:outline-2 has-[a:focus-visible]:-outline-offset-2 has-[a:focus-visible]:outline-foreground ${RYTHME_LIGNE.article}`}
     >
       <div
         className={`${RYTHME_LIGNE.rangeeEntete} ${RYTHME_LIGNE.margeEntreprise}`}
@@ -64,7 +74,7 @@ export function LigneOffre({
             Le mot porte l'information, la couleur ne fait que la renforcer :
             retiré, il ne resterait qu'une pastille indéchiffrable. */}
         {nouvelle && (
-          <span className="bg-signal px-1.5 py-px font-mono text-[0.625rem] font-semibold uppercase tracking-widest text-signal-foreground">
+          <span className="rounded-full bg-signal px-2 py-0.5 font-mono text-[0.625rem] font-bold uppercase tracking-widest text-signal-foreground">
             Nouveau
           </span>
         )}
@@ -91,12 +101,16 @@ export function LigneOffre({
         </div>
       </div>
 
-      {/* Geist et non Fraunces : le serif du DESIGN.md ne descend jamais sous
-          20 px, et un intitulé de liste à 20 px casserait la densité compacte.
+      {/* ⚠️ **Nunito et non Fredoka, alors que le même intitulé est en Fredoka
+          sur sa fiche — et ce n'est pas une incohérence.** Fredoka habille les
+          `h1`, c'est-à-dire le titre de LA page : sur la fiche, l'intitulé est
+          ce titre ; ici, il est un élément parmi deux cents. Le passer en
+          Fredoka donnerait deux cents gros titres arrondis empilés, et la
+          hiérarchie de la liste disparaîtrait.
 
-          ⚠️ `h2` et non `h3` : le seul titre au-dessus est le `h1` « Offres » de
-          la page. Sauter le niveau 2 casse le plan de titres, sur lequel un
-          lecteur d'écran navigue pour parcourir la liste. */}
+          ⚠️ `h2` et non `h3` : le seul titre au-dessus est le `h1` « Plan de
+          travail » de la page. Sauter le niveau 2 casse le plan de titres, sur
+          lequel un lecteur d'écran navigue pour parcourir la liste. */}
       <h2 className={`text-[0.9375rem] font-semibold leading-snug text-foreground ${RYTHME_LIGNE.margeIntitule}`}>
         {/* ⚠️ **Un SEUL lien par ligne, posé sur l'intitulé et étendu à la
             carte par `after:absolute after:inset-0`.** Envelopper la ligne

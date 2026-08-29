@@ -29,11 +29,16 @@ function Panneau({
   const Titre = niveauTitre === 1 ? "h1" : "h2";
   return (
     <div
+      // ⚠️ **Le panneau d'erreur garde son FILET, là où le panneau neutre
+      // prend un coussin.** Les deux sont arrondis comme les cartes de la
+      // liste, mais l'erreur ne doit pas ressembler à une carte de contenu de
+      // plus : le filet brique la désigne comme un avertissement, ce qu'une
+      // ombre douce ferait exactement le contraire.
       className={cn(
-        "flex flex-col items-start gap-3 border px-5 py-8 sm:px-8 sm:py-10",
+        "flex flex-col items-start gap-3 rounded-2xl px-5 py-8 sm:px-8 sm:py-10",
         ton === "erreur"
-          ? "border-destructive/40 bg-destructive/5"
-          : "border-border bg-card",
+          ? "border border-destructive/40 bg-destructive/5"
+          : "cushion-card bg-card",
       )}
     >
       <span

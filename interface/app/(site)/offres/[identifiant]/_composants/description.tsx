@@ -32,11 +32,11 @@ export function DescriptionOffre({ texte }: { texte: string }) {
   const prepare = preparerDescription(texte);
 
   return (
-    <details className="group border border-border bg-card">
+    <details className="group carte-produit">
       {/* `list-none` retire le triangle par défaut du navigateur ; le chevron
           qui le remplace pivote à l'ouverture. `[&::-webkit-details-marker]`
           fait la même chose sur Safari, qui ignore `list-none`. */}
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold text-foreground outline-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-ring">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden">
         <ChevronRight
           aria-hidden="true"
           // Le mouvement est coupé sous `prefers-reduced-motion` par la règle

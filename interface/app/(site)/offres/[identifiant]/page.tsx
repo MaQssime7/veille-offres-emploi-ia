@@ -164,7 +164,7 @@ export default async function PageOffre({
             </h2>
             {/* ⚠️ **Le cadre n'est pas décoratif : il aligne ce bloc sur ses
                 quatre voisins.** Évaluation, Classement, L'annonce et Candidater
-                portent tous `border border-border bg-card` ; le résumé était le
+                portent tous `carte-produit` ; le résumé était le
                 seul à ne rien porter — et il est le premier qu'on lit. Mesuré au
                 DOM le 29 août 2026 : son paragraphe s'arrêtait à **690 px sur
                 952**, sans filet pour dire où le bloc finissait, ce qui le
@@ -175,7 +175,7 @@ export default async function PageOffre({
                 au-delà de ce qui se lit confortablement, même règle que la
                 description intégrale. Dans un cadre, ce vide se lit comme une
                 marge ; c'est sans cadre qu'il se lisait comme une coupure. */}
-            <div className="border border-border bg-card px-4 py-4">
+            <div className="carte-produit px-4 py-4">
               <p className="max-w-prose text-base leading-relaxed text-foreground">
                 {offre.resume}
               </p>
@@ -195,7 +195,7 @@ export default async function PageOffre({
             >
               Évaluation
             </h2>
-            <div className="border border-border bg-card px-4 py-4">
+            <div className="carte-produit px-4 py-4">
               <ContenuNotes offre={offre} />
             </div>
           </section>
@@ -243,7 +243,7 @@ function RetourListe() {
   return (
     <Link
       href="/offres"
-      className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring hover:text-foreground"
+      className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
     >
       <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
       Toutes les offres

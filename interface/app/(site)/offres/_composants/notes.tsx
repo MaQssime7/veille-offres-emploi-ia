@@ -94,15 +94,17 @@ export function ContenuNotes({ offre }: { offre: ChampsNotation }) {
         libelle="Intérêt"
         valeur={offre.note_interet as number}
         justification={offre.justification_interet}
-        remplissage="bg-interet"
-        teinteLibelle="text-interet"
+        remplissage="bg-interet-barre"
+        piste="bg-interet-piste"
+        teinteLibelle="text-interet-texte"
       />
       <Note
         libelle="Accessibilité"
         valeur={offre.note_accessibilite as number}
         justification={offre.justification_accessibilite}
-        remplissage="bg-success"
-        teinteLibelle="text-success"
+        remplissage="bg-success-barre"
+        piste="bg-success-piste"
+        teinteLibelle="text-success-texte"
       />
     </div>
   );
@@ -128,6 +130,7 @@ function Note({
   valeur,
   justification,
   remplissage,
+  piste,
   teinteLibelle,
 }: {
   libelle: string;
@@ -135,28 +138,35 @@ function Note({
   justification: string | null;
   remplissage: string;
   /**
+   * Le fond de la barre, dans le pastel de la même note. ⚠️ **Il vient en
+   * paire avec `remplissage` : les deux doivent toujours être de la même
+   * famille**, sinon la barre porte deux teintes et la règle « un rôle, une
+   * couleur » tombe à l'endroit précis où elle compte le plus.
+   */
+  piste: string;
+  /**
    * ⚠️ **Le libellé prend la teinte de SA jauge, et c'est le système qui le
-   * demande.** `docs/DESIGN.md` attribue un rôle unique à chaque teinte :
-   * brun-encre = « action principale · note d'intérêt · texte », olive =
-   * « accessibilité ». Colorer ces deux mots n'invente rien, ça applique la
-   * table — et ça relie le libellé à sa barre pour l'œil.
+   * demande.** `docs/DESIGN.md` attribue un rôle unique à chaque teinte : bleu
+   * = intérêt, menthe = accessibilité et candidaté. Colorer ces deux mots
+   * n'invente rien, ça applique la table — et ça relie le libellé à sa barre
+   * pour l'œil.
    *
    * ⚠️ **Ça ne remplace PAS le libellé, ça le renforce.** L'information reste
    * portée par le mot écrit en toutes lettres : la couleur seule est interdite
    * par le plancher d'accessibilité du projet.
    *
-   * ⚠️ **L'intérêt est passé du brun-encre au BLEU le 28 août 2026**, sur
-   * décision de Maxime. Le motif dépasse le goût : le brun-encre servait à la
-   * fois de couleur de texte, de bouton principal *et* de note d'intérêt —
-   * trois emplois pour une teinte, dans un système dont la règle est « un rôle
-   * chacune ». Le bleu ne sert qu'à ça, et les deux mesures se lisent enfin
-   * comme une paire : bleu contre olive, deux axes distincts.
+   * ⚠️ **Le libellé et la barre ne prennent PAS le même jeton, depuis la
+   * refonte du 29 août 2026.** Le libellé est du texte — 4,5:1 —, la barre est
+   * un objet graphique — 3:1. Deux seuils, donc deux valeurs : `-texte` pour le
+   * mot, `-barre` pour la jauge. Les confondre ferait retomber l'un des deux
+   * sous son seuil, et c'est le texte qui perdrait.
    *
-   * Contrastes mesurés sur le fond des cartes : bleu **6,30:1** en clair et
-   * 7,88:1 en sombre · olive 6,13:1 et 6,74:1. ⚠️ **Les deux sont du même
-   * ordre, et c'est voulu** : une mesure qui contrasterait deux fois plus que
-   * l'autre se lirait comme la plus importante, ce que le produit refuse — il
-   * repose sur le refus de fusionner ou de hiérarchiser les deux notes.
+   * Contrastes mesurés sur le fond de page, qui est le cas le plus exigeant :
+   * libellé d'intérêt **4,53:1**, libellé d'accessibilité **4,54:1**, jauges
+   * **3,52:1** toutes les deux. ⚠️ **Les deux notes sont du même ordre, et
+   * c'est voulu** : une mesure qui contrasterait deux fois plus que l'autre se
+   * lirait comme la plus importante, ce que le produit refuse — il repose sur
+   * le refus de fusionner ou de hiérarchiser les deux notes.
    */
   teinteLibelle: string;
 }) {
@@ -182,7 +192,27 @@ function Note({
 
         <span
           aria-hidden="true"
-          className="box-border h-2 w-[5.5rem] shrink-0 overflow-hidden border border-border bg-secondary"
+          // ⚠️ **La piste est TEINTÉE dans la couleur de sa note, et elle n'a
+          // plus de filet — demande de Maxime du 29 août 2026.**
+          //
+          // Il y avait un filet violet (`--input`) parce que la piste neutre ne
+          // pesait que 1,31:1 sur la carte : sans lui, une note à 15/100 montrait
+          // un court trait de couleur et **rien** autour, si bien qu'on ne
+          // voyait plus de quoi la barre était une fraction. Le filet réglait ce
+          // problème en cernant la barre d'une teinte étrangère aux deux notes.
+          //
+          // Teinter la piste règle le même problème sans couleur tierce : la
+          // barre est entièrement bleue ou entièrement verte, pastel pour le
+          // vide et franc pour le plein.
+          //
+          // ⚠️ **Ce que l'arbitrage coûte, et pourquoi il tient quand même** :
+          // la piste pèse 1,73:1 (bleu) et 1,31:1 (menthe) sur la carte, sous
+          // les 3:1 exigés d'un objet graphique porteur de sens. Il est
+          // acceptable **parce que le chiffre est écrit juste à côté** —
+          // l'information n'a jamais reposé sur la barre seule, qui porte
+          // d'ailleurs `aria-hidden`. ⚠️ **Le jour où ce chiffre disparaîtrait
+          // de la ligne, ce choix redeviendrait un défaut.**
+          className={`box-border h-2 w-[5.5rem] shrink-0 overflow-hidden rounded-full ${piste}`}
         >
           {/* La largeur est un pourcentage calculé au rendu : Tailwind lit le
               code source pour savoir quelles classes produire, il ne peut donc

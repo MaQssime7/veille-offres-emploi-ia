@@ -48,11 +48,15 @@ export function PageDeControle() {
         <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
           Les trois polices
         </h2>
+        {/* ⚠️ Ces trois lignes NOMMENT la police qu'elles affichent : elles
+            deviennent fausses au moindre changement de typographie, et rien ne
+            le signale — le texte reste lisible, il ment simplement. Corrigées
+            le 29 août 2026 au passage de Fraunces/Geist à Fredoka/Nunito. */}
         <p className="font-display text-2xl font-bold text-foreground">
-          Fraunces 700 — titrage, jamais sous 20 px
+          Fredoka 700 — titrage, les titres de page et rien d’autre
         </p>
         <p className="font-sans text-base text-foreground">
-          Geist — texte courant et interface. Ingénieur en intelligence
+          Nunito — texte courant et interface. Ingénieur en intelligence
           artificielle, jeune diplômé, Île-de-France.
         </p>
         <p className="font-mono text-sm text-foreground">

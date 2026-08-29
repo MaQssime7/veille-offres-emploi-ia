@@ -194,14 +194,75 @@ function BoutonStatut({
 }) {
   const libelle = LIBELLES_STATUT[cible];
 
-  // Actif, le bouton est plein ; au repos, il n'a qu'un contour. `--input` et
-  // non `--border` : c'est une bordure de composant d'interface, elle doit
-  // tenir 3:1 — `--border` est un filet décoratif sans exigence.
+  // ⚠️ **Les deux boutons portent leur couleur EN PERMANENCE depuis le
+  // 29 août 2026, y compris au repos** — demande de Maxime, pour donner plus
+  // de couleur à la liste. Avant, le repos était un simple contour gris.
+  //
+  // ⚠️ **Ce que ce choix coûte, et comment on le paie.** Quand le repos et
+  // l'état engagé partagent la même teinte, la couleur ne distingue plus rien :
+  // il faut donc que trois autres signaux portent la différence, et aucun n'est
+  // décoratif.
+  //
+  //   1. **La saturation.** Au repos le pastel est atténué à 55 % sur la carte
+  //      blanche ; engagé, il est plein. C'est le signal le plus lisible des
+  //      trois, et le seul qui se voie sans comparer deux boutons voisins.
+  //   2. **Le relief s'inverse.** Au repos le coussin est bombé
+  //      (`cushion-control`) ; engagé, il est enfoncé (`cushion-control-active`).
+  //      C'est la grammaire de 1st-Pouf, qui fournit les deux recettes
+  //      exactement pour ça.
+  //   3. **L'icône change** — coche/croix au repos, flèche de retour engagé —
+  //      et `aria-pressed` porte l'état pour un lecteur d'écran.
+  //
+  // ⚠️ **Un anneau (`ring-*`) était le premier réflexe et il est IMPOSSIBLE
+  // ici — mesuré au DOM, pas supposé.** Les utilitaires `cushion-*` de pouf
+  // posent un `box-shadow` brut ; les `ring-*` de Tailwind passent par ce même
+  // `box-shadow`. Le dernier appliqué gagne, et c'est le coussin : l'anneau
+  // était bien dans la classe et **totalement absent du style calculé**. La
+  // feuille de pouf l'annonce d'ailleurs en toutes lettres — elle a choisi le
+  // `box-shadow` brut précisément pour ne pas dépendre de la pile de variables
+  // de Tailwind.
+  // ⚠️ **Corollaire à connaître** : `focus-visible:ring-*` est inopérant pour
+  // la même raison sur tout élément portant un `cushion-*`. Le focus clavier
+  // reste visible parce que `pouf.css` pose un `outline` global sur
+  // `:focus-visible` — un `outline` n'entre pas en conflit avec `box-shadow`.
+  // Retirer cette règle de pouf rendrait ces boutons inutilisables au clavier.
+  //
+  // Le plancher du projet interdit qu'une information tienne sur la seule
+  // couleur ; ici elle ne tient sur aucune couleur du tout, ce qui est plus
+  // robuste qu'avant.
+  //
+  // ⚠️ **`bg-ecarte` et non `bg-destructive`** : le rose de `--destructive` est
+  // calculé pour tenir 4,5:1 en tant que TEXTE d'erreur, il est donc très
+  // foncé. Sur un bouton, il jurerait avec le pastel de « Candidaté » d'à côté —
+  // deux boutons voisins qui font le même geste doivent avoir le même poids.
+  //
+  // ⚠️ **L'opacité du repos DIFFÈRE entre les deux modes, et c'est un correctif
+  // de revue — pas un raffinement.** Une première version posait 55 % dans les
+  // deux, avec ce commentaire : « atténuer ÉCLAIRCIT le fond, donc l'état au
+  // repos n'est jamais le moins lisible des deux ». **C'est vrai en clair et
+  // faux en sombre**, où le pastel se mélange vers la carte sombre `#211f2b` :
+  // atténuer y ASSOMBRIT. Mesuré sur le CSS compilé, le texte foncé posé dessus
+  // tombait à **4,34:1 sur la menthe et 3,61:1 sur le rose**, sous le plancher
+  // de 4,5:1 — un défaut qu'aucune vérification en mode clair ne pouvait voir.
+  //
+  // 70 % en sombre rétablit 6,21:1 et 5,07:1, tout en gardant l'écart avec
+  // l'état plein assez lisible pour distinguer les deux.
+  //
+  // ⚠️ **La leçon dépasse ce composant** : une couleur composée par transparence
+  // n'est PAS dans la palette, donc elle échappe à la vérification des paires de
+  // jetons. Toute opacité posée sur une teinte doit être mesurée à part, dans
+  // les deux modes.
+  //
+  // Contrastes du libellé, les quatre combinaisons en clair : menthe pleine
+  // 9,30:1 · menthe à 55 % 10,48:1 · rose plein 7,32:1 · rose à 55 % 9,22:1.
+  // En sombre à 70 % : menthe 6,21:1 · rose 5,07:1 · pleines 11,44 et 9,00:1.
   const habit = actif
     ? teinte === "candidate"
-      ? "border-success bg-success text-success-foreground"
-      : "border-destructive bg-destructive text-destructive-foreground"
-    : "border-input bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground";
+      ? "cushion-control-active bg-success text-success-foreground"
+      : "cushion-control-active bg-ecarte text-ecarte-foreground"
+    : teinte === "candidate"
+      ? "cushion-control bg-success/55 dark:bg-success/70 text-success-foreground hover:bg-success dark:hover:bg-success"
+      : "cushion-control bg-ecarte/55 dark:bg-ecarte/70 text-ecarte-foreground hover:bg-ecarte dark:hover:bg-ecarte";
 
   // Actif, l'icône devient une flèche de retour : c'est ce que le clic fera.
   // Un bouton doit annoncer son effet, pas répéter son état — celui-ci est déjà
@@ -238,7 +299,16 @@ function BoutonStatut({
       // bouton se réduisait à son icône de 14 px. La surface visible passe à
       // 30 × 30 px, ce qui reste dans les 27 px de rangée du bureau puisque
       // le compact ne s'applique que sous 640 px.
-      className={`relative z-10 inline-flex items-center gap-1.5 border font-mono text-[0.6875rem] font-semibold uppercase tracking-wider outline-none transition-colors before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 ${compact ? "p-2 sm:px-2.5 sm:py-1" : "px-2.5 py-1"} ${habit}`}
+      // ⚠️ **Le focus passe par `outline`, JAMAIS par `ring` — mesuré, pas
+      // supposé.** Ces boutons portent un `cushion-*`, c'est-à-dire un
+      // `box-shadow` brut, et les `ring-*` de Tailwind passent par ce même
+      // `box-shadow` : l'anneau était écrasé et le style calculé affichait
+      // `outline-style: none`. Un utilisateur au clavier n'avait **aucun
+      // repère** sur les deux boutons qui trient la liste.
+      // ⚠️ **`outline-none` a été RETIRÉ de cette classe** : c'est lui qui
+      // neutralisait le repli de `pouf.css` (`:focus-visible { outline: 3px }`).
+      // Le remettre reproduirait le défaut en silence.
+      className={`relative z-10 inline-flex items-center gap-1.5 rounded-full font-mono text-[0.6875rem] font-bold uppercase tracking-wider transition-colors before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] focus-produit disabled:opacity-60 ${compact ? "p-2 sm:px-3 sm:py-1" : "px-3 py-1"} ${habit}`}
       title={actif ? `Remettre « ${LIBELLES_STATUT.a_traiter} »` : libelle}
     >
       <Icone className="size-3.5 shrink-0" aria-hidden="true" />

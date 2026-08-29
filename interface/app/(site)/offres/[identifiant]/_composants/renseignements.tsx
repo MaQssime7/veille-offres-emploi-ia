@@ -90,7 +90,7 @@ export function Renseignements({ offre }: { offre: OffreEnFiche }) {
       {/* `dl` et non un tableau : ce sont des paires libellé/valeur, pas des
           données à croiser en deux dimensions. Un lecteur d'écran annonce le
           couple, ce qu'une grille de `div` ne ferait pas. */}
-      <dl className="grid gap-x-6 gap-y-2 border border-border bg-card px-4 py-3 sm:grid-cols-[9rem_1fr]">
+      <dl className="grid gap-x-6 gap-y-2 carte-produit px-4 py-3 sm:grid-cols-[9rem_1fr]">
         {lignes.map(({ libelle, valeur }) => (
           <div key={libelle} className="contents">
             <dt className="libelle-mono text-muted-foreground">{libelle}</dt>

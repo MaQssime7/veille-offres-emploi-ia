@@ -30,7 +30,10 @@ import { Button } from "@/components/ui/button";
 export default function ErreurSite({ reset }: { reset: () => void }) {
   return (
     <main className="mx-auto w-full max-w-(--largeur-page) flex-1 px-4 py-10 sm:px-6">
-      <div className="flex max-w-prose flex-col items-start gap-4 border border-destructive/40 bg-destructive/5 px-5 py-8 sm:px-8 sm:py-10">
+      {/* Même traitement que le panneau d'erreur de la liste : arrondi comme
+          une carte, mais cerné d'un filet brique plutôt que posé sur un
+          coussin — une erreur ne doit pas se lire comme du contenu. */}
+      <div className="flex max-w-prose flex-col items-start gap-4 rounded-2xl border border-destructive/40 bg-destructive/5 px-5 py-8 sm:px-8 sm:py-10">
         <span className="text-destructive">
           <TriangleAlert className="size-6" aria-hidden="true" />
         </span>

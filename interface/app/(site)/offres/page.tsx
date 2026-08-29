@@ -129,7 +129,6 @@ export default async function PageOffres({
               <CompteAffiche
                 affichees={resultat.offres.length}
                 total={resultat.total}
-                notees={resultat.notees}
                 filtre={filtre}
               />
             </p>
@@ -182,7 +181,14 @@ export default async function PageOffres({
         // suivant, sur la ligne qui aura pris la place. Un verrou par ligne ne
         // protégerait de rien.
         <VerrouTri>
-          <div className="border border-border bg-card">
+          {/* ⚠️ **Une pile de cartes espacées, plus un bloc unique cloisonné
+              par des filets.** C'est le changement de forme le plus coûteux de
+              la refonte : chaque ligne gagne l'écart qui la sépare de la
+              suivante. L'écart est volontairement serré (8 px) — la liste peut
+              compter deux cents lignes qu'on balaye le matin, et la respiration
+              généreuse d'un tableau de bord à six tuiles s'y paierait en
+              défilement. */}
+          <div className="flex flex-col gap-2">
             {resultat.offres.map((offre) => (
               <LigneOffre
                 key={offre.identifiant}
@@ -232,14 +238,23 @@ function totalBase(comptes: Record<string, number | null>): number | null {
  * exactement 200 offres. Dès que la phase 4 ajoutera un filtre, la page
  * afficherait « 200 offres affichées » en en montrant 150.
  *
- * ⚠️ **Le compte des offres notées n'est pas une statistique décorative, et ce
- * n'est pas non plus le « bandeau de quatre chiffres clés » que le DESIGN.md
- * refuse** — celui-là parle du marché de l'emploi, celui-ci parle de l'état de
- * la liste qu'on est en train de lire. Sans lui, le classement mentirait : la
- * page est triée par intérêt décroissant, donc les offres non notées se posent
- * **sous** la plus mauvaise note. Une offre jamais examinée se lirait alors
- * comme une offre jugée sans intérêt. Au 26 août 2026, c'est le cas de 438
- * offres sur 535.
+ * ⚠️ **Le compte des offres notées a été RETIRÉ le 29 août 2026, sur décision
+ * de Maxime. Ne pas le réintroduire sans rouvrir la question avec lui.**
+ *
+ * Il existait pour une raison réelle : la page est triée par intérêt
+ * décroissant, donc une offre pas encore notée se pose **sous** la plus
+ * mauvaise note, et se lit comme une offre jugée sans intérêt. Annoncer
+ * « 137 notées » sur 571 avertissait de ce piège.
+ *
+ * L'argument qui l'emporte est que **ce déséquilibre est transitoire par
+ * construction** : la notation tourne chaque nuit sur la collecte de la nuit,
+ * donc à terme toute offre arrive notée, et le compte afficherait deux nombres
+ * égaux à longueur d'année. Un indicateur qui ne varie plus n'informe plus.
+ * ⚠️ **Ce que ça coûte aujourd'hui, en connaissance de cause** : 434 offres
+ * restent non notées — l'arriéré d'avant la mise en place du cron — et plus
+ * rien à l'écran ne les distingue d'offres mal notées. Le cartouche « Pas
+ * encore notée », lui, reste sur chaque ligne concernée : l'information n'est
+ * pas perdue, elle est seulement passée du résumé au détail.
  *
  * ⚠️ Le libellé ne dit jamais « les plus récentes » : depuis la phase 2 le tri
  * est sur la note, plus sur la date. Une formule laissée en place aurait
@@ -248,12 +263,10 @@ function totalBase(comptes: Record<string, number | null>): number | null {
 function CompteAffiche({
   affichees,
   total,
-  notees,
   filtre,
 }: {
   affichees: number;
   total: number | null;
-  notees: number | null;
   filtre: FiltreListe;
 }) {
   const segments: string[] = [];
@@ -273,13 +286,7 @@ function CompteAffiche({
     );
   }
 
-  if (notees !== null) {
-    segments.push(
-      notees === 0 ? "aucune notée" : `${notees} ${accorder(notees, "notée")}`,
-    );
-  }
-
-  // Le troisième segment ne s'écrit que si la liste est vraiment tronquée :
+  // Le second segment ne s'écrit que si la liste est vraiment tronquée :
   // « 97 offres collectées · 97 affichées » n'apprendrait rien à personne.
   if (total !== null && total > affichees) {
     segments.push(`${affichees} ${accorder(affichees, "affichée")}`);

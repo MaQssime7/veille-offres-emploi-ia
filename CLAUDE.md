@@ -103,19 +103,45 @@ fichier :**
 
 ## État au 29 août 2026
 
-**Phases 1 à 4 CLOSES, et le bandeau de `/offres` refondu.** ⚠️ **La PHASE 5 —
-l'écran du matin (`/`) — est le prochain chantier, et rien ne la précède plus.**
+**Phases 1 à 4 CLOSES, le bandeau de `/offres` refondu, et le SYSTÈME DE DESIGN
+REMPLACÉ.** ⚠️ **La PHASE 5 — l'écran du matin (`/`) — est le prochain chantier,
+et rien ne la précède plus.**
 Le site est en ligne derrière son mot de passe, collecte et notation tournent sur
 le cron. `/offres` est un **plan de travail** : par défaut, seules les offres
 « à traiter », avec trois autres filtres à un clic. **L'interface écrit en base** —
-statuts et note personnelle. **574 offres, 140 notées, 571 à traiter / 0 candidaté
+statuts et note personnelle. **574 offres, 137 notées, 571 à traiter / 0 candidaté
 / 3 écarté.**
+
+### ⚠️ Refonte du système de design — 29 août 2026, branche `refonte-design-pouf`
+
+**Le système est passé de l'éditorial technique (beige, Fraunces, aucune ombre) à
+[1st-Pouf](https://1st-pouf.worksonmy.dev)** — pastel, arrondi, volumétrique.
+Décision de Maxime, validée devant l'écran. Voir § Design et `docs/DESIGN.md`.
+
+⚠️ **Ce que la phase 5 doit savoir avant de construire `/` :**
+
+- **La donnée n'a pas bougé**, c'était la contrainte : un relevé des champs
+  affichés a été figé avant la refonte et vérifié après.
+- **`globals.css` est un dictionnaire shadcn → pouf.** On continue d'écrire
+  `bg-card`, `text-muted-foreground` : le nouvel écran n'a aucun vocabulaire à
+  apprendre.
+- ⚠️ **Le compte « M notées » a été RETIRÉ de `/offres`** — à terme toute offre
+  arrive notée. Ne pas le réintroduire sur `/` sans rouvrir la question.
+- ⚠️ **Le focus clavier passe par `outline` et jamais par `ring`** sur tout
+  élément portant un `cushion-*`. C'est un défaut d'accessibilité réel, trouvé en
+  mesurant : l'anneau était dans la classe et absent du style calculé.
+- **Écrans refaits** : `/offres`, la fiche, `/connexion`, les états vides et
+  d'erreur, les deux squelettes de chargement, les composants `ui/`. **La page de
+  contrôle `/` n'a PAS été redessinée** — c'est la phase 5 qui la remplace, la
+  repeindre aurait été du travail jeté. Seuls ses libellés de police ont été
+  corrigés, parce qu'ils nommaient Fraunces et Geist.
 
 ### ✅ Le bandeau de `/offres` est fait — 29 août 2026, et ce qu'il lègue à la phase 5
 
-Le chantier de design qui devait précéder la phase 5 **est clos**. Récit complet et
-mesures dans `docs/DESIGN.md` § « Le bandeau de `/offres` devient une manchette ».
-Ce qu'il faut en retenir ici, parce que la phase 5 s'appuie dessus :
+Le chantier de design qui devait précéder la phase 5 **est clos**. ⚠️ Le récit
+détaillé de ce chantier a été **élagué de `docs/DESIGN.md` lors de la refonte du
+système** — il n'en reste que la ligne du journal des décisions. Ce qui suit est
+donc la seule trace de ce que la phase 5 doit reprendre :
 
 - **`/offres` porte une manchette** : ligne pleine largeur en `libelle-mono`, état
   de la veille à gauche, horodatage à droite, filet, puis le titre
@@ -173,10 +199,11 @@ Ce qu'il faut en retenir ici, parce que la phase 5 s'appuie dessus :
 | ⚠️ **Deux onglets sur la même fiche** | Le dernier qui tape écrase la note de l'autre, sans avertissement. Un seul utilisateur : signalé, non corrigé. Le corriger demanderait un horodatage de version comparé avant écriture |
 
 ⚠️ **Trois défauts de la fiche d'offre, MESURÉS le 29 août et volontairement
-LAISSÉS.** Décision de Maxime, chiffres dans `docs/DESIGN.md`. **Ne pas les
-remesurer.** Barres de notes restées à la largeur de la liste · fiche muette sur
-les 434 offres non notées (**se résorbe seul** à mesure que la base se note) ·
-les cinq titres de section ont le même poids.
+LAISSÉS.** Décision de Maxime. **Ne pas les remesurer.** Barres de notes restées à
+la largeur de la liste · fiche muette sur les 434 offres non notées (**se résorbe
+seul** à mesure que la base se note) · les cinq titres de section ont le même
+poids. ⚠️ **La refonte du design ne les a PAS corrigés** — elle a changé les
+formes et les couleurs, pas la hiérarchie de l'information.
 
 ⚠️ **Un défaut connu, laissé faute de correctif propre** : l'écriture des offres
 se fait par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de
@@ -638,41 +665,70 @@ plusieurs, sinon on paie l'écriture du cache sans jamais le relire.
 
 ## Design
 
-**Ce qu'on retient** : un instrument de décision, pas un tableau de bord. On voit
-tout de suite quoi lire en premier, et pourquoi. **Direction** : éditorial
-technique — chaud dans la matière (beige papier, serif, encre brune), froid dans la
-précision (densité, chasse fixe, filets).
+⚠️ **REFONDU le 29 août 2026 : le système est désormais
+[1st-Pouf](https://1st-pouf.worksonmy.dev), pastel et volumétrique.** L'ancien
+système éditorial (beige papier, Fraunces, Geist, aucune ombre) n'existe plus.
+Validé par Maxime devant l'écran, après construction réelle de `/offres`.
 
-**Polices** : titrage **Fraunces 700** · texte et interface **Geist** · données et
-code **Geist Mono**. Le serif ne descend jamais sous 20 px.
-**Icônes** : **lucide**, figé à l'installation. **Ne jamais en mélanger un second.**
+**Ce qu'on retient** : un instrument de décision, pas un tableau de bord. On voit
+tout de suite quoi lire en premier, et pourquoi. **Direction** : pastel
+volumétrique — surfaces blanches arrondies sur fond lavande, relief « coussin »,
+six accents pastel qui portent **toujours de l'encre foncée, jamais du blanc**.
+
+**Polices** : titrage **Fredoka 700** (les `h1` seulement) · texte et interface
+**Nunito** · données et étiquettes **Geist Mono**. Les trois par `next/font`.
+⚠️ **Fredoka n'est PAS livrée par le registre** — sans chargement explicite les
+titres retombent sur Nunito, sans erreur. ⚠️ **Geist Mono survit à la refonte** :
+sans chasse fixe, la colonne des salaires ondule sur 200 lignes.
+**Icônes** : **lucide**, figé à l'installation. **Ne jamais en mélanger un
+second.** ⚠️ Le composant `Icon` du registre tire `@tabler/icons-react` : ne pas
+l'installer.
 **Jetons** : `interface/app/globals.css` est la source de vérité. Jamais de couleur
 en dur, toujours les jetons sémantiques.
 
-**Quatre teintes de signal, un rôle chacune** : brun-encre = action principale et
-note d'intérêt · ocre = le temporel (« nouveau », enregistrement en cours) · olive =
-accessibilité et candidaté · brique = erreur et écarté. **Une teinte qui sert à deux
-choses ne sert plus à rien** — d'où le refus d'un « Enregistré » vert pour la note.
+⚠️ **`globals.css` est un DICTIONNAIRE, et c'est la décision d'architecture à
+comprendre avant d'y toucher.** Le système vient de `components/pouf/pouf.css`,
+mais l'application continue de parler shadcn (`bg-card`, `text-muted-foreground`).
+Un jeton nomme un **rôle**, jamais une couleur : `bg-card` ne veut plus dire
+« beige papier » mais « la surface du système en cours ».
 
-⚠️ **Trois pièges qui ne se voient pas à l'œil** (détail dans `docs/DESIGN.md`) :
-`--border` (filet décoratif, sans exigence) n'est pas `--input` (bordure de champ,
-3:1 obligatoire) · `--accent` chez shadcn est la surface de survol, pas une couleur
-vive · l'ocre existe en deux valeurs parce qu'il doit être clair sous un texte foncé
-et foncé dans une jauge.
+**Cinq teintes de signal, un rôle chacune** : bleu = note d'intérêt · menthe =
+accessibilité et candidaté · rose pastel = écarté · jaune/ocre = le temporel
+(« nouveau », état de la veille) · rose foncé = erreur. **Une teinte qui sert à
+deux choses ne sert plus à rien.**
+⚠️ **`--ecarte` (rose pastel) et `--destructive` (rose foncé) ne sont PAS un
+doublon** : le second est du texte d'erreur, donc 4,5:1 obligatoire ; le premier
+est un fond de bouton sous de l'encre foncée.
 
-⚠️ **shadcn pose des ombres par défaut** sur `Card`, `Popover` et les menus. Les
-retirer : ce produit n'a **aucune ombre**, uniquement des filets. La hiérarchie
-repose donc entièrement sur la typographie.
+⚠️ **Trois pièges MESURÉS, qui ne se voient dans aucune erreur** (détail dans
+`docs/DESIGN.md`) :
+
+1. **`--muted` veut dire deux choses opposées** — surface chez shadcn, couleur de
+   texte chez pouf. L'écraser rendait les cartouches **vides** et les
+   justifications illisibles. La surface s'appelle `--surface-muted`.
+2. ⚠️ **`ring` et `cushion` sont incompatibles** : les `cushion-*` posent un
+   `box-shadow` brut, les `ring-*` de Tailwind passent par la même propriété. Le
+   coussin gagne et **l'anneau de focus disparaît du style calculé**. **Sur tout
+   élément à coussin, le focus passe par `outline`** — et jamais `outline-none`,
+   qui neutralise le repli global de `pouf.css`.
+3. **Les pastels sont invisibles comme objets graphiques en mode clair** :
+   1,06 à 1,99:1 contre 3:1 requis. D'où **deux jetons par note** — la variante
+   nue pour les fonds de pastille, la variante `-barre` (assombrie) pour les
+   jauges. En mode sombre ils passent nus, le problème est propre au clair.
+
+⚠️ **`components/pouf/pouf.css` est ADAPTÉ**, donc non remplaçable par un
+`shadcn add` qui l'écraserait. Quatre adaptations signalées sur place par
+« ADAPTÉ (projet) ».
 
 ⚠️ **Le libellé devant chaque barre de note ne se retire jamais**, même pour gagner
 de la place : sans lui l'information tient sur la seule couleur. En toutes lettres —
 **« Intérêt » et « Accessibilité »**. ⚠️ « intérêt », jamais « intéressement » : à
 côté d'un salaire, le second se lit comme une prime de participation.
 
-**Interdits** : Inter, Roboto, Poppins, Montserrat, Space Grotesk · Instrument Serif
-(un seul poids, le gras y est synthétique) · dégradé violet · boutons en dégradé ·
-trois colonnes d'icônes dans des ronds colorés · tout centré · arrondis en bulle ·
-`system-ui` en titrage.
+**Interdits** : Inter, Roboto, Poppins, Montserrat, Space Grotesk · dégradés ·
+trois colonnes d'icônes dans des ronds colorés · tout centré · `system-ui` en
+titrage · **du texte blanc sur un accent pastel** (le système impose l'encre
+foncée, et le blanc y échoue à 1,25:1).
 
 **Plancher d'accessibilité, opposable** : texte 4,5:1 · interface 3:1 · focus
 clavier toujours visible · mouvement coupé sous `prefers-reduced-motion` · jamais

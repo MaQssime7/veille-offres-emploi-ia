@@ -1,6 +1,40 @@
+/* ============================================================================
+ * globals.css — l'entrée Tailwind du projet, et la couche d'adaptation entre
+ * deux vocabulaires de design.
+ *
+ * ⚠️ **LA DÉCISION D'ARCHITECTURE DE CE FICHIER, en une phrase** : le système
+ * visuel vient de 1st-Pouf (`components/pouf/pouf.css`), mais l'application
+ * continue de parler le vocabulaire de shadcn — `bg-card`, `text-muted-
+ * foreground`, `border-border`. Ce fichier est le dictionnaire entre les deux.
+ *
+ * Pourquoi ne pas avoir réécrit les écrans avec le vocabulaire de pouf
+ * (`bg-surface`, `text-ink`) ? Parce que la refonte devient alors un
+ * remplacement massif : ~3 900 lignes de TSX à reprendre d'un coup, sans
+ * pouvoir rien regarder avant la fin, et un écran oublié ne se signale par
+ * aucune erreur — il s'affiche simplement en couleurs par défaut. Avec le
+ * dictionnaire, chaque écran fonctionne dès la première seconde et se raffine
+ * ensuite, un par un.
+ *
+ * ⚠️ **La conséquence à connaître** : `bg-card` ne veut plus dire « beige
+ * papier », il veut dire « la surface du système en cours ». Un jeton nomme un
+ * RÔLE, jamais une couleur — c'est ce qui rend un changement de système
+ * possible. Le jour où un troisième système remplacerait pouf, c'est encore ce
+ * fichier seul qui changerait.
+ * ========================================================================= */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "../components/pouf/pouf.css";
+
+/* ⚠️ **Ces deux lignes sont OBLIGATOIRES et leur oubli ne produit aucune
+   erreur.** `pouf.css` déclarait un `@source './'` qui ne scannait que le
+   dossier du registre ; on l'a retiré au profit de ces deux-ci, qui couvrent
+   l'application entière. Sans elles, Tailwind ne voit pas les classes écrites
+   dans `app/` et `components/` : la page se charge, sans le moindre message,
+   avec un style partiel. */
+@source "../app";
+@source "../components";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -8,11 +42,27 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  /* Trois rôles, trois polices. Le serif ne descend jamais sous 20 px. */
-  --font-sans: var(--font-geist-sans);
+  /* Trois rôles, trois polices.
+     ⚠️ **Nunito n'est PAS chargée par `@fontsource-variable/nunito`**, que la
+     documentation de 1st-Pouf recommande : on passe par `next/font`, qui
+     héberge la police avec l'application, la précharge et supprime le
+     décalage de mise en page au chargement. C'est aussi une dépendance npm en
+     moins. Le nom de famille est donc celui que `next/font` génère, pas
+     « Nunito Variable » — voir `app/layout.tsx`.
+     ⚠️ **Geist Mono SURVIT à la refonte, et c'est délibéré** : 1st-Pouf n'a
+     aucune police à chasse fixe, or les salaires, les dates et les notes
+     s'alignent en colonne d'une ligne à l'autre. Sans chasse fixe, « 34-36 k€ »
+     et « 45-55 k€ » n'ont plus la même largeur et la colonne ondule. */
+  --font-sans: var(--font-nunito);
   --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-fraunces);
-  --font-heading: var(--font-fraunces);
+  --font-display: var(--font-fredoka);
+  --font-heading: var(--font-fredoka);
+
+  /* ⚠️ `--font-pouf` est le nom que `pouf.css` utilise en interne (son
+     `body { font-family: var(--font) }`). On le redirige vers Nunite chargée
+     par next/font, sinon le système chercherait une famille absente et
+     retomberait silencieusement sur la police système. */
+  --font-pouf: var(--font-nunito);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -35,7 +85,14 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
+  /* ⚠️ **`--surface-muted` et non `--muted` : c'est la seule collision de noms
+     entre les deux systèmes, et elle est traître.** Chez shadcn, `--muted` est
+     une SURFACE atténuée ; chez 1st-Pouf, c'est une COULEUR DE TEXTE (#71609b).
+     Définir `--muted` ici écrasait donc le gris de texte de pouf par un
+     lavande très clair : mesuré à l'écran le 29 août 2026, les cartouches
+     s'affichaient vides et les justifications de notation étaient illisibles.
+     Rien ne le signalait — ni erreur de compilation, ni avertissement. */
+  --color-muted: var(--surface-muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
@@ -45,184 +102,313 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
-  /* Propres au produit — shadcn ne les fournit pas.
-     Ocre = le temporel (« nouveau », enrichissement en cours).
-     Olive = accessibilité et candidaté. */
+  /* Propres au produit — ni shadcn ni pouf ne les fournissent.
+     ⚠️ **Chaque note a DEUX jetons, et c'est la correction centrale de cette
+     refonte.** Les pastels de 1st-Pouf sont faits pour porter du texte foncé,
+     pas pour être vus seuls : mesurés sur le fond de page en mode clair, ils
+     tiennent entre 1,06:1 et 1,99:1 là où un objet graphique porteur de sens
+     en demande 3:1. Une barre de note en menthe pastel est donc invisible —
+     on ne voit plus où elle s'arrête, c'est-à-dire qu'on ne lit plus la note.
+     La variante `-barre` est la même teinte assombrie juste ce qu'il faut ; la
+     variante nue reste disponible pour les fonds de pastille, où le texte
+     posé dessus porte l'information. */
   --color-signal: var(--signal);
   --color-signal-foreground: var(--signal-foreground);
   --color-signal-fort: var(--signal-fort);
   --color-interet: var(--interet);
+  --color-interet-barre: var(--interet-barre);
+  --color-interet-texte: var(--interet-texte);
+  --color-interet-piste: var(--interet-piste);
   --color-marque: var(--marque);
   --color-success: var(--success);
+  --color-success-barre: var(--success-barre);
+  --color-success-texte: var(--success-texte);
+  --color-success-piste: var(--success-piste);
   --color-success-foreground: var(--success-foreground);
+  --color-ecarte: var(--ecarte);
+  --color-ecarte-foreground: var(--ecarte-foreground);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* ⚠️ **Les rayons viennent de pouf et ils sont GROS** — 32 px pour une
+     carte, 20 px pour un contrôle, contre 4 px auparavant. C'est le trait le
+     plus reconnaissable du système : les rogner reviendrait à installer pouf
+     puis à en effacer la signature. */
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: var(--radius-control);
+  --radius-xl: var(--radius-blob);
+  --radius-2xl: var(--radius-card);
+  --radius-3xl: 40px;
+  --radius-4xl: 48px;
 }
 
+/* ============================================================================
+ * MODE CLAIR — le dictionnaire shadcn -> pouf.
+ *
+ * Les couleurs sources sont celles de `pouf.css` (`--color-bg`, `--color-ink`,
+ * `--color-purple`…). On ne les recopie pas : on les référence, pour qu'un
+ * changement de palette dans pouf se propage ici sans intervention.
+ * Les seules valeurs écrites en dur sont celles que pouf ne fournit pas —
+ * toutes calculées pour un contraste donné, et toutes annotées de leur mesure.
+ * ========================================================================= */
 :root {
-  --background:             oklch(0.968 0.013 84);
-  --foreground:             oklch(0.245 0.028 52);
-  --card:                   oklch(0.988 0.007 84);
-  --card-foreground:        oklch(0.245 0.028 52);
-  --popover:                oklch(0.988 0.007 84);
-  --popover-foreground:     oklch(0.245 0.028 52);
-  --primary:                oklch(0.340 0.045 48);
-  --primary-foreground:     oklch(0.975 0.012 84);
-  --secondary:              oklch(0.925 0.018 82);
-  --secondary-foreground:   oklch(0.300 0.035 50);
-  --muted:                  oklch(0.938 0.015 84);
-  --muted-foreground:       oklch(0.470 0.028 58);
-  --accent:                 oklch(0.925 0.022 78);
-  --accent-foreground:      oklch(0.300 0.035 50);
-  --destructive:            oklch(0.505 0.155 32);
-  --destructive-foreground: oklch(0.980 0.010 84);
-  --border:                 oklch(0.790 0.022 76);
-  --input:                  oklch(0.575 0.030 70);
-  --ring:                   oklch(0.520 0.100 58);
+  --background: var(--color-bg);
+  --foreground: var(--color-ink);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-ink);
 
-  /* Propres au produit — shadcn ne les fournit pas. */
-  --signal:                 oklch(0.620 0.135 68);
-  --signal-foreground:      oklch(0.205 0.040 60);
-  --signal-fort:            oklch(0.498 0.108 62);
-  /* Bleu-encre : la note d'INTÉRÊT, et rien d'autre. Cinquième teinte de signal,
-     ajoutée le 28 août 2026 sur décision de Maxime — voir docs/DESIGN.md.
-     6,30:1 sur les cartes, du même ordre que l'olive (6,13) et l'ocre (6,03) :
-     les trois mesures se répondent au lieu de se hiérarchiser par accident. */
-  --interet:                oklch(0.480 0.110 250);
-  /* Brun-terre : le nom de l'ENTREPRISE, et rien d'autre. Il existe parce que
-     l'entreprise et l'intitulé partagent désormais police ET taille : sans une
-     teinte propre, deux lignes superposées seraient indiscernables. 6,03:1. */
-  --marque:                 oklch(0.500 0.100 45);
-  --success:                oklch(0.480 0.075 138);
-  --success-foreground:     oklch(0.980 0.010 84);
+  /* Le violet est l'action principale du système. Texte foncé dessus : 6,10:1. */
+  --primary: var(--color-purple);
+  --primary-foreground: var(--on-accent);
 
-  --chart-1: oklch(0.620 0.135 68);
-  --chart-2: oklch(0.505 0.155 32);
-  --chart-3: oklch(0.480 0.075 138);
-  --chart-4: oklch(0.400 0.045 48);
-  --chart-5: oklch(0.720 0.055 82);
+  /* Surfaces secondaires : le fond de page sur une carte blanche. */
+  --secondary: var(--color-bg);
+  --secondary-foreground: var(--color-ink);
+  --surface-muted: #e7dcff;
+  /* ⚠️ Valeur EN DUR, et non `var(--color-muted)` : ce jeton-là vient d'être
+     redirigé vers la surface ci-dessus (voir le bloc `@theme inline`). S'y
+     référer ici rendrait la couleur de texte circulaire — donc invisible.
+     ⚠️ **Assombri de #71609b à #6c5b94 en revue le 29 août 2026.** L'ancienne
+     valeur était mesurée sur le FOND DE PAGE (4,63:1) — mais sa surface la plus
+     fréquente est la **pilule d'un cartouche** (`--surface-muted`), où elle ne
+     pesait que **4,18:1**, sous le plancher. Sur 200 lignes × quatre pilules.
+     ⚠️ **La leçon** : un contraste se mesure sur la surface où la couleur est
+     réellement posée, pas sur la surface la plus commode. */
+  --muted-foreground: #6c5b94; /* pilule 4,51:1 · page 5,00:1 · carte 5,90:1 */
 
-  --radius: 0.25rem;
+  /* ⚠️ **`--muted` est RESTAURÉ à la valeur de pouf, et ce n'est pas un
+     doublon de `--muted-foreground`.** `@theme inline` redirige `--color-muted`
+     vers notre surface (pour que `bg-muted` de Tailwind marche), ce qui écrasait
+     du même coup l'alias legacy `--muted` que **les composants de pouf lisent
+     comme une couleur de texte**. Il valait donc un lavande très clair en mode
+     clair, et un gris correct en sombre — une asymétrie invisible tant qu'aucun
+     composant pouf n'est installé, et un piège dormant pour la phase 6. */
+  --muted: #71609b;
 
-  /* Largeur maximale du contenu (DESIGN.md § Mise en page).
-     **Mesurée et figée le 26 août 2026** contre les 373 offres réelles : en
+  /* ⚠️ `--accent` chez shadcn est la SURFACE DE SURVOL, pas une couleur vive.
+     Un violet saturé ici allumerait chaque ligne de la liste au passage de la
+     souris. */
+  --accent: #e7dcff;
+  --accent-foreground: var(--color-ink);
+
+  /* Le rose de pouf assombri : c'est du TEXTE (« Notation impossible… »), il
+     lui faut 4,5:1, pas 3:1.
+     ⚠️ **Assombri de #d40054 à #ca0050 en revue le 29 août 2026**, même erreur
+     de méthode que ci-dessus : la mesure portait sur le fond de page nu, alors
+     que les deux panneaux d'erreur posent ce texte sur `bg-destructive/5` —
+     un fond rosé qui ramenait le contraste à **4,16:1**. Le défaut se serait
+     manifesté exactement là où il coûte le plus cher : l'écran « base
+     injoignable » et l'écran de plantage. */
+  --destructive: #ca0050; /* panneau 4,51:1 · page 4,91:1 · carte 5,79:1 */
+  --destructive-foreground: var(--color-surface);
+
+  /* Filet décoratif : aucune exigence de contraste, il ne porte rien.
+     La bordure de champ, elle, en a une — 3,22:1 mesuré. */
+  --border: #ddcdfa;
+  --input: #9c60ff;
+  --ring: var(--color-purple);
+
+  /* -- Les quatre rôles de signal du produit ------------------------------
+     Chacun garde le rôle unique qu'il avait avant la refonte ; seule la teinte
+     change. Une teinte qui sert à deux choses ne sert plus à rien.
+     ⚠️ Les valeurs `-barre` et les teintes de texte sont MESURÉES, pas
+     choisies : chaque commentaire porte son chiffre et son seuil. */
+
+  /* Le temporel — « Nouveau ». Fond jaune, texte foncé dessus : 9,75:1. */
+  --signal: var(--color-yellow);
+  --signal-foreground: var(--on-accent);
+  --signal-fort: #856700; /* 4,53:1 — quand l'ocre doit être du texte */
+
+  /* L'intérêt — bleu. Pastille : 7,05:1. Barre : 3,52:1 (seuil 3).
+     ⚠️ **La PISTE prend le pastel de sa propre note, et le filet a disparu —
+     demande de Maxime du 29 août 2026.** Elle portait un filet violet
+     (`--input`) qui délimitait son étendue ; il cernait la barre d'une teinte
+     étrangère aux deux notes. En teintant la piste, la barre devient
+     entièrement bleue — pastel pour le vide, franc pour le plein — et l'échelle
+     reste lisible sans qu'aucune couleur tierce n'entre.
+     ⚠️ **Ce que cet arbitrage coûte, dit franchement** : la piste pèse 1,73:1
+     sur la carte, sous les 3:1 d'un objet graphique porteur de sens. C'est
+     acceptable **parce que le chiffre est écrit juste à côté** — l'information
+     n'a jamais reposé sur la barre seule. Le jour où le chiffre disparaîtrait,
+     ce choix redeviendrait un défaut. */
+  --interet: var(--color-blue);
+  --interet-barre: #0e76ff;
+  --interet-piste: var(--color-blue); /* 1,73:1 sur la carte — voir ci-dessus */
+  --interet-texte: #0063e6; /* 4,53:1 — le libellé « Intérêt » */
+
+  /* L'accessibilité et le statut « candidaté » — menthe.
+     Pastille : 9,30:1. Barre : 3,52:1. */
+  --success: var(--color-mint);
+  --success-barre: #198e5a;
+  --success-piste: var(--color-mint); /* 1,31:1 sur la carte — même arbitrage */
+  --success-texte: #157a4d; /* 4,54:1 — le libellé « Accessibilité » */
+  --success-foreground: var(--on-accent);
+
+  /* Le statut « écarté » — rose.
+     ⚠️ **Distinct de `--destructive`, et ce n'est pas un doublon.** Les deux
+     sont roses et disent pourtant deux choses différentes : `--destructive` est
+     une ERREUR (« notation impossible »), donc du texte, donc 4,5:1 — d'où sa
+     valeur foncée. `--ecarte` est une DÉCISION de Maxime, portée par un bouton
+     plein sur lequel du texte foncé se pose : le pastel convient et donne au
+     bouton la signature du système. Les fusionner ferait soit un bouton criard,
+     soit un message d'erreur illisible. */
+  --ecarte: var(--color-pink);
+  --ecarte-foreground: var(--on-accent); /* 7,32:1 */
+
+  /* Le nom de l'entreprise. Violet à 4,53:1 : il doit se distinguer de
+     l'intitulé, qui partage sa police et sa taille. */
+  --marque: #8337ff;
+
+  --chart-1: var(--color-purple);
+  --chart-2: var(--color-pink);
+  --chart-3: var(--color-mint);
+  --chart-4: var(--color-blue);
+  --chart-5: var(--color-yellow);
+
+  /* ⚠️ `--radius` est le rayon que les composants shadcn lisent directement.
+     On l'aligne sur le rayon de contrôle de pouf (20 px). */
+  --radius: var(--radius-control);
+
+  /* Largeur maximale du contenu.
+     ⚠️ **Mesurée et figée le 26 août 2026** contre les offres réelles : en
      dessous de 1000 px, les offres qui affichent un salaire cassent sur deux
-     lignes (34 sur 200 à 820 px, 9 à 960 px avec les libellés de notes en
-     toutes lettres). Ce n'est pas un arrondi.
-     ⚠️ Elle vit ICI et nulle part ailleurs : recopiée dans chaque écran, une
-     remesure se ferait à trois endroits et l'en-tête finirait désaligné du
+     lignes. Elle vit ICI et nulle part ailleurs — recopiée dans chaque écran,
+     une remesure se ferait à trois endroits et l'en-tête finirait désaligné du
      contenu qu'il surplombe.
-     ⚠️ Le seuil vaut pour le salaire **non normalisé**. La phase 2 raccourcira
-     le libellé et rendra de la marge — c'est le moment de le rouvrir. */
+     ✅ **REMESURÉE le 29 août 2026, après la refonte** — la revue avait relevé
+     à raison que le seuil avait pu bouger : les pilules sont passées de
+     `border + px-2` à `px-2.5`, et la liste a perdu les bordures latérales de
+     son conteneur. Mesure au DOM sur les 200 lignes affichées, dont **84
+     affichent un salaire** : **zéro rangée de cartouches ne casse sur deux
+     lignes**. Le seuil tient, il n'est pas rouvert. */
   --largeur-page: 1000px;
 
-  /* Dérivés de la palette ci-dessus : shadcn référence ces jetons,
-     les laisser vides produirait des surfaces transparentes. */
-  --sidebar:                    oklch(0.988 0.007 84);
-  --sidebar-foreground:         oklch(0.245 0.028 52);
-  --sidebar-primary:            oklch(0.340 0.045 48);
-  --sidebar-primary-foreground: oklch(0.975 0.012 84);
-  --sidebar-accent:             oklch(0.925 0.022 78);
-  --sidebar-accent-foreground:  oklch(0.300 0.035 50);
-  --sidebar-border:             oklch(0.790 0.022 76);
-  --sidebar-ring:               oklch(0.520 0.100 58);
+  --sidebar: var(--color-surface);
+  --sidebar-foreground: var(--color-ink);
+  --sidebar-primary: var(--color-purple);
+  --sidebar-primary-foreground: var(--on-accent);
+  --sidebar-accent: #e7dcff;
+  --sidebar-accent-foreground: var(--color-ink);
+  --sidebar-border: #ddcdfa;
+  --sidebar-ring: var(--color-purple);
 }
 
+/* ============================================================================
+ * MODE SOMBRE.
+ *
+ * ⚠️ **Ce bloc doit rester APRÈS l'import de `pouf.css`**, dont le `.dark`
+ * redéfinit `--color-bg`, `--color-ink` et `--color-muted`. Les jetons
+ * ci-dessus qui les référencent suivent tout seuls — une `var()` se résout au
+ * moment de l'usage, sur l'élément, pas au moment de la déclaration. On ne
+ * réécrit donc ici que ce qui ne peut PAS se déduire de la palette pouf.
+ *
+ * ⚠️ **Les pastels ne sont pas assombris en mode sombre, ils sont utilisés
+ * NUS** — et c'est mesuré, pas supposé : sur le fond sombre ils tiennent entre
+ * 9,39:1 et 15,01:1, très au-dessus du seuil de 3:1. Le problème des barres
+ * est spécifique au mode clair.
+ * ========================================================================= */
 .dark {
-  --background:             oklch(0.180 0.012 62);
-  --foreground:             oklch(0.930 0.016 84);
-  --card:                   oklch(0.218 0.014 62);
-  --card-foreground:        oklch(0.930 0.016 84);
-  --popover:                oklch(0.218 0.014 62);
-  --popover-foreground:     oklch(0.930 0.016 84);
-  --primary:                oklch(0.870 0.040 82);
-  --primary-foreground:     oklch(0.220 0.030 52);
-  --secondary:              oklch(0.278 0.018 66);
-  --secondary-foreground:   oklch(0.930 0.016 84);
-  --muted:                  oklch(0.262 0.016 66);
-  --muted-foreground:       oklch(0.735 0.022 80);
-  --accent:                 oklch(0.290 0.022 70);
-  --accent-foreground:      oklch(0.930 0.016 84);
-  --destructive:            oklch(0.640 0.150 32);
-  --destructive-foreground: oklch(0.180 0.030 40);
-  --border:                 oklch(0.340 0.018 68);
-  --input:                  oklch(0.530 0.026 70);
-  --ring:                   oklch(0.680 0.100 70);
+  --surface-muted: #2c2839;
+  /* Même raison qu'en mode clair : en dur, jamais `var(--color-muted)`. */
+  --muted-foreground: #b8afcb; /* 8,95:1 sur le fond sombre */
+  --muted: #b8afcb; /* l'alias que lisent les composants pouf */
+  --accent: #2c2839;
+  --border: #37324a;
+  --input: var(--color-purple); /* 9,39:1 sur le fond sombre */
 
-  --signal:                 oklch(0.760 0.130 72);
-  --signal-foreground:      oklch(0.200 0.040 62);
-  --signal-fort:            oklch(0.760 0.130 72);
-  --interet:                oklch(0.750 0.110 250);
-  --marque:                 oklch(0.780 0.055 62);
-  --success:                oklch(0.700 0.090 140);
-  --success-foreground:     oklch(0.180 0.030 140);
+  --destructive: var(--color-pink); /* 11,26:1 — nu, il passe largement */
+  --destructive-foreground: #2a2145;
 
-  --chart-1: oklch(0.760 0.130 72);
-  --chart-2: oklch(0.640 0.150 32);
-  --chart-3: oklch(0.700 0.090 140);
-  --chart-4: oklch(0.870 0.040 82);
-  --chart-5: oklch(0.560 0.045 78);
+  --signal-fort: var(--color-yellow); /* 15,01:1 */
+  --interet-barre: var(--color-blue); /* 10,85:1 */
+  --interet-texte: var(--color-blue);
+  --success-barre: var(--color-mint); /* 14,31:1 */
+  --success-texte: var(--color-mint);
+  /* ⚠️ **En sombre, la piste NE PEUT PAS prendre le pastel de sa note** : le
+     pastel y est déjà le remplissage, et une piste de la même couleur rendrait
+     la barre uniformément pleine, donc illisible à toute valeur. Elle reste
+     donc une surface neutre, éclaircie pour se détacher de la carte. */
+  --interet-piste: #534c6c; /* 2,02:1 sur la carte sombre */
+  --success-piste: #534c6c;
+  --marque: var(--color-purple); /* 9,39:1 */
 
-  --sidebar:                    oklch(0.218 0.014 62);
-  --sidebar-foreground:         oklch(0.930 0.016 84);
-  --sidebar-primary:            oklch(0.870 0.040 82);
-  --sidebar-primary-foreground: oklch(0.220 0.030 52);
-  --sidebar-accent:             oklch(0.290 0.022 70);
-  --sidebar-accent-foreground:  oklch(0.930 0.016 84);
-  --sidebar-border:             oklch(0.340 0.018 68);
-  --sidebar-ring:               oklch(0.680 0.100 70);
+  --sidebar-accent: #2c2839;
+  --sidebar-border: #37324a;
 }
 
-/* Le « libellé » du DESIGN.md : chasse fixe, capitales, interlettrage large.
-   Il porte les sur-titres, le nom de l'entreprise et les cartouches — six
-   endroits au moment où il est écrit. Recopié à la main, il dérive : une taille
-   à 0.6875rem ici, à 0.75rem là, et la grille typographique ne tient plus.
-   ⚠️ Il ne fixe PAS la couleur : elle change avec le rôle (texte plein pour un
-   nom d'entreprise, atténué pour un sur-titre), et l'imposer ici obligerait
-   chaque appelant à la contredire. */
-/* Le nom de l'entreprise. Classe à part, et c'est tout l'enjeu : il portait
-   `libelle-mono`, c'est-à-dire exactement l'habit des titres de section et des
-   libellés de notes — une donnée déguisée en étiquette. Relevé par Maxime le
-   28 août 2026 en regardant la page. */
+/* ============================================================================
+ * Les trois utilitaires typographiques du produit.
+ *
+ * Ils existaient avant la refonte et survivent : ils nomment des rôles
+ * éditoriaux (« ceci est un titre de section », « ceci est un nom
+ * d'entreprise »), pas des apparences. Seules leurs valeurs changent.
+ * ========================================================================= */
+
 /* Le titre d'une section de la fiche : « Résumé de l'offre », « Évaluation »,
    « Classement France Travail », « L'annonce », « Candidater ».
-
-   ⚠️ **Il portait `libelle-mono text-muted-foreground`, c'est-à-dire EXACTEMENT
-   l'habit des libellés de rubrique qu'il surplombe** (« Appellation », « Métier
-   ROME », « Qualification »). Même police, même taille, même gris : rien ne
-   disait lequel était le titre. Relevé par Maxime le 28 août 2026.
-
    ⚠️ **Le renfort passe par le CONTRASTE et la GRAISSE, jamais par une teinte
-   de signal.** `docs/DESIGN.md` donne un rôle unique à chacune des quatre —
-   ocre au temporel, olive à l'accessibilité, brique à l'erreur — et « une
-   teinte qui sert à deux choses ne sert plus à rien ». Un titre de section
-   n'est aucun de ces rôles. On passe donc de 6,64:1 à 15,77:1 sur le même
-   fond, ce qui suffit largement à créer la hiérarchie. */
+   de signal** : chacune a un rôle unique dans le produit, et un titre de
+   section n'est aucun de ces rôles. */
 @utility titre-section {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   line-height: 1.4;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--foreground);
 }
 
+/* Le nom de l'entreprise. Classe à part parce qu'il partage police ET taille
+   avec l'intitulé qu'il surmonte : sans teinte propre, deux lignes superposées
+   seraient indiscernables. */
 @utility nom-entreprise {
   font-family: var(--font-sans);
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.3;
   letter-spacing: 0;
   color: var(--marque);
 }
 
+/* ⚠️ **L'anneau de focus du produit, en UN SEUL endroit — et c'est une
+   correction de revue, pas un raffinement.**
+
+   Le focus doit passer par `outline` et jamais par `ring` : les utilitaires
+   `cushion-*` de 1st-Pouf posent un `box-shadow` brut, les `ring-*` de Tailwind
+   passent par cette même propriété, et le coussin gagne. L'anneau est alors
+   présent dans la classe et **absent du style calculé**.
+
+   Cette règle a d'abord été appliquée à la main sur onze éléments. La revue du
+   29 août 2026 en a trouvé **trois oubliés** — le champ de note, le dépliage de
+   l'annonce et le lien de retour — tous devenus invisibles au clavier, parce que
+   `--ring` est désormais un violet pastel à 1,39:1. Une règle système appliquée
+   par recopie finit toujours par en rater une : elle vit ici désormais, et un
+   nouveau composant l'obtient en écrivant un mot.
+
+   ⚠️ **Ne jamais l'accompagner d'`outline-none`** : cette classe neutralise
+   aussi le repli global de `pouf.css`, et le composant se retrouve sans aucun
+   repère. */
+@utility focus-produit {
+  &:focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 2px;
+  }
+}
+
+/* La surface d'une carte : liste, sections de la fiche, panneaux d'état.
+   Recopié à quinze endroits, il dérivait au premier ajustement de rayon. */
+@utility carte-produit {
+  border-radius: var(--radius-card);
+  background-color: var(--card);
+  box-shadow: var(--pouf-row);
+}
+
+/* Chasse fixe, capitales, interlettrage large : les sur-titres, les libellés
+   de notes et les cartouches.
+   ⚠️ Il ne fixe PAS la couleur : elle change avec le rôle, et l'imposer ici
+   obligerait chaque appelant à la contredire. */
 @utility libelle-mono {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
@@ -245,15 +431,16 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Réglage de Geist : chiffres et lettres alternatives. */
-    font-feature-settings: "cv01", "ss03";
   }
   html {
     @apply font-sans;
   }
 }
 
-/* Plancher d'accessibilité opposable : le mouvement se coupe. */
+/* Plancher d'accessibilité opposable : le mouvement se coupe.
+   ⚠️ `pouf.css` porte déjà sa propre règle `prefers-reduced-motion`, mais elle
+   ne couvre pas `scroll-behavior`. On garde donc celle-ci, qui est plus
+   complète — les deux se cumulent sans se contredire. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

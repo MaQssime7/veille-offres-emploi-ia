@@ -76,12 +76,12 @@ export default function ChargementFiche() {
               soit centré autour de zéro plutôt que systématiquement négatif. */}
           <div>
             <div className="mb-3 h-4 w-32 bg-muted" />
-            <div className="h-[5.375rem] border border-border bg-card" />
+            <div className="h-[5.25rem] carte-produit" />
           </div>
 
           <div>
             <div className="mb-3 h-4 w-24 bg-muted" />
-            <div className="h-28 border border-border bg-card" />
+            <div className="h-[6.875rem] carte-produit" />
           </div>
 
           {/* ⚠️ **« Ma note », ajoutée le 29 août 2026 — et ce bloc a MANQUÉ
@@ -100,24 +100,24 @@ export default function ChargementFiche() {
               sans note, et une note longue ne dépasse pas 60 vh. */}
           <div>
             <div className="mb-3 h-4 w-20 bg-muted" />
-            <div className="h-[12.1875rem] border border-border bg-card" />
+            <div className="h-[12.0625rem] carte-produit" />
           </div>
 
           <div>
             <div className="mb-3 h-4 w-40 bg-muted" />
-            <div className="h-24 border border-border bg-card" />
+            <div className="h-[5.875rem] carte-produit" />
           </div>
 
           <div>
             <div className="mb-3 h-4 w-20 bg-muted" />
-            <div className="h-14 border border-border bg-card" />
+            <div className="h-[3.375rem] carte-produit" />
           </div>
 
           {/* Le bloc de candidature : bouton, ligne de contact, avertissement
               sur la dépublication. C'est lui qui manquait le plus. */}
           <div>
             <div className="mb-3 h-4 w-24 bg-muted" />
-            <div className="h-36 border border-border bg-card" />
+            <div className="h-[8.875rem] carte-produit" />
           </div>
         </div>
       </div>

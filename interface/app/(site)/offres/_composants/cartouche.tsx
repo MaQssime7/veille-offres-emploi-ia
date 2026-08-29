@@ -5,10 +5,12 @@ import { cn } from "@/lib/utils";
 /**
  * Les cartouches de métadonnées : lieu, contrat, salaire, date.
  *
- * ⚠️ **Une seule teinte neutre pour tous, et c'est une décision du DESIGN.md.**
- * Cinq offres × quatre informations donneraient vingt taches colorées, et plus
- * rien ne signalerait rien. Ils ressortent par la forme — un filet et un fond
- * discret — jamais par la couleur.
+ * ⚠️ **Une seule teinte neutre pour tous, et c'est une décision du DESIGN.md
+ * que la refonte du 29 août 2026 n'a PAS remise en cause.** Cinq offres ×
+ * quatre informations donneraient vingt taches colorées, et plus rien ne
+ * signalerait rien — c'est précisément le risque d'un système aussi coloré que
+ * 1st-Pouf, dont la palette compte six pastels tous également disponibles. Ils
+ * ressortent par la forme — pilule, fond discret — jamais par la couleur.
  *
  * `accentue` sert au salaire, qu'on cherche en premier : il se distingue par la
  * graisse, pas par une teinte à lui.
@@ -32,7 +34,7 @@ export function Cartouche({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center border border-border bg-muted px-2 py-0.5 font-mono text-[0.6875rem] leading-relaxed text-muted-foreground",
+        "inline-flex max-w-full items-center rounded-full bg-muted px-2.5 py-0.5 font-mono text-[0.6875rem] leading-relaxed text-muted-foreground",
         accentue && "font-semibold text-foreground",
       )}
     >
@@ -59,7 +61,7 @@ export function Cartouche({
  */
 export function CartoucheAbsent({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex max-w-full items-center border border-dashed border-border px-2 py-0.5 font-mono text-[0.6875rem] italic leading-relaxed text-muted-foreground">
+    <span className="inline-flex max-w-full items-center rounded-full border border-dashed border-input px-2.5 py-0.5 font-mono text-[0.6875rem] italic leading-relaxed text-muted-foreground">
       {children}
     </span>
   );

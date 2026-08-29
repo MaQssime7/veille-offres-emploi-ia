@@ -43,7 +43,7 @@ export function Postuler({ offre }: { offre: OffreEnFiche }) {
         Candidater
       </h2>
 
-      <div className="flex flex-col gap-3 border border-border bg-card px-4 py-4">
+      <div className="flex flex-col gap-3 carte-produit px-4 py-4">
         <div className="flex flex-wrap gap-2">
           {offre.url_origine && (
             <LienExterne href={offre.url_origine} principal>
@@ -104,9 +104,14 @@ function LienExterne({
       target="_blank"
       rel="noopener noreferrer"
       className={
+        // ⚠️ **Focus par `outline`, jamais par `ring`, sur le bouton
+        // principal** : il porte un `cushion-control`, dont le `box-shadow`
+        // brut écrase les `ring-*` de Tailwind. Le secondaire n'a pas de
+        // coussin, mais on garde la même écriture pour que les deux se
+        // modifient ensemble.
         principal
-          ? "inline-flex items-center gap-2 bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-primary/90"
-          : "inline-flex items-center gap-2 border border-border px-3 py-2 text-sm font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-accent"
+          ? "cushion-control inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors focus-produit hover:brightness-95"
+          : "inline-flex items-center gap-2 rounded-full border border-input px-4 py-2 text-sm font-bold text-foreground transition-colors focus-produit hover:bg-accent"
       }
     >
       {children}

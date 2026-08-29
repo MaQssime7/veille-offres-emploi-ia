@@ -83,16 +83,27 @@ function OngletFiltre({
     <Link
       href={adresse}
       aria-current={actif ? "page" : undefined}
-      // ⚠️ **L'actif se marque par le FOND et la graisse, pas par une teinte de
-      // signal.** `docs/DESIGN.md` donne un rôle unique à chaque teinte — olive
-      // à l'accessibilité et au statut candidaté, brique à l'erreur et à
-      // l'écarté. Colorer l'onglet « Candidaté » en olive le ferait ressembler
-      // à un bouton de statut alors qu'il n'en change aucun : il filtre, il ne
-      // trie pas. Un onglet et une action ne doivent pas se confondre.
-      className={`inline-flex items-center gap-2 border px-3 py-1.5 font-mono text-[0.6875rem] uppercase tracking-wider outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+      // ⚠️ **L'actif se marque par le FOND et la graisse, jamais par une teinte
+      // de signal.** Chaque teinte a un rôle unique — menthe à l'accessibilité
+      // et au statut candidaté, rose à l'écarté. Colorer l'onglet « Candidaté »
+      // en menthe le ferait ressembler à un bouton de statut alors qu'il n'en
+      // change aucun : il filtre, il ne trie pas. Le violet est ici la couleur
+      // d'ACTION du système, pas un des cinq rôles de signal du produit.
+      //
+      // ⚠️ **`cushion-control` sur l'actif seul.** L'ombre coussin est ce qui
+      // fait « ressortir » un contrôle ; la poser sur les quatre onglets les
+      // ferait tous ressortir, c'est-à-dire aucun.
+      //
+      // ⚠️ **`border border-transparent` sur l'actif, et ce n'est pas
+      // décoratif — c'est un correctif de revue.** L'actif n'avait aucune
+      // bordure là où les trois inactifs en portent une : en `border-box` à
+      // largeur automatique, il était donc **2 px plus étroit**, et chaque
+      // changement de filtre décalait horizontalement tous les onglets à sa
+      // droite. Une bordure transparente occupe la place sans se voir.
+      className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 font-mono text-[0.6875rem] uppercase tracking-wider transition-colors focus-produit ${
         actif
-          ? "border-foreground bg-secondary font-semibold text-foreground"
-          : "border-input font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+          ? "cushion-control border-transparent bg-primary font-bold text-primary-foreground"
+          : "border-input font-semibold text-muted-foreground hover:bg-accent hover:text-foreground"
       }`}
     >
       {libelle}

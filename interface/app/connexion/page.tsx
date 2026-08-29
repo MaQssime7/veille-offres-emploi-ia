@@ -35,7 +35,10 @@ export default async function PageConnexion({
 
   return (
     <main className="flex min-h-svh w-full items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm border border-border bg-card p-6">
+      {/* La carte de la porte prend le rayon des cartes de la liste, mais le
+          coussin le plus marqué du système (`cushion-card`) : elle est seule au
+          milieu de l'écran, rien ne l'entoure pour lui donner un plan. */}
+      <div className="w-full max-w-sm rounded-2xl bg-card cushion-card p-6">
         <header className="mb-6 flex flex-col gap-3 border-b border-border pb-5">
           <p className="flex items-center gap-2 font-mono text-[0.6875rem] uppercase tracking-widest text-muted-foreground">
             <LockKeyhole className="size-3.5" aria-hidden="true" />

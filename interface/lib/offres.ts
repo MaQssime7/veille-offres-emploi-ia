@@ -12,9 +12,9 @@ import { STATUTS, type Statut } from "./statuts";
 /**
  * La lecture des offres pour l'écran `/offres`.
  *
- * Entre : rien, pour l'instant — la phase 4 ajoutera le filtre de statut.
- * Sort : les offres classées par intérêt décroissant, le total collecté, le
- * nombre d'offres notées, et l'identifiant de la dernière exécution réussie
+ * Entre : le filtre de statut demandé par l'adresse.
+ * Sort : les offres classées par intérêt décroissant, le total du filtre, les
+ * compteurs par statut, et l'identifiant de la dernière exécution réussie
  * (pour le marqueur « Nouveau »).
  * Casse : renvoie `{ ok: false }` avec le motif ; l'écran affiche alors son
  * état « base injoignable » au lieu d'une page blanche.
@@ -173,18 +173,6 @@ export type ResultatListe =
        * dit alors ce qu'il montre, plutôt que d'annoncer un total inventé.
        */
       total: number | null;
-      /**
-       * Combien d'offres portent réellement des notes, **dans le filtre
-       * affiché** — jamais dans toute la base, sans quoi il ne se compare pas
-       * au total posé juste à côté.
-       *
-       * ⚠️ **Ce n'est pas une statistique décorative.** La liste est classée
-       * par intérêt : tant que la notation n'a pas rattrapé toute la base, le
-       * bas de liste n'est **pas classé du tout**. Sans ce chiffre à l'écran,
-       * une offre non notée posée sous une offre à 5/100 se lirait comme
-       * « jugée moins intéressante », alors qu'elle n'a jamais été jugée.
-       */
-      notees: number | null;
       /** Pour le marqueur « Nouveau ». `null` si on n'a pas pu le savoir. */
       derniereExecution: number | null;
       /**
@@ -259,38 +247,21 @@ async function lireDerniereExecution(): Promise<number | null> {
   return resultat.ok ? (resultat.lignes[0]?.id ?? null) : null;
 }
 
-/**
- * Combien d'offres sont notées, **dans le filtre affiché**.
+/*
+ * ⚠️ **`compterNotees()` a été SUPPRIMÉE le 29 août 2026** — l'écran
+ * n'affiche plus « M notées », sur décision de Maxime (le motif est écrit dans
+ * `app/(site)/offres/page.tsx`, au-dessus de `CompteAffiche`).
  *
- * On ne compte pas les lignes déjà reçues : la liste est plafonnée à 200, elle
- * ne dit donc rien des offres qu'elle ne montre pas. Une requête de comptage
- * pur — `limit=1`, seul l'en-tête `Content-Range` nous intéresse.
+ * La fonction est retirée avec son affichage, et pas seulement débranchée :
+ * c'était une **requête réseau supplémentaire vers Supabase à chaque
+ * chargement** de la liste. Laissée en place « au cas où », elle aurait
+ * continué de coûter un aller-retour pour un résultat que personne ne lit —
+ * le genre de dépense qui ne se voit dans aucun écran et que rien ne signale.
  *
- * ⚠️ **Le filtre de statut s'applique ICI AUSSI, et son absence était un
- * défaut** — relevé en revue le 29 août 2026, à la clôture de la phase 4.
- * L'écran écrit « N offres · M notées » : les deux nombres doivent parler de la
- * **même** liste. Sans ce filtre, `/offres?statut=candidate` affichait
- * « 2 offres · 140 notées », c'est-à-dire 140 notées parmi 2 — un chiffre qui
- * ne veut rien dire, et qui laisse croire que la liste en cache 138.
- * Le défaut est né avec les filtres de la phase 4 : avant eux, la liste était
- * toute la base et les deux comptages coïncidaient.
- *
- * Un échec n'est pas bloquant : `null` remonte l'ignorance jusqu'à l'écran,
- * qui se tait alors sur ce point plutôt que d'annoncer un chiffre faux.
+ * Elle portait un correctif qu'il faudrait re-trouver si on la ressuscitait :
+ * le comptage doit appliquer **le même filtre de statut** que la liste, sans
+ * quoi `/offres?statut=candidate` affichait « 2 offres · 140 notées ».
  */
-async function compterNotees(filtre: FiltreListe): Promise<number | null> {
-  const resultat = await interrogerBase<{ identifiant: string }>(
-    "offres?select=identifiant&note_interet=not.is.null&limit=1",
-    {
-      compter: true,
-      // Même raison qu'ailleurs : « toutes » n'est pas un statut, lui chercher
-      // un `statut=eq.toutes` rendrait zéro.
-      ...(filtre === "toutes" ? {} : { egal: { statut: filtre } }),
-    },
-  );
-
-  return resultat.ok ? resultat.total : null;
-}
 
 /**
  * Combien d'offres portent ce statut, dans toute la base.
@@ -350,10 +321,9 @@ export async function listerOffres(
   // Toutes les requêtes partent ensemble : enchaînées, elles multiplieraient
   // l'attente avant le premier pixel pour aucune raison — aucune ne dépend du
   // résultat des autres.
-  const [offres, derniereExecution, notees, ...parStatut] = await Promise.all([
+  const [offres, derniereExecution, ...parStatut] = await Promise.all([
     requeteOffres,
     lireDerniereExecution(),
-    compterNotees(filtre),
     ...STATUTS.map(compterParStatut),
   ]);
 
@@ -377,7 +347,6 @@ export async function listerOffres(
     // comme si c'était toute la base. `null` remonte l'ignorance jusqu'à
     // l'écran, qui sait alors ne parler que de ce qu'il affiche.
     total: offres.total,
-    notees,
     derniereExecution,
   };
 }
