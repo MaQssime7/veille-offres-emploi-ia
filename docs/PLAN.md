@@ -405,26 +405,26 @@ toute seule.
 - [x] Le filtre de statut est **dans l'adresse** : `/offres?statut=candidate` se met en favori et survit au bouton retour
 - [x] Le filtre par défaut n'affiche que « à traiter » ; candidaté et écarté restent accessibles
 - [x] Chaque statut porte **une icône ou un symbole en plus de sa couleur**
-- [ ] La note personnelle s'enregistre **sans bouton**, avec un indicateur d'état visible
-- [ ] Réseau coupé pendant la saisie : **un message d'échec apparaît et le texte n'est pas effacé** — critère de succès n° 6
-- [ ] Une note de 5 000 caractères s'enregistre et se réaffiche intégralement
+- [x] La note personnelle s'enregistre **sans bouton**, avec un indicateur d'état visible — 800 ms après la dernière frappe **et** au moment où l'on quitte le champ ; quatre états lisibles : « Modification non enregistrée », « Enregistrement… », « Enregistré le 29 août à 12:47 », « Note effacée »
+- [x] Réseau coupé pendant la saisie : **un message d'échec apparaît et le texte n'est pas effacé** — critère de succès n° 6. Éprouvé de deux façons : `POST` avorté en `ERR_INTERNET_DISCONNECTED`, et **cookie de session supprimé en cours de frappe** (le cas réel de l'onglet laissé ouvert la nuit). Dans les deux cas : alerte `role="alert"`, bouton « Réessayer », texte intact, et **rien d'écrit en base** — vérifié par lecture directe
+- [x] Une note de 5 000 caractères s'enregistre et se réaffiche intégralement — écrite, relue à l'identique en base et à l'écran. ⚠️ **C'est ce test qui a imposé la hauteur automatique du champ** : à hauteur fixe, ces 5 000 caractères tenaient dans **148 px**, soit cinq lignes visibles sur soixante, dans un ascenseur imbriqué dans la page
 - [x] Deux clics rapides sur un bouton de statut ne produisent pas deux écritures
 - [x] **Aucune requête ne fait `SELECT *` sur `offres`** — les notes personnelles ne sortent de la base que là où elles s'affichent
-- [ ] **États** : aucune offre dans le filtre choisi · enregistrement en cours · échec d'enregistrement · note vide · 200 offres filtrées
-- [ ] 375 px, mode sombre, focus clavier visible, console propre
+- [x] **États** : aucune offre dans le filtre choisi · enregistrement en cours (les **400 boutons** de la liste désactivés, opacité 0,6) · échec d'enregistrement · note vide (placeholder, indicateur muet) · 200 offres filtrées sur 574
+- [x] 375 px, mode sombre, focus clavier visible, console propre — **12 combinaisons** parcourues (2 largeurs × 2 thèmes × 3 écrans) : aucun débordement, aucune erreur, aucun avertissement. Focus atteint en 2 tabulations, anneau de 3 px. Contrastes recalculés au canvas : texte 10,4:1 · bordure de champ 3,3:1 · indicateur 7,4:1 en mode sombre, tous au-dessus du plancher
 
 ### Bloquée par
 
 Phase 3.
 
-### ⚠️ État au 29 août 2026 — trois étapes sur quatre livrées
+### ✅ Phase CLOSE le 29 août 2026 — quatre étapes sur quatre
 
 | Étape | État |
 |---|---|
 | 1. Le schéma | ✅ Migrations 6 et 7, éprouvées par 26 contrôles contre la base réelle |
 | 2. L'écriture et les boutons de statut | ✅ `ecrireDansBase()`, action serveur, boutons sur la liste et la fiche |
 | 3. Le filtre dans l'adresse | ✅ Quatre onglets, compteurs, deux états vides distincts |
-| **4. La note personnelle** | ⏳ **RESTE À FAIRE** — les quatre critères non cochés ci-dessus sont tous à elle |
+| **4. La note personnelle** | ✅ Champ à enregistrement automatique, indicateur à quatre états, borne vérifiée à trois niveaux |
 
 ⚠️ **Un défaut découvert et corrigé en route** : trier une offre la retirait du filtre, les
 suivantes remontaient d'un cran, et un second clic au même endroit triait une autre offre.
@@ -612,10 +612,11 @@ tout tiendra toujours.**
 - [x] ✅ **Une offre dont la nature de contrat contredit le type** : `211VPRC` — « CDD » côté type, « Contrat apprentissage » côté nature. **7 des 20 meilleures offres sont des alternances** ; c'est le cas qui justifie d'afficher `nature_contrat`
 - [x] ✅ **Les parasites de mise en forme dans les descriptions**, mesurés sur les 560 : **aucun HTML, aucune entité** · `#!#` sur **1 offre** (34 occurrences) · trois sauts de ligne ou plus sur **199 offres (36 %)** · `**gras**` façon markdown sur **39 (7 %)**, laissés visibles à dessein
 - [x] ✅ **Le format d'identifiant**, vérifié sur la base entière : **560 sur 560** en `^[0-9A-Z]{7}$`, deux formes (`6122825` et `212YDPC`), aucune minuscule. ⚠️ L'alphabet observé exclut les voyelles — **ne pas coder cette exclusion**, rien ne la garantit
-- [ ] Une note personnelle de **5 000 caractères**
+- [x] ✅ **Une note personnelle de 5 000 caractères**, écrite et relue le 29 août 2026. ⚠️ **Ce cas ne teste pas ce qu'on croit** : il ne vérifie pas la base (la borne est à 20 000, on est loin), il vérifie **l'affichage**. À hauteur de champ fixe, 5 000 caractères tenaient dans 148 px et se lisaient dans un ascenseur imbriqué. Depuis, le champ grandit avec le texte jusqu'à **60 vh** (540 px mesurés), puis défile
+- [x] ✅ **Une note vide qui n'est pas vide** : `"   \n  "`, ce que produit un champ à enregistrement automatique quand on efface son texte. C'est le cas que la migration 7 a été écrite pour attraper — le code le normalise en `NULL` avant d'écrire, vérifié en base le 29 août. **Ne pas le confondre avec la note absente** : à l'écran ils se ressemblent, en base une seule des deux formes est permise
 - [ ] Une justification de note anormalement longue — le modèle peut déraper, l'écran doit tenir
-- [ ] Une offre **écartée**, avec ses notes et sa justification, consultable
-- [ ] Une offre dont l'annonce a été **dépubliée** à la source : description toujours lisible, lien mort
+- [x] ✅ **Une offre écartée, avec ses notes et sa justification** — disponible depuis le filtre de la phase 4 : `/offres?statut=ecarte`. Vérifié le 29 août sur deux offres (85/65 et 75/15), justifications entières
+- [x] ✅ **Une offre dépubliée à la source** — mesuré le 28 août 2026 : sur les 14 plus anciennes offres, **7 renvoient 404** chez France Travail, et `5501494` affiche ses 5 000 caractères intacts. La case restait décochée alors que le parcours de la phase 3 l'avait déjà établi
 - [ ] Une fiche d'enrichissement dont **toutes** les rubriques sont « non disponible »
 - [ ] Une fiche produite depuis une annonce d'**intermédiaire** : employeur final non identifié
 - [ ] Une fiche portant le **doute** sur l'identification de l'entreprise
@@ -646,7 +647,7 @@ régressions tant qu'il n'y a pas de tests automatisés.
 - [x] Voir sur chaque offre notée deux notes chiffrées et **deux justifications non vides** — 97 offres, aucune justification vide (les contraintes `interet_justifie` et `accessibilite_justifiee` le rendent impossible en base)
 - [x] **Vérifier que le classement place bien les offres notées en tête** — 85, 75, 40, 38, 35… puis les 103 non notées, qui portent leur cartouche « Pas encore notée ». ⚠️ C'est le parcours qui attrape le piège `NULLS FIRST` : sans `nullslast`, la liste aurait l'air normale **et n'aurait classé personne**
 - [x] **Compter les lignes dont les cartouches cassent sur deux lignes à 1000 px** — 0 sur 200, cartouche « Pas encore notée » compris. À refaire à chaque ajout de cartouche
-- [ ] Retrouver une offre écartée par le seuil, avec sa note et son motif — *dépend du filtre de statut, phase 4*
+- [x] Retrouver une offre écartée par le seuil, avec sa note et son motif — ✅ **fermé le 29 août 2026 par le filtre de la phase 4** : `/offres?statut=ecarte` rend la ligne complète, notes chiffrées et deux justifications comprises
 
 **Après la phase 2 — le cron** — *déroulé en production le 26 août 2026, exécution `33011739111`*
 
@@ -668,7 +669,7 @@ régressions tant qu'il n'y a pas de tests automatisés.
 - [x] **Couper la base et regarder l'écran** — serveur relancé sur une URL Supabase morte : « La base est injoignable », le message dit que les offres ne sont pas perdues, et **le motif technique ne quitte pas le serveur**
 - [x] **Compter les colonnes sensibles reçues par le navigateur** — `notation_motif_echec`, `execution_id`, `salaire_annuel_min`, `notation_tentatives`, `charge_brute`, `contact_nom`, `tokens_cumules` : **0 occurrence chacune**, contre 126 pour un texte réellement affiché. ⚠️ **Le témoin n'est pas décoratif** : sans lui, un test qui ne trouve rien peut simplement être cassé
 - [x] **Vérifier qu'une passe à blanc n'écrit RIEN** — `--sans-ecrire` sur la notation : aucune écriture tentée, ni ligne d'exécution ni note. ⚠️ Ce parcours existe parce que le contraire était vrai jusqu'au 28 août
-- [ ] Retrouver une offre écartée par le seuil, avec sa note et son motif — *dépend du filtre de statut, phase 4*
+- [x] Retrouver une offre écartée par le seuil, avec sa note et son motif — ✅ **fermé le 29 août 2026 par le filtre de la phase 4** : `/offres?statut=ecarte` rend la ligne complète, notes chiffrées et deux justifications comprises
 
 **Après la phase 3** — *déroulés en développement le 28 août 2026, sur les 560 offres réelles*
 
@@ -681,11 +682,17 @@ régressions tant qu'il n'y a pas de tests automatisés.
 - [x] **Vérifier que le nom de contact ne sort QUE sur la fiche** — 2 occurrences sur `/offres/211VPRC`, **0 sur la liste**, avec témoin. ⚠️ C'est le seul champ nominatif du projet : le parcours existe pour que son périmètre reste vérifiable après chaque phase
 - [x] **Couper la base et ouvrir une fiche** — onglet « Offre indisponible » (et non « introuvable »), `h1` présent, message « La base est injoignable ». ⚠️ Ce parcours attrape deux défauts trouvés en revue : un titre qui ment dans l'historique, et un arbre de titres qui démarre au niveau 2
 
-**Après la phase 4**
+**Après la phase 4** — *déroulés en développement le 29 août 2026, sur les 574 offres réelles*
 
-- [ ] Passer une offre en « candidaté », la voir quitter le filtre « à traiter », la retrouver dans le filtre « candidaté »
-- [ ] Écrire une note personnelle, quitter la page sans rien enregistrer, revenir, la retrouver
-- [ ] Couper le réseau pendant la saisie d'une note : voir le message d'échec **et retrouver son texte**
+- [x] Passer une offre en « candidaté », la voir quitter le filtre « à traiter », la retrouver dans le filtre « candidaté » — 574 → 573 à traiter, compteur « Candidaté » à 1, l'adresse ne bouge pas, l'offre est bien dans `?statut=candidate` après rechargement
+- [x] Écrire une note personnelle, quitter la page sans rien enregistrer, revenir, la retrouver — départ **immédiat** par le lien « Toutes les offres », sans laisser les 800 ms s'écouler : c'est le `blur` qui sauve le texte, et il le sauve
+- [x] Couper le réseau pendant la saisie d'une note : voir le message d'échec **et retrouver son texte** — puis rétablir et cliquer « Réessayer » : « Enregistré le 29 août à 12:37 », alerte disparue, texte intact
+- [x] ⚠️ **Écrire une note, partir vers la liste, revenir par le BOUTON RETOUR du navigateur** — c'est le parcours qui a attrapé le défaut du cache de navigation : sans `revalidatePath`, Next restaure la fiche d'avant l'écriture et **le champ réapparaît vide** alors que la note est en base. Deux chemins d'historique à distinguer : revenir par un *lien* marchait déjà, revenir par le *bouton retour* non
+- [x] **Effacer entièrement une note et voir que l'effacement a été enregistré** — « Note effacée » à l'écran, `NULL` sur les deux colonnes en base (et non chaîne vide), aucune erreur 400
+- [x] ⚠️ **Retirer `maxlength` du champ dans les outils du navigateur et poser 20 100 caractères** — le serveur refuse : « Note trop longue : 20 000 caractères au maximum. », le texte reste à l'écran. C'est le parcours qui prouve que la borne ne repose pas sur un attribut HTML
+- [x] **Vérifier que la note ne sort QUE sur sa fiche** — contenu cherché dans le document reçu pour `/offres`, `/offres?statut=toutes` et la fiche d'une **autre** offre : absent des trois, avec témoin positif
+- [x] **Deux clics rapides au MÊME endroit dans la liste** (coordonnées fixes, pas de re-résolution du sélecteur) : une seule offre change de statut, vérifié en base — le verrou de tri tient
+- [x] **Appeler l'action serveur d'écriture sans session** — `POST` avec en-tête `Next-Action` sans cookie : **401**, corps de 28 octets, et la note en base n'a pas bougé
 
 **Après la phase 5**
 

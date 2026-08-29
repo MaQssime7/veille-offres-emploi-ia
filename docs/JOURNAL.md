@@ -2441,3 +2441,152 @@ d'origine, vérifié par comptage.
 Quatre commits : `3e3ee57` (cadre du résumé), `d6e04ef` (migrations 6 et 7),
 `e185a1b` (la première écriture), `372210f` (le filtre dans l'adresse), `ed3fac5`
 (le verrou de tri).
+
+---
+
+## 29 août 2026 — La note personnelle, et la clôture de la phase 4
+
+### Ce qu'on a construit
+
+Un champ libre par offre, sur la fiche, entre l'évaluation du modèle et le classement
+France Travail. Il s'enregistre tout seul : 800 ms après la dernière frappe, et sans
+attendre dès qu'on quitte le champ. Quatre états lisibles à l'écran — *Modification non
+enregistrée*, *Enregistrement…*, *Enregistré le 29 août à 12:47*, *Note effacée*.
+
+Cinq pièces : `lib/notes.ts` (la borne et la normalisation du vide, sans `server-only`),
+`enregistrerNote()` dans `lib/offres.ts`, l'action serveur `definirNote()`, le composant
+client `note-personnelle.tsx`, et deux colonnes ajoutées à `COLONNES_FICHE` — **jamais à
+`COLONNES_LISTE`**.
+
+### La décision qui structure tout le reste : pas d'état optimiste
+
+Les boutons de statut utilisent `useOptimistic`, qui **retombe automatiquement sur la
+valeur du serveur** à la fin de la transition. C'est exactement ce qu'il faut pour un
+statut : si l'écriture échoue, l'affichage revient tout seul à la vérité de la base, sans
+une ligne de code de plus.
+
+Ici, ce serait le défaut à ne pas commettre : un enregistrement raté effacerait sous les
+doigts de Maxime le paragraphe qu'il vient d'écrire. **Le texte à l'écran appartient à
+celui qui tape, pas à la base.** D'où un `useState` ordinaire, et un `useRef` en double
+pour que la fonction d'envoi différée lise la valeur courante et non celle figée au
+moment où elle a été créée.
+
+⚠️ **La leçon générale : le bon patron dépend de qui détient la vérité.** Pour un
+statut, c'est la base — l'optimiste est correct. Pour un texte en cours de frappe, c'est
+l'utilisateur — l'optimiste est un destructeur de données.
+
+### Une seule écriture en vol, et pourquoi ce n'est pas de la frugalité
+
+Deux `PATCH` lancés à 100 ms d'écart peuvent arriver dans le désordre chez Postgres : la
+réponse de l'ancienne version arriverait en dernier, l'écran afficherait « Enregistré »
+pour un texte que la base ne détient plus. Un drapeau `enVol` bloque le second envoi, un
+drapeau `relancer` mémorise qu'une frappe est survenue pendant, et le `finally` repart
+avec le texte le plus récent.
+
+**Éprouvé en ralentissant le serveur à 1,5 s** par requête, puis en tapant trois fois à
+900 ms d'intervalle : la base finit sur `AAA BBB CCC`, la dernière version, et
+l'indicateur affiche « Enregistrement… » pendant tout ce temps. Sans ce mécanisme, la
+mesure aurait été impossible à faire en local — l'aller-retour réel fait 80 ms et le
+recouvrement ne se produit jamais.
+
+### Le vide n'a qu'une représentation, et c'est le piège du 29 août
+
+Un champ à enregistrement automatique envoie `"   \n"` dès qu'on efface son texte —
+personne ne soumet un formulaire vide, mais tout le monde efface une note. La contrainte
+`note_personnelle_non_vide` (migration 7) l'aurait refusé en 400, et l'indicateur aurait
+affiché « échec » sur le geste le plus banal qui soit. `normaliserNote()` ramène tout
+texte entièrement blanc à `NULL` **avant** d'écrire, et efface la date avec lui.
+
+⚠️ **Le contrôle du code est volontairement plus strict que celui de la base, dans les
+deux sens** : `trim()` en JavaScript est plus agressif que `~ '[^[:space:]]'` en SQL, et
+`String.length` compte en UTF-16 là où `length()` compte des points de code — un emoji
+pèse 2 d'un côté, 1 de l'autre. **On peut donc refuser ce que la base aurait accepté,
+jamais l'inverse.** C'est le seul sens qui évite un 400 que rien n'annoncerait.
+
+### La borne des 20 000 caractères est vérifiée trois fois
+
+`maxLength` sur le champ (confort de frappe), l'action serveur (le contrôle qui compte),
+la contrainte `note_personnelle_bornee` (le dernier mot). **Éprouvé en retirant
+`maxlength` dans les outils du navigateur et en posant 20 100 caractères** : le serveur
+refuse avec un message lisible, le texte reste à l'écran.
+
+⚠️ **C'est l'argument transférable en entretien** : un attribut HTML ne protège rien. Une
+action serveur s'invoque par un `POST` que rien n'oblige à partir de notre page — vérifié
+aussi sans cookie de session, qui rend **401** et n'écrit rien.
+
+### Ce que la revue de code a trouvé, et le raisonnement que j'avais faux
+
+Six constats, cinq corrigés, un réfuté puis **confirmé après une meilleure mesure**.
+
+| Constat | Ce que c'était |
+|---|---|
+| `loading.tsx` sans la section « Ma note » | La fiche est passée de 5 à 6 sections sans que son squelette bouge : **222 px de saut** à l'arrivée du contenu. Troisième saut de ce fichier après 297 px et 93 px |
+| « N offres · M notées » désaccordés | `compterNotees()` ne portait pas le filtre : `?statut=candidate` affichait « 1 offre · 140 notées ». Le défaut est **né avec les filtres** — avant eux, les deux comptages coïncidaient |
+| Pas de `revalidatePath` | Voir ci-dessous |
+| L'effacement ne disait rien | Note effacée = plus de date = indicateur muet. Or **effacer est une écriture** : ajout d'un état « Note effacée » |
+| L'échec survivait à l'annulation | Annuler sa frappe après une panne laissait « Enregistré » et « Enregistrement impossible » affichés ensemble |
+| `identifiant` non revérifié comme chaîne | `FORMAT_IDENTIFIANT.test(1234567)` convertit et rend `true`, puis `.toUpperCase()` lève — la fonction promet de ne jamais lever |
+
+⚠️ **Le troisième mérite son paragraphe, parce que je m'étais trompé et que la façon dont
+je m'en suis aperçu compte plus que le correctif.** J'avais écrit qu'aucun
+`revalidatePath` n'était nécessaire : rien d'autre à l'écran ne dépend de la note, et
+revalider re-rendrait la fiche à chaque pause de frappe. J'avais même **mesuré** —
+écriture, aller à la liste, retour : la note était là. La revue a maintenu le constat ; en
+refaisant le test j'ai vu que mon chemin d'historique n'était pas le sien.
+
+| Chemin | Résultat |
+|---|---|
+| Fiche → liste → **clic sur le lien de la ligne** | note présente ✅ |
+| Fiche → liste → **bouton retour du navigateur** | **champ vide** ❌ |
+
+Le second restaure une entrée d'historique **antérieure** à l'écriture, et Next sert son
+payload en cache. La note est en base, l'écran affirme le contraire : le pire des deux
+mondes pour un critère de succès qui porte précisément sur « ne pas croire à tort ».
+
+⚠️ **La leçon de méthode : « j'ai mesuré » ne vaut que si on dit *quel* chemin on a
+mesuré.** Deux gestes que l'utilisateur ne distingue pas — revenir par un lien, revenir
+par le bouton retour — passent par deux mécanismes différents. Une mesure qui n'énonce
+pas son chemin donne une fausse assurance, exactement comme un maximum observé donné pour
+une borne (26 août) ou un sélecteur re-résolu donné pour un double clic (29 août au matin).
+
+Le correctif est `revalidatePath("/offres/[identifiant]", "page")` : le **motif de route**
+et non l'adresse concrète, pour couvrir aussi la fiche ouverte avec un identifiant en
+minuscules ; et `"page"` et non `"layout"`, parce que la note ne change rien à la liste.
+
+### Le champ grandit avec la note — trouvé en testant le critère, pas en le lisant
+
+Le critère disait « une note de 5 000 caractères se réaffiche intégralement ». Elle se
+réaffichait : la valeur était intacte. **Mais dans un champ de 148 px**, soit cinq lignes
+visibles sur soixante, avec un ascenseur imbriqué dans la page. Techniquement conforme,
+concrètement inutilisable.
+
+Le champ ajuste désormais sa hauteur au contenu jusqu'à **60 vh** (540 px mesurés), puis
+défile. ⚠️ Deux détails qui ne se devinent pas : `height = "auto"` **avant** de lire
+`scrollHeight`, sans quoi le champ ne rétrécit jamais ; et `useLayoutEffect` plutôt que
+`useEffect`, pour que la hauteur soit posée avant que le navigateur ne peigne.
+
+### Ce qui a été vérifié, et comment
+
+- **Critère de succès n° 6**, éprouvé deux fois : `POST` avorté en
+  `ERR_INTERNET_DISCONNECTED`, et **cookie de session supprimé en pleine frappe** — le cas
+  réel de l'onglet laissé ouvert la nuit. Message affiché, texte intact, rien en base.
+- **Cloisonnement** : le contenu d'une note cherché dans le document reçu pour `/offres`,
+  `?statut=toutes` et la fiche d'une **autre** offre — absent des trois, témoin positif.
+  Douze noms de colonnes interdites cherchés sur trois écrans : aucun.
+- **Accès** : `GET` sans session → 307 vers la porte avec `suite` préservé ; `POST`
+  d'action serveur sans session → **401**, 28 octets, aucune écriture.
+- **Passe visuelle** : 12 combinaisons (2 largeurs × 2 thèmes × 3 écrans), aucun
+  débordement, console vide. Contrastes recalculés au canvas plutôt qu'estimés.
+- **Base remise à son état d'origine** après chaque campagne de tests : 574 offres,
+  574 à traiter, aucune note — vérifié par lecture directe, pas par déduction.
+
+⚠️ **Ce que je n'ai PAS pu voir** : le squelette de chargement à l'écran. En local le
+serveur répond en 80 ms et `loading.tsx` ne s'affiche jamais assez longtemps pour être
+capté. Son calage est vérifié **par le calcul** — 223 px déclarés contre 222 px mesurés au
+DOM pour la section réelle — et non à l'œil.
+
+### Une limite connue, laissée ouverte
+
+**Deux onglets ouverts sur la même fiche** : celui qui tape en dernier écrase la note de
+l'autre, sans avertissement. Le produit n'a qu'un utilisateur et le cas demanderait un
+horodatage de version à comparer avant d'écrire. Signalé, non corrigé.
