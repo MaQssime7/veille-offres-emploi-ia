@@ -174,7 +174,9 @@ export type ResultatListe =
        */
       total: number | null;
       /**
-       * Combien d'offres portent réellement des notes.
+       * Combien d'offres portent réellement des notes, **dans le filtre
+       * affiché** — jamais dans toute la base, sans quoi il ne se compare pas
+       * au total posé juste à côté.
        *
        * ⚠️ **Ce n'est pas une statistique décorative.** La liste est classée
        * par intérêt : tant que la notation n'a pas rattrapé toute la base, le
@@ -258,19 +260,33 @@ async function lireDerniereExecution(): Promise<number | null> {
 }
 
 /**
- * Combien d'offres sont notées.
+ * Combien d'offres sont notées, **dans le filtre affiché**.
  *
  * On ne compte pas les lignes déjà reçues : la liste est plafonnée à 200, elle
- * ne dit donc rien des 335 offres qu'elle ne montre pas. Une requête de
- * comptage pur — `limit=1`, seul l'en-tête `Content-Range` nous intéresse.
+ * ne dit donc rien des offres qu'elle ne montre pas. Une requête de comptage
+ * pur — `limit=1`, seul l'en-tête `Content-Range` nous intéresse.
+ *
+ * ⚠️ **Le filtre de statut s'applique ICI AUSSI, et son absence était un
+ * défaut** — relevé en revue le 29 août 2026, à la clôture de la phase 4.
+ * L'écran écrit « N offres · M notées » : les deux nombres doivent parler de la
+ * **même** liste. Sans ce filtre, `/offres?statut=candidate` affichait
+ * « 2 offres · 140 notées », c'est-à-dire 140 notées parmi 2 — un chiffre qui
+ * ne veut rien dire, et qui laisse croire que la liste en cache 138.
+ * Le défaut est né avec les filtres de la phase 4 : avant eux, la liste était
+ * toute la base et les deux comptages coïncidaient.
  *
  * Un échec n'est pas bloquant : `null` remonte l'ignorance jusqu'à l'écran,
  * qui se tait alors sur ce point plutôt que d'annoncer un chiffre faux.
  */
-async function compterNotees(): Promise<number | null> {
+async function compterNotees(filtre: FiltreListe): Promise<number | null> {
   const resultat = await interrogerBase<{ identifiant: string }>(
     "offres?select=identifiant&note_interet=not.is.null&limit=1",
-    { compter: true },
+    {
+      compter: true,
+      // Même raison qu'ailleurs : « toutes » n'est pas un statut, lui chercher
+      // un `statut=eq.toutes` rendrait zéro.
+      ...(filtre === "toutes" ? {} : { egal: { statut: filtre } }),
+    },
   );
 
   return resultat.ok ? resultat.total : null;
@@ -337,7 +353,7 @@ export async function listerOffres(
   const [offres, derniereExecution, notees, ...parStatut] = await Promise.all([
     requeteOffres,
     lireDerniereExecution(),
-    compterNotees(),
+    compterNotees(filtre),
     ...STATUTS.map(compterParStatut),
   ]);
 
