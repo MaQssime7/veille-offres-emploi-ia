@@ -580,6 +580,25 @@ blocs, parce que les phases 4 et 6 vont s'insérer dedans. Ordre actuel, jugé
 correct par Maxime : entête → résumé → les deux notes → classement France
 Travail → l'annonce repliée → candidater.
 
+✅ **Un seul point traité, le 29 août 2026 : le résumé a reçu son cadre.** Il
+était le **seul des cinq blocs sans `border border-border bg-card`**, et le
+premier qu'on lit. Mesuré au DOM avant correction : son paragraphe s'arrêtait à
+**690 px sur 952**, sans filet pour dire où le bloc finissait — il se lisait donc
+comme un texte tronqué et non comme une colonne de lecture. `max-w-prose` est
+**conservé** : sans lui la ligne ferait ~150 caractères, au-delà du confort de
+lecture. Vérifié sur le résumé le plus long de la base (171 caractères), à
+375 px et en mode sombre.
+
+⚠️ **Trois autres défauts ont été MESURÉS le 29 août et volontairement LAISSÉS.**
+Décision de Maxime : on passe à la phase 4. Ils sont écrits ici pour ne pas être
+remesurés — pas pour être traités tout de suite.
+
+| Défaut mesuré | Mesure | Pourquoi laissé |
+|---|---|---|
+| ⚠️ **Les barres de notes en fiche sont celles de la LISTE** | 88 px dans un bloc de 952, soit **9 % de la largeur** — y compris sur l'offre à 85, la meilleure de la base | **C'est un écart à ce document**, qui prescrit « en fiche, barres larges ». Les 88 px ont une raison — aligner 200 lignes pour comparer — et **cette raison n'existe pas sur une page qui montre une seule offre**. À reprendre quand la fiche se rééquilibrera |
+| ⚠️ **Sur une offre non notée, la fiche ne montre rien** | Vérifié sur `6141371` : ni résumé ni évaluation, et les 2 929 caractères de description sont **repliés**. La page tient en un demi-écran. Concerne **434 offres sur 567**, soit 76 % de la base | Replier a du sens quand il y a autre chose à lire ; ici il n'y a rien d'autre. ⚠️ **Ce défaut se résorbe tout seul** à mesure que la base se note — d'où l'attente |
+| Les cinq titres de section ont le même poids | « ÉVALUATION » se présente exactement comme « CLASSEMENT FRANCE TRAVAIL » | Raffinement visuel pur : ne change aucune information disponible |
+
 ### Deux teintes entrent dans la palette — 28 août 2026
 
 Décision de Maxime, après avoir regardé les écrans remplis. La palette passe de

@@ -153,9 +153,24 @@ export default async function PageOffre({
             >
               Résumé de l’offre
             </h2>
-            <p className="max-w-prose text-base leading-relaxed text-foreground">
-              {offre.resume}
-            </p>
+            {/* ⚠️ **Le cadre n'est pas décoratif : il aligne ce bloc sur ses
+                quatre voisins.** Évaluation, Classement, L'annonce et Candidater
+                portent tous `border border-border bg-card` ; le résumé était le
+                seul à ne rien porter — et il est le premier qu'on lit. Mesuré au
+                DOM le 29 août 2026 : son paragraphe s'arrêtait à **690 px sur
+                952**, sans filet pour dire où le bloc finissait, ce qui le
+                faisait lire comme un texte tronqué plutôt que comme une colonne
+                de lecture. Relevé par Maxime en regardant la page.
+                ⚠️ **`max-w-prose` RESTE, et le vide à sa droite est voulu.**
+                Sans lui, une ligne ferait ~150 caractères sur cette largeur —
+                au-delà de ce qui se lit confortablement, même règle que la
+                description intégrale. Dans un cadre, ce vide se lit comme une
+                marge ; c'est sans cadre qu'il se lisait comme une coupure. */}
+            <div className="border border-border bg-card px-4 py-4">
+              <p className="max-w-prose text-base leading-relaxed text-foreground">
+                {offre.resume}
+              </p>
+            </div>
           </section>
         )}
 
