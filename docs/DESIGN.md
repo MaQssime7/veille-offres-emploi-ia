@@ -818,6 +818,76 @@ c'est-à-dire précisément ce que l'utilisateur ne fait pas. **Pour éprouver u
 il faut cliquer à des coordonnées fixes.** C'est ce qui a d'abord fait croire que le correctif
 ne marchait pas.
 
+### Le bandeau de `/offres` devient une manchette — 29 août 2026
+
+Décision de Maxime après avoir regardé l'écran : « trop simple, pas très beau ;
+il y a juste écrit *Offres* en gros ; *Poste de travail*, on ne sait pas
+pourquoi ».
+
+⚠️ **Le vrai motif du chantier n'était pas esthétique.** L'indicateur de dernière
+veille réussie est un critère d'acceptation de la **phase 5** — « visible en
+permanence, sur cet écran comme sur le poste de travail ». Le bandeau n'avait
+aucune place pour l'accueillir : le refondre après la phase 5 aurait été le
+refondre deux fois.
+
+**Ce qui est retiré**, et ce sont deux défauts qui ne se voient qu'en cherchant :
+
+| Retiré | Pourquoi |
+|---|---|
+| Le sur-titre « Poste de travail » | Il nommait **une catégorie sans sœur**. Un sur-titre distingue un écran d'autres écrans de la même famille ; le produit a un seul utilisateur et trois écrans qui ne se confondent pas |
+| Le titre « Offres » | Il **redisait ce que la liste montre déjà**. « Plan de travail » nomme ce que l'écran *est* — ce qui reste à faire — et c'est déjà le mot qu'emploie le code |
+
+**Ce qui arrive** : une **manchette** — ligne pleine largeur en `libelle-mono`,
+séparée du titre par un filet, l'état de la veille à gauche, son horodatage à
+droite. Le registre est celui du journal, ce qui sert la direction éditoriale
+sans ajouter la moindre teinte au système.
+
+**Les deux autres compositions, construites pour de vrai puis écartées** — elles
+ont été regardées à 1280 et 375 px, pas esquissées :
+
+| Variante | Pourquoi elle tombe |
+|---|---|
+| Le chiffre en titre (« 574 à traiter ») | **Casse à 375 px** : le bloc de veille se replie en restant aligné à droite et fabrique un texte en drapeau au milieu de la page. Et le titre devient absurde en changeant de filtre — « 0 candidaté » |
+| Le cartouche encadré à droite du titre | Il **concurrence le titre** au lieu de le servir, et repousse les onglets vers le bas à 375 px. Sur un écran dont le travail *est* la liste, chaque pixel de bandeau est pris à la liste |
+
+**Teintes** : ocre `--signal-fort` pour la veille fraîche — **c'est son rôle, le
+temporel** — et brique `--destructive` pour l'alerte. Un vert aurait volé à
+l'olive le sien. Contrastes recalculés sur les éléments réellement rendus :
+ocre **5,73:1** clair / **8,59:1** sombre · brique **5,80:1** / **5,26:1**.
+
+⚠️ **L'information est dans le TEXTE, jamais dans la teinte ni dans l'icône** :
+« Aucune veille depuis 2 jours » se lit en noir et blanc et au lecteur d'écran.
+Le triangle et la couleur ne font que renforcer.
+
+**Calage du squelette, mesuré au DOM le 29 août 2026** :
+
+| Largeur disponible | Ligne réelle | Squelette | Écart |
+|---|---|---|---|
+| ≥ 452 px | 24,40 px | 24,40 px | **0** |
+| 302 → 450 px | 43,80 px | 43,80 px | **0** |
+| ≤ 300 px | 59,20 px | 43,80 px | 15,40 px |
+
+⚠️ **Une première version calait le squelette sur des largeurs CHOISIES, et
+c'était faux entre les deux points de mesure.** Les barres valaient 176 et
+208 px (400 px au total) face à un contenu réel de **451,8 px**. Résultat : entre
+**448 et 496 px de large**, la vraie ligne se repliait quand le squelette tenait
+encore sur une seule — le saut de 19,40 px que le squelette existe pour empêcher,
+simplement **déplacé dans une bande qu'on n'avait pas regardée**. Relevé par
+`/code-review`, confirmé au DOM, corrigé en reprenant les largeurs mesurées du
+cas courant (8,5 rem et 18,75 rem). Les deux se replient désormais au même point.
+
+⚠️ **La leçon de méthode, qui vaut au-delà de ce cas** : vérifier un squelette à
+375 px et à 1280 px **ne prouve rien entre les deux**. Le repli est un *seuil*, et
+un seuil ne se contrôle qu'en **balayant** les largeurs — ici de 300 à 760 px par
+pas de 2. Deux points concordants avaient donné une fausse certitude.
+
+⚠️ **Le squelette reste calé sur le cas COURANT, et deux écarts subsistent.** Sous
+302 px de largeur disponible (un écran d'environ 334 px, **sous le plancher de
+375 px du projet**) la ligne réelle passe à trois rangées ; et les trois états
+sans détail à droite ne se replient jamais. Ce sont des cas dégradés où 15 à 19 px
+ne sont pas le problème que l'utilisateur a ; caler sur eux déplacerait le saut
+sur l'écran de tous les matins.
+
 ### Défaut connu, non corrigé
 
 **La colonne gauche de la fiche est creuse** tant que la description n'est pas dépliée :
@@ -893,3 +963,6 @@ reproduit ni l'écran haute densité, ni la barre du navigateur mobile.
 | 26 août 2026 | L'offre en attente de note reste à 91 px, en cartouche | En bloc séparé, l'état vide coûtait 42 px sur la moitié des lignes affichées |
 | 16 août 2026 | Borne de conversation en tokens, pas en messages | Le contexte est renvoyé à chaque tour : la consommation croît quadratiquement. Décidé par Maxime |
 | 16 août 2026 | Blocage définitif à 100 % du budget | Une borne réinitialisable d'un clic n'est plus une borne. Décidé par Maxime |
+| 29 août 2026 | Le bandeau de `/offres` passe en manchette, titre « Plan de travail » | Le sur-titre nommait une catégorie sans sœur et « Offres » redisait la liste ; surtout, le bandeau n'avait pas de place pour l'indicateur de veille qu'exige la phase 5 |
+| 29 août 2026 | L'état de la veille prend l'ocre `--signal-fort`, pas un vert | L'ocre EST le rôle temporel dans ce système. Un vert de réussite aurait volé à l'olive son rôle unique, et « une teinte qui sert à deux choses ne sert plus à rien » |
+| 29 août 2026 | Le squelette de la manchette est calé sur le cas courant, pas sur le pire | Les trois états à une ligne sont des cas dégradés ; caler sur eux déplacerait le saut de 19,40 px sur l'écran de tous les matins |

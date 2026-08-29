@@ -22,7 +22,8 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` |
 | **Comment le site est protégé** : cookie, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts`, abondamment commentés |
 | **Comment l'interface ÉCRIT en base** : garde-fous, idempotence | `ecrireDansBase()` dans `interface/lib/supabase.ts` |
-| Statuts et note personnelle : constantes partagées serveur/navigateur | `interface/lib/statuts.ts` et `interface/lib/notes.ts` — ⚠️ **les deux seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
+| Statuts, note personnelle, **accords et dates en français** : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts` — ⚠️ **les trois seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
+| **L'état de santé de la veille** : les cinq états, le seuil d'alerte de 36 h, celui des 60 min qui démasque une collecte tuée | `interface/lib/veille.ts` — lecture et calcul séparés, `calculerEtat()` est une fonction pure. ⚠️ Les **dateurs** sont dans `francais.ts`, pas ici : purs, ils ne doivent pas être enfermés derrière `server-only` |
 
 **Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
 comportement sur *n'importe quelle* tâche du projet. Toute référence propre à un
@@ -102,46 +103,51 @@ fichier :**
 
 ## État au 29 août 2026
 
-**Phases 1 à 4 CLOSES. ⚠️ Un chantier de design précède la phase 5 — voir juste
-en dessous.** Ensuite seulement, la PHASE 5 : l'écran du matin (`/`).
+**Phases 1 à 4 CLOSES, et le bandeau de `/offres` refondu.** ⚠️ **La PHASE 5 —
+l'écran du matin (`/`) — est le prochain chantier, et rien ne la précède plus.**
 Le site est en ligne derrière son mot de passe, collecte et notation tournent sur
 le cron. `/offres` est un **plan de travail** : par défaut, seules les offres
 « à traiter », avec trois autres filtres à un clic. **L'interface écrit en base** —
-statuts et note personnelle. **574 offres, 140 notées, 574 à traiter / 0 candidaté
-/ 0 écarté.**
+statuts et note personnelle. **574 offres, 140 notées, 571 à traiter / 0 candidaté
+/ 3 écarté.**
 
-### ⚠️ CE QUI OUVRE LA PROCHAINE SÉANCE — le bandeau de `/offres`, avant la phase 5
+### ✅ Le bandeau de `/offres` est fait — 29 août 2026, et ce qu'il lègue à la phase 5
 
-**Décidé par Maxime le 29 août 2026, après avoir regardé l'écran.** Ce n'est pas
-une préférence vague, c'est un diagnostic à reprendre tel quel :
+Le chantier de design qui devait précéder la phase 5 **est clos**. Récit complet et
+mesures dans `docs/DESIGN.md` § « Le bandeau de `/offres` devient une manchette ».
+Ce qu'il faut en retenir ici, parce que la phase 5 s'appuie dessus :
 
-> « Le bandeau au-dessus de la liste d'offres, je trouve ça trop simple, pas très
-> beau. Il y a juste écrit *Offres* en gros. *Poste de travail*, on ne sait pas
-> pourquoi. »
-
-**Ce qu'il y a aujourd'hui** (`interface/app/(site)/offres/_composants/en-tete-page.tsx`,
-composant `EnTetePage`) : un sur-titre « Poste de travail » en Geist Mono
-`--muted-foreground`, un `h1` « Offres » en Fraunces 3xl/4xl, puis la ligne de
-compte et les onglets de filtre passés en enfants, le tout sur un filet bas.
-
-**Trois constats à verser au travail de design, en plus de sa critique :**
-
-1. **Le sur-titre nomme une catégorie qui n'a pas de sœur.** « Poste de travail »
-   distinguerait cet écran d'un autre s'il y en avait plusieurs ; le produit n'a
-   qu'un utilisateur et trois écrans qui ne se confondent pas.
-2. **« Offres » redit ce que la liste montre déjà.** Un titre qui nomme le contenu
-   visible n'ajoute rien — la place serait mieux employée à dire *ce qu'il y a à
-   faire aujourd'hui*.
-3. ⚠️ **Le bandeau devra de toute façon accueillir l'indicateur de dernière veille
-   réussie** — critère d'acceptation de la **phase 5** : « visible en permanence,
-   sur cet écran comme sur le poste de travail », et en alerte au-delà de 36 h.
-   **C'est l'argument décisif pour le traiter maintenant** : `/` et `/offres`
-   portent le même bandeau, le redessiner après la phase 5 serait le redessiner
-   deux fois.
-
-⚠️ **Passer par `/design` plutôt que par une retouche directe** : le
-`docs/DESIGN.md` existe et fait autorité, et c'est un travail de composition, pas
-d'ajustement d'espacement. Ne pas ouvrir la phase 5 avant.
+- **`/offres` porte une manchette** : ligne pleine largeur en `libelle-mono`, état
+  de la veille à gauche, horodatage à droite, filet, puis le titre
+  **« Plan de travail »**. Le sur-titre « Poste de travail » et le titre « Offres »
+  ont disparu.
+- ⚠️ **L'indicateur de veille EXISTE DÉJÀ et il est partagé** :
+  `app/(site)/_composants/etat-veille.tsx`, posé au niveau du groupe `(site)`
+  **exprès pour que `/` le prenne tel quel**. La phase 5 ne le reconstruit pas —
+  elle l'importe. Le recopier ferait diverger les deux écrans au premier
+  ajustement de seuil.
+- ⚠️ **Cinq états, pas deux, et le `switch` qui les affiche est exhaustif** :
+  à jour · en retard (> 36 h) · dernier passage raté · aucune veille · état
+  indisponible. Le critère de la phase 5 « l'indicateur signale l'échec » est donc
+  **déjà tenu**. Les deux derniers sont distincts à dessein : « aucune veille » est
+  une base neuve, « indisponible » est une lecture ratée — les confondre annoncerait
+  une panne de collecte un jour où seule la base est injoignable.
+- ⚠️ **Une collecte TUÉE en plein vol compte comme un ratage, et c'est un seuil
+  de temps qui la démasque.** Une exécution tuée laisse `issue = 'en_cours'`, et le
+  pipeline ne la referme en `echec` qu'à son **démarrage suivant**, soit la nuit
+  d'après : sans ce seuil, le bandeau affichait « à jour » pendant près de 24 h sur
+  une nuit morte. Au-delà de **60 minutes** — le double du `timeout-minutes` du
+  workflow — un `en_cours` est donc traité comme un ratage. En dessous, c'est une
+  collecte qui tourne, et l'alerte ne clignote pas.
+  Le libellé distingue les deux : « en échec » (le pipeline a écrit son échec, un
+  motif existe) et « interrompue » (tuée avant d'avoir rien pu écrire, il n'y a
+  aucun motif à aller chercher).
+- ⚠️ **`EnTetePage` prend désormais trois propriétés NOMMÉES** (`manchette`,
+  `compte`, `filtres`) au lieu d'un `children` fourre-tout. C'est ce qui rend
+  l'égalité de hauteur avec `loading.tsx` vérifiable dans le code au lieu de
+  l'être à l'écran.
+- **Ce qui reste à faire côté phase 5** : l'écran `/` lui-même, et y poser la même
+  manchette.
 
 | Brique | État |
 |---|---|
@@ -157,7 +163,7 @@ d'ajustement d'espacement. Ne pas ouvrir la phase 5 avant.
 
 | Sujet | État |
 |---|---|
-| ⚠️ **En-tête de `/offres`** | **C'est le premier chantier de la prochaine séance** — diagnostic complet et contraintes ci-dessus, § « Ce qui ouvre la prochaine séance » |
+| ⚠️ **L'indicateur de veille ne vieillit pas dans un onglet resté ouvert** | Il est calculé au rendu serveur : un onglet laissé ouvert toute la journée affiche encore « Aujourd'hui, 11:11 » le lendemain matin, et ne passera jamais en alerte tout seul. Le corriger demanderait une horloge dans le navigateur, donc un composant client, pour une information qui change une fois par jour. **Signalé, non corrigé** — écrit dans `etat-veille.tsx` pour ne pas passer pour un oubli |
 | ⚠️ **Le plafond de 200 lignes — desserré, pas résolu** | La liste montre les 200 meilleures de tous les temps : le jour où plus de 200 offres portent une note, celles de la nuit disparaissent. Le filtre de la phase 4 desserre (une offre triée libère sa place) mais ne résout pas : tant que rien n'est trié, les 574 restent « à traiter ». **L'échéance est un compte, pas une date.** Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut. ⚠️ **Ne pas forcer en payant** (~40 centimes pour noter 60 offres de plus) : c'est un raisonnement, pas une économie — 200 est aussi le seuil où l'écran casse. Simulation dans `docs/PLAN.md` § Phase 2 |
 | ⚠️ **`intelligence artificielle` : le seul critère non arbitré** | 127 offres nettes/mois pour une moyenne de 8/100 et un maximum de 15 sur 27 notées — le profil exact qui a fait tomber les codes ROME. Et on ne perdrait rien : les 9 offres ≥ 25 sont toutes rattrapées par `IA` ou `AI`, vérifié une par une. Maxime l'a **gardé** le 28 août. ⚠️ **Ne pas le retirer seul** |
 | Qualité d'`automatisation` | 11 offres nettes/mois, **aucune notée** : sa qualité est **inconnue**, ce qui n'est pas la même chose que « bonne » |
@@ -213,14 +219,19 @@ Récit de l'enquête : `docs/JOURNAL.md` § 27 août.
 2. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le
    code, jamais les données : une branche qui migre ou supprime touche les vraies
    données.
-3. ⚠️ **`interface/lib/statuts.ts` et `interface/lib/notes.ts` sont les deux seuls
-   modules de `lib/` sans `import "server-only"`** — `utils.ts` mis à part, qui ne
-   porte que le `cn()` de shadcn. C'est leur raison d'être : les composants clients
-   ont besoin des mêmes constantes que le serveur (libellés de statut, borne de
-   longueur de la note) ; s'ils allaient les chercher dans `lib/offres.ts`, ils
+3. ⚠️ **`interface/lib/statuts.ts`, `interface/lib/notes.ts` et
+   `interface/lib/francais.ts` sont les trois seuls modules de `lib/` sans
+   `import "server-only"`** — `utils.ts` mis à part, qui ne porte que le `cn()` de
+   shadcn. C'est leur raison d'être : les composants clients ont besoin des mêmes
+   constantes que le serveur (libellés de statut, borne de longueur de la note,
+   accord du pluriel) ; s'ils allaient les chercher dans `lib/offres.ts`, ils
    tireraient `lib/supabase.ts` — donc la clé secrète — dans le graphe du
    navigateur. **Y mettre des constantes et des fonctions pures, jamais du code qui
    lit un secret.** Tout futur module partagé suit le même moule.
+   ⚠️ **`lib/veille.ts` ne suit PAS ce moule et porte bien `server-only`** : il lit
+   la base. Sa partie pure — `calculerEtat()`, `daterPassage()` — reste dans le même
+   fichier parce qu'aucun composant client n'en a besoin ; le jour où l'un en aurait
+   besoin, c'est elle qui déménagerait, pas le `server-only` qui sauterait.
 4. ⚠️ **Ne jamais passer l'objet `offre` entier à un composant client.**
    La propriété « tout en composants serveur » est **tombée le 29 août 2026** : les
    boutons de statut et le champ de note sont des composants clients. Ce qui la
@@ -472,6 +483,16 @@ source .venv/bin/activate      # à chaque nouvelle session de terminal
 pip install -r requirements.txt
 which python                   # doit afficher .../veille-offres-emploi-ia/.venv/bin/python
 ```
+
+```bash
+# Interface — depuis interface/
+npm run verifie      # lint + typecheck + les 33 tests, DANS LES DEUX FUSEAUX
+```
+
+⚠️ **`verifie` lance la suite deux fois, et la seconde est celle qui compte** :
+`TZ=UTC` reproduit le fuseau de Vercel. Un calcul de date faux en production passe
+sans broncher sur un Mac à l'heure de Paris — c'est arrivé le 29 août 2026. **Ne
+jamais retirer le second passage** en le prenant pour un doublon.
 
 ```bash
 python -m pipeline.collecte                   # fenêtre automatique depuis la dernière réussite

@@ -2590,3 +2590,208 @@ DOM pour la section réelle — et non à l'œil.
 **Deux onglets ouverts sur la même fiche** : celui qui tape en dernier écrase la note de
 l'autre, sans avertissement. Le produit n'a qu'un utilisateur et le cas demanderait un
 horodatage de version à comparer avant d'écrire. Signalé, non corrigé.
+
+---
+
+## 29 août 2026, en fin de journée — Le bandeau de `/offres` devient une manchette
+
+Point de départ : Maxime regarde l'écran et tranche. « Le bandeau au-dessus de la liste
+d'offres, je trouve ça trop simple, pas très beau. Il y a juste écrit *Offres* en gros.
+*Poste de travail*, on ne sait pas pourquoi. »
+
+### La critique portait sur l'apparence, le vrai motif était ailleurs
+
+Trois défauts, dont un seul se voyait :
+
+1. Le sur-titre « Poste de travail » nommait **une catégorie sans sœur**. Un sur-titre
+   sert à distinguer un écran d'autres écrans de la même famille ; ce produit a un seul
+   utilisateur et trois écrans qui ne se confondent pas.
+2. « Offres » **redisait ce que la liste montre déjà**. Un titre qui nomme le contenu
+   visible n'ajoute rien.
+3. ⚠️ **Le bandeau n'avait aucune place pour l'indicateur de dernière veille**, qui est
+   un critère d'acceptation de la phase 5 — « visible en permanence, sur cet écran comme
+   sur le poste de travail ». **C'est ce troisième point qui a commandé le calendrier** :
+   `/` et `/offres` portent le même bandeau, le refondre après la phase 5 aurait été le
+   refondre deux fois.
+
+### Trois compositions construites pour de vrai, deux écartées sur mesure
+
+Les variantes n'ont pas été décrites, elles ont été **construites** dans une page
+d'aperçu temporaire — avec le vrai composant d'onglets — puis regardées à 1280 et
+375 px, en clair et en sombre. Deux sont tombées sur des faits, pas sur des goûts :
+
+- **Le chiffre en titre** (« 574 à traiter ») : séduisant au bureau, **cassé à 375 px**.
+  Le bloc de veille se replie en restant aligné à droite et fabrique un texte en drapeau
+  au milieu de la page. Défaut invisible tant qu'on ne réduit pas la fenêtre. Et le titre
+  devient absurde en changeant de filtre — « 0 candidaté ».
+- **Le cartouche encadré** : propre, mais il concurrence le titre et repousse les onglets
+  vers le bas. Sur un écran dont le travail *est* la liste, chaque pixel de bandeau est
+  pris à la liste.
+
+Retenue : **la manchette** — ligne pleine largeur en chasse fixe, état de la veille à
+gauche, horodatage à droite, filet, puis « Plan de travail » en Fraunces.
+
+### Ce que la maquette a appris, et qui n'était pas du style
+
+⚠️ **Le libellé « Veille de ce matin » aurait été un mensonge.** Vérification faite sur
+les exécutions réelles : les cinq dernières collectes sont parties à **11:11, 14:25 et
+12:55** heure de Paris. Le cron de GitHub Actions ne part jamais à l'heure prévue — c'est
+déjà documenté — donc tout libellé qui promet un moment de la journée finit par mentir.
+L'indicateur affiche un horodatage réel, et le mot « matin » n'apparaît nulle part.
+
+⚠️ **Il fallait cinq états, pas deux.** La maquette n'en montrait que deux — frais et en
+retard. Le critère de la phase 5 exige que l'indicateur « signale l'échec », qui est un
+cas *différent* du retard : la machine a tourné et raté, ce qui porte une cause. S'y
+ajoutent « aucune veille enregistrée » (base neuve) et « état indisponible » (lecture
+ratée). **Les deux derniers sont distincts à dessein** : les confondre annoncerait une
+panne de collecte un jour où seule la base est injoignable.
+
+⚠️ **L'échec prime sur le retard** quand les deux sont vrais. Le retard est une
+conséquence, l'échec est le fait — et c'est lui qui désigne quelque chose à regarder.
+
+### Comment c'est fait
+
+- **`lib/veille.ts`** — deux lectures (dernière collecte réussie, dernier passage quelle
+  que soit son issue) et **le calcul séparé en fonction pure**, `calculerEtat()`. La
+  séparation n'est pas de la coquetterie : elle rend les seuils éprouvables sans base ni
+  réseau.
+- **`app/(site)/_composants/etat-veille.tsx`** — posé au niveau du groupe `(site)` et
+  **non dans `offres/_composants/`**, exprès pour que `/` le prenne tel quel en phase 5.
+  Le `switch` sur les cinq états est exhaustif : ajouter un sixième cas fera échouer la
+  compilation au lieu de tomber dans un défaut qui l'afficherait « à jour ».
+- **`EnTetePage`** passe de `children` à trois propriétés **nommées** (`manchette`,
+  `compte`, `filtres`). C'est ce qui rend l'égalité avec `loading.tsx` vérifiable dans le
+  code : avec un `children` unique, la page en passait deux et le squelette trois, et
+  l'écart était invisible.
+- **`lib/francais.ts`** — `accorder()` sortie de `page.tsx`, où elle était privée, parce
+  que la manchette en avait besoin. Troisième module de `lib/` sans `server-only`, et il
+  suit le moule : fonctions pures, aucun secret.
+
+### Ce qui a été vérifié, et comment
+
+- **Les dix cas d'affichage**, rendus avec le composant réel et des états fabriqués en
+  mémoire — ⚠️ **jamais en écrivant dans `executions_veille`**, qui est la base de
+  production. Accords au singulier, bascule « Aujourd'hui » / « Hier », jours de la
+  semaine, `offres_nouvelles` à `NULL` qui efface son segment au lieu d'écrire « 0 ».
+- **Contrastes recalculés au canvas sur les éléments réellement rendus** : ocre 5,73:1
+  clair / 8,59:1 sombre, brique 5,80:1 / 5,26:1, cartouche d'alerte 5,37:1 / 5,03:1.
+  ⚠️ **Deux mesures fausses avant la bonne** : `getComputedStyle().color` rend de l'OKLCH
+  dans Chrome, lu comme du RGB il donnait 1,44:1 pour du texte plein sur fond. La méthode
+  qui tient retrouve à 0,01 près les chiffres déjà inscrits dans `DESIGN.md`, ce qui la
+  valide.
+- **Calage du squelette mesuré au DOM** — et c'est là que la revue a mordu, voir plus bas.
+- **Cloisonnement** : douze termes interdits cherchés dans le **document reçu** (HTML et
+  charge RSC) de trois écrans. Une seule occurrence, `description` — faux positif vérifié
+  au contexte, c'est la balise `<meta>` du layout. Témoin positif validé.
+- **Console** : 0 erreur, 0 avertissement. **Typecheck et lint** propres.
+- **Quatre combinaisons regardées** : 1280 et 375 px, clair et sombre.
+
+⚠️ **Ce que je n'ai PAS pu voir** : l'état « base injoignable » sur `/offres` en
+conditions réelles — il a été rendu dans la page d'aperçu, pas atteint en coupant la
+base. Et le squelette de chargement à l'écran, pour la raison habituelle : en local le
+serveur répond trop vite pour qu'il s'affiche.
+
+### Une limite connue, laissée ouverte
+
+**L'indicateur ne vieillit pas dans un onglet resté ouvert.** Il est calculé au rendu
+serveur : un onglet laissé ouvert toute la journée affichera encore « Aujourd'hui, 11:11 »
+le lendemain, et ne passera jamais en alerte tout seul. Le corriger demanderait une
+horloge dans le navigateur — donc un composant client — pour une information qui change
+une fois par jour. Signalé dans le code et dans le `CLAUDE.md`, non corrigé.
+
+### Ce que `/code-review` a trouvé, et ce que ça a coûté de le vérifier
+
+Sept points, dont **trois vrais défauts** et un qui a demandé une mesure pour être
+tranché. Aucun n'aurait produit d'erreur visible : c'est exactement le genre que
+personne ne rattrape après coup.
+
+**1. Une collecte tuée en plein vol passait pour une nuit saine — le plus grave.**
+Une exécution tuée laisse `issue = 'en_cours'`, et `pipeline/stockage.py` ne la
+referme en `echec` qu'au **démarrage suivant**, soit la nuit d'après. Entre les deux,
+mon code lisait la dernière *réussite* et affichait « Dernière veille — Hier, 14:25 »
+en ocre, sans un mot sur la collecte morte cette nuit. L'alerte ne serait arrivée
+qu'au franchissement des 36 h, le lendemain. ⚠️ **Mon propre commentaire affirmait
+que `en_cours` voulait dire « une collecte qui tourne en ce moment »** — vrai pendant
+30 minutes, faux pendant les 23 heures suivantes.
+**Correctif** : au-delà de 60 minutes — le double du `timeout-minutes` du workflow —
+un `en_cours` est traité comme un ratage. Et le libellé distingue « en échec » (le
+pipeline a écrit son échec, un motif existe) de « interrompue » (tuée avant d'avoir
+rien pu écrire).
+
+**2. « Hier » était calculé dans le fuseau du serveur, comparé en heure de Paris.**
+`hier.setDate(hier.getDate() - 1)` retranche un jour dans le fuseau du *runtime* —
+UTC sur Vercel — puis le résultat était comparé à un jour *parisien*. La nuit du
+passage à l'heure d'été, la journée parisienne ne fait que 23 heures et les deux
+divergent.
+⚠️ **Ce bug était invisible sur le Mac de Maxime, qui est à Paris.** Il a fallu
+relancer les tests avec `TZ=UTC` pour le voir : l'ancien calcul rend alors le **28**
+mars là où il fallait le 29, et une collecte de la veille s'affichait « Dimanche
+29 mars » au lieu de « Hier ». **Prouvé dans les deux sens** — ancien code en échec,
+nouveau code au vert, dans la condition réelle de production.
+
+**3. Deux formateurs purs étaient enfermés derrière `server-only`.** `daterPassage`
+et `duree` ne lisent aucun secret, mais vivaient dans `lib/veille.ts`, qui en lit un.
+Or `etat-veille.tsx` envisage déjà **par écrit** le composant client qui ferait
+vieillir l'indicateur sans rechargement : le jour où quelqu'un l'écrit, il importe
+`daterPassage`, tire `lib/supabase.ts` dans le navigateur, et tombe sur une erreur
+`server-only` incompréhensible — le fichier qu'il importait ne lisant aucun secret.
+**Une fonction pure enfermée derrière `server-only` est une mine, pas une
+protection.** Les deux ont rejoint `accorder()` dans `lib/francais.ts`.
+
+**4. Le squelette était juste à 375 et à 1280 px, et faux entre les deux.** Mes
+barres valaient 176 + 208 px face à un contenu réel de 451,8 px. La revue l'a déduit
+d'un modèle de largeur de caractères ; **je l'ai mesuré au DOM plutôt que de la
+croire sur parole**, en balayant de 300 à 760 px par pas de 2 : la bande de
+désaccord existait bien, **448 à 496 px**, avec les mêmes 19,40 px de saut que le
+squelette existe pour empêcher — simplement déplacés là où personne n'avait
+regardé. Les barres reprennent maintenant les largeurs mesurées du cas courant ; les
+deux se replient désormais au même point, **452 px**.
+
+⚠️ **La leçon de méthode** : vérifier un squelette à deux largeurs de référence ne
+prouve rien entre les deux. Le repli est un **seuil**, et un seuil ne se contrôle
+qu'en balayant. Deux points concordants m'avaient donné une fausse certitude — et je
+l'avais écrite dans ce journal comme un « écart nul ».
+
+**5. L'écran portait trois noms.** Le `h1` disait « Plan de travail », l'onglet du
+navigateur « Offres », le lien de navigation « Offres ». L'onglet suit désormais le
+titre ; le lien de nav reste « Offres », parce qu'il nomme **une destination** dans
+une liste, comme on clique « Mail » pour arriver sur « Boîte de réception ».
+
+**6. Deux colonnes étaient lues sans être utilisées** — `id` et `terminee_a`. `id`
+surtout : le garder laissait croire que ce bandeau et le marqueur « Nouveau » de la
+liste sont indexés sur la même ligne, alors que ce sont deux requêtes indépendantes.
+Retirées de la requête comme du type.
+
+### Les premiers tests automatisés du projet — décision de Maxime
+
+Les fonctions pures sont désormais éprouvées hors du navigateur : **33 tests**, dans
+`interface/lib/francais.test.ts` et `interface/lib/veille.test.ts`. C'est ce qui a
+permis de *prouver* le correctif de fuseau au lieu de l'affirmer.
+
+⚠️ **`npm run verifie` lance la suite DEUX fois — et c'est la seconde qui compte.**
+La première tourne dans le fuseau de la machine, la seconde avec `TZ=UTC`, celui de
+Vercel. Le bug de « Hier » passait parfaitement sur un Mac à l'heure de Paris : sans
+ce second passage, la suite entière aurait été verte sur un code faux en production.
+
+**Aucune dépendance ajoutée** : Node 24 exécute le TypeScript nativement
+(`--experimental-strip-types`) et embarque son propre lanceur (`node:test`). Deux
+obstacles ont demandé du travail, tous deux d'infrastructure et non de logique :
+
+- **`server-only` refuse de se charger hors d'un composant serveur.** Résolu par
+  `--conditions=react-server`, qui fait charger à ce paquet son `empty.js`.
+  Sémantiquement juste : on éprouve du code serveur, on se déclare en contexte
+  serveur.
+- **Node ne connaît ni l'alias `@/` ni les imports sans extension.** Résolu par un
+  hook de résolution maison, `scripts/resolveur-ts.mjs`.
+  ⚠️ **L'alternative — recopier les modules à côté des tests — aurait été pire que
+  de ne pas tester** : la copie prend du retard sur l'original au premier
+  changement, et les tests continuent de passer sur du code qui n'est plus en
+  production. Le contournement devait porter sur la *résolution*, jamais sur le
+  contenu. (C'est exactement la copie que j'avais faite dans un dossier temporaire
+  pour la vérification initiale — acceptable pour un contrôle jetable, inacceptable
+  pour un test versionné.)
+
+⚠️ **Une des assertions a d'abord échoué, et c'était le TEST qui avait tort** : j'y
+comparais une collecte du 28 août à un « maintenant » du 30, soit deux jours d'écart
+— « avant-hier » était donc la bonne réponse. Le cas symétrique a été ajouté, pour
+que le test prouve les deux sens.
