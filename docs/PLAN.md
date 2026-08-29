@@ -432,6 +432,23 @@ Corrigé par `_composants/verrou-tri.tsx`. Récit et mesures dans `docs/JOURNAL.
 
 ---
 
+## ⚠️ Avant la phase 5 — refonte du bandeau de `/offres`
+
+**Ce n'est pas une phase du plan, c'est un chantier de design intercalé**, décidé
+par Maxime le 29 août 2026 après avoir regardé l'écran fini : « le bandeau au-dessus
+de la liste, c'est trop simple, pas très beau ; il y a juste écrit *Offres* en gros,
+et *Poste de travail*, on ne sait pas pourquoi ».
+
+**Pourquoi maintenant et pas après** : la phase 5 exige que l'indicateur de dernière
+veille réussie soit « visible en permanence, sur cet écran comme sur le poste de
+travail ». `/` et `/offres` portent le même bandeau — le redessiner après la phase 5
+serait le redessiner deux fois.
+
+Diagnostic complet, existant décrit et contraintes : `CLAUDE.md` § « Ce qui ouvre la
+prochaine séance ». **Passer par `/design`**, pas par une retouche d'espacement.
+
+---
+
 ## Phase 5 : L'écran du matin
 
 **User stories** : US-1, US-2, US-24, US-25, US-27

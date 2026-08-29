@@ -102,12 +102,46 @@ fichier :**
 
 ## État au 29 août 2026
 
-**Phases 1 à 4 CLOSES. La prochaine est la PHASE 5 : l'écran du matin (`/`).**
+**Phases 1 à 4 CLOSES. ⚠️ Un chantier de design précède la phase 5 — voir juste
+en dessous.** Ensuite seulement, la PHASE 5 : l'écran du matin (`/`).
 Le site est en ligne derrière son mot de passe, collecte et notation tournent sur
 le cron. `/offres` est un **plan de travail** : par défaut, seules les offres
 « à traiter », avec trois autres filtres à un clic. **L'interface écrit en base** —
 statuts et note personnelle. **574 offres, 140 notées, 574 à traiter / 0 candidaté
 / 0 écarté.**
+
+### ⚠️ CE QUI OUVRE LA PROCHAINE SÉANCE — le bandeau de `/offres`, avant la phase 5
+
+**Décidé par Maxime le 29 août 2026, après avoir regardé l'écran.** Ce n'est pas
+une préférence vague, c'est un diagnostic à reprendre tel quel :
+
+> « Le bandeau au-dessus de la liste d'offres, je trouve ça trop simple, pas très
+> beau. Il y a juste écrit *Offres* en gros. *Poste de travail*, on ne sait pas
+> pourquoi. »
+
+**Ce qu'il y a aujourd'hui** (`interface/app/(site)/offres/_composants/en-tete-page.tsx`,
+composant `EnTetePage`) : un sur-titre « Poste de travail » en Geist Mono
+`--muted-foreground`, un `h1` « Offres » en Fraunces 3xl/4xl, puis la ligne de
+compte et les onglets de filtre passés en enfants, le tout sur un filet bas.
+
+**Trois constats à verser au travail de design, en plus de sa critique :**
+
+1. **Le sur-titre nomme une catégorie qui n'a pas de sœur.** « Poste de travail »
+   distinguerait cet écran d'un autre s'il y en avait plusieurs ; le produit n'a
+   qu'un utilisateur et trois écrans qui ne se confondent pas.
+2. **« Offres » redit ce que la liste montre déjà.** Un titre qui nomme le contenu
+   visible n'ajoute rien — la place serait mieux employée à dire *ce qu'il y a à
+   faire aujourd'hui*.
+3. ⚠️ **Le bandeau devra de toute façon accueillir l'indicateur de dernière veille
+   réussie** — critère d'acceptation de la **phase 5** : « visible en permanence,
+   sur cet écran comme sur le poste de travail », et en alerte au-delà de 36 h.
+   **C'est l'argument décisif pour le traiter maintenant** : `/` et `/offres`
+   portent le même bandeau, le redessiner après la phase 5 serait le redessiner
+   deux fois.
+
+⚠️ **Passer par `/design` plutôt que par une retouche directe** : le
+`docs/DESIGN.md` existe et fait autorité, et c'est un travail de composition, pas
+d'ajustement d'espacement. Ne pas ouvrir la phase 5 avant.
 
 | Brique | État |
 |---|---|
@@ -123,7 +157,7 @@ statuts et note personnelle. **574 offres, 140 notées, 574 à traiter / 0 candi
 
 | Sujet | État |
 |---|---|
-| ⚠️ **En-tête de `/offres` — LA QUESTION EST OUVERTE MAINTENANT** | Ne plaît pas à Maxime. Le report était conditionné à la fin de la phase 4, close depuis le 29 août. **À poser avant d'entamer la phase 5**, qui construit `/` : les deux écrans portent le même bandeau, le refaire deux fois serait le refaire deux fois |
+| ⚠️ **En-tête de `/offres`** | **C'est le premier chantier de la prochaine séance** — diagnostic complet et contraintes ci-dessus, § « Ce qui ouvre la prochaine séance » |
 | ⚠️ **Le plafond de 200 lignes — desserré, pas résolu** | La liste montre les 200 meilleures de tous les temps : le jour où plus de 200 offres portent une note, celles de la nuit disparaissent. Le filtre de la phase 4 desserre (une offre triée libère sa place) mais ne résout pas : tant que rien n'est trié, les 574 restent « à traiter ». **L'échéance est un compte, pas une date.** Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut. ⚠️ **Ne pas forcer en payant** (~40 centimes pour noter 60 offres de plus) : c'est un raisonnement, pas une économie — 200 est aussi le seuil où l'écran casse. Simulation dans `docs/PLAN.md` § Phase 2 |
 | ⚠️ **`intelligence artificielle` : le seul critère non arbitré** | 127 offres nettes/mois pour une moyenne de 8/100 et un maximum de 15 sur 27 notées — le profil exact qui a fait tomber les codes ROME. Et on ne perdrait rien : les 9 offres ≥ 25 sont toutes rattrapées par `IA` ou `AI`, vérifié une par une. Maxime l'a **gardé** le 28 août. ⚠️ **Ne pas le retirer seul** |
 | Qualité d'`automatisation` | 11 offres nettes/mois, **aucune notée** : sa qualité est **inconnue**, ce qui n'est pas la même chose que « bonne » |
