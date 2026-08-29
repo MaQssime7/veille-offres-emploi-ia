@@ -32,6 +32,31 @@
 export const RYTHME_LIGNE = {
   /** Marges intérieures de l'article. */
   article: "px-4 py-2.5 sm:px-5",
+  /**
+   * La rangée du haut : nom d'entreprise, marqueur « Nouveau », et depuis la
+   * phase 4 les deux boutons de statut poussés à droite.
+   *
+   * ⚠️ **La hauteur minimale est celle des BOUTONS, pas celle du texte.**
+   * Mesuré au DOM le 29 août 2026 : le nom d'entreprise fait 15 px, un bouton
+   * de statut 27 px — c'est donc lui qui commande, et la rangée a gagné 12 px
+   * le jour où les boutons sont arrivés. Sans cette valeur ici, le squelette de
+   * `loading.tsx` serait resté calé sur 15 px et la page aurait sauté de 12 px
+   * par ligne à l'arrivée des offres. C'est exactement le défaut de 56 px du
+   * 26 août, que ce fichier existe pour empêcher.
+   *
+   * ⚠️ **`min-h` et non `h`** : une entreprise au nom très long passe à la ligne
+   * et la rangée doit pouvoir grandir. Une hauteur figée la couperait.
+   *
+   * ⚠️ **DEUX hauteurs, et l'oublier ferait sauter la page en mobile
+   * seulement.** Sous 640 px, les boutons perdent leur libellé et deviennent
+   * carrés pour offrir une cible tactile décente : **32 px** au lieu de 27.
+   * Une valeur unique aurait calé le squelette sur le bureau, et le saut de
+   * 5 px par ligne ne se serait vu que sur un téléphone — c'est-à-dire jamais
+   * pendant le développement. Mesuré au DOM le 29 août 2026 dans les deux
+   * largeurs.
+   */
+  rangeeEntete:
+    "flex flex-wrap items-center gap-x-3 gap-y-1 min-h-[2rem] sm:min-h-[1.6875rem]",
   /** Sous le nom de l'entreprise. */
   margeEntreprise: "mb-1",
   /** Sous l'intitulé. */

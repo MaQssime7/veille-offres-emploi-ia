@@ -6,6 +6,7 @@ import {
   formaterSalaire,
   formaterSalaireAnnuel,
 } from "../../_composants/formats";
+import { BoutonsStatut } from "../../_composants/boutons-statut";
 import { CartoucheEnAttente, etatNotation } from "../../_composants/notes";
 
 /**
@@ -84,6 +85,28 @@ export function EnTeteOffre({
           </Cartouche>
         )}
         {etatNotation(offre) === "en-attente" && <CartoucheEnAttente />}
+      </div>
+
+      {/* ⚠️ **Le statut est une ACTION, pas une métadonnée** — d'où sa rangée
+          propre, séparée des cartouches par une marge franche. Mêlé à eux, il
+          se serait lu comme un fait de l'annonce (« CDI », « 75 - Paris »)
+          alors qu'il dit ce que Maxime, lui, a décidé.
+
+          ⚠️ **Deux mots voisins sur la même page, et ils ne veulent PAS dire la
+          même chose** : « Candidaté » ici marque une décision ; « Candidater »
+          en bas de page ouvre l'annonce chez France Travail. Les 700 px qui les
+          séparent sont ce qui les distingue aujourd'hui — à revoir si l'un des
+          deux déménage.
+
+          ⚠️ **On passe `offre.identifiant` et `offre.statut`, jamais `offre`.**
+          C'est le premier composant client de cette chaîne : lui donner l'objet
+          entier enverrait ses vingt colonnes dans le document du navigateur,
+          `contact_nom` compris. Règle opposable n° 6 du `CLAUDE.md`. */}
+      <div className="mt-5">
+        <BoutonsStatut
+          identifiant={offre.identifiant}
+          statut={offre.statut}
+        />
       </div>
     </header>
   );

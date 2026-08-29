@@ -135,8 +135,26 @@ un rôle et un seul.
 | **Brique** | erreur · statut écarté | un état normal |
 
 **Collision connue et acceptée** : l'olive sert à la fois à la note d'accessibilité et au
-statut « candidaté ». Les deux ne se croisent jamais dans la même ligne, puisqu'une offre
-candidatée quitte la liste du matin.
+statut « candidaté ».
+
+⚠️ **CORRIGÉ LE 29 AOÛT 2026 — la justification de cette collision était FAUSSE, et la
+collision reste acceptée pour une AUTRE raison.** Cette ligne disait : « les deux ne se
+croisent jamais dans la même ligne, puisqu'une offre candidatée quitte la liste du matin ».
+C'est démenti par la phase 4 elle-même : `/offres?statut=candidate` — la US-10, « retrouver
+la liste de tout ce à quoi j'ai candidaté » — affiche précisément des lignes candidatées
+**avec** leur note d'accessibilité en olive juste à côté. Les deux se croisent, et sur
+l'écran fait pour ça.
+
+✅ **Ce qui la rend malgré tout acceptable, et qui se vérifie à l'œil** : les deux formes
+n'ont rien en commun. La note est une **jauge horizontale de 88 px précédée du mot
+« ACCESSIBILITÉ »** ; le statut est un **bouton carré à coche**. Aucune confusion possible,
+et l'information de chacun est portée par du texte et une icône, jamais par la teinte seule.
+
+⚠️ **La leçon vaut plus que le cas : une collision de teintes justifiée par « ces deux
+choses ne se rencontrent jamais » se périme dès qu'un écran les réunit — et c'est
+exactement ce que fait un filtre.** Une justification qui repose sur ce que le produit
+n'affiche pas encore n'est pas une justification, c'est une échéance. Ce qui tient
+réellement ici, c'est la différence de **forme**.
 
 **Pourquoi « écarter » n'est pas orange.** Un orange franc se confondrait avec l'ocre du
 marqueur « nouveau ». Une même teinte ne peut pas vouloir dire « regarde ça » et « jette
@@ -558,6 +576,18 @@ normalisation existera.
 ⚠️ **Le vide à droite de la ligne n'est pas un défaut, c'est une réserve.** Il accueille les
 deux barres de notes en phase 2, puis le statut en phase 4. Le combler serait à refaire.
 Vérifié le 26 août avec des barres simulées en place : elles s'y logent sans rien pousser.
+
+✅ **Rendez-vous honoré le 29 août 2026.** Les deux boutons de statut occupent cette réserve,
+poussés par `ml-auto` sur la rangée du haut. Mesuré au DOM sur les 20 premières lignes :
+ils tombent **tous à x = 898**, ce qui est toute la raison de les mettre là — trier une
+matinée sans avoir à viser. ⚠️ **En haut et non en bas**, parce que c'est la seule rangée
+dont la hauteur ne dépend pas du contenu : les cartouches passent à la ligne sur un salaire
+long, les justifications font deux ou quatre lignes.
+
+⚠️ **La rangée du haut a gagné 12 px** (15 → 27 px en bureau, 32 px sous 640 px où les
+boutons deviennent carrés) : c'est désormais le **bouton** qui commande sa hauteur, pas le
+nom d'entreprise. Reporté dans `RYTHME_LIGNE.rangeeEntete`, partagé avec le squelette de
+chargement — sans quoi la page aurait sauté de 12 px par ligne à l'arrivée des offres.
 
 ### ⏳ La fiche d'offre reste à retravailler — échéance ouverte
 

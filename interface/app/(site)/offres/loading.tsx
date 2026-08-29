@@ -99,9 +99,18 @@ export default function ChargementOffres() {
             key={rang}
             className={`animate-pulse border-b border-border last:border-b-0 ${RYTHME_LIGNE.article}`}
           >
-            <div
-              className={`w-40 max-w-[60%] bg-muted ${RYTHME_LIGNE.margeEntreprise} ${HAUTEURS_SQUELETTE.entreprise}`}
-            />
+            {/* ⚠️ **La barre grise garde la hauteur du TEXTE (15 px), c'est la
+                RANGÉE qui prend celle des boutons (27 px).** Grossir la barre
+                jusqu'à 27 px aurait donné la bonne hauteur totale et un
+                squelette qui ne ressemble plus à ce qu'il annonce — le
+                chargement montrerait un pavé là où arrivera un nom
+                d'entreprise. La rangée partagée porte la hauteur, la barre
+                imite le contenu. */}
+            <div className={`${RYTHME_LIGNE.rangeeEntete} ${RYTHME_LIGNE.margeEntreprise}`}>
+              <div
+                className={`w-40 max-w-[60%] bg-muted ${HAUTEURS_SQUELETTE.entreprise}`}
+              />
+            </div>
             <div
               className={`w-80 max-w-[85%] bg-muted ${RYTHME_LIGNE.margeIntitule} ${HAUTEURS_SQUELETTE.intitule}`}
             />

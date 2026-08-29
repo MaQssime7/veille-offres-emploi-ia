@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import type { OffreEnListe } from "@/lib/offres";
 
+import { BoutonsStatut } from "./boutons-statut";
 import { Cartouche, CartoucheAbsent } from "./cartouche";
 import { BlocNotes, CartoucheEnAttente, etatNotation } from "./notes";
 import { RYTHME_LIGNE } from "./rythme";
@@ -43,7 +44,7 @@ export function LigneOffre({
       className={`relative border-b border-border transition-colors last:border-b-0 hover:bg-accent has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-inset ${RYTHME_LIGNE.article}`}
     >
       <div
-        className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${RYTHME_LIGNE.margeEntreprise}`}
+        className={`${RYTHME_LIGNE.rangeeEntete} ${RYTHME_LIGNE.margeEntreprise}`}
       >
         {offre.entreprise_nom ? (
           <p className="nom-entreprise">
@@ -67,6 +68,27 @@ export function LigneOffre({
             Nouveau
           </span>
         )}
+
+        {/* ⚠️ **`ml-auto` occupe la RÉSERVE de droite, celle que `DESIGN.md`
+            demandait de ne pas combler** : « le vide à droite de la ligne n'est
+            pas un défaut, c'est une réserve — il accueille les notes en phase 2,
+            puis le statut en phase 4 ». C'est ce rendez-vous-là.
+
+            ⚠️ **En haut et non en bas de la ligne**, parce que c'est la seule
+            rangée dont la hauteur ne dépend pas du contenu : les cartouches
+            passent à la ligne quand le salaire est long, les justifications font
+            deux ou quatre lignes. Ici les boutons tombent au même endroit sur
+            les 200 lignes, ce qui permet de trier une matinée sans viser.
+
+            ⚠️ **`compact` réduit au pictogramme sous 640 px** — le libellé passe
+            en `sr-only`, il ne disparaît pas. */}
+        <div className="ml-auto">
+          <BoutonsStatut
+            identifiant={offre.identifiant}
+            statut={offre.statut}
+            compact
+          />
+        </div>
       </div>
 
       {/* Geist et non Fraunces : le serif du DESIGN.md ne descend jamais sous

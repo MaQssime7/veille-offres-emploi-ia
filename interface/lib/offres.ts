@@ -1,6 +1,12 @@
 import "server-only";
 
-import { type MotifEchec, interrogerBase } from "@/lib/supabase";
+import {
+  type MotifEchec,
+  type ResultatEcriture,
+  ecrireDansBase,
+  interrogerBase,
+} from "@/lib/supabase";
+import type { Statut } from "./statuts";
 
 /**
  * La lecture des offres pour l'écran `/offres`.
@@ -31,6 +37,7 @@ export type OffreEnListe = {
   justification_accessibilite: string | null;
   notation_motif_echec: string | null;
   notation_tentatives: number;
+  statut: Statut;
 };
 
 /**
@@ -94,6 +101,13 @@ const COLONNES_LISTE = [
   "justification_accessibilite",
   "notation_motif_echec",
   "notation_tentatives",
+  // ⚠️ **`statut` entre ici, `note_personnelle` JAMAIS.** La liste affiche le
+  // statut — c'est ce que les boutons de tri montrent et modifient. La note
+  // personnelle, elle, ne s'affiche que sur la fiche : la lire ici la ferait
+  // voyager dans le document de 200 lignes pour n'être jamais rendue.
+  // Critère d'acceptation du plan : « les notes personnelles ne sortent de la
+  // base que là où elles s'affichent ».
+  "statut",
 ].join(",");
 
 /**
@@ -354,6 +368,7 @@ export type OffreEnFiche = {
    */
   contact_nom: string | null;
   contact_url_postulation: string | null;
+  statut: Statut;
 };
 
 const COLONNES_FICHE = [
@@ -387,6 +402,7 @@ const COLONNES_FICHE = [
   "url_origine",
   "contact_nom",
   "contact_url_postulation",
+  "statut",
 ].join(",");
 
 /**
@@ -471,4 +487,59 @@ export async function lireOffre(identifiant: string): Promise<ResultatFiche> {
   }
 
   return { ok: true, offre };
+}
+
+/**
+ * Changer le statut d'une offre.
+ *
+ * Entre : un identifiant venu de l'extérieur, et un statut déjà validé par
+ * `estStatut()` chez l'appelant.
+ * Sort : `{ ok: true }`, ou un motif que l'action serveur traduira à l'écran.
+ * Casse : ne lève jamais — mêmes garanties que `lireOffre`.
+ *
+ * ⚠️ **L'identifiant est validé ICI, exactement comme en lecture.** Il vient
+ * d'un composant client, c'est-à-dire du navigateur, c'est-à-dire de
+ * n'importe où : une action serveur s'invoque par un `POST` que rien n'oblige à
+ * partir de notre page. `FORMAT_IDENTIFIANT` est la même expression que celle
+ * de `lireOffre` — réutilisée, jamais recopiée, sinon les deux dérivent.
+ *
+ * ⚠️ **`statut_modifie_a` est écrit dans la MÊME requête que `statut`.** La
+ * contrainte `statut_touche_est_date` l'exige, et c'est le moteur qui la tient :
+ * une écriture qui poserait `candidate` sans date serait refusée en 400, pas
+ * acceptée silencieusement. On ne se repose donc pas sur la discipline de ce
+ * fichier — c'est le principe déjà appliqué aux notes et à leurs justifications.
+ *
+ * ⚠️ **Repasser en `a_traiter` EFFACE la date, et c'est délibéré.** La colonne
+ * dit « quand Maxime a trié cette offre » ; une offre remise à traiter n'est
+ * plus triée, garder sa date d'hier la ferait mentir. La contrainte l'autorise
+ * dans les deux sens — c'est ici que le choix se fait, et il se voit.
+ *
+ * ⚠️ **L'opération est IDEMPOTENTE, et c'est la vraie réponse au double clic.**
+ * Deux clics rapides envoient deux fois `statut = 'candidate'` : la seconde
+ * écriture pose la même valeur que la première, l'état final est identique.
+ * Désactiver le bouton pendant l'envoi est un confort visuel, pas une
+ * protection — un bouton se contourne, la nature de l'opération non. Le seul
+ * effet observable d'un double envoi est un horodatage décalé de quelques
+ * millisecondes.
+ */
+export async function changerStatut(
+  identifiant: string,
+  statut: Statut,
+): Promise<ResultatEcriture> {
+  if (!FORMAT_IDENTIFIANT.test(identifiant)) {
+    return {
+      ok: false,
+      motif: "introuvable",
+      explication: "Cet identifiant ne ressemble à aucune offre.",
+    };
+  }
+
+  return ecrireDansBase("offres", {
+    valeurs: {
+      statut,
+      statut_modifie_a:
+        statut === "a_traiter" ? null : new Date().toISOString(),
+    },
+    egal: { identifiant: identifiant.toUpperCase() },
+  });
 }

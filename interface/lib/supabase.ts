@@ -348,3 +348,194 @@ export async function interrogerBase<T>(
     total: totalDepuisEntete(reponse.headers.get("content-range")),
   };
 }
+
+/**
+ * Ce que rend une écriture. Volontairement plus pauvre qu'une lecture : on ne
+ * redemande pas les lignes modifiées.
+ *
+ * ⚠️ **`introuvable` n'est PAS une panne, et c'est pour ça qu'il est un motif à
+ * part.** PostgREST répond `204` que le filtre ait touché une ligne ou zéro —
+ * un `PATCH` sur un identifiant inexistant « réussit » sans rien écrire. Sans
+ * ce motif, l'écran afficherait « enregistré » pour une offre qui n'existe pas.
+ * On le distingue en demandant le compte des lignes touchées.
+ */
+export type ResultatEcriture =
+  | { ok: true }
+  | { ok: false; motif: MotifEchec | "introuvable" | "refusee"; explication: string };
+
+/**
+ * Écrire dans la base — un `PATCH` PostgREST sur des lignes désignées.
+ *
+ * Entre : le nom d'une table (constante du code), les valeurs à poser, et le
+ * filtre qui désigne les lignes.
+ * Sort : `{ ok: true }`, ou un motif d'échec que l'appelant est obligé de
+ * regarder.
+ * Casse : ne lève jamais. Réseau coupé, délai dépassé, contrainte violée,
+ * identifiant inexistant — tout revient en `{ ok: false }`.
+ *
+ * ⚠️ **C'est la PREMIÈRE écriture de l'interface dans ce projet.** Tout ce qui
+ * précède était écrit par `pipeline/stockage.py`, seul et de nuit. Trois
+ * différences avec `interrogerBase`, et aucune n'est cosmétique :
+ *
+ * 1. **`table` ne peut porter aucune valeur extérieure.** Là où `interrogerBase`
+ *    reçoit un chemin déjà construit, on n'accepte ici qu'un nom de table nu :
+ *    tout le reste de l'adresse est fabriqué ici. Une écriture dont l'appelant
+ *    contrôlerait le chemin pourrait viser d'autres lignes que les siennes.
+ * 2. **`valeurs` part dans le CORPS, pas dans l'adresse.** C'est du JSON
+ *    sérialisé : ni encodage à faire, ni paramètre à dupliquer, ni ordre de
+ *    lecture PostgREST dont dépendrait la sécurité. Les **noms** de colonnes
+ *    viennent du code de l'appelant ; leurs **valeurs** peuvent venir de
+ *    l'extérieur sans danger.
+ * 3. **`egal` est obligatoire et non vide.** Un `PATCH` sans filtre réécrit
+ *    **toute la table** — PostgREST l'accepte sans broncher. Les 567 offres
+ *    passeraient candidatées d'un coup, sans erreur et sans retour arrière.
+ *    C'est le garde-fou le plus important de cette fonction.
+ *
+ * ⚠️ **La reprise réseau est sûre ICI parce que l'opération est idempotente.**
+ * On pose des valeurs absolues (`statut = 'candidate'`), jamais un incrément :
+ * rejouer la requête après un aléa réseau donne exactement le même état final.
+ * ⚠️ **Cette propriété n'est pas une propriété de la fonction, c'est une
+ * propriété de ce que l'appelant écrit.** Le jour où quelqu'un voudra
+ * incrémenter un compteur par ce chemin, la reprise le comptera deux fois — et
+ * rien ici ne l'en avertira.
+ */
+export async function ecrireDansBase(
+  table: string,
+  {
+    valeurs,
+    egal,
+  }: {
+    valeurs: Record<string, string | number | boolean | null>;
+    egal: Record<string, string>;
+  },
+): Promise<ResultatEcriture> {
+  // ⚠️ Le garde-fou du point 3. Un objet vide est une erreur de programmation,
+  // pas une panne — mais il coûterait 567 lignes réécrites, donc il se refuse
+  // ici plutôt que de se documenter ailleurs.
+  const colonnesFiltre = Object.keys(egal);
+  if (colonnesFiltre.length === 0) {
+    console.error(`[base] écriture refusée sur ${table} — aucun filtre`);
+    return {
+      ok: false,
+      motif: "refusee",
+      explication: "Une écriture sans filtre réécrirait toute la table.",
+    };
+  }
+
+  let configuration;
+  try {
+    configuration = lireConfiguration();
+  } catch (erreur) {
+    if (erreur instanceof ConfigurationBaseManquante) {
+      return {
+        ok: false,
+        motif: "configuration",
+        explication: `Variable d'environnement absente : ${erreur.message}.`,
+      };
+    }
+    throw erreur;
+  }
+
+  // Même construction que pour la lecture : l'opérateur `eq.` est écrit ici, le
+  // nom de colonne vient du code, seule la valeur est étrangère — et c'est elle
+  // qu'on encode.
+  const filtres = colonnesFiltre
+    .map((colonne, rang) => {
+      const separateur = rang === 0 ? "?" : "&";
+      return `${separateur}${colonne}=eq.${encodeURIComponent(egal[colonne])}`;
+    })
+    .join("");
+
+  const enTetes: Record<string, string> = {
+    apikey: configuration.cle,
+    Authorization: `Bearer ${configuration.cle}`,
+    "Content-Type": "application/json",
+    // ⚠️ **`count=exact` est ce qui rend `introuvable` détectable.** Sans lui,
+    // PostgREST répond `204` sans dire combien de lignes il a touchées, et une
+    // écriture sur un identifiant inexistant serait indiscernable d'un succès.
+    // `return=minimal` évite qu'il nous renvoie les lignes modifiées — dont
+    // `charge_brute`, que personne ne veut voir remonter ici.
+    Prefer: "return=minimal,count=exact",
+  };
+
+  const corps = JSON.stringify(valeurs);
+  let reponse: Response | undefined;
+
+  for (let tentative = 0; tentative <= REPRISES; tentative += 1) {
+    const debut = Date.now();
+    try {
+      reponse = await fetch(`${configuration.url}/rest/v1/${table}${filtres}`, {
+        method: "PATCH",
+        headers: enTetes,
+        body: corps,
+        signal: AbortSignal.timeout(DELAI_MS),
+        cache: "no-store",
+      });
+      break;
+    } catch (erreur) {
+      const description = decrireEchec(erreur, Date.now() - debut);
+      const parDelaiDepasse = (erreur as { name?: string })?.name === "TimeoutError";
+
+      if (tentative < REPRISES && !parDelaiDepasse) {
+        console.warn(`[base] ${description} sur ${table} (écriture) — seconde tentative`);
+        await patienter(PAUSE_REPRISE_MS);
+        continue;
+      }
+
+      // ⚠️ **Le journal ne porte QUE le nom de la table.** Ni le filtre, ni le
+      // corps : `valeurs` contiendra la note personnelle de Maxime dès l'étape
+      // suivante, et les journaux d'un hébergeur ne sont pas un endroit où une
+      // donnée personnelle a le droit d'être.
+      console.error(`[base] écriture impossible — ${description} sur ${table}`);
+      return {
+        ok: false,
+        motif: "injoignable",
+        explication: "La base n'a pas répondu.",
+      };
+    }
+  }
+
+  if (!reponse) {
+    return {
+      ok: false,
+      motif: "injoignable",
+      explication: "La base n'a pas répondu.",
+    };
+  }
+
+  if (!reponse.ok) {
+    const detail = assainir(await reponse.text().catch(() => ""));
+    console.error(`[base] HTTP ${reponse.status} sur ${table} (écriture) — ${detail}`);
+
+    // ⚠️ **Un 400 est une contrainte violée, pas une base en panne.** Postgres
+    // a répondu, vite et correctement : c'est notre requête qui était fausse.
+    // Les confondre ferait afficher « base injoignable » alors que la base va
+    // parfaitement bien — exactement le contresens que `PGRST303` produit déjà
+    // en développement.
+    if (reponse.status === 400 || reponse.status === 409) {
+      return {
+        ok: false,
+        motif: "refusee",
+        explication: "La base a refusé cette valeur.",
+      };
+    }
+
+    return {
+      ok: false,
+      motif: "injoignable",
+      explication: `La base a répondu ${reponse.status}.`,
+    };
+  }
+
+  // `content-range` vaut `0-0/1` quand une ligne a été touchée, `*/0` sinon.
+  const touchees = totalDepuisEntete(reponse.headers.get("content-range"));
+  if (touchees === 0) {
+    return {
+      ok: false,
+      motif: "introuvable",
+      explication: "Aucune ligne ne correspond.",
+    };
+  }
+
+  return { ok: true };
+}
