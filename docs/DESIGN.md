@@ -747,10 +747,43 @@ sort — donc jamais sur la fiche, jamais dans l'onglet « Toutes ».
 | Garder la ligne triée à sa place, marquée, jusqu'au prochain chargement | La liste ne dit plus la vérité entre deux rafraîchissements ; il faut un état « je viens de trier ceci » dans un composant client |
 | Laisser tel quel | Un mauvais clic reste réparable — l'offre est dans un autre filtre, et son bouton la ramène. Mais rien ne signale qu'il a eu lieu |
 
-⚠️ **À trancher avec Maxime, sur usage réel** : le geste est plus tolérable qu'il n'y paraît
-tant que la liste est longue et que les lignes font 200 px de haut — deux clics au même
-pixel supposent de ne pas regarder l'écran. Il le deviendra moins le jour où les offres à
-traiter se compteront sur les doigts d'une main.
+✅ **CORRIGÉ LE 29 AOÛT 2026, à la demande de Maxime** — `_composants/verrou-tri.tsx`.
+Pendant qu'une écriture de statut est en vol, **tous** les boutons de la liste sont
+désactivés, pas seulement ceux de la ligne cliquée : le bouton dangereux n'est pas celui
+qu'on vient de cliquer, c'est celui qui prendra sa place, et on ne sait pas lequel c'est.
+
+⚠️ **La borne du verrou est la fin de la TRANSITION React, pas la réponse du serveur — et la
+première version se trompait de borne.** Elle relâchait dans un `finally`, dès le retour de
+l'appel. Mesuré au DOM :
+
+| Instant après le clic | État |
+|---|---|
+| +0 à +30 ms | tous les boutons verrouillés |
+| **+80 ms** | **le `finally` avait relâché — les voisins redevenaient cliquables** |
+| +900 ms | la ligne disparaît, les suivantes remontent |
+
+Le verrou tenait **30 ms** pour un décalage survenant à **900 ms** : il ne protégeait de
+rien, et le défaut se reproduisait à l'identique. `enCours` de `useTransition` reste vrai
+jusqu'à ce que le rendu soit **appliqué au DOM**, ce qui est exactement l'instant du
+décalage.
+
+**Mesure du correctif**, en cliquant au même pixel — un sélecteur ne convient pas, Playwright
+attend que l'élément redevienne résoluble et reproduit donc l'attente qu'on veut supprimer :
+
+| Geste | Avant | Après |
+|---|---|---|
+| 4 clics au même pixel, sans pause | **4 offres triées** | **1** |
+| Double clic humain (180 ms) | **2 offres triées** | **1** |
+| 3 tris délibérés à 1,3 s d'écart | 3 | **3** — aucune régression |
+
+⚠️ **Ce que ça coûte** : trier en rafale impose d'attendre un aller-retour entre chaque
+(~200 à 400 ms). C'est le prix d'un tri qui atteint toujours l'offre visée.
+
+⚠️ **La leçon de méthode, qui vaut au-delà de ce cas** : un test qui re-résout son sélecteur
+à chaque clic ne teste pas un double clic — il attend sagement que l'interface se stabilise,
+c'est-à-dire précisément ce que l'utilisateur ne fait pas. **Pour éprouver une cible mouvante,
+il faut cliquer à des coordonnées fixes.** C'est ce qui a d'abord fait croire que le correctif
+ne marchait pas.
 
 ### Défaut connu, non corrigé
 

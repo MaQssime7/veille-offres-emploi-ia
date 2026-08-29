@@ -28,6 +28,7 @@ import {
 } from "./_composants/etats";
 import { FiltresStatut } from "./_composants/filtres-statut";
 import { LigneOffre } from "./_composants/ligne-offre";
+import { VerrouTri } from "./_composants/verrou-tri";
 
 export const metadata: Metadata = {
   title: "Offres — Veille offres emploi IA",
@@ -131,21 +132,34 @@ export default async function PageOffres({
           />
         )
       ) : (
-        <div className="border border-border bg-card">
-          {resultat.offres.map((offre) => (
-            <LigneOffre
-              key={offre.identifiant}
-              offre={offre}
-              // `derniereExecution` vaut `null` si on n'a pas pu la lire : on
-              // marque alors zéro offre plutôt que de marquer au hasard.
-              nouvelle={
-                resultat.derniereExecution !== null &&
-                offre.execution_id === resultat.derniereExecution
-              }
-              maintenant={maintenant}
-            />
-          ))}
-        </div>
+        // ⚠️ **`VerrouTri` est un composant CLIENT qui enveloppe des enfants
+        // SERVEUR, et c'est un motif à connaître.** Les 200 `LigneOffre` restent
+        // rendues sur le serveur : elles arrivent ici en `children` déjà
+        // fabriqués, le fournisseur ne fait que les traverser. Rien ne bascule
+        // dans le navigateur hormis le contexte lui-même — la mesure de
+        // non-fuite des colonnes reste donc valable.
+        //
+        // ⚠️ **Il enveloppe la liste ENTIÈRE, et c'est le fond du correctif** :
+        // le clic dangereux n'est pas celui qu'on vient de faire, c'est le
+        // suivant, sur la ligne qui aura pris la place. Un verrou par ligne ne
+        // protégerait de rien.
+        <VerrouTri>
+          <div className="border border-border bg-card">
+            {resultat.offres.map((offre) => (
+              <LigneOffre
+                key={offre.identifiant}
+                offre={offre}
+                // `derniereExecution` vaut `null` si on n'a pas pu la lire : on
+                // marque alors zéro offre plutôt que de marquer au hasard.
+                nouvelle={
+                  resultat.derniereExecution !== null &&
+                  offre.execution_id === resultat.derniereExecution
+                }
+                maintenant={maintenant}
+              />
+            ))}
+          </div>
+        </VerrouTri>
       )}
     </CadrePage>
   );

@@ -23,12 +23,13 @@
  * l'action est binaire — et le plan exige « un clic ».
  */
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useState, useTransition } from "react";
 import { Check, Undo2, X } from "lucide-react";
 
 import { LIBELLES_STATUT, STATUT_PAR_DEFAUT, type Statut } from "@/lib/statuts";
 
 import { definirStatut } from "../actions";
+import { useVerrouTri } from "./verrou-tri";
 
 export function BoutonsStatut({
   identifiant,
@@ -42,6 +43,46 @@ export function BoutonsStatut({
 }) {
   const [enCours, demarrer] = useTransition();
   const [echec, setEchec] = useState<string | null>(null);
+
+  /**
+   * ⚠️ **Le verrou de la liste, et non celui de ce bouton.** `enCours` ne ferme
+   * que les deux boutons de CETTE offre ; il ne protège de rien, parce que le
+   * clic dangereux est celui qui atteint l'offre **voisine** après qu'elle a
+   * remonté d'un cran. `verrouille` est partagé par toute la liste — voir
+   * `verrou-tri.tsx` pour la mesure qui a imposé ce composant.
+   *
+   * Hors d'une liste (sur la fiche), le contexte rend son défaut et
+   * `verrouille` vaut toujours `false` : rien n'y bouge sous le curseur.
+   */
+  const { verrouille, prendre } = useVerrouTri();
+
+  /**
+   * ⚠️ **Le verrou suit `enCours`, et surtout PAS la fin de l'appel serveur —
+   * mesuré le 29 août 2026, et la première version était fausse.** Elle prenait
+   * le verrou avant la transition et le relâchait dans un `finally`, c'est-à-dire
+   * dès que la promesse de l'action revenait. Or il reste tout un temps entre
+   * cette réponse et le moment où la liste se réorganise vraiment à l'écran :
+   *
+   * | Instant | Ce qui se passe |
+   * |---|---|
+   * | +0 à +30 ms | tous les boutons verrouillés |
+   * | **+80 ms** | **le `finally` a relâché — les voisins redeviennent cliquables** |
+   * | +900 ms | la ligne disparaît, les suivantes remontent |
+   *
+   * Le verrou tenait donc **30 ms** pour un décalage qui survient à **900 ms** :
+   * il ne protégeait de rien. `enCours` de `useTransition`, lui, reste vrai
+   * jusqu'à ce que le nouveau rendu soit **appliqué au DOM** — c'est exactement
+   * l'instant du décalage, et donc la bonne borne.
+   *
+   * ⚠️ **Le nettoyage joue AUSSI au démontage**, et c'est ce qui évite de figer
+   * la liste : quand l'offre triée quitte le filtre, ce composant disparaît avec
+   * elle. Sans ce retour de fonction, son verrou ne serait jamais relâché et
+   * plus aucun bouton de la page ne répondrait jusqu'au rechargement.
+   */
+  useEffect(() => {
+    if (!enCours) return;
+    return prendre();
+  }, [enCours, prendre]);
 
   /**
    * ⚠️ **L'état optimiste n'est pas du confort, c'est ce qui rend le tri
@@ -90,7 +131,7 @@ export function BoutonsStatut({
         <BoutonStatut
           cible="candidate"
           actif={statutAffiche === "candidate"}
-          enCours={enCours}
+          enCours={enCours || verrouille}
           compact={compact}
           onClick={() => basculer("candidate")}
           teinte="candidate"
@@ -98,7 +139,7 @@ export function BoutonsStatut({
         <BoutonStatut
           cible="ecarte"
           actif={statutAffiche === "ecarte"}
-          enCours={enCours}
+          enCours={enCours || verrouille}
           compact={compact}
           onClick={() => basculer("ecarte")}
           teinte="ecarte"
