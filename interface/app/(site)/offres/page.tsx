@@ -36,9 +36,9 @@ import { TRIS, TRI_PAR_DEFAUT, type Tri, estTri } from "@/lib/tri";
 import { lireEtatVeille } from "@/lib/veille";
 
 import { LigneEtatVeille } from "../_composants/etat-veille";
-import { adresseListe } from "./_composants/adresse";
+import { adresseListe } from "../_composants/adresse";
 import { CadrePage } from "../_composants/cadre-page";
-import { EnTetePage } from "./_composants/en-tete-page";
+import { EnTetePage } from "../_composants/en-tete-page";
 import {
   AucuneOffre,
   AucuneOffreDansCeFiltre,
@@ -178,7 +178,7 @@ export default async function PageOffres({
         // utile : un écran vide dont la veille date de trois jours s'explique
         // tout seul, le même écran sans indicateur ressemble à une panne.
         manchette={<LigneEtatVeille etat={etatVeille} maintenant={maintenant} />}
-        compte={
+        sousTitre={
           resultat.ok &&
           resultat.offres.length > 0 && (
             <p className="font-mono text-xs text-muted-foreground">

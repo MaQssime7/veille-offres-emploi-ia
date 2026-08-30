@@ -3,7 +3,7 @@ import Link from "next/link";
 import { FILTRES, LIBELLES_FILTRE, type FiltreListe } from "@/lib/filtres";
 import { type Tri } from "@/lib/tri";
 
-import { adresseListe } from "./adresse";
+import { adresseListe } from "../../_composants/adresse";
 
 /**
  * La barre de filtres de `/offres` : à traiter, nouveau, candidaté, écarté,

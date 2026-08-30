@@ -1,8 +1,13 @@
 import type { ReactNode } from "react";
 
 /**
- * Le haut de l'écran `/offres` : la manchette d'état, le titre, le compte et
- * les filtres.
+ * Le haut d'un écran du site : la manchette d'état, le salut, un sous-titre, et
+ * — pour `/offres` seulement — les filtres et le classement.
+ *
+ * ⚠️ **Partagé par `/` et `/offres` depuis le 30 août 2026.** Les deux écrans
+ * portent le même `h1` et la même manchette ; ce qui les distingue tient dans
+ * les propriétés qu'ils remplissent. Deux en-têtes jumeaux auraient divergé au
+ * premier ajustement du salut, qui est écrit ici et nulle part ailleurs.
  *
  * ⚠️ **Ce composant existe pour être partagé avec `loading.tsx`, et c'est tout
  * son intérêt.** Le repli de chargement n'a de sens que s'il occupe exactement
@@ -35,14 +40,23 @@ import type { ReactNode } from "react";
  */
 export function EnTetePage({
   manchette,
-  compte,
+  sousTitre,
   filtres,
   tri,
 }: {
   /** La ligne d'état de la veille, ou son squelette. */
   manchette?: ReactNode;
-  /** « 574 offres · 200 affichées ». Absent quand la liste est vide. */
-  compte?: ReactNode;
+  /**
+   * La ligne sous le salut : « 574 offres · 200 affichées » sur `/offres`,
+   * « 8 offres retenues sur 24 · Aujourd'hui, 11:11 » sur `/`.
+   *
+   * ⚠️ **Elle s'appelait `compte` jusqu'au 30 août 2026**, quand `/` est venu y
+   * mettre une date. Le nom décrivait ce que le premier appelant y avait mis,
+   * pas la place — et une propriété nommée `compte` qui porte un horodatage est
+   * exactement le genre de détail qui fait mal lire un fichier six mois plus
+   * tard. Absente quand il n'y a rien à dire.
+   */
+  sousTitre?: ReactNode;
   /** Les cinq onglets de filtre. Absents si la base est injoignable. */
   filtres?: ReactNode;
   /** Le menu de classement, à droite de la même rangée. */
@@ -52,10 +66,10 @@ export function EnTetePage({
     <header className="mb-6 flex flex-col gap-4 border-b border-border pb-5">
       {manchette}
 
-      {/* Le titre et son compte forment un bloc serré, détaché des filtres :
-          le compte qualifie le titre, les filtres sont une action. Un `gap`
-          unique sur tout l'en-tête les mettrait à égale distance et effacerait
-          ce rapport. */}
+      {/* Le salut et son sous-titre forment un bloc serré, détaché des filtres :
+          le sous-titre qualifie ce qu'on regarde, les filtres sont une action.
+          Un `gap` unique sur tout l'en-tête les mettrait à égale distance et
+          effacerait ce rapport. */}
       <div className="flex flex-col gap-2">
         {/* ⚠️ **« Bonjour Maxime » ne NOMME PAS la page, et c'est ce qui rend
             la règle d'à côté inapplicable ici.** Le titre d'onglet et le `h1`
@@ -72,7 +86,7 @@ export function EnTetePage({
         <h1 className="font-display text-3xl font-bold leading-tight text-foreground sm:text-4xl">
           Bonjour Maxime
         </h1>
-        {compte}
+        {sousTitre}
       </div>
 
       {/* ⚠️ **Les filtres et le classement partagent UNE rangée, et le second

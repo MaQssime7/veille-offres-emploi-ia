@@ -33,11 +33,30 @@ import { useVerrouTri } from "./verrou-tri";
 
 export function BoutonsStatut({
   identifiant,
+  jumelles = [],
   statut,
   compact = false,
   aere = false,
 }: {
   identifiant: string;
+  /**
+   * Les autres annonces du **même poste**, que le clic doit traiter avec celle-ci.
+   *
+   * ⚠️ **Un tableau d'identifiants, jamais des objets `offre`.** C'est la règle
+   * n° 4 du projet appliquée à la lettre : ce composant est un composant client,
+   * et lui passer les offres entières enverrait les vingt-deux colonnes dans le
+   * document — message d'erreur technique et note personnelle compris.
+   *
+   * ⚠️ **Vide partout sauf sur `/`**, où l'écran du matin regroupe les annonces
+   * d'un même poste. Sur `/offres` et sur la fiche, chaque ligne est une annonce
+   * et se trie seule.
+   *
+   * ⚠️ **Sans ce traitement groupé, le regroupement ne servirait à rien** :
+   * écarter l'annonce affichée laisserait sa jumelle « à traiter », et elle
+   * reprendrait la place au chargement suivant. On trierait deux fois le même
+   * poste. Décision de Maxime le 30 août 2026.
+   */
+  jumelles?: string[];
   statut: Statut;
   /** En liste, les boutons se réduisent à leur icône sous 640 px. */
   compact?: boolean;
@@ -120,7 +139,7 @@ export function BoutonsStatut({
       poserOptimiste(suivant);
 
       try {
-        const resultat = await definirStatut(identifiant, suivant);
+        const resultat = await definirStatut([identifiant, ...jumelles], suivant);
         if (!resultat.ok) setEchec(resultat.message);
       } catch {
         // ⚠️ **Ce `catch` attrape le cas le plus probable en usage réel : la

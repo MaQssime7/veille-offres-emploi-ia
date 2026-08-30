@@ -51,7 +51,7 @@ veille-offres-emploi-ia/
 
 | Adresse | Contenu |
 |---|---|
-| `/` | Le **compte rendu** de la nuit — offres de la dernière exécution réussie, statut « à traiter », intérêt ≥ 50, tri par intérêt décroissant |
+| `/` | Le **compte rendu** de la nuit — offres de la dernière exécution réussie, statut « à traiter », **intérêt ≥ 35** (abaissé de 50 le 30 août 2026, voir phase 5), tri par intérêt décroissant. ⚠️ **Les annonces d'un même poste y sont REGROUPÉES** — une ligne, un cartouche « N annonces », et un clic de statut qui les traite toutes. `/offres` ne l'est pas |
 | `/offres` | Le **plan de travail** — par défaut les seules offres « à traiter ». Cinq filtres et trois classements, tous dans l'adresse (`?statut=` · `?tri=`). ⚠️ Le libellé « poste de travail » et l'affichage de « tout ce qui a été collecté » datent d'avant la phase 4 |
 | `/offres/[identifiant]` | La fiche d'une offre |
 | `/connexion` | La porte |
@@ -466,19 +466,19 @@ compte rendu. La ligne de passage chiffrée empêche l'oubli.
 
 ### Critères d'acceptation
 
-- [ ] `/` n'affiche **que les offres de la dernière exécution réussie**, statut « à traiter », intérêt ≥ 50, classées par intérêt décroissant
-- [ ] La date en tête est celle de la collecte affichée — jamais la date du jour si la dernière collecte est plus ancienne
-- [ ] L'étiquette « Nouveau » se calcule par appartenance à la dernière exécution réussie — **aucune date de dernière visite stockée**
-- [ ] L'étiquette est **à côté de l'entreprise**, pas à droite où elle se cognerait aux barres de notes
-- [ ] Une ligne de passage vers `/offres?statut=a-traiter` indique **le nombre d'offres plus anciennes en attente**
-- [ ] L'indicateur de dernière veille réussie est visible **en permanence**, sur cet écran comme sur le poste de travail
-- [ ] Au-delà de **36 heures** sans veille réussie, il passe en alerte visuelle — critère de succès n° 2
-- [ ] L'alerte porte **un symbole en plus de sa couleur**
-- [ ] Trois états vides **distincts** : « la collecte de cette nuit n'a rien ramené » · « aucune offre n'atteint le seuil » · « tu as tout traité » — chacun rappelant la date de la dernière veille réussie
-- [ ] Deux exécutions le même jour : c'est la **dernière réussie** qui fait foi
-- [ ] Une exécution en échec ne devient jamais la référence — l'écran montre la dernière **réussie**, et l'indicateur signale l'échec
-- [ ] **États** : les trois vides ci-dessus · en chargement · Supabase injoignable · 40 offres d'un coup
-- [ ] 375 px, mode sombre, focus clavier visible, console propre
+- [x] `/` n'affiche **que les offres de la dernière exécution réussie**, statut « à traiter », intérêt ≥ ~~50~~ **35**, classées par intérêt décroissant. ⚠️ **Le seuil a été abaissé par Maxime le 30 août 2026**, après mesure : à 50 l'écran était vide quatre matins sur six. Barème dans `interface/lib/matin.ts` — écran réel : « 1 offre retenue sur 7 collectées », l'offre à 68 s'affiche, les six autres (45, 35, 30…) non
+- [x] La date en tête est celle de la collecte affichée — jamais la date du jour si la dernière collecte est plus ancienne — « Hier, 11:11 » un 30 août, portée par la manchette. ⚠️ **Elle a été RETIRÉE du sous-titre après l'avoir vue à l'écran** : la manchette l'affiche déjà 90 px plus haut, et deux fois la même date se lit comme un défaut
+- [x] L'étiquette « Nouveau » se calcule par appartenance à la dernière exécution réussie — **aucune date de dernière visite stockée** — sur `/` toutes les offres en viennent par construction ; **Maxime a demandé de la garder quand même** le 30 août, pour que la bulle veuille dire la même chose sur les deux écrans
+- [x] L'étiquette est **à côté de l'entreprise**, pas à droite où elle se cognerait aux barres de notes — `LigneOffre` est le composant partagé avec `/offres`, la position n'a pas bougé
+- [x] Une ligne de passage vers `/offres?statut=a-traiter` indique **le nombre d'offres plus anciennes en attente** — « 563 offres plus anciennes attendent dans le plan de travail », clic vérifié : arrive sur `/offres`, filtre « À traiter 570 », 200 lignes
+- [x] L'indicateur de dernière veille réussie est visible **en permanence**, sur cet écran comme sur le poste de travail — le même composant `etat-veille.tsx`, importé et non recopié
+- [x] Au-delà de **36 heures** sans veille réussie, il passe en alerte visuelle — critère de succès n° 2 — déjà livré et éprouvé par les 11 tests de `veille.test.ts`, dans les deux fuseaux
+- [x] L'alerte porte **un symbole en plus de sa couleur** — `TriangleAlert`, et le libellé porte la durée en toutes lettres
+- [x] Trois états vides **distincts** — **six** ont été livrés, et le quatrième n'était pas au plan : ⚠️ **« la notation n'a pas tourné »**, sans lequel une collecte réussie suivie d'une notation tombée s'affichait « journée calme ». Tous vus à l'écran, tous datés
+- [x] Deux exécutions le même jour : c'est la **dernière réussie** qui fait foi — `order=demarree_a.desc&limit=1` sur `issue=eq.reussite`, et la base porte deux collectes du 26 août (18:32 et 20:42)
+- [x] Une exécution en échec ne devient jamais la référence — l'écran montre la dernière **réussie**, et l'indicateur signale l'échec — deux lectures séparées, éprouvées par `calculerEtat()`
+- [x] **États** : les trois vides ci-dessus · en chargement · Supabase injoignable · 40 offres d'un coup — vides et chargement vus ; injoignable vu sur un serveur pointé vers une base morte ; **le volume a été éprouvé à 7 offres** en abaissant le seuil, pas à 40 — voir « non vérifié » ci-dessous
+- [x] 375 px, mode sombre, focus clavier visible, console propre — aucun débordement à 375 px, sombre vérifié, focus mesuré à **10,32:1** (et présent malgré le coussin), **0 erreur console** sur les trois écrans après cache neuf
 
 ### Bloquée par
 
@@ -711,11 +711,16 @@ régressions tant qu'il n'y a pas de tests automatisés.
 - [x] **Deux clics rapides au MÊME endroit dans la liste** (coordonnées fixes, pas de re-résolution du sélecteur) : une seule offre change de statut, vérifié en base — le verrou de tri tient
 - [x] **Appeler l'action serveur d'écriture sans session** — `POST` avec en-tête `Next-Action` sans cookie : **401**, corps de 28 octets, et la note en base n'a pas bougé
 
-**Après la phase 5**
+**Après la phase 5** — *déroulés en développement le 30 août 2026, sur les 574 offres réelles*
 
-- [ ] Ouvrir `/` le matin, voir la collecte de la nuit et la date exacte
-- [ ] Suivre la ligne de passage vers le poste de travail et retrouver les offres plus anciennes
-- [ ] Lire la date de la dernière veille réussie sur les deux écrans
+- [x] Ouvrir `/` le matin, voir la collecte de la nuit et la date exacte — « Dernière veille · Hier, 11:11 · 7 nouvelles offres », puis « 1 offre retenue sur 7 collectées »
+- [x] Suivre la ligne de passage vers le poste de travail et retrouver les offres plus anciennes — clic sur « 563 offres plus anciennes » → `/offres`, filtre « À traiter 570 », 200 lignes
+- [x] Lire la date de la dernière veille réussie sur les deux écrans — même composant, même libellé sur `/` et `/offres`
+- [x] ⚠️ **Trier une offre depuis `/` et la voir quitter l'écran** — c'est le parcours qui attrape l'oubli de `revalidatePath("/", "page")` : sans lui, le bouton retour du navigateur ramène l'offre déjà classée. Clic sur « Écarté » → la ligne disparaît, l'écran bascule sur « Tout est traité ». Base remise à `a_traiter` après le test
+- [x] **Vérifier qu'aucune colonne de la base ne fuit dans le document de `/`** — douze noms cherchés dans le document reçu (payload RSC compris), zéro trouvé, trois témoins positifs. ⚠️ La règle n° 4 impose de refaire cette mesure à **chaque nouvel écran** qui rend un composant client
+- [x] ⚠️ **Écarter un poste publié deux fois et vérifier que les DEUX annonces changent** — un clic sur « Écarté » a fait passer `6414980` et `6414967` à `ecarte` en base, sans toucher au second poste. C'est le parcours qui prouve que le regroupement sert à quelque chose : sans le traitement groupé, la jumelle reprendrait la place au chargement suivant
+- [x] **Vérifier que `/offres` n'est PAS regroupé** — 200 lignes, « 570 offres · 200 affichées », zéro cartouche « annonces ». Le regroupement ne doit jamais déborder sur l'archive
+- [x] **Couper la base et ouvrir `/`** — « État de la veille indisponible » en manchette (et non « aucune veille »), panneau « La base est injoignable », carte de passage absente, et **aucune trace technique dans le document** : ni l'URL, ni le mot « supabase », ni la clé
 
 **Après la phase 6**
 

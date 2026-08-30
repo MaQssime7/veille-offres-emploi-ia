@@ -87,7 +87,7 @@ export type OffreEnListe = {
  * **Ne jamais passer `offre` à un composant client : lui passer les champs dont
  * il a besoin, un par un.**
  */
-const COLONNES_LISTE = [
+export const COLONNES_LISTE = [
   "identifiant",
   "intitule",
   "entreprise_nom",
@@ -187,7 +187,7 @@ export const PLAFOND_AFFICHAGE = 200;
  * aucun ordre et deux chargements de la même page classent les ex æquo
  * différemment.
  */
-const CLASSEMENTS: Record<Tri, string> = {
+export const CLASSEMENTS: Record<Tri, string> = {
   interet: "note_interet.desc.nullslast,publiee_a.desc,identifiant.asc",
   accessibilite:
     "note_accessibilite.desc.nullslast,publiee_a.desc,identifiant.asc",

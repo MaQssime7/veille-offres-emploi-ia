@@ -3180,3 +3180,319 @@ ligne, ce que l'œil apparie est la ligne de base, jamais le bord des boîtes.
 ✅ La moyenne du bloc reste à **130 px** — l'alignement redistribue l'espace dans
 la rangée sans changer sa hauteur. Le squelette n'avait rien à reprendre, et
 c'est vérifié plutôt que supposé.
+
+---
+
+## 30 août 2026 — Phase 5 : l'écran du matin
+
+`/` n'est plus la page de contrôle posée par `/installe`. C'est le compte rendu de
+la nuit : les offres de la dernière collecte réussie qui restent à traiter et qui
+dépassent 50 sur 100 en intérêt, classées par intérêt décroissant, sous la même
+manchette d'état que le plan de travail.
+
+### Ce qui a été construit
+
+- **`lib/matin.ts`** — la lecture, séparée de `lib/offres.ts` parce qu'elle pose
+  une autre question : « qu'est-ce que la nuit a apporté qui vaut d'être lu », et
+  non « que contient la base ». Deux profondeurs de requête, pas quatre : la
+  collecte se lit d'abord, les trois autres partent ensemble.
+- **`choisirAffichage()`** — une fonction pure qui décide **lequel** des six écrans
+  montrer, et onze tests qui l'éprouvent dans les deux fuseaux.
+- **Six panneaux** dans `_composants/etats-matin.tsx`, chacun daté.
+- **Une carte de passage** chiffrée vers le plan de travail.
+- **`(site)/loading.tsx`** — le squelette, calé par la mesure (voir plus bas).
+
+### La décision d'architecture : remonter d'un cran ce que deux écrans partagent
+
+`ligne-offre.tsx`, `boutons-statut.tsx`, `cartouche.tsx`, `notes.tsx`, `etats.tsx`,
+`verrou-tri.tsx`, `formats.ts`, `rythme.ts`, `adresse.ts` et `actions.ts` vivaient
+dans `offres/_composants/`, c'est-à-dire dans le dossier privé d'une route qui
+n'est plus la seule à les rendre. Ils sont remontés dans `(site)/_composants/`, à
+côté de `etat-veille.tsx` qui y avait été posé la veille pour cette raison exacte.
+
+**L'alternative écartée** : laisser `/` importer depuis `offres/_composants/`. Ça
+compile, et ça installe un couplage qu'aucun lecteur ne comprendrait — le compte
+rendu du matin allant chercher ses briques dans les affaires du plan de travail.
+
+Le déplacement a été commité **seul**, sans une ligne de comportement, pour que le
+diff de la phase se lise.
+
+### Le trou dans les critères d'acceptation : la notation qui tombe
+
+Le plan prévoyait trois écrans vides. Il en manquait un, et c'était le dangereux :
+**la collecte réussit, la notation échoue**. Les offres sont alors en base avec
+`note_interet` à `NULL`, donc aucune n'atteint le seuil, donc l'écran aurait
+annoncé « aucune offre n'atteint le seuil » — c'est-à-dire *journée calme* — un
+matin où rien n'a été jugé. Et la manchette ne rattrape pas : elle ne regarde que
+l'étape `collecte`.
+
+⚠️ **C'est la classe de défaut qui ne se voit jamais.** Une fausse alerte se
+remarque tout de suite ; un « tout va bien » qui ment se croit, on ferme l'onglet,
+et on découvre trois jours plus tard que la moitié de la semaine n'a pas été notée.
+D'où l'ordre des tests dans `choisirAffichage()`, qui **est** la logique : « aucune
+n'atteint le seuil » n'est vrai que si la collecte a ramené quelque chose *et* que
+ce quelque chose a été noté.
+
+### Ce que le seuil de 50 coûte vraiment — mesuré, et à arbitrer
+
+Les six dernières collectes réelles, au moment de construire :
+
+| Collecte | Offres | Notées | ≥ 50 | À lire sur `/` |
+|---|---|---|---|---|
+| 29 août 09:11 | 7 | 7 | 1 | **1** |
+| 28 août 14:25 | 7 | 7 | 0 | **0** |
+| 27 août 12:55 | 25 | 25 | 6 | **5** |
+| 26 août 20:42 | 0 | 0 | 0 | **0** |
+| 26 août 18:32 | 162 | 19 | 2 | **0** |
+| 26 août 12:14 | 2 | 2 | 0 | **0** |
+
+**Quatre matins sur six, l'écran du matin est vide.** Sur toute la base, 10 offres
+sur 574 dépassent 50. Ce n'est pas un défaut du code — le seuil de 50 est un
+critère d'acceptation du plan — mais c'est une donnée produit qui n'existait pas
+quand il a été écrit, et qui appartient à Maxime.
+
+### Le squelette : la mesure contredit l'analogie
+
+Première version : trois barres, par ressemblance avec `/offres` qui en pose
+quatre. Les hauteurs relevées au DOM disent l'inverse :
+
+| | Bureau | 375 px |
+|---|---|---|
+| Une ligne d'offre | 222 px | 358 px |
+| Un panneau vide | 230 px | 259 px |
+| Trois lignes de squelette | 682 px | 1 090 px |
+
+⚠️ **Un panneau vide fait presque exactement la hauteur d'une ligne** — 8 px
+d'écart en bureau. Une barre unique cale donc à la fois le matin où il y a une
+offre et le matin où il n'y en a aucune, soit cinq matins sur six. Trois barres se
+seraient trompées de 450 px **dans les deux cas à la fois**.
+
+⚠️ **La vérification de bout en bout a d'abord été FAUSSE, et c'est la meilleure
+leçon de la journée.** Elle mesurait la hauteur du `<main>`, qui porte `flex-1` :
+le conteneur est étiré à la hauteur de la fenêtre et rend **841 px des deux côtés
+quel que soit son contenu**. J'en avais conclu « écart nul » avec assurance. Il
+faut mesurer le **bas du dernier élément**. Refait correctement :
+
+| | Bureau | 375 px |
+|---|---|---|
+| Le squelette | 496 px | 655 px |
+| Écran vide (« Journée calme ») | 476 px | 528 px |
+| Écran à une offre | 524 px | 778 px |
+
+Le squelette tombe **entre les deux** — 20 px du vide, 28 px de la liste en
+bureau. ⚠️ **Un chiffre identique des deux côtés doit éveiller le soupçon avant
+de rassurer** : une mesure qui tombe pile est plus souvent un artefact qu'une
+réussite.
+
+**Ce que ça généralise** : un squelette ne s'aligne pas sur celui d'à côté, il
+s'aligne sur ce que **sa** page affiche le plus souvent. Et ça se compte sur les
+données réelles.
+
+### Deux défauts vus à l'écran, pas dans le code
+
+1. **La date était écrite deux fois à 90 px d'écart.** Le sous-titre la portait —
+   avec un bon argument : elle sortait de la même lecture que les offres, donc elle
+   ne pouvait pas désigner une autre exécution. Sauf que la manchette l'affiche
+   déjà. Retirée du sous-titre, qui ne dit plus que ce que la manchette ne dit
+   pas : « 1 offre retenue sur 7 collectées ». ⚠️ **Ce qu'on accepte en échange**,
+   écrit dans le code : les deux lectures sont distinctes, donc une collecte qui se
+   termine entre les deux ferait dater la liste avec l'heure d'une autre exécution.
+   Quelques millisecondes par jour, contre une redondance tous les matins.
+2. **« Les 1 offre retenue a été classée ».** L'accord mot par mot autour d'un
+   « Les {n} » figé. ⚠️ **Au singulier, ce n'est pas l'article qui change, c'est la
+   tournure** : on ne dit pas « la 1 offre », on dit « la seule ». Une phrase à
+   trous ne sait pas faire ça — il faut deux phrases entières. Corrigé sur les
+   quatre panneaux qui portent un nombre.
+
+### Ce qui a été vérifié
+
+- **`npm run verifie`** : lint, types, **52 tests** (11 nouveaux), dans les deux
+  fuseaux.
+- **L'écran, regardé** en 1280 px et 375 px, en clair et en sombre.
+- **Les six écrans vides**, rendus et lus un par un sur une page d'aperçu
+  temporaire, supprimée depuis.
+- **Base injoignable** : serveur relancé vers une URL morte — « État de la veille
+  indisponible » en manchette (et non « aucune veille »), panneau d'erreur, et
+  **aucune trace technique dans le document** : ni l'URL, ni « supabase », ni la
+  clé.
+- **Action en cours** : les deux boutons passent à `disabled` pendant la
+  transition, mesuré 40 ms après le clic.
+- **Focus clavier** : `outline` de 2 px présent **malgré le coussin** — le piège du
+  `ring` écrasé par `box-shadow` a été évité —, contraste **10,32:1**.
+- **Contrastes des nouveaux éléments** : 12,17:1 et 5,90:1 en clair, 14,83:1 et
+  7,74:1 en sombre. Mesurés en peignant chaque couleur sur un canvas, parce que
+  `getComputedStyle` rend de l'`oklab()` qu'un parseur `rgb()` lit faux.
+- **Non-fuite des colonnes** : douze noms cherchés dans le document de `/`, payload
+  RSC compris. Zéro, avec trois témoins positifs.
+- **Console** : 0 erreur sur les trois écrans, après cache Turbopack neuf.
+  ⚠️ Une erreur `fraunces is not defined` apparaissait avant : un chunk périmé de
+  la refonte de la veille, pas le code actuel. Vérifié en supprimant `.next`.
+- **La base a été rendue à l'identique** après les tests d'écriture : 570 à traiter
+  / 0 candidaté / 4 écarté, note `NULL` sur les deux colonnes.
+
+### Ce que `/code-review` a trouvé — cinq constats, dont trois vrais défauts
+
+La revue a tourné sur le diff complet, tests et compilation compris. Aucun défaut
+de sécurité, et elle a re-vérifié sans rien trouver les points qui comptent : la
+règle « jamais l'objet `offre` entier à un composant client », l'usage
+d'`options.egal`, `exigerSession()` en première ligne, la portée du
+`revalidatePath`, l'exhaustivité du `switch`.
+
+**1. La promesse de reprise que le code ne pouvait pas tenir.** Le panneau de
+notation tombée disait « les offres seront reprises à la prochaine notation ».
+Or `lireResume()` ne lisait que la note et le statut : impossible de distinguer
+« jamais tentée » de « abandonnée après trois échecs ». Une nuit où la notation
+échoue définitivement aurait affiché cette phrase **tous les matins suivants**.
+⚠️ C'est exactement le mensonge que `notation_tentatives` empêche déjà sur
+`/offres`, et il revenait par une autre porte. **Corrigé** : le résumé lit
+`notation_tentatives`, et le panneau ne promet la reprise que sur des offres
+jamais tentées. ⚠️ **Le seuil du pipeline n'est pas recopié** — on distingue
+seulement zéro tentative du reste, ce qui suffit à ne rien affirmer de faux.
+
+**2. Le compteur qui perdait les offres de la nuit sous le seuil.** La carte de
+passage retranchait *toutes* les offres à traiter de la collecte, seuil compris ou
+non. Les offres de la nuit restées sous 50 étaient donc **à la fois cachées par
+l'écran et absentes du compteur censé garantir que rien ne se perd**. Scénario :
+une nuit ramène trente offres toutes sous le seuil, l'arriéré est vide — le
+compteur tombe à zéro, la carte disparaît, et « Journée calme » ne laisse aucun
+chemin vers trente offres jamais lues. **Corrigé** : on retranche ce qui est
+**affiché**, pas ce qui vient de la collecte. Le libellé suit — « 569 autres
+offres », et non plus « plus anciennes », qui serait devenu faux.
+
+**3. ⚠️ La rustine du matin efface le compte rendu de la nuit.** Le meilleur
+constat de la revue, parce qu'il porte sur le mode opératoire réel. La collecte
+écrit en `ignore-duplicates` : une offre déjà connue **reste rattachée à
+l'exécution qui l'a vue en premier**. Donc quand le cron part en retard et que la
+rustine `gh workflow run` est lancée le matin, cette seconde collecte réussit avec
+zéro offre nouvelle, **devient « la dernière collecte réussie »**, et remplace le
+compte rendu des offres de la nuit par « la collecte n'a rien rapporté ».
+
+**Non corrigé, délibérément** : le plan dit « c'est la dernière réussie qui fait
+foi », et lui préférer « la dernière non vide » empêcherait d'afficher une vraie
+nuit blanche. Ce qui est corrigé, c'est **le texte, qui mentait** : il affirmait
+qu'aucune annonce ne correspondait aux critères, alors que le code ne sait rien de
+tel. Il dit maintenant « aucune annonce **nouvelle** » et nomme les deux
+explications possibles. Les offres, elles, restent accessibles par la carte de
+passage. **La question de fond appartient à Maxime.**
+
+**4. Le squelette portait un sous-titre que l'écran vide n'a pas.** Vrai, et
+mesuré : 24 px. Mais le retirer rapprocherait le squelette du cas vide d'autant
+qu'il l'éloignerait du cas liste. **Gardé, et écrit** — c'est ce qui l'équilibre
+entre les deux.
+
+**5. Une capture d'écran laissée à la racine du dépôt public.** Supprimée.
+
+**Un défaut trouvé en relisant, hors revue** : sans aucune collecte réussie, la
+carte de passage ne s'affichait pas — donc aucune sortie vers les offres qui
+peuvent pourtant exister, l'écriture par lots n'étant pas atomique. Corrigé.
+
+### Ce qui n'a pas été vérifié
+
+⚠️ **Le volume « 40 offres d'un coup » du plan.** Éprouvé à **7** en abaissant le
+seuil à 0, pas à 40 : aucune collecte réelle ne produit ce volume au-dessus du
+seuil. Le rendu est la même pile de cartes que `/offres`, qui en affiche 200 — le
+risque est faible, mais il n'est pas mesuré, et l'écrire vaut mieux que de cocher.
+
+---
+
+## 30 août 2026 (suite) — Le seuil abaissé, et les doublons de France Travail
+
+### Le seuil d'intérêt passe de 50 à 35
+
+Décision de Maxime devant l'écran : « sinon je ne verrai pas beaucoup d'offres ».
+Le constat était juste. Mesuré avant d'appliquer, sur les six dernières
+collectes, offres « à traiter » uniquement :
+
+| Collecte | Offres | à 50 | **à 35** | à 25 |
+|---|---|---|---|---|
+| 29 août | 7 | 1 | **4** | 4 |
+| 28 août | 7 | 0 | **2** | 2 |
+| 27 août | 25 | 5 | **6** | 9 |
+| 26 août 20:42 | 0 | 0 | **0** | 0 |
+| 26 août 18:32 | 162 | 0 | **1** | 2 |
+| 26 août 12:14 | 2 | 0 | **0** | 0 |
+
+À 50, l'écran était vide quatre matins sur six ; à 35, deux fois — et les deux
+sont des collectes réellement sans rien. ⚠️ **Descendre à 25 n'ajouterait que
+7 offres sur toute la base** (20 → 27) : le gain s'aplatit, et chaque cran
+rapproche `/` d'un second plan de travail. Un test fige la valeur.
+
+⚠️ **Maxime a dit « seuil d'accessibilité ».** Le seuil porte sur l'intérêt, et
+l'accessibilité ne filtre rien nulle part. Corrigé dans la réponse plutôt
+qu'appliqué au mot : le sens était sans ambiguïté, le nom non.
+
+### « C'est normal que j'aie quatre fois la même offre ? »
+
+Non, et l'écran n'y était pour rien : **France Travail publie le même poste
+plusieurs fois**, une version « f/h » et une version « (H/F) », avec deux
+identifiants différents. La déduplication du pipeline porte sur l'identifiant :
+elle ne peut pas les voir.
+
+Mesuré sur les 574 offres : **29 annonces en trop, soit 5,1 %** — 24 postes
+publiés deux fois, un trois fois, un quatre fois. Le 29 août, quatre des sept
+offres collectées étaient deux postes en double, d'où l'effet à l'écran.
+
+⚠️ **Ma première mesure annonçait 25,8 % et un écart de note de 63 points. Elle
+était fausse.** Elle groupait sur les 200 premiers caractères de description — or
+ces caractères sont le **préambule de présentation de l'entreprise**, identique
+sur toutes les annonces d'un même employeur. Elle fusionnait donc des postes MBDA
+sans rapport. Sur l'intitulé normalisé : 5,1 % et 23 points. **Un critère de
+regroupement se vérifie sur ce qu'il regroupe, pas sur sa vraisemblance.**
+
+### Ce que les doublons révèlent, et qui est plus gênant qu'eux
+
+Deux annonces du même poste, notées **68 et 45**. Les deux justifications disent
+la même chose — « rôle de coordination plutôt que développement technique ». Sur
+les 7 paires comparables de la base : 4 ont exactement la même note, 2 diffèrent
+de 2 points, une de 23. **Les doublons sont un banc d'essai gratuit de la
+notation**, et ils disent qu'elle décroche parfois. Noté, non traité.
+
+### Le regroupement — option retenue par Maxime, et ses deux choix
+
+Trois options lui ont été posées : regrouper à l'affichage, dédupliquer à la
+collecte, ne rien faire. Il a choisi **l'affichage**, qui n'efface rien (US-23) et
+reste réversible. Puis deux questions de conception :
+
+1. **Le clic traite le poste entier.** Sans ça, écarter l'annonce affichée
+   laisserait sa jumelle « à traiter », qui reprendrait la place au chargement
+   suivant : on trierait deux fois le même poste. L'action serveur accepte donc
+   une **liste** d'identifiants — bornée à 8, revérifiée à l'exécution, doublons
+   écartés, écritures en parallèle, et **l'échec partiel se dit** au lieu de se
+   taire.
+2. **`/offres` reste exhaustif.** C'est l'archive de travail (US-22), et sa liste
+   est plafonnée à 200 sur 570 : deux jumelles peuvent être l'une dedans, l'autre
+   dehors, et le compteur deviendrait trompeur.
+
+### ⚠️ La règle du regroupement a été RETOURNÉE, après l'avoir vue échouer
+
+Première version : l'entreprise entrait dans la clé, et les offres sans employeur
+nommé ne se regroupaient qu'avec elles-mêmes — par prudence, 36 % des offres
+n'en nomment aucun.
+
+**Vu à l'écran : rien ne se regroupait.** Les quatre annonces MBDA affichent
+toutes « Entreprise non communiquée ». La prudence protégeait parfaitement d'un
+risque théorique, en ne servant jamais dans le cas réel qui avait motivé le
+module.
+
+Ce qui la remplace : **l'employeur SÉPARE, il ne rapproche pas.** La clé est
+l'intitulé normalisé plus le lieu ; un groupe n'est éclaté que s'il réunit deux
+employeurs **nommés** différents, et les anonymes forment alors leur propre
+sous-groupe plutôt que d'être rattachés au hasard.
+
+⚠️ **Ce que ça généralise** : une garde écrite pour un risque qu'on n'a pas
+mesuré peut coûter la fonction entière. Ici elle ne se voyait ni à la
+compilation, ni dans les tests — qui la vérifiaient consciencieusement — mais
+seulement à l'écran, sur les données réelles.
+
+### Vérifications
+
+- **69 tests** (16 nouveaux sur le regroupement), dans les deux fuseaux.
+- **Le clic groupé, prouvé en base** : un clic sur « Écarté » a fait passer
+  `6414980` **et** `6414967` à `ecarte`, sans toucher au second poste. Les deux
+  remises à `a_traiter` ensuite.
+- **`/offres` non contaminé** : 200 lignes, « 570 offres · 200 affichées »,
+  **zéro cartouche « annonces »**.
+- **La fiche** : bascule candidaté puis annulation, l'action à un seul
+  identifiant fonctionne toujours.
+- **375 px et bureau**, mode sombre, **console propre**.
+- **Base rendue à l'identique** : 570 à traiter / 0 candidaté / 4 écarté.

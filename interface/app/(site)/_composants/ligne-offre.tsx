@@ -24,10 +24,21 @@ import { formaterDate, formaterSalaire, formaterSalaireAnnuel } from "./formats"
  */
 export function LigneOffre({
   offre,
+  jumelles = [],
   nouvelle,
   maintenant,
 }: {
   offre: OffreEnListe;
+  /**
+   * Les identifiants des autres annonces du même poste.
+   *
+   * ⚠️ **Renseigné sur `/` seulement**, où l'écran du matin regroupe. Il fait
+   * deux choses : il apparaît en clair dans un cartouche « 2 annonces », et il
+   * descend jusqu'aux boutons de statut, qui traitent alors le poste entier.
+   * Sur `/offres`, où chaque ligne est une annonce, il reste vide et rien ne
+   * change.
+   */
+  jumelles?: string[];
   nouvelle: boolean;
   maintenant: Date;
 }) {
@@ -95,6 +106,7 @@ export function LigneOffre({
         <div className="ml-auto">
           <BoutonsStatut
             identifiant={offre.identifiant}
+            jumelles={jumelles}
             statut={offre.statut}
             compact
           />
@@ -152,6 +164,22 @@ export function LigneOffre({
             <time dateTime={offre.publiee_a}>{datePubliee}</time>
           </Cartouche>
         )}
+        {/* ⚠️ **« 2 annonces » est le seul endroit qui dit que l'écran a fondu
+            des lignes**, et il ne se retire jamais. Sans lui, deux annonces
+            réelles deviendraient une ligne sans que rien ne l'indique : Maxime
+            croirait que France Travail a publié une fois ce qu'il a publié
+            deux, et un clic écarterait silencieusement une offre qu'il n'a pas
+            vue. Le chiffre est en toutes lettres, pas une pastille.
+
+            ⚠️ **Neutre et non teinté** : les teintes du système portent chacune
+            un rôle (`docs/DESIGN.md`), et une information de comptage n'en est
+            aucun. */}
+        {jumelles.length > 0 && (
+          <Cartouche>
+            {jumelles.length + 1} annonces
+          </Cartouche>
+        )}
+
         {/* L'attente de note se dit ICI, dans la rangée des métadonnées, et pas
             en bloc séparé sous un filet : mesuré le 26 août 2026, le bloc
             coûtait 42 px de hauteur pour une seule phrase, sur la moitié des

@@ -38,28 +38,23 @@ import { estStatut } from "@/lib/statuts";
 export type ResultatAction = { ok: true } | { ok: false; message: string };
 
 /**
- * Poser le statut d'une offre.
+ * Combien d'annonces un seul clic peut écrire.
  *
- * Entre : un identifiant et un statut, tous deux venus du navigateur.
- * Sort : `{ ok: true }`, ou un message affichable.
- * Casse : ne lève jamais pour une panne de base — mais `exigerSession()` peut
- * lever pour rediriger, et c'est voulu (voir plus bas).
+ * ⚠️ **Cette borne existe parce que le tableau vient du NAVIGATEUR.** Depuis le
+ * 30 août 2026 le bouton de statut traite un poste entier — l'annonce affichée
+ * et ses jumelles — donc l'action reçoit une liste. Rien n'oblige un `POST`
+ * portant l'en-tête `Next-Action` à envoyer la liste que nos boutons
+ * construisent : sans borne, un appel forgé réécrirait toute la table en une
+ * requête, et chaque écriture est un aller-retour vers Supabase.
  *
- * ⚠️ **Le paramètre est typé `string`, pas `Statut`, et c'est délibéré.** Typer
- * `Statut` donnerait l'illusion d'une garantie : TypeScript disparaît à la
- * compilation, et l'appelant réel est un `POST` HTTP qui peut envoyer
- * `"supprime_tout"`. Le type large force à écrire la validation, au lieu de
- * croire qu'elle a déjà eu lieu.
- *
- * ⚠️ **Session expirée pendant que l'onglet dormait** : le `POST` n'atteint même
- * pas cette fonction — `proxy.ts` lui répond **401** sans rediriger, parce
- * qu'un `POST` redirigé ferait suivre le navigateur jusqu'à `/connexion`, d'où
- * il reviendrait avec un corps vide et un bouton qui n'aurait « rien fait ».
- * Le composant client traite ce 401 comme un échec et l'affiche. C'est un cas
- * réel : un onglet laissé ouvert toute la nuit.
+ * **8 est très au-dessus du réel** : le poste le plus republié de la base au
+ * 30 août 2026 l'est **quatre** fois. La borne n'est pas là pour cadrer l'usage,
+ * elle est là pour que l'abus soit impossible.
  */
+const MAX_ANNONCES_PAR_CLIC = 8;
+
 export async function definirStatut(
-  identifiant: string,
+  identifiants: string[],
   statut: string,
 ): Promise<ResultatAction> {
   // ⚠️ Première ligne, sans exception. Hors de tout try/catch : `redirect()`
@@ -75,17 +70,68 @@ export async function definirStatut(
     return { ok: false, message: "Ce statut n’existe pas." };
   }
 
-  const resultat = await changerStatut(identifiant, statut);
+  // ⚠️ **Le tableau est revérifié à l'exécution, type compris.** TypeScript
+  // disparaît à la compilation et l'appelant réel est un `POST` : il peut
+  // envoyer une chaîne, un objet, `undefined`, ou dix mille identifiants.
+  if (
+    !Array.isArray(identifiants) ||
+    identifiants.length === 0 ||
+    identifiants.length > MAX_ANNONCES_PAR_CLIC ||
+    identifiants.some((i) => typeof i !== "string")
+  ) {
+    console.error(
+      `[statut] liste refusée — ${Array.isArray(identifiants) ? `${identifiants.length} éléments` : "ce n'est pas une liste"}`,
+    );
+    return { ok: false, message: "Demande invalide." };
+  }
 
-  if (!resultat.ok) {
+  // ⚠️ **Les doublons sont écartés AVANT d'écrire.** Le même identifiant répété
+  // huit fois passerait les contrôles ci-dessus et produirait huit écritures
+  // identiques : l'opération resterait juste — elle est idempotente — mais on
+  // paierait huit allers-retours pour un seul changement.
+  const uniques = [...new Set(identifiants)];
+
+  // ⚠️ **Les écritures partent ENSEMBLE, et ce n'est pas qu'une question de
+  // vitesse.** Enchaînées, un poste publié quatre fois multiplierait par quatre
+  // le temps avant que la liste ne se réorganise — et c'est exactement pendant
+  // ce délai que le verrou de tri retient les clics suivants.
+  const resultats = await Promise.all(
+    uniques.map((identifiant) => changerStatut(identifiant, statut)),
+  );
+
+  const echec = resultats.find((r) => !r.ok);
+
+  if (echec && !echec.ok) {
+    // ⚠️ **Un échec partiel se DIT, il ne se tait pas.** Sur un poste publié
+    // deux fois, la première écriture peut réussir et la seconde échouer : la
+    // ligne quitterait alors l'écran du matin en laissant sa jumelle « à
+    // traiter », qui remonterait au chargement suivant sans que rien ne
+    // l'explique. On revalide quand même — ce qui a été écrit doit s'afficher —
+    // et on rend le message d'erreur.
+    const reussies = resultats.filter((r) => r.ok).length;
+    if (reussies > 0) {
+      revalidatePath("/offres", "layout");
+      revalidatePath("/", "page");
+      console.error(
+        `[statut] écriture partielle — ${reussies}/${uniques.length} annonces`,
+      );
+      return {
+        ok: false,
+        message:
+          uniques.length > 1
+            ? "Une des annonces de ce poste n’a pas pu être enregistrée."
+            : "Enregistrement impossible.",
+      };
+    }
+
     // Les quatre motifs se distinguent à l'écran, parce qu'ils n'appellent pas
     // la même réaction : réessayer, prévenir Maxime, ou recharger la page.
     const message =
-      resultat.motif === "introuvable"
+      echec.motif === "introuvable"
         ? "Cette offre n’existe plus."
-        : resultat.motif === "refusee"
+        : echec.motif === "refusee"
           ? "La base a refusé ce changement."
-          : resultat.motif === "configuration"
+          : echec.motif === "configuration"
             ? "Le site n’est pas correctement configuré."
             : "Enregistrement impossible : la base n’a pas répondu.";
     return { ok: false, message };
@@ -101,6 +147,19 @@ export async function definirStatut(
   // `"layout"` et non `"page"` : il faut couvrir `/offres` **et**
   // `/offres/[identifiant]`, puisqu'on peut trier depuis les deux écrans.
   revalidatePath("/offres", "layout");
+
+  // ⚠️ **L'écran du matin en a besoin AUSSI, depuis la phase 5 — et l'oublier
+  // aurait été invisible en développement.** `/` n'affiche que les offres « à
+  // traiter » de la dernière collecte : une offre passée en « candidaté » doit
+  // quitter cette liste. Sans cette ligne, le bouton « retour » du navigateur
+  // ramènerait l'écran d'avant le clic, avec l'offre encore présente — le même
+  // défaut que celui mesuré le 29 août sur la note personnelle, où revenir par
+  // un lien montrait la vérité et revenir par le bouton retour montrait un
+  // champ vide.
+  //
+  // `"page"` suffit : `/` est une feuille, aucune route enfant n'affiche ces
+  // offres. `"layout"` sur `/` invaliderait tout le site à chaque clic.
+  revalidatePath("/", "page");
 
   return { ok: true };
 }

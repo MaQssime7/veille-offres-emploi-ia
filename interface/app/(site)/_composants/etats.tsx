@@ -4,8 +4,16 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { MotifEchec } from "@/lib/supabase";
 
-/** L'ossature commune aux écrans qui n'ont pas d'offres à montrer. */
-function Panneau({
+/**
+ * L'ossature commune aux écrans qui n'ont pas d'offres à montrer.
+ *
+ * ⚠️ **Exportée le 30 août 2026 pour `etats-matin.tsx`**, qui porte les écrans
+ * vides de `/`. Les deux fichiers restent séparés parce qu'ils décrivent deux
+ * situations sans rapport — « ce filtre ne contient rien » et « la nuit n'a rien
+ * apporté » — mais ils partagent la boîte, sinon les deux se mettraient à
+ * diverger de marge et d'ombre.
+ */
+export function Panneau({
   icone,
   titre,
   children,

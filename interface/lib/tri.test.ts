@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { adresseListe } from "@/app/(site)/offres/_composants/adresse";
+import { adresseListe } from "@/app/(site)/_composants/adresse";
 import { TRIS, estTri } from "@/lib/tri";
 
 /**
