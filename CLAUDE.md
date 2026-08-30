@@ -824,7 +824,14 @@ tout de suite quoi lire en premier, et pourquoi. **Direction** : pastel
 volumétrique — surfaces blanches arrondies sur fond lavande, relief « coussin »,
 six accents pastel qui portent **toujours de l'encre foncée, jamais du blanc**.
 
-**Polices** : titrage **Fredoka 700** (les `h1` seulement) · texte et interface
+**Polices** : titrage **Fredoka 700** — les `h1` **et, depuis le 30 août 2026, les
+titres de section de la FICHE** (`titre-section`), amendement demandé par Maxime
+devant l'écran. ⚠️ **La portée s'arrête là et doit y rester** : `titre-section`
+ne sert que sous `offres/[identifiant]/`, et les étiquettes de données gardent le
+mono par `libelle-mono` — c'est ce qui empêche le changement de gagner la liste
+et l'écran du matin. ⚠️ L'interlettrage y descend à **0,08em** : Fredoka est bien
+plus large que Geist Mono, et les 0,12em du mono y détachaient les capitales au
+point de défaire le mot. · texte et interface
 **Nunito** · données et étiquettes **Geist Mono**. Les trois par `next/font`.
 ⚠️ **Fredoka n'est PAS livrée par le registre** — sans chargement explicite les
 titres retombent sur Nunito, sans erreur. ⚠️ **Geist Mono survit à la refonte** :
@@ -848,6 +855,14 @@ erreur. **Une teinte qui sert à deux choses ne sert plus à rien.**
 ⚠️ **Depuis le 30 août 2026 il ne reste AUCUN accent libre** : un septième signal
 devra réutiliser une teinte en la distinguant par la forme, ou rouvrir la palette
 — décision de système, pas détail d'écran.
+⚠️ **Le jaune porte depuis un SECOND usage, non temporel : le prénom surligné
+dans « Bonjour Maxime »** (`app/(site)/_composants/en-tete-page.tsx`), demandé le
+30 août 2026. C'est une entorse assumée à « une teinte qui sert à deux choses ne
+sert plus à rien ». ⚠️ **Et les deux usages SE RENCONTRENT** — sur `/offres`, le
+prénom, la pilule de filtre « Nouveau » et le badge « Nouveau » d'une offre
+récente sont visibles ensemble. Ce qui les sépare est l'échelle et la forme :
+36 px dans un salut contre des pastilles de 11 px dans une liste. **Un troisième
+usage du jaune rouvre la palette**, il ne s'ajoute pas.
 ⚠️ **Les pilules de filtre de `/offres` reprennent ces teintes**, chacune pour ce
 qu'elle filtre — c'est le revirement du 29 août, § État. Le déclencheur « Trier »
 prend le bleu parce que le classement par défaut EST l'intérêt : ce n'est pas un

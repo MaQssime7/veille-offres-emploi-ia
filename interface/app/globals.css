@@ -456,11 +456,26 @@
    de signal** : chacune a un rôle unique dans le produit, et un titre de
    section n'est aucun de ces rôles. */
 @utility titre-section {
-  font-family: var(--font-mono);
+  /* ⚠️ **FREDOKA depuis le 30 août 2026, et c'est un AMENDEMENT au système**,
+     pas un réglage. Le `DESIGN.md` posait « Fredoka pour le titrage, les `h1`
+     seulement » : les titres de section revenaient donc au mono. Maxime a
+     tranché l'inverse en regardant la fiche — il voulait retrouver la police de
+     l'intitulé et du nom d'entreprise sur « Résumé de l'offre », « Évaluation »,
+     à taille inchangée.
+     ⚠️ **La portée est petite et il faut qu'elle le reste** : `titre-section`
+     ne sert QUE sur la fiche d'une offre (vérifié — cinq fichiers, tous sous
+     `offres/[identifiant]/`). Les étiquettes de données, elles, gardent le mono
+     par `libelle-mono`, et c'est ce qui empêche ce changement de contaminer la
+     liste ou l'écran du matin.
+     ⚠️ **L'interlettrage descend de 0,12 à 0,08em.** Fredoka a des formes bien
+     plus larges que Geist Mono : à 0,12em et 11 px, les capitales se
+     détachaient les unes des autres au point que le mot cessait d'en être un.
+     Le mono a besoin d'air, une grotesque ronde beaucoup moins. */
+  font-family: var(--font-fredoka);
   font-size: 0.6875rem;
   line-height: 1.4;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   font-weight: 700;
   color: var(--foreground);
 }

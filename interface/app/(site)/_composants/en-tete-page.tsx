@@ -84,7 +84,35 @@ export function EnTetePage({
             tests en UTC. Un salut faux à minuit coûterait plus que la variation
             n'apporte, sur un écran consulté le matin. */}
         <h1 className="font-display text-3xl font-bold leading-tight text-foreground sm:text-4xl">
-          Bonjour Maxime
+          Bonjour{" "}
+          {/* ⚠️ **`<span>` et non `<mark>`, alors que `<mark>` est l'élément du
+              surlignage.** `<mark>` porte une sémantique de PERTINENCE — « ce
+              passage compte pour ce que vous cherchez » — que les lecteurs
+              d'écran annoncent. Ici le surlignage est un ornement : rien dans ce
+              prénom n'est plus pertinent que le reste du salut, et l'annoncer
+              ferait entendre une insistance qui n'existe pas à l'œil.
+              ⚠️ **`bg-signal` et non une couleur en dur.** Le jaune du système
+              porte déjà un rôle — le temporel : « Nouveau », l'état de la
+              veille — et le CLAUDE.md prévient qu'une teinte qui sert à deux
+              choses ne sert plus à rien. L'entorse est assumée et bornée : ici
+              c'est un ornement typographique dans un salut, jamais un signal
+              d'état dans une liste.
+              ⚠️ **Et ils SE RENCONTRENT bel et bien, contrairement à ce que la
+              première version de ce commentaire affirmait** : sur `/offres`, le
+              prénom surligné, la pilule de filtre « Nouveau » et le badge
+              « Nouveau » d'une offre récente sont visibles ensemble — trois
+              jaunes sur le même écran. Ce qui les sépare n'est pas la couleur
+              mais l'échelle et la forme : le prénom fait 36 px dans un salut,
+              les deux autres sont des pastilles de 11 px dans une liste. **Si
+              un quatrième usage du jaune se présente, c'est la palette qu'il
+              faut rouvrir, pas ce fichier.**
+              ⚠️ **`leading-none` sur la pastille, sinon la ligne du `h1`
+              grandit.** L'interligne du titre est déjà serré ; un `inline-block`
+              qui garde l'interligne hérité pousse la boîte au-delà de la
+              hauteur de ligne et décale tout ce qui suit. */}
+          <span className="inline-block rounded-lg bg-signal px-3 py-0.5 leading-none text-signal-foreground">
+            Maxime
+          </span>
         </h1>
         {sousTitre}
       </div>
