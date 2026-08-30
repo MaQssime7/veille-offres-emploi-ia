@@ -182,10 +182,10 @@ découpage en sept phases dans [`docs/PLAN.md`](docs/PLAN.md).
 - **Supabase** : projet créé en région Paris.
 - **Vercel** : déployé, `Root Directory = interface`, fonctions en région Paris.
 
-La page d'accueil actuelle est une **page de contrôle temporaire** : elle prouve
-que la chaîne fonctionne — trois polices, jetons de couleur, mode sombre — et sera
-remplacée en phase 1. Depuis le 21 août, elle est derrière la porte comme le
-reste du site.
+La page d'accueil était alors une **page de contrôle temporaire**, qui prouvait
+que la chaîne fonctionnait — trois polices, jetons de couleur, mode sombre.
+**Elle a été remplacée par l'écran du matin le 30 août 2026** (voir plus bas).
+Depuis le 21 août, tout le site est derrière la porte.
 
 **Le schéma, posé le 20 août 2026.**
 
@@ -419,4 +419,49 @@ Quatre choix qui se défendent en entretien :
   triait une autre offre. Le verrou suit `useTransition` et non la fin de l'appel
   serveur — mesuré, la réponse arrive à +80 ms et la liste se réorganise à +900 ms.
 
-**Prochaine étape** : la phase 5, l'écran du matin — le compte rendu de la nuit.
+### L'écran du matin — phase 5, livrée le 30 août 2026
+
+`/` n'est plus une page de contrôle : c'est le **compte rendu de la nuit**. Les
+offres de la dernière collecte réussie qui restent à traiter et qui dépassent le
+seuil d'intérêt, classées par intérêt décroissant, sous un indicateur de santé de
+la veille partagé avec le poste de travail, et une carte de passage chiffrée vers
+le reste de la base.
+
+Quatre choses qui se défendent en entretien :
+
+- **Un écran vide doit dire LEQUEL des vides il montre.** Le plan en prévoyait
+  trois ; six ont été livrés, et le quatrième n'était pas prévu : *« la notation
+  n'a pas tourné »*. Sans lui, une collecte réussie suivie d'une notation tombée
+  s'affichait « journée calme » — le système annonçait une bonne nouvelle un matin
+  où il était à moitié en panne. C'est la classe de défaut qui ne se remarque
+  jamais : une fausse alerte se voit tout de suite, un « tout va bien » qui ment
+  se croit. L'**ordre** des tests qui départagent ces six cas *est* la logique, et
+  il est éprouvé par des tests unitaires — la panne de notation ne se provoque pas
+  à la main.
+- **Un seuil se mesure, il ne s'estime pas.** Le cadrage fixait l'affichage à 50
+  sur 100. Mesuré sur les six dernières collectes réelles, l'écran était alors vide
+  **quatre matins sur six**, et 10 offres sur 574 dépassaient ce score. Abaissé à
+  **35** : deux matins vides, 20 offres. Descendre à 25 n'en ajouterait que 7 —
+  le gain s'aplatit. Le seuil est figé par un test : le changer casse la suite au
+  lieu de passer inaperçu.
+- **France Travail publie le même poste deux fois, et la déduplication par
+  identifiant ne peut pas le voir.** Une version « f/h », une version « (H/F) »,
+  deux identifiants, deux lignes en base : **29 annonces en trop sur 574**. L'écran
+  du matin les regroupe — une ligne par poste, la mieux notée, un cartouche
+  « 2 annonces », et un clic de statut qui traite le poste entier. **Rien n'est
+  effacé** : le rapprochement se fait à l'affichage, jamais à la collecte, et le
+  poste de travail reste exhaustif. ⚠️ Ces doublons révèlent au passage un fait
+  plus gênant qu'eux : le modèle note parfois **68 et 45** deux annonces du même
+  poste, pour des justifications qui disent la même chose.
+- **Un squelette de chargement s'aligne sur ce que SA page affiche le plus
+  souvent.** Trois barres avaient été posées par analogie avec le poste de travail,
+  qui en pose quatre. La mesure dit l'inverse : un panneau vide fait 230 px, une
+  ligne d'offre 222 — **une** barre cale donc les deux cas, là où trois se
+  trompaient de 450 px dans les deux à la fois. ⚠️ La première vérification de ce
+  calage était fausse : elle mesurait la hauteur du conteneur, qui porte `flex-1`
+  et vaut donc la hauteur de la fenêtre quel que soit son contenu. Elle annonçait
+  « écart nul » avec assurance. **Un chiffre qui tombe pile doit éveiller le
+  soupçon avant de rassurer.**
+
+**Prochaine étape** : la phase 6, l'enrichissement à la demande — le Claude Agent
+SDK, déclenché au clic, borné par une enveloppe quotidienne de tokens.

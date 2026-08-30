@@ -375,6 +375,14 @@ parce que c'est **le cas majoritaire** : 65 % des offres réelles.
 même rembourrage que le plein — sa bordure entrant dans la boîte, un padding
 différent le rendrait 2 px plus haut que ses voisins et décalerait la rangée.
 
+⚠️ **Un cinquième cartouche depuis le 30 août 2026 : « 2 annonces », sur l'écran
+du matin seulement.** Il dit que la ligne en fond plusieurs — France Travail
+publie le même poste sous deux identifiants, et `/` n'en montre qu'un.
+**Il ne se retire jamais** : sans lui, deux annonces réelles deviendraient une
+ligne sans que rien ne l'indique, et un clic écarterait silencieusement une offre
+que Maxime n'a pas vue. **Teinte neutre**, comme ses voisins : les cinq teintes de
+signal portent chacune un rôle, et un comptage n'en est aucun.
+
 ### Filtres et classement de `/offres`
 
 **Cinq pilules à gauche, un menu à droite**, sur une même rangée alignée sur les
@@ -624,6 +632,25 @@ haut, sur la seule rangée dont la hauteur ne dépend pas du contenu.
 sur une carte blanche la ferait virer au lavande, c'est-à-dire se confondre avec
 le fond de page qu'elle est censée surplomber.
 
+### La carte de passage — bas de l'écran du matin
+
+Une carte pleine largeur, même surface et même coussin qu'une ligne d'offre, qui
+mène au poste de travail : *« 566 autres offres attendent dans le plan de
+travail »*, flèche à droite.
+
+⚠️ **Le nombre est CHIFFRÉ et en gras, jamais un simple lien.** C'est lui qui rend
+acceptable le parti pris de l'écran du matin — ne montrer qu'une nuit, et
+seulement au-dessus du seuil. Sans ce chiffre, tout le reste de la base
+disparaîtrait sans laisser de trace, et un matin calme ressemblerait à une base
+vide.
+
+⚠️ **Elle s'affiche aussi — et surtout — sous les écrans vides.** C'est là qu'elle
+sert le plus.
+
+⚠️ **Son focus passe par `outline`**, comme tout élément à coussin. Mesuré le
+30 août 2026 : anneau de 2 px présent, contraste **10,32:1** contre le fond de
+page.
+
 ---
 
 ## Mise en page
@@ -723,3 +750,9 @@ Les décisions d'avant la refonte ne sont conservées que si elles tiennent enco
 | 29 août 2026 (soir) | Résumé et justifications à la même typographie | Même auteur, même statut : deux niveaux annonçaient une hiérarchie que le produit ne défend pas |
 | 29 août 2026 (soir) | Échelle de la fiche remontée (intitulé 30, entreprise 18) | Conséquence du texte passé à 16 px. **Une taille ne se juge jamais seule** |
 | 29 août 2026 (soir) | `items-baseline` sur le classement France Travail | Les boîtes étaient alignées, les lignes de base décalées de 6,8 px. C'est la ligne de base que l'œil apparie |
+| **30 août 2026** | **`/` et `/offres` portent le même `h1` « Bonjour Maxime »** | Demande de Maxime. Les titres d'onglet, eux, divergent — « Ce matin » et « Plan de travail » — parce que c'est l'onglet qu'on lit dans l'historique et les favoris |
+| 30 août 2026 | La date de la collecte n'est PAS répétée sous le salut | Vue à l'écran : la manchette l'affiche déjà 90 px plus haut. Le sous-titre ne dit que ce qu'elle ne dit pas — « 2 postes retenus sur 7 offres collectées » |
+| 30 août 2026 | Carte de passage chiffrée en bas de `/` | Sans elle, le reste de la base disparaît de vue et un matin calme ressemble à une base vide |
+| 30 août 2026 | Cartouche « N annonces », teinte neutre | Sans lui, le regroupement ferait disparaître une offre sans que rien ne l'indique. Neutre parce qu'un comptage n'est pas un signal |
+| 30 août 2026 | Le squelette de `/` imite **une** ligne, pas quatre | Mesuré : un panneau vide fait 230 px, une ligne 222. Une barre unique cale les deux cas ; trois se trompaient de 450 px dans les deux à la fois |
+| 30 août 2026 | Six écrans vides sur `/`, dont « la notation n'a pas tourné » | Un message unique dirait la même chose une nuit calme et un matin où le système est à moitié en panne |

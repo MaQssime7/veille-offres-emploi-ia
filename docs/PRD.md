@@ -416,11 +416,27 @@ Deux écrans distincts, aux rôles opposés — tranché au `/planifie` du 16 ao
 
 **L'écran d'accueil est un compte rendu.** Il affiche **uniquement les offres de
 la dernière collecte réussie** dont le statut est « à traiter » et l'intérêt
-atteint 50, classées par intérêt décroissant. Motif : la page porte la date de la
-collecte en tête ; y mêler des offres de la semaine précédente ferait mentir cet
-entête. Il porte une ligne de passage chiffrée vers la vue d'ensemble — *« 7
-offres plus anciennes attendent encore »* — sans laquelle une offre non tranchée
-sortirait silencieusement du champ de vision.
+atteint le seuil, classées par intérêt décroissant. Motif : la page porte la date
+de la collecte en tête ; y mêler des offres de la semaine précédente ferait mentir
+cet entête. Il porte une ligne de passage chiffrée vers la vue d'ensemble —
+*« 566 autres offres attendent dans le plan de travail »* — sans laquelle une
+offre non tranchée sortirait silencieusement du champ de vision.
+
+⚠️ **Le seuil vaut 35 depuis le 30 août 2026, et non 50.** Décision de Maxime,
+prise sur mesure : à 50, l'écran du matin était vide **quatre matins sur six** sur
+les six dernières collectes réelles, et 10 offres seulement sur 574 dépassaient ce
+score. À 35 : deux matins vides, et 20 offres. Descendre à 25 n'en ajouterait que
+7 de plus — le gain s'aplatit, et chaque cran rapproche l'accueil d'un second
+poste de travail. Barème complet dans `interface/lib/matin.ts`.
+
+⚠️ **L'écran d'accueil regroupe les annonces d'un même poste, depuis le 30 août
+2026.** France Travail publie le même poste plusieurs fois — une version « f/h »,
+une version « (H/F) », deux identifiants — et la déduplication du pipeline, qui
+porte sur l'identifiant, ne peut pas les voir : **29 annonces en trop sur 574,
+soit 5,1 %**. Une seule ligne s'affiche par poste, la mieux notée, avec un
+cartouche « 2 annonces », et **un clic de statut traite le poste entier**.
+**Rien n'est effacé** — US-23 tient : toutes les annonces restent en base et
+restent visibles une par une dans la vue d'ensemble, qui n'est pas regroupée.
 
 **La vue d'ensemble est le poste de travail.** C'est là que se fait le tri
 quotidien. Elle donne l'intégralité des offres collectées, écartées comprises,
@@ -430,9 +446,15 @@ marqueur « nouveau ».
 
 - L'accessibilité n'intervient jamais dans le filtre d'intérêt : une offre très
   intéressante mais peu accessible reste affichée.
-- États vides de l'écran d'accueil : trois messages **distincts** — « la collecte
-  de cette nuit n'a rien ramené », « aucune offre n'atteint le seuil », « tout est
-  traité » — chacun rappelant la date de la dernière veille réussie.
+- États vides de l'écran d'accueil : des messages **distincts**, chacun rappelant
+  la date de la dernière veille réussie. Le cadrage en prévoyait trois — « la
+  collecte de cette nuit n'a rien ramené », « aucune offre n'atteint le seuil »,
+  « tout est traité ». ⚠️ **Six ont été livrés le 30 août 2026**, et le quatrième
+  n'était pas prévu : **« la notation n'a pas tourné »**. Sans lui, une collecte
+  réussie suivie d'une notation tombée s'affichait « journée calme » — c'est-à-dire
+  que le système annonçait une bonne nouvelle un matin où il était à moitié en
+  panne. Les deux derniers couvrent l'absence de toute collecte réussie et le cas
+  où les comptages n'ont pas pu être faits.
 
 ### Fiche d'offre
 
@@ -537,11 +559,18 @@ Registre public des entreprises pour la fiche d'enrichissement. Hébergement du 
 de la base sur des offres gratuites dont les conditions peuvent changer.
 
 **Hypothèse non vérifiée** — Le volume réel d'offres pertinentes par jour en
-Île-de-France est inconnu. Le dimensionnement retenu — seuil d'affichage à 50,
-enveloppe quotidienne de 300 000 tokens d'enrichissement — repose sur une
+Île-de-France est inconnu. Le dimensionnement **retenu au cadrage** — seuil
+d'affichage à 50, enveloppe quotidienne de 300 000 tokens d'enrichissement —
+reposait sur une
 estimation d'environ quarante offres collectées quotidiennement et d'environ
-100 000 à 150 000 tokens par enrichissement. **Aucun de ces chiffres n'est
-mesuré.** Ils sont à re-régler après deux semaines de données réelles et après la
+100 000 à 150 000 tokens par enrichissement.
+
+✅ **Le seuil, lui, a été mesuré et re-réglé le 30 août 2026** — c'est le premier
+de ces chiffres à sortir de l'estimation, et il est passé de 50 à **35** (voir
+§ Listes). L'estimation de quarante offres par jour est également démentie : les
+six dernières collectes ont ramené 7, 7, 25, 0, 162 et 2 offres.
+⚠️ **L'enveloppe de tokens, elle, reste non mesurée** — aucun enrichissement n'a
+encore tourné. Ils sont à re-régler après deux semaines de données réelles et après la
 première mesure du coût d'un enrichissement.
 
 **Réserve sur le chiffre d'affaires** — Le registre public national fournit la

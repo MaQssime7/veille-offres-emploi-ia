@@ -369,5 +369,24 @@ Personne ne les rattrapera ensuite :
 - **Quota d'appels dépassé** — géré explicitement, jamais avalé par un `except` nu.
 - **Offre déjà présente en base** — déduplication sur l'identifiant de l'offre,
   jamais sur le titre.
+  ⚠️ **Cette déduplication est juste et elle ne suffit pas — mesuré le 30 août
+  2026.** France Travail publie **le même poste plusieurs fois**, sous des
+  identifiants différents : une version dont l'intitulé finit par « f/h » et une
+  autre par « (H/F) », avec des descriptions voisines mais pas identiques. Ce sont
+  donc deux offres distinctes pour l'API comme pour la base, et rien dans le
+  pipeline ne peut les rapprocher.
+  **Ampleur sur 574 offres réelles : 29 annonces en trop, soit 5,1 %** — 24 postes
+  publiés deux fois, un trois fois, un quatre fois. Sur une petite collecte,
+  l'effet est bien plus visible : le 29 août, **quatre des sept offres** ramenées
+  étaient deux postes en double.
+  ⚠️ **Le rapprochement se fait à l'AFFICHAGE, jamais à la collecte** — décision de
+  Maxime, US-23 : rien n'est jamais supprimé, et dédupliquer ici serait
+  irréversible et perdrait sans trace deux vraies ouvertures au même intitulé. Le
+  mécanisme est dans `interface/lib/regroupement.ts`.
+  ⚠️ **Ce que ces doublons révèlent, et qui vaut plus qu'eux** : le modèle note
+  parfois **très différemment** deux annonces du même poste — 68 et 45, pour des
+  justifications qui disaient la même chose. Sur les 7 paires comparables de la
+  base : 4 notes identiques, 2 à 2 points d'écart, 1 à 23. **C'est un banc d'essai
+  gratuit de la calibration de la notation.**
 - **Union de plusieurs recherches** — un même identifiant remonte sur plusieurs
   jeux de mots-clés. Déduplication avant écriture, pas après.
