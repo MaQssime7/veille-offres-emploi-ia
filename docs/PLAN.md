@@ -642,6 +642,48 @@ Phase 6.
 
 ---
 
+## À construire un jour : la jauge de consommation du jour
+
+Demandée par Maxime le 31 août 2026, **explicitement pas pour aujourd'hui**. Non
+planifiée dans une phase : c'est un petit écran, à glisser quand il tombera bien.
+
+**Ce qu'il veut** : une barre horizontale montrant le pourcentage de l'enveloppe
+quotidienne consommé, **le chiffre en tokens à côté** (« pour qu'on se rende compte »),
+et le temps restant avant la remise à zéro. Emplacement évoqué : près du bouton
+d'enrichissement.
+
+⚠️ **Rien à construire côté données.** `EtatEnveloppe` rend déjà `consommes`, `plafond`,
+`reste` et `depassee`, et la page de la fiche les lit déjà pour décider si le bouton
+part. C'est de l'affichage pur — ce qui explique qu'aucune phase ne le porte.
+
+**Quatre points à trancher AVANT d'écrire, chacun déjà rencontré ailleurs :**
+
+1. ⚠️ **Le bouton d'enrichissement est sur la FICHE, pas dans la liste.** Maxime a dit
+   « dans la liste des offres, à côté du bouton Enrichissement par IA » — les deux ne
+   sont pas au même endroit. Lui demander lequel, ou les deux.
+2. ⚠️ **La jauge afficherait plus que le consommé réel pendant qu'un agent tourne.**
+   `calculerConsommation()` **réserve** `COUT_PRESUME_TOKENS` (150 000) pour chaque
+   enrichissement en vol — c'est ce qui bouche le trou de concurrence trouvé en revue
+   le 30 août. Une jauge nourrie de ce chiffre bondirait à 50 % au clic puis
+   redescendrait à la conclusion, ce qui se lit comme un bug. **Montrer les deux
+   nombres, ou dire que la réserve est une réserve** — ne pas la masquer, elle est
+   vraie.
+3. ⚠️ **Le temps restant avant minuit NE PEUT PAS être rendu côté serveur.** Le
+   `CLAUDE.md` porte déjà le même défaut sur l'indicateur de veille : « ne vieillit pas
+   dans un onglet resté ouvert ». Un décompte figé est pire que pas de décompte. Deux
+   issues : un composant client avec sa propre horloge, ou écrire simplement
+   « remise à zéro à minuit », qui est vrai sans horloge.
+4. ⚠️ **Le chiffre en toutes lettres n'est pas une redondance, c'est le plancher
+   d'accessibilité.** Une jauge seule fait porter l'information par une longueur, ce que
+   le projet interdit. C'est d'ailleurs ce que Maxime demande de lui-même.
+
+⚠️ **Ce n'est PAS l'écran de suivi d'exploitation** — celui-là reste en évolution prévue
+et parle d'exécutions, de réussite et de durée sur plusieurs semaines. Ici on montre un
+seul nombre, celui du jour. **Ne pas fusionner les deux**, et surtout ne jamais nommer
+l'un ni l'autre « analytics » (règle 1 du `CLAUDE.md`).
+
+---
+
 ## Phase retirée, puis REFUSÉE : l'enrichissement automatique nocturne
 
 Le plan comptait huit phases jusqu'au 16 août 2026. La huitième — *l'enrichissement
