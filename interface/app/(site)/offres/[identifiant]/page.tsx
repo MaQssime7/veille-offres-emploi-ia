@@ -34,11 +34,17 @@ import { ArrowLeft } from "lucide-react";
 import { cache } from "react";
 
 import { exigerSession } from "@/lib/acces";
+import { calculerEtatEnrichissement } from "@/lib/enrichissement";
+import {
+  lireDernierEnrichissement,
+  lireEnveloppeDuJour,
+} from "@/lib/enrichissement-base";
 import { lireOffre } from "@/lib/offres";
 
 import { CadrePage } from "../../_composants/cadre-page";
 import { BaseInjoignable } from "../../_composants/etats";
 import { ContenuNotes, etatNotation } from "../../_composants/notes";
+import { BlocEnrichissement } from "./_composants/bloc-enrichissement";
 import { DescriptionOffre } from "./_composants/description";
 import { EnTeteOffre } from "./_composants/entete";
 import { NotePersonnelle } from "./_composants/note-personnelle";
@@ -131,6 +137,25 @@ export default async function PageOffre({
   const { offre } = resultat;
   const maintenant = new Date();
 
+  // ⚠️ **Les deux lectures partent ENSEMBLE.** Enchaînées, elles ajouteraient
+  // deux allers-retours vers Supabase au temps d'affichage de la fiche — pour
+  // deux informations qui ne dépendent pas l'une de l'autre.
+  const [enrichissement, enveloppe] = await Promise.all([
+    lireDernierEnrichissement(offre.identifiant),
+    lireEnveloppeDuJour(maintenant),
+  ]);
+
+  // ⚠️ **L'état est calculé ici, avec l'heure du SERVEUR.** Le composant client
+  // le recevra déjà décidé : c'est ce qui empêche l'horloge du poste de Maxime
+  // de déclarer morts des enrichissements qui tournent.
+  const etatEnrichissement = enrichissement.ok
+    ? calculerEtatEnrichissement(
+        enrichissement.dernier,
+        enrichissement.etapes,
+        maintenant,
+      )
+    : ({ etat: "absent" } as const);
+
   return (
     <CadrePage>
       <RetourListe />
@@ -214,6 +239,22 @@ export default async function PageOffre({
         />
 
         <Renseignements offre={offre} />
+
+        {/* ⚠️ **Trois props scalaires et un état déjà réduit, jamais `offre`.**
+            Ce composant est client : tout ce qu'on lui passe part dans le
+            document. `etatEnrichissement` ne porte que ce qui s'affiche —
+            l'ancrage complet de l'entreprise, quand il existera, restera côté
+            serveur tant qu'il n'est pas rendu.
+            Sa place : après les renseignements France Travail, avant l'annonce.
+            On lit d'abord ce que la source déclare, puis ce que l'agent a
+            vérifié — et les deux avant le texte brut. */}
+        <BlocEnrichissement
+          identifiant={offre.identifiant}
+          etatInitial={etatEnrichissement}
+          plafondAtteint={enveloppe.depassee && enveloppe.connue}
+          enveloppeIllisible={!enveloppe.connue}
+          indisponible={!enrichissement.ok}
+        />
 
         <section aria-labelledby="titre-description">
           <h2

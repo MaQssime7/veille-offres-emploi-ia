@@ -200,6 +200,27 @@ export default function ChargementFiche() {
             <div className="h-[8.125rem] carte-produit" />
           </div>
 
+          {/* ⚠️ **Le bloc d'enrichissement, arrivé le 30 août 2026 — et ajouté
+              ICI DANS LE MÊME GESTE que la section réelle.** `loading.tsx` n'a
+              aucun lien mécanique avec la page qu'il double : rien ne signale
+              l'oubli, et le défaut est invisible en développement, où le
+              serveur répond en 80 ms et où le squelette ne s'affiche jamais
+              assez longtemps pour être vu. Trois sauts déjà payés — 297 px,
+              93 px, 222 px.
+
+              **152 px MESURÉS au DOM** le 30 août sur l'état « pas encore
+              enrichie », soit 9,5 rem : titre en mono, deux lignes de
+              paragraphe explicatif, bouton. ⚠️ C'est l'état de **578 offres sur
+              580** — un squelette s'aligne sur ce que sa page affiche le plus
+              souvent, pas sur son cas le plus riche. Une fiche déjà enrichie
+              montrera plus haut, et c'est le bon arbitrage : mieux vaut un
+              squelette trop court sur le cas rare que trop long sur le cas
+              courant. */}
+          <div>
+            <div className="mb-3 h-4 w-32 bg-muted" />
+            <div className="h-[9.5rem] carte-produit" />
+          </div>
+
           <div>
             <div className="mb-3 h-4 w-20 bg-muted" />
             <div className="h-[3.25rem] carte-produit" />

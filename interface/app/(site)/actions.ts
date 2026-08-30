@@ -25,6 +25,20 @@
 import { revalidatePath } from "next/cache";
 
 import { exigerSession } from "@/lib/acces";
+import {
+  calculerEtatEnrichissement,
+  estEnVol,
+  type EtatEnrichissement,
+} from "@/lib/enrichissement";
+import {
+  estPerime,
+  lireDernierEnrichissement,
+  lireEnveloppeDuJour,
+  MOTIF_PEREMPTION,
+  ouvrirDemande,
+  refermerTentative,
+} from "@/lib/enrichissement-base";
+import { lancerEnrichissement } from "@/lib/github";
 import { changerCoupDeCoeur, changerStatut, enregistrerNote } from "@/lib/offres";
 import { LONGUEUR_MAX_NOTE, normaliserNote } from "@/lib/notes";
 import { estStatut } from "@/lib/statuts";
@@ -373,5 +387,182 @@ export async function definirNote(
   return {
     ok: true,
     enregistreA: normaliserNote(texte) === null ? null : new Date().toISOString(),
+  };
+}
+
+
+/**
+ * Demander l'enrichissement d'une offre.
+ *
+ * Entre : un identifiant d'offre, venu du navigateur.
+ * Sort : `{ ok: true }` quand la demande est ouverte ET le workflow lancé.
+ * Casse : ne lève jamais pour une panne — `exigerSession()` peut lever pour
+ * rediriger, et c'est voulu.
+ *
+ * ⚠️ **L'ORDRE des gardes EST la logique, comme dans `choisirAffichage()`.**
+ * Chacune protège quelque chose de différent, et les intervertir ouvrirait un
+ * trou :
+ *
+ * 1. `exigerSession()` — sans elle, un `POST` avec en-tête `Next-Action`
+ *    dépenserait l'argent de Maxime sans mot de passe.
+ * 2. **Refermer une tentative périmée** — sinon l'étape 4 la trouverait en vol
+ *    et refuserait à jamais d'enrichir cette offre.
+ * 3. **L'enveloppe du jour** — vérifiée AVANT d'écrire quoi que ce soit. La
+ *    contrôler après aurait laissé une ligne ouverte pour rien.
+ * 4. **L'insertion** — c'est l'index unique qui tranche en dernier ressort, pas
+ *    la lecture faite plus haut. Entre lire et écrire il y a toujours une
+ *    fenêtre ; seul le moteur ferme celle-là (US-35).
+ * 5. **Le lancement du workflow** — et s'il échoue, on referme immédiatement.
+ *
+ * ⚠️ **Le dépassement maximal de l'enveloppe est d'un enrichissement, pas de
+ * zéro — et c'est structurel.** On vérifie ce qui est déjà consommé, mais le
+ * coût de celui qu'on lance n'est connu qu'à la fin. Deux clics à la même
+ * seconde peuvent donc passer ensemble. La borne par enrichissement vit
+ * ailleurs, dans les options de l'agent : les deux ne sont pas redondantes,
+ * elles bornent deux choses différentes.
+ */
+export async function demanderEnrichissement(
+  identifiant: string,
+): Promise<ResultatAction> {
+  // ⚠️ Première ligne, sans exception. Hors de tout try/catch.
+  await exigerSession();
+
+  // ⚠️ **Le type est revérifié à l'exécution.** L'appelant réel est un `POST` :
+  // il peut envoyer un nombre, un objet, `undefined`. Le format, lui, est
+  // validé par `lireDernierEnrichissement` avec l'expression régulière commune.
+  if (typeof identifiant !== "string") {
+    console.error("[enrichissement] identifiant refusé — ce n'est pas une chaîne");
+    return { ok: false, message: "Demande invalide." };
+  }
+
+  const maintenant = new Date();
+
+  const etat = await lireDernierEnrichissement(identifiant);
+  if (!etat.ok) {
+    return { ok: false, message: "Impossible de lire l’état de cette offre." };
+  }
+
+  if (etat.dernier && estPerime(etat.dernier, maintenant)) {
+    // ⚠️ **On referme AVANT d'insérer, et on continue même si ça échoue** : si
+    // la clôture n'a pas pu s'écrire, l'insertion suivante se heurtera à
+    // l'index et rendra « déjà en cours » — message faux mais sans dégât. Le
+    // contraire, renoncer, laisserait l'offre bloquée définitivement.
+    await refermerTentative(etat.dernier.id, MOTIF_PEREMPTION);
+  } else if (etat.dernier && estEnVol(etat.dernier.issue)) {
+    return {
+      ok: false,
+      message: "Un enrichissement est déjà en cours sur cette offre.",
+    };
+  }
+
+  const enveloppe = await lireEnveloppeDuJour(maintenant);
+  if (enveloppe.depassee) {
+    // ⚠️ On refuse dans les DEUX cas — plafond atteint ou enveloppe illisible —
+    // mais le message ne dit pas la même chose. Affirmer « le plafond est
+    // atteint » sur une lecture ratée serait inventer une explication.
+    if (!enveloppe.connue) {
+      return {
+        ok: false,
+        message:
+          "Impossible de vérifier l’enveloppe du jour : rien n’a été lancé. Réessayez.",
+      };
+    }
+    // ⚠️ **Vérifié ici, côté serveur, et pas seulement affiché sur le bouton.**
+    // Un bouton grisé se contourne en envoyant le `POST` à la main.
+    console.error(
+      `[enrichissement] refusé — enveloppe atteinte (${enveloppe.consommes}/${enveloppe.plafond})`,
+    );
+    return {
+      ok: false,
+      message: "Plafond du jour atteint : aucun enrichissement ne peut partir.",
+    };
+  }
+
+  const demande = await ouvrirDemande(identifiant);
+  if (!demande.ok) {
+    return {
+      ok: false,
+      // ⚠️ Les quatre motifs se distinguent parce qu'ils n'appellent pas la
+      // même réaction. `introuvable` était auparavant confondu avec `conflit` :
+      // PostgREST rend 409 pour une clé étrangère absente comme pour un
+      // doublon, si bien qu'une offre inexistante répondait « un
+      // enrichissement est déjà en cours » — l'inverse de la vérité.
+      message:
+        demande.motif === "conflit"
+          ? "Un enrichissement est déjà en cours sur cette offre."
+          : demande.motif === "introuvable"
+            ? "Cette offre n’existe plus."
+            : demande.motif === "refusee"
+              ? "La base a refusé cette demande."
+              : "Demande impossible : la base n’a pas répondu.",
+    };
+  }
+
+  const lancement = await lancerEnrichissement(demande.id);
+  if (!lancement.ok) {
+    // ⚠️ **On referme tout de suite.** Sans ça, l'offre resterait bloquée dix
+    // minutes derrière une demande dont on SAIT déjà que rien ne viendra la
+    // servir — et l'écran pulserait pendant tout ce temps.
+    await refermerTentative(demande.id, lancement.explication, demande.demandeA);
+    revalidatePath("/offres/[identifiant]", "page");
+    return { ok: false, message: lancement.explication };
+  }
+
+  // `"page"` suffit : le bloc d'enrichissement ne vit que sur la fiche, et son
+  // évolution est suivie par le sondage, pas par un re-rendu.
+  revalidatePath("/offres/[identifiant]", "page");
+  return { ok: true };
+}
+
+
+/** Ce que le sondage rend au bloc d'enrichissement. */
+export type ResultatSuivi =
+  | { ok: true; etat: EtatEnrichissement }
+  | { ok: false; message: string };
+
+/**
+ * Où en est l'enrichissement de cette offre — appelée toutes les 1,5 s.
+ *
+ * Entre : un identifiant d'offre, venu du navigateur.
+ * Sort : l'état d'affichage, étapes comprises.
+ * Casse : ne lève jamais pour une panne de base.
+ *
+ * ⚠️ **Une ACTION serveur, pas une route `/api`, et c'est un choix de
+ * sécurité.** Une route `GET` protégée par le proxy répondrait à un sondage
+ * sans session par une **redirection vers `/connexion`** : le navigateur la
+ * suivrait, recevrait du HTML, et `response.json()` échouerait sur une erreur de
+ * syntaxe incompréhensible. Le proxy, lui, répond **401** aux `POST` d'action —
+ * donc une session expirée pendant la nuit produit un refus lisible plutôt
+ * qu'une page de connexion analysée comme du JSON.
+ *
+ * ⚠️ **Le navigateur ne parle jamais directement à Supabase**, y compris pour
+ * un simple suivi. C'est la raison pour laquelle Realtime a été écarté au
+ * cadrage : il aurait fallu ouvrir une politique de lecture publique sur la
+ * table des étapes.
+ *
+ * ⚠️ **`maintenant` est calculé ICI, côté serveur.** Le composant client
+ * pourrait le faire, mais la péremption dépendrait alors de l'horloge du poste
+ * de Maxime : un Mac en avance de vingt minutes déclarerait morts des
+ * enrichissements qui tournent.
+ */
+export async function suivreEnrichissement(
+  identifiant: string,
+): Promise<ResultatSuivi> {
+  // ⚠️ Première ligne, sans exception. Hors de tout try/catch.
+  await exigerSession();
+
+  if (typeof identifiant !== "string") {
+    console.error("[suivi] identifiant refusé — ce n'est pas une chaîne");
+    return { ok: false, message: "Demande invalide." };
+  }
+
+  const lecture = await lireDernierEnrichissement(identifiant);
+  if (!lecture.ok) {
+    return { ok: false, message: "Impossible de lire l’état de cette offre." };
+  }
+
+  return {
+    ok: true,
+    etat: calculerEtatEnrichissement(lecture.dernier, lecture.etapes, new Date()),
   };
 }
