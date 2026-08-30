@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { lireEmployeur } from "@/lib/employeur";
 import type { OffreEnListe } from "@/lib/offres";
 
 import { BoutonsStatut } from "./boutons-statut";
@@ -45,6 +46,15 @@ export function LigneOffre({
   const datePubliee = formaterDate(offre.publiee_a, maintenant);
   const salaire = choisirSalaire(offre);
   const notation = etatNotation(offre);
+  // ⚠️ **Jamais `offre.entreprise_nom` directement.** Ce champ est absent sur
+  // 39 % des offres, désigne souvent un intermédiaire et il est parfois faux —
+  // « NEW NET 3D » pour une annonce Wavestone. `lireEmployeur` arbitre entre
+  // lui et le nom lu dans le texte de l'annonce.
+  //
+  // ⚠️ **La provenance ne s'affiche PAS ici**, seulement sur la fiche : une
+  // seconde ligne sous chaque nom ferait passer les intitulés longs sur une
+  // ligne de plus, sur 200 lignes. On balaye une liste, on lit une fiche.
+  const employeur = lireEmployeur(offre);
 
   return (
     // `relative` ancre le lien étendu ci-dessous ; `has-[a:focus-visible]`
@@ -67,9 +77,9 @@ export function LigneOffre({
       <div
         className={`${RYTHME_LIGNE.rangeeEntete} ${RYTHME_LIGNE.margeEntreprise}`}
       >
-        {offre.entreprise_nom ? (
+        {employeur.nom ? (
           <p className="nom-entreprise">
-            {offre.entreprise_nom}
+            {employeur.nom}
           </p>
         ) : (
           // ⚠️ Pas de modificateur d'opacité ici : `/70` mesurait 3,32:1 en

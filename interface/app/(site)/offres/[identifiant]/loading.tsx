@@ -92,6 +92,18 @@ export default function ChargementFiche() {
         <div className="mb-6 h-5 w-40 bg-muted" />
 
         <div className="mb-6 border-b border-border pb-6">
+          {/* ⚠️ **La ligne de provenance de l'employeur n'est PAS doublée ici,
+              et c'est une décision, pas un oubli.** Depuis le 30 août 2026 la
+              fiche affiche « Identifié dans l'annonce · France Travail annonce
+              X » sous le nom, mais **seulement quand le modèle a identifié un
+              employeur** : aucune des 580 offres en base au moment de l'écriture
+              de ce fichier, et une minorité longtemps après, le rattrapage étant
+              borné aux 18 offres à traiter au-dessus de 35.
+              **Un squelette s'aligne sur ce que SA page affiche le plus
+              souvent** — leçon du calage de `/` le 30 août. La doubler ferait
+              sauter le contenu de ~24 px vers le haut sur l'immense majorité des
+              fiches pour en caler une poignée. À rouvrir le jour où la base sera
+              majoritairement notée : l'échéance est un compte, pas une date. */}
           <div className="mb-2 h-7 w-48 bg-muted" />
           <div className="mb-2 h-[2.34375rem] w-full max-w-xl bg-muted" />
           {/* ⚠️ **Toute la rangée d'entête a été remesurée le 29 août au soir**,

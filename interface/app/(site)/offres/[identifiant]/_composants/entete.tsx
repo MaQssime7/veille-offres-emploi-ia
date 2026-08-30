@@ -1,3 +1,4 @@
+import { lireEmployeur, provenanceEmployeur } from "@/lib/employeur";
 import type { OffreEnFiche } from "@/lib/offres";
 
 import { Cartouche, CartoucheAbsent } from "../../../_composants/cartouche";
@@ -32,6 +33,8 @@ export function EnTeteOffre({
   const datePubliee = formaterDate(offre.publiee_a, maintenant);
   const salaire = choisirSalaire(offre);
   const nature = natureUtile(offre.nature_contrat, offre.type_contrat_libelle);
+  const employeur = lireEmployeur(offre);
+  const provenance = provenanceEmployeur(employeur);
 
   return (
     <header className="mb-6 border-b border-border pb-6">
@@ -43,15 +46,38 @@ export function EnTeteOffre({
           déjà rencontré avec `accentue` dans `cartouche.tsx` — donc la valeur
           retenue dépend de la feuille compilée et **doit être vérifiée au DOM**,
           pas supposée. Mesuré : 18 px. */}
-      {offre.entreprise_nom ? (
-        <p className="nom-entreprise mb-2 text-lg">
-          {offre.entreprise_nom}
+      {employeur.nom ? (
+        <p className={`nom-entreprise text-lg ${provenance ? "" : "mb-2"}`}>
+          {employeur.nom}
         </p>
       ) : (
         // Même traitement qu'en liste : l'italique met en retrait, jamais une
         // couleur affaiblie — mesurée à 3,32:1, sous le plancher de 4,5:1.
         <p className="nom-entreprise mb-2 text-lg italic text-muted-foreground">
           Entreprise non communiquée
+        </p>
+      )}
+
+      {/* ⚠️ **La fiche dit d'où vient le nom qu'elle affiche, et c'est le point
+          entier de cette ligne.** Sans elle, une déduction du modèle passerait
+          pour une donnée de France Travail : Maxime candidaterait chez
+          « Wavestone » sans savoir que le champ officiel dit « NEW NET 3D »,
+          donc sans pouvoir juger si l'annonce le contredit.
+
+          ⚠️ **Surtout PAS `libelle-mono`**, malgré l'envie : cette classe est
+          celle des étiquettes courtes (« NOUVEAU », « INTÉRÊT »), et elle
+          impose `text-transform: uppercase` avec 0,1 em d'interlettrage. Une
+          phrase entière y devient « IDENTIFIÉ DANS L'ANNONCE · FRANCE TRAVAIL
+          ANNONCE NEW NET 3D » — criard, plus long, et pénible à lire à 11 px.
+          Le mono dit « donnée », pas « phrase ».
+
+          ⚠️ **`text-muted-foreground` et non une opacité.** C'est le jeton dont
+          le contraste est mesuré ; un `/70` improvisé retomberait à 3,32:1,
+          sous le plancher opposable de 4,5:1 — le piège déjà rencontré deux
+          fois sur le nom d'entreprise. */}
+      {provenance && (
+        <p className="mb-2 mt-1 text-sm text-muted-foreground">
+          {provenance}
         </p>
       )}
 

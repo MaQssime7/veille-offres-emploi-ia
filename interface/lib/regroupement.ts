@@ -37,6 +37,12 @@ export type OffreRegroupable = {
   identifiant: string;
   intitule: string;
   entreprise_nom: string | null;
+  /**
+   * L'employeur lu dans le texte de l'annonce. ⚠️ **Il sépare au même titre que
+   * `entreprise_nom`** — voir `nomSeparateur()`. Facultatif pour que les tests
+   * et les appelants antérieurs au 30 août 2026 restent valides.
+   */
+  entreprise_identifiee?: string | null;
   lieu_libelle: string | null;
   note_interet: number | null;
 };
@@ -98,14 +104,14 @@ function clePoste(offre: OffreRegroupable): string {
 }
 
 /**
- * Éclate un groupe si — et seulement si — il réunit **deux employeurs nommés
- * différents**.
+ * Éclate un groupe si — et seulement si — il réunit **deux employeurs connus
+ * différents**, que le nom vienne de France Travail ou du texte de l'annonce.
  *
  * Entre : les annonces partageant déjà intitulé et lieu.
- * Sort : un sous-groupe par employeur nommé, plus un sous-groupe pour les
+ * Sort : un sous-groupe par employeur connu, plus un sous-groupe pour les
  * anonymes ; ou le groupe entier si rien ne le contredit.
  *
- * ⚠️ **Le cas courant ne coûte rien** : zéro ou un seul employeur nommé — ce qui
+ * ⚠️ **Le cas courant ne coûte rien** : zéro ou un seul employeur connu — ce qui
  * couvre les quatre annonces MBDA anonymes — et le groupe ressort intact.
  *
  * ⚠️ **Les anonymes forment leur propre sous-groupe quand il y a conflit**, et
@@ -115,22 +121,44 @@ function clePoste(offre: OffreRegroupable): string {
  */
 function separerParEmployeur<T extends OffreRegroupable>(membres: T[]): T[][] {
   const employeurs = new Set(
-    membres
-      .map((o) => o.entreprise_nom?.trim().toLowerCase())
-      .filter((nom): nom is string => Boolean(nom)),
+    membres.map(nomSeparateur).filter((nom): nom is string => Boolean(nom)),
   );
 
   if (employeurs.size <= 1) return [membres];
 
   const parEmployeur = new Map<string, T[]>();
   for (const offre of membres) {
-    const cle = offre.entreprise_nom?.trim().toLowerCase() ?? " anonymes";
+    const cle = nomSeparateur(offre) ?? " anonymes";
     const lot = parEmployeur.get(cle);
     if (lot) lot.push(offre);
     else parEmployeur.set(cle, [offre]);
   }
 
   return [...parEmployeur.values()];
+}
+
+/**
+ * Le nom qui fait foi pour SÉPARER deux annonces, ou `null` si l'offre est
+ * anonyme.
+ *
+ * ⚠️ **Il faut regarder l'employeur IDENTIFIÉ autant que le champ brut**, et
+ * l'oubli était un vrai défaut, relevé en revue le 30 août 2026 le jour même où
+ * `entreprise_identifiee` est né. Le scénario : deux annonces de même intitulé
+ * et même lieu, toutes deux sans `entreprise_nom` — 39 % du corpus —, l'une
+ * identifiée « Wavestone » et l'autre « Thales ». En ne lisant que le champ
+ * brut, `employeurs.size` valait 0, le groupe restait entier, `/` n'affichait
+ * qu'une ligne, et **le clic de statut écrivait sur les deux postes** : Maxime
+ * aurait écarté une offre qu'il n'a jamais vue. Le garde-fou existait, il était
+ * simplement aveugle à la donnée qui venait d'arriver.
+ *
+ * ⚠️ **Ceci ne RAPPROCHE toujours rien** — la règle « l'employeur sépare, il ne
+ * rapproche pas » tient : le nom identifié n'entre pas dans `clePoste()`, il ne
+ * sert qu'à éclater un groupe déjà formé. Deux annonces MBDA anonymes dont une
+ * seule est notée restent regroupées, ce qui est le comportement voulu.
+ */
+function nomSeparateur(offre: OffreRegroupable): string | null {
+  const nom = offre.entreprise_identifiee?.trim() || offre.entreprise_nom?.trim();
+  return nom ? nom.toLowerCase() : null;
 }
 
 /**

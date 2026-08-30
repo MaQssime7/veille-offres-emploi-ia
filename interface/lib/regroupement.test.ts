@@ -134,6 +134,44 @@ describe("regrouperParPoste", () => {
       assert.equal(groupes[0].principale.identifiant, "6414980");
     });
 
+    it("sépare deux annonces que SEUL l'employeur identifié oppose", () => {
+      // ⚠️ **Le défaut que ce test fige a été trouvé en revue le 30 août 2026,
+      // et il écrivait en base sur une offre jamais vue.** Les deux annonces
+      // n'ont pas de `entreprise_nom` — 39 % du corpus — donc l'ancienne
+      // version ne voyait aucun employeur, gardait le groupe entier, et
+      // n'affichait qu'une ligne sur `/`. Un clic sur « Écarté » y traite le
+      // poste ENTIER : Maxime aurait classé une offre Thales en croyant classer
+      // une offre Wavestone.
+      const groupes = regrouperParPoste([
+        offre("A", "Ingénieur IA f/h", {
+          entreprise_nom: null,
+          entreprise_identifiee: "Wavestone",
+        }),
+        offre("B", "Ingénieur IA (H/F)", {
+          entreprise_nom: null,
+          entreprise_identifiee: "Thales",
+        }),
+      ]);
+
+      assert.equal(groupes.length, 2);
+      assert.deepEqual(groupes.map((g) => g.annonces), [1, 1]);
+    });
+
+    it("ne sépare PAS quand l'identifié confirme simplement le champ brut", () => {
+      // Le nom identifié ne doit pas fabriquer une opposition là où les deux
+      // annonces disent la même chose sous deux formes.
+      const groupes = regrouperParPoste([
+        offre("A", "Ingénieur IA f/h", { entreprise_nom: "MBDA" }),
+        offre("B", "Ingénieur IA (H/F)", {
+          entreprise_nom: null,
+          entreprise_identifiee: "MBDA",
+        }),
+      ]);
+
+      assert.equal(groupes.length, 1);
+      assert.equal(groupes[0].annonces, 2);
+    });
+
     it("fond une annonce nommée avec son anonyme, quand rien ne les oppose", () => {
       const groupes = regrouperParPoste([
         offre("A", "Ingénieur IA f/h", { entreprise_nom: "MBDA" }),

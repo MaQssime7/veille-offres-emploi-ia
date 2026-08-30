@@ -240,6 +240,23 @@ sur un canvas dans le navigateur, parce que Tailwind rend ses couleurs opacifié
 en `oklab()` et qu'un parseur qui y lit du `rgb()` sort des valeurs fausses (une
 première mesure annonçait 2,26:1 sur des pilules à 9,68:1).
 
+⚠️ **Un contraste mesuré juste après un changement de thème en JavaScript est
+faux — le second piège de mesure, trouvé le 30 août 2026.** Poser
+`data-theme="dark"` sur `<html>` puis lire `getComputedStyle` dans la même foulée
+rend un état **intermédiaire** : le fond était déjà recalculé, la couleur du texte
+pas encore. La ligne de provenance de la fiche a ainsi été mesurée à **3,18:1**,
+sous le plancher, et allait être rapportée comme un défaut — elle vaut **8,95:1**.
+
+Le symptôme qui trahit la mesure : **la couleur du texte est identique à celle du
+mode clair** alors que le fond a changé. Un jeton qui ne bouge pas d'un thème à
+l'autre est possible, les deux à la fois ne l'est pas.
+
+**La parade** : poser le choix comme le fait le bouton — dans `localStorage`,
+sous la clé `veille-theme` — puis **recharger la page**, pour que le script du
+`<head>` applique le thème avant la peinture. C'est lui la seule copie de la règle
+« quel choix donne quel mode » ; le contourner, c'est mesurer autre chose que ce
+que voit l'utilisateur. **Un thème se mesure sur une page rechargée.**
+
 ⚠️ **La pilule elle-même ne pèse que 1,04 à 1,69:1 contre le fond en mode
 clair**, très en dessous des 3:1 d'un objet d'interface. Elle est délimitée par le
 **coussin** — lèvre foncée et ombre portée — et non par sa couleur, exactement

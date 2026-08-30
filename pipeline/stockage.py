@@ -525,6 +525,89 @@ class Stockage:
         ) or []
         return len(lignes)
 
+    # ------------------------------------------- rattrapage de l'employeur
+
+    def offres_sans_employeur(
+        self, *, note_minimale: int, limite: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Les offres déjà notées dont l'employeur n'a jamais été identifié.
+
+        Sert au seul mode `--completer-entreprise` : les 146 offres notées avant
+        le 30 août 2026 ne repasseront **jamais** par la notation, qui est
+        incrémentale (`note_interet=is.null`). Sans ce chemin de lecture, leur
+        fiche afficherait indéfiniment le nom brut de France Travail — absent 4
+        fois sur 10, et parfois faux.
+
+        ⚠️ **Trois filtres, et chacun borne la dépense.** `note_interet` au-delà
+        du seuil et `statut='a_traiter'` restreignent aux offres que Maxime voit
+        réellement à l'écran — 18 offres au 30 août, contre 146 notées et 580 en
+        base.
+
+        ⚠️ **Le troisième filtre porte sur `entreprise_intermediaire`, PAS sur
+        `entreprise_identifiee`, et c'est ce qui rend la commande réellement
+        rejouable.** Le défaut a été relevé en revue le 30 août 2026, sur la
+        première version qui filtrait sur le nom : quand le modèle répond `null`
+        — ce que le module qualifie lui-même de « cas fréquent », et qui est
+        arrivé sur **3 des 18 premières offres** — ou quand `verifier()` rejette
+        une invention, la colonne du nom reste `NULL`. L'offre ressortait donc à
+        chaque lancement et **était refacturée à chaque fois**, `tokens_cumules`
+        gonflant à mesure, alors que la docstring promettait le contraire.
+
+        Le drapeau, lui, est écrit à **chaque tentative exploitée**, y compris
+        quand aucun nom n'est trouvé : il enregistre « cette offre a été
+        regardée », qui est très exactement la question posée ici. Une offre
+        dont l'appel a échoué reste à `NULL` sur les deux colonnes et sera bien
+        reprise — ce qui est le comportement voulu.
+        """
+        filtres = (
+            f"/offres?entreprise_intermediaire=is.null"
+            f"&note_interet=gte.{int(note_minimale)}"
+            f"&statut=eq.a_traiter"
+            f"&select={self.CHAMPS_A_NOTER}"
+            f"&order=note_interet.desc"
+        )
+        if limite is not None:
+            filtres += f"&limit={int(limite)}"
+        return self._requete(
+            "GET", filtres, operation="lecture des offres sans employeur identifié",
+        ) or []
+
+    def enregistrer_employeur(
+        self, offre: dict[str, Any], *, resultat: dict[str, Any], tokens: ConsommationTokens,
+    ) -> None:
+        """Écrit les deux colonnes d'employeur, et **rien d'autre**.
+
+        ⚠️ **Ce PATCH ne touche jamais aux notes, ni à `notee_a`, ni à
+        `notation_execution_id`.** C'est toute la raison d'être du mode : le
+        rattrapage ne doit pas rejouer une notation. Le faire renverrait des
+        notes différentes de celles déjà affichées — on a mesuré le 30 août
+        que deux annonces jumelles peuvent être notées 68 et 45 — et Maxime
+        verrait ses classements bouger sans avoir rien demandé.
+
+        ⚠️ **Aucune ligne dans `executions_veille`.** La contrainte `etape_connue`
+        n'admet que `collecte` et `notation` ; ce rattrapage n'est ni l'un ni
+        l'autre, et l'inscrire en `notation` gonflerait `offres_notees` de l'écran
+        de suivi avec des offres qu'il n'a pas notées. La trace de la dépense va
+        là où elle appartient : `tokens_cumules`, par offre. Le jour où cette
+        opération devient récurrente, elle mérite sa propre valeur d'`etape` —
+        donc une migration, pas une approximation.
+        """
+        identifiant = offre["identifiant"]
+        modifiees = self._requete(
+            "PATCH", f"/offres?identifiant=eq.{identifiant}&select=identifiant",
+            operation=f"enregistrement de l'employeur de {identifiant}",
+            headers={"Prefer": "return=representation"},
+            json={
+                **resultat,
+                "tokens_cumules": (offre.get("tokens_cumules") or 0) + tokens.total,
+            },
+        ) or []
+        if not modifiees:
+            raise ErreurStockage(
+                f"employeur de {identifiant} : aucune ligne modifiée. "
+                f"L'offre a disparu entre la lecture et l'écriture."
+            )
+
     def enregistrer_notation(
         self, offre: dict[str, Any], *, notation: dict[str, Any],
         execution_id: int, modele: str, tokens: ConsommationTokens,

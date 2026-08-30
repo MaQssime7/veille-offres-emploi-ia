@@ -54,6 +54,7 @@ from typing import Any
 import anthropic
 
 from pipeline import config as configuration
+from pipeline import employeur
 from pipeline.salaire import annualiser
 from pipeline.stockage import ConsommationTokens, ErreurStockage, Stockage
 
@@ -108,10 +109,20 @@ SCHEMA_NOTATION = {
             "type": "string",
             "description": "Une phrase de 25 mots au maximum : ce que fait vraiment le poste.",
         },
+        # L'employeur réel, lu dans le texte de l'annonce. Défini dans
+        # `pipeline.employeur` pour n'exister qu'à un seul endroit : le mode de
+        # rattrapage `--completer-entreprise` demande exactement les mêmes
+        # champs, et deux définitions du même schéma finissent toujours par
+        # diverger.
+        **employeur.CHAMPS_SCHEMA,
     },
     "required": [
         "note_interet", "justification_interet",
         "note_accessibilite", "justification_accessibilite", "resume",
+        # ⚠️ Requis, mais `entreprise_identifiee` accepte `null`. Un champ
+        # facultatif serait simplement omis dès que la réponse est difficile ;
+        # requis-mais-nullable force le modèle à trancher explicitement.
+        "entreprise_identifiee", "entreprise_intermediaire",
     ],
     "additionalProperties": False,
 }
@@ -173,6 +184,11 @@ def construire_systeme(criteres: str) -> list[dict[str, Any]]:
                 "Juge sur le contenu réel de l'annonce, pas sur son intitulé. "
                 "N'invente jamais un élément absent : si l'expérience exigée n'est "
                 "pas indiquée, dis-le.\n\n"
+                # La consigne d'identification de l'employeur vit dans le code,
+                # pas dans `criteres_pertinence.txt` : ce fichier est une donnée
+                # décrivant le profil de Maxime et les barèmes. Identifier une
+                # entreprise n'est pas un critère de pertinence.
+                f"{employeur.CONSIGNE}\n\n"
                 f"{criteres}"
             ),
             # Le seul marqueur de cache du prompt, sur le dernier bloc stable.
@@ -230,14 +246,19 @@ def _parametres_appel(
 
 # ------------------------------------------------------------- la réponse
 
-def _lire_reponse(message: Any, identifiant: str) -> dict[str, Any]:
+def _lire_reponse(message: Any, offre: dict[str, Any]) -> dict[str, Any]:
     """Extrait et valide la notation. Lève ErreurNotation si inexploitable.
 
     ⚠️ On regarde `stop_reason` AVANT de toucher au contenu. Un refus des
     classificateurs de sécurité rend un HTTP 200 avec un contenu vide : lire
     `content[0]` sans vérifier planterait sur une erreur incompréhensible au
     lieu de tracer un motif lisible.
+
+    ⚠️ **Prend l'offre entière et pas seulement son identifiant**, parce que la
+    vérification de l'employeur a besoin du texte qu'on a envoyé au modèle :
+    c'est en cherchant le nom rendu *dans ce texte* qu'on écarte une invention.
     """
+    identifiant = offre["identifiant"]
     if message.stop_reason == "refusal":
         raise ErreurNotation("le modèle a refusé de traiter cette annonce")
     if message.stop_reason == "max_tokens":
@@ -268,6 +289,12 @@ def _lire_reponse(message: Any, identifiant: str) -> dict[str, Any]:
         if not texte_champ:
             raise ErreurNotation(f"{cle} vide — une note sans justification ne s'affiche pas")
         notation[cle] = texte_champ
+
+    # ⚠️ Volontairement APRÈS les contrôles bloquants ci-dessus, et lui-même non
+    # bloquant. Un employeur absent ou rejeté laisse deux colonnes à NULL ; le
+    # faire échouer ferait perdre des notes déjà payées pour un champ
+    # d'affichage, et l'offre repasserait à la notation la nuit suivante.
+    notation.update(employeur.lire(brut, offre))
 
     _journal.debug("Notation de %s lue : %s", identifiant, notation)
     return notation
@@ -325,7 +352,7 @@ def noter_en_direct(
             tokens.entree, tokens.sortie, tokens.cache_ecriture, tokens.cache_lecture,
         )
         try:
-            notation = _lire_reponse(message, identifiant)
+            notation = _lire_reponse(message, offre)
         except ErreurNotation as echec:
             resultats.append((offre, None, str(echec), tokens))
             continue
@@ -374,7 +401,7 @@ def noter_en_lot(
         message = resultat.result.message
         tokens = _consommation(message.usage)
         try:
-            notation = _lire_reponse(message, identifiant)
+            notation = _lire_reponse(message, offre)
         except ErreurNotation as echec:
             resultats.append((offre, None, str(echec), tokens))
             continue
@@ -539,6 +566,155 @@ def executer(
 # Relevé en revue de code le 26 août 2026. Jamais déclenché : 0 échec sur 97 appels.
 
 
+def completer_les_employeurs(
+    *, note_minimale: int, limite: int | None, modele: str, effort: str,
+    sans_ecrire: bool = False, sans_appeler: bool = False,
+) -> int:
+    """Identifie l'employeur d'offres DÉJÀ notées, sans repayer leur notation.
+
+    **Ce qui entre** : les offres notées au-dessus du seuil, encore à traiter, et
+    dont `entreprise_identifiee` est vide.
+    **Ce qui sort** : les deux colonnes d'employeur remplies. Les notes, elles,
+    ne bougent pas d'un iota.
+    **Ce qui casse s'il tombe** : rien. Les offres gardent le nom brut de France
+    Travail et la commande se relance sans repayer ce qui est déjà écrit.
+
+    ⚠️ **Ce mode existe parce que la notation est incrémentale.** `offres_a_noter`
+    filtre sur `note_interet=is.null` : les 146 offres notées avant le 30 août
+    2026 ne repasseront jamais par le modèle, donc leur employeur ne serait
+    jamais identifié. Sans ce chemin, la nouvelle colonne ne se remplirait que
+    pour l'avenir et les fiches déjà ouvertes resteraient fausses.
+
+    ⚠️ **Ce n'est PAS `--renoter` déguisé.** Il n'ouvre aucune exécution, n'écrit
+    aucune note et ne touche pas à `notation_tentatives` : le compteur borne la
+    facturation de la *notation*, et l'incrémenter ici rapprocherait des offres
+    parfaitement notées de leur plafond de tentatives pour une opération qui n'a
+    rien à voir.
+    """
+    reglages = configuration.charger_notation()
+    stockage = Stockage(reglages.supabase_url, reglages.supabase_secret_key)
+    client = anthropic.Anthropic()
+
+    offres = stockage.offres_sans_employeur(note_minimale=note_minimale, limite=limite)
+    if not offres:
+        _journal.info("Aucune offre notée au-dessus de %d n'attend son employeur.",
+                      note_minimale)
+        return 0
+
+    systeme = [{"type": "text", "text": employeur.SYSTEME_RATTRAPAGE}]
+
+    if sans_appeler:
+        prefixe = client.messages.count_tokens(model=modele, system=systeme,
+                                               messages=[{"role": "user", "content": "."}])
+        print("=" * 78)
+        print("PRÉFIXE SYSTÈME DU RATTRAPAGE D'EMPLOYEUR")
+        print("=" * 78)
+        print(employeur.SYSTEME_RATTRAPAGE)
+        print(f"\n→ {prefixe.input_tokens} tokens de préfixe.")
+        total = 0
+        for offre in offres:
+            mesure = client.messages.count_tokens(
+                model=modele, system=systeme,
+                messages=[{"role": "user", "content": decrire_offre(offre)}])
+            total += mesure.input_tokens
+            print(f"  {offre['identifiant']} — {mesure.input_tokens} tokens — "
+                  f"{(offre.get('intitule') or '')[:52]}")
+        print(f"\n{len(offres)} offre(s), {total} tokens d'entrée en tout.")
+        print("Aucun appel facturé : count_tokens est gratuit.")
+        return 0
+
+    # ⚠️ **Le nombre d'appels FACTURÉS s'annonce avant de commencer.** Les
+    # filtres bornent le lot à une vingtaine d'offres aujourd'hui, mais c'est un
+    # état de la base, pas une garantie du code : le jour où le seuil descend ou
+    # où l'arriéré grossit, un lancement sans `--limite` part sur tout le lot.
+    # Relevé en revue le 30 août 2026. La règle du projet est de prévenir avant
+    # toute dépense, et un journal qui ne dit pas « facturé » ne prévient pas.
+    _journal.info(
+        "%d offre(s) à compléter (note ≥ %d, encore à traiter) — "
+        "autant d'appels FACTURÉS au modèle.%s",
+        len(offres), note_minimale,
+        "" if limite is not None else " Aucune limite posée : utiliser --limite pour borner.",
+    )
+
+    consommation = ConsommationTokens()
+    identifies = rejetes = echecs = 0
+
+    for rang, offre in enumerate(offres, start=1):
+        identifiant = offre["identifiant"]
+        _journal.info("[%d/%d] %s — %s", rang, len(offres), identifiant,
+                      (offre.get("intitule") or "")[:60])
+        try:
+            message = client.messages.create(
+                model=modele,
+                max_tokens=MAX_TOKENS_REPONSE,
+                system=systeme,
+                output_config={"effort": effort,
+                               "format": {"type": "json_schema",
+                                          "schema": employeur.SCHEMA_SEUL}},
+                messages=[{"role": "user", "content": decrire_offre(offre)}],
+            )
+        except (anthropic.APIStatusError, anthropic.APIConnectionError) as echec:
+            # Une offre qui échoue n'interrompt pas les suivantes : même règle
+            # que la notation, un lot ne se perd pas pour une annonce.
+            _journal.warning("    échec de l'appel : %s", echec)
+            echecs += 1
+            continue
+
+        tokens = _consommation(message.usage)
+        consommation = consommation + tokens
+
+        if message.stop_reason in ("refusal", "max_tokens"):
+            _journal.warning("    réponse inexploitable (%s)", message.stop_reason)
+            echecs += 1
+            continue
+        texte = next((b.text for b in message.content if b.type == "text"), None)
+        try:
+            brut = json.loads(texte or "")
+        except ValueError as echec:
+            _journal.warning("    réponse illisible en JSON : %s", echec)
+            echecs += 1
+            continue
+
+        resultat = employeur.lire(brut, offre)
+        trouve = bool(resultat["entreprise_identifiee"])
+        if trouve:
+            _journal.info("    → %s%s", resultat["entreprise_identifiee"],
+                          " (via un intermédiaire)" if resultat["entreprise_intermediaire"] else "")
+        else:
+            # Distingue « le modèle a répondu null » de « le nom a été rejeté
+            # par la vérification » : le second est journalisé en warning par
+            # `employeur.verifier()` juste au-dessus, avec le nom fautif.
+            _journal.info("    → aucun employeur identifiable")
+
+        if not sans_ecrire:
+            try:
+                stockage.enregistrer_employeur(offre, resultat=resultat, tokens=tokens)
+            except ErreurStockage as echec:
+                # ⚠️ **On compte l'offre ICI et nulle part ailleurs**, sinon elle
+                # entre à la fois dans `identifies` et dans `echecs` et les
+                # totaux du bilan ne se recoupent plus. Défaut relevé en revue le
+                # 30 août 2026 : ce récapitulatif est le seul compte rendu qu'on
+                # ait de la commande, il ne doit pas mentir sur son propre lot.
+                _journal.warning("    écriture refusée : %s", echec)
+                echecs += 1
+                continue
+
+        identifies += trouve
+        rejetes += not trouve
+
+    _journal.info(
+        "Terminé : %d identifié(s), %d sans employeur, %d échec(s). "
+        "Tokens — entrée %d · sortie %d.%s",
+        identifies, rejetes, echecs,
+        consommation.entree, consommation.sortie,
+        " AUCUNE ÉCRITURE (--sans-ecrire)." if sans_ecrire else "",
+    )
+    # Un échec isolé ne fait pas rougir la commande : les offres concernées
+    # restent sans employeur et la relance les reprendra, puisque le filtre de
+    # lecture est `entreprise_identifiee=is.null`.
+    return 0
+
+
 def apercevoir(
     *, limite: int, modele: str, renoter: bool = False,
     rome: str | None = None, au_hasard: bool = False, collecte: int | None = None,
@@ -634,6 +810,14 @@ def main() -> int:
                            help="ne noter que les offres trouvées par la dernière collecte "
                                 "RÉUSSIE — c'est le mode du cron nocturne, celui qui borne "
                                 "la dépense à ce qui vient d'arriver")
+    analyseur.add_argument("--completer-entreprise", action="store_true",
+                           help="RATTRAPAGE : identifier l'employeur d'offres DÉJÀ notées, "
+                                "sans toucher à leurs notes. N'existe que parce que la "
+                                "notation est incrémentale et ne les reprendra jamais")
+    analyseur.add_argument("--note-minimale", type=int, default=35,
+                           help="avec --completer-entreprise : seuil d'intérêt en dessous "
+                                "duquel on ne paie pas l'identification (défaut : 35, le "
+                                "seuil de l'écran du matin)")
     arguments = analyseur.parse_args()
 
     logging.basicConfig(
@@ -659,7 +843,24 @@ def main() -> int:
         analyseur.error("--derniere-collecte et --renoter s'excluent : "
                         "le mode nocturne ne repaie jamais une offre déjà notée.")
 
+    # ⚠️ Le rattrapage s'exclut de tout ce qui désigne un lot À NOTER. Les
+    # accepter ensemble obligerait à décider lequel gagne, et ce choix serait
+    # invisible dans les journaux.
+    if arguments.completer_entreprise and (
+        arguments.renoter or arguments.lot or arguments.derniere_collecte
+        or arguments.collecte is not None or arguments.rome or arguments.au_hasard
+    ):
+        analyseur.error("--completer-entreprise ne note rien : il ne se combine ni avec "
+                        "--renoter, --lot, --derniere-collecte, --collecte, --rome, "
+                        "ni avec --au-hasard.")
+
     try:
+        if arguments.completer_entreprise:
+            return completer_les_employeurs(
+                note_minimale=arguments.note_minimale, limite=arguments.limite,
+                modele=arguments.modele, effort=arguments.effort,
+                sans_ecrire=arguments.sans_ecrire, sans_appeler=arguments.sans_appeler,
+            )
         if arguments.sans_appeler:
             return apercevoir(limite=arguments.limite or 1, modele=arguments.modele,
                               renoter=arguments.renoter, rome=arguments.rome,

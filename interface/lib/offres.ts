@@ -25,8 +25,18 @@ import { TRI_PAR_DEFAUT, type Tri } from "./tri";
 /** Une offre telle qu'elle apparaît en liste. Rien de plus n'est lu. */
 export type OffreEnListe = {
   identifiant: string;
-  intitule: string;
+  /**
+   * Le champ brut de France Travail. ⚠️ **Ne pas l'afficher directement** :
+   * absent sur 39 % des offres, il désigne souvent un intermédiaire et il est
+   * parfois faux (mesuré le 30 août 2026). Passer par `lireEmployeur()` de
+   * `lib/employeur.ts`, qui arbitre entre ce champ et `entreprise_identifiee`.
+   */
   entreprise_nom: string | null;
+  /** L'employeur lu dans le texte de l'annonce par le modèle, puis vérifié. */
+  entreprise_identifiee: string | null;
+  /** `null` sur toutes les offres notées avant le 30 août 2026. */
+  entreprise_intermediaire: boolean | null;
+  intitule: string;
   lieu_libelle: string | null;
   type_contrat_libelle: string | null;
   salaire_libelle: string | null;
@@ -91,6 +101,13 @@ export const COLONNES_LISTE = [
   "identifiant",
   "intitule",
   "entreprise_nom",
+  // ⚠️ **Ces deux colonnes entrent en LISTE comme en FICHE**, contrairement à
+  // `resume` ou aux champs de contact : elles changent le nom affiché sur
+  // chaque ligne, pas un détail qu'on va chercher. Elles coûtent quelques
+  // dizaines d'octets par offre, contre plusieurs kilo-octets pour
+  // `description`.
+  "entreprise_identifiee",
+  "entreprise_intermediaire",
   "lieu_libelle",
   "type_contrat_libelle",
   "salaire_libelle",
@@ -517,7 +534,16 @@ export async function listerOffres(
 export type OffreEnFiche = {
   identifiant: string;
   intitule: string;
+  /** Le champ brut de France Travail — voir la mise en garde sur `OffreEnListe`. */
   entreprise_nom: string | null;
+  /**
+   * L'employeur lu dans le texte de l'annonce. C'est la fiche, et elle seule,
+   * qui affiche d'où vient le nom : `provenanceEmployeur()` y oppose les deux
+   * valeurs quand elles divergent, pour qu'une déduction du modèle ne passe
+   * jamais pour une donnée de France Travail.
+   */
+  entreprise_identifiee: string | null;
+  entreprise_intermediaire: boolean | null;
   lieu_libelle: string | null;
   type_contrat_libelle: string | null;
   /**
@@ -629,6 +655,8 @@ const COLONNES_FICHE = [
   "identifiant",
   "intitule",
   "entreprise_nom",
+  "entreprise_identifiee",
+  "entreprise_intermediaire",
   "lieu_libelle",
   "type_contrat_libelle",
   "nature_contrat",
