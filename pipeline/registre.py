@@ -57,6 +57,7 @@ contexte d'un agent :
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -71,6 +72,32 @@ URL_RECHERCHE = "https://recherche-entreprises.api.gouv.fr/search"
 # vaut rendre l'échec au modèle, qui décidera de retenter ou de conclure au
 # doute, que de consommer la moitié du budget de temps sur une seule requête.
 DELAI_SECONDES = 10
+
+# ⚠️ **On peut prendre un 429 SANS AVOIR RIEN FAIT DE MAL, et c'est propre à là
+# où ce code tourne.** La documentation de l'API pose deux limites : 7 requêtes
+# par seconde et par adresse IP — que l'agent, qui en fait une ou deux par
+# enrichissement, n'approchera jamais — mais aussi **30 requêtes par seconde par
+# ASN**, avec cet avertissement mot pour mot : « il est donc probable de faire
+# face à cette limite sur les cloud publics ». GitHub Actions EST un cloud
+# public : nos requêtes partagent leur ASN avec tous les autres runners de la
+# plateforme. Le refus ne dépend donc pas de notre débit à nous.
+#
+# ⚠️ **D'où un réessai, et un seul.** Sans lui, un enrichissement payé échouait
+# sur la seconde d'activité d'un inconnu. Avec davantage, on mangerait le budget
+# de durée de l'agent à attendre une API qui refuse pour une raison qui ne nous
+# concerne pas — et on cognerait sur une limite déjà saturée.
+REESSAIS_SUR_429 = 1
+ATTENTE_APRES_429 = 1.5
+
+# ⚠️ **La documentation le RECOMMANDE explicitement**, et ce n'est pas de la
+# politesse : c'est ce qui permet à l'équipe d'une API gratuite et financée sur
+# fonds publics de distinguer un usage identifiable d'un robot anonyme le jour
+# où elle doit arbitrer. Une adresse de contact serait mieux encore ; le dépôt
+# étant public, son adresse en tient lieu sans exposer de courriel personnel.
+ENTETE_AGENT = (
+    "veille-offres-emploi-ia/1.0 "
+    "(+https://github.com/MaQssime7/veille-offres-emploi-ia)"
+)
 
 # ⚠️ Cinq candidats, pas trente. Chaque candidat rendu se paie en tokens
 # d'entrée à CHAQUE tour suivant de l'agent, le contexte étant renvoyé en
@@ -183,13 +210,13 @@ def chercher(nom: str, *, departement: str | None = None,
     if departement:
         parametres["departement"] = departement
 
-    try:
-        reponse = requests.get(URL_RECHERCHE, params=parametres, timeout=DELAI_SECONDES)
-    except requests.RequestException as echec:
-        raise ErreurRegistre(
-            f"Le registre public n'a pas répondu : {type(echec).__name__}."
-        ) from echec
+    reponse = _appeler(parametres)
 
+    if reponse.status_code == 429:
+        raise ErreurRegistre(
+            "Le registre public limite temporairement les requêtes (429). "
+            "Réessaie dans quelques secondes, ou conclus avec ce que tu as."
+        )
     if reponse.status_code != 200:
         raise ErreurRegistre(
             f"Le registre public a répondu {reponse.status_code}."
@@ -205,6 +232,35 @@ def chercher(nom: str, *, departement: str | None = None,
         total=int(charge.get("total_results") or 0),
         candidats=[_assainir(unite) for unite in resultats],
     )
+
+
+def _appeler(parametres: dict[str, Any]) -> requests.Response:
+    """Un appel au registre, avec un unique réessai sur limitation de débit.
+
+    ⚠️ **Le réessai ne couvre QUE le 429.** Une panne réseau ou un 500 se
+    rejouent rarement mieux à 1,5 seconde d'intervalle, et l'agent a mieux à
+    faire de son budget de durée : le modèle reçoit l'échec et décide lui-même
+    s'il retente ou s'il conclut au doute. La limitation de débit, elle, est par
+    nature transitoire — et sur un cloud public, elle peut ne rien devoir à
+    notre propre débit.
+    """
+    dernier: requests.Response | None = None
+    for tentative in range(REESSAIS_SUR_429 + 1):
+        try:
+            dernier = requests.get(
+                URL_RECHERCHE, params=parametres, timeout=DELAI_SECONDES,
+                headers={"User-Agent": ENTETE_AGENT},
+            )
+        except requests.RequestException as echec:
+            raise ErreurRegistre(
+                f"Le registre public n'a pas répondu : {type(echec).__name__}."
+            ) from echec
+        if dernier.status_code != 429:
+            return dernier
+        if tentative < REESSAIS_SUR_429:
+            _journal.warning("registre : limitation de débit, un réessai")
+            time.sleep(ATTENTE_APRES_429)
+    return dernier  # type: ignore[return-value]
 
 
 def par_siren(siren: str) -> dict[str, Any] | None:
