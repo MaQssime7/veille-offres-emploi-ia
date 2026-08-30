@@ -86,7 +86,7 @@ matière.
 |---|---|
 | Écran de suivi d'exploitation (exécutions, réussite, durée, coût) | Tracer chaque exécution et chaque enrichissement dès le premier jour, en **compteurs bruts** jamais en euros. Un historique ne se reconstitue pas |
 | Conversation avec l'agent **sur une offre enrichie** | Fiche stockée en **champs séparés**, pas en texte rédigé · identifiant d'offre stable · enveloppe par offre en **tokens cumulés** |
-| **Jauge de consommation du jour** — barre horizontale, pourcentage **et chiffre en tokens**, moment de la remise à zéro (demandée le 31 août 2026, **pas pour tout de suite**) | **Rien** : `EtatEnveloppe` rend déjà tout, c'est de l'affichage pur. ⚠️ Mais **quatre points à trancher avant d'écrire** — dont la réserve de `COUT_PRESUME_TOKENS` qui ferait bondir la jauge à 50 % au clic, et le décompte avant minuit qui **ne peut pas être rendu côté serveur**. Détail dans `docs/PLAN.md` § À construire un jour |
+| **Jauge de consommation du jour** — barre horizontale, pourcentage **et chiffre en tokens**, moment de la remise à zéro (demandée le 31 août 2026, **pas pour tout de suite**) | **Rien** : `EtatEnveloppe` rend déjà tout, c'est de l'affichage pur. ✅ Emplacement **tranché : la fiche d'une offre, et elle seule**. ⚠️ Mais **trois points restent à trancher avant d'écrire** — dont la réserve de `COUT_PRESUME_TOKENS` qui ferait bondir la jauge à 50 % au clic, et le décompte avant minuit qui **ne peut pas être rendu côté serveur**. Détail dans `docs/PLAN.md` § À construire un jour |
 
 ⚠️ **Quatre règles de vocabulaire et de périmètre, qui ne se déduisent d'aucun
 fichier :**
