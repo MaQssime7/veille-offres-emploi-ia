@@ -22,9 +22,10 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` |
 | **Comment le site est protégé** : cookie, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts`, abondamment commentés |
 | **Comment l'interface ÉCRIT en base** : garde-fous, idempotence | `ecrireDansBase()` dans `interface/lib/supabase.ts` |
-| Statuts, note personnelle, **accords et dates en français**, filtres et classement de la liste, thème, **quel nom d'employeur afficher** : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`, `interface/lib/theme.ts`, `interface/lib/employeur.ts` — ⚠️ **les sept seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
-| **Ce que la liste montre et dans quel ordre** : les cinq filtres (dont « Nouveau »), les trois classements, et la table de chaînes SQL qu'aucune valeur d'adresse n'atteint | `interface/lib/filtres.ts` et `interface/lib/tri.ts` pour les constantes · `interface/lib/offres.ts` pour `CLASSEMENTS`, qui **ne descend jamais** dans les deux premiers |
-| **Ce que l'écran du matin montre** : le seuil de 50, les six écrans vides et l'ORDRE qui les départage | `interface/lib/matin.ts` — lecture et calcul séparés, `choisirAffichage()` est une fonction pure, éprouvée par `matin.test.ts` |
+| Statuts, note personnelle, **accords et dates en français**, filtres et classement de la liste, thème, **quel nom d'employeur afficher**, **coup de cœur** : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`, `interface/lib/theme.ts`, `interface/lib/employeur.ts`, `interface/lib/coup-de-coeur.ts` — ⚠️ **les huit seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
+| **Ce que la liste montre et dans quel ordre** : les six filtres (dont « Nouveau » et « Coup de cœur »), les trois classements, et la table de chaînes SQL qu'aucune valeur d'adresse n'atteint | `interface/lib/filtres.ts` et `interface/lib/tri.ts` pour les constantes · `interface/lib/offres.ts` pour `CLASSEMENTS`, qui **ne descend jamais** dans les deux premiers |
+| **Pourquoi le coup de cœur n'est pas un statut**, et ce que cette forme protège | `interface/lib/coup-de-coeur.ts` · migration 9 · `docs/JOURNAL.md` § 30 août |
+| **Ce que l'écran du matin montre** : le seuil de 35, les six écrans vides et l'ORDRE qui les départage | `interface/lib/matin.ts` — lecture et calcul séparés, `choisirAffichage()` est une fonction pure, éprouvée par `matin.test.ts` |
 | **L'état de santé de la veille** : les cinq états, le seuil d'alerte de 36 h, celui des 60 min qui démasque une collecte tuée | `interface/lib/veille.ts` — lecture et calcul séparés, `calculerEtat()` est une fonction pure. ⚠️ Les **dateurs** sont dans `francais.ts`, pas ici : purs, ils ne doivent pas être enfermés derrière `server-only` |
 
 **Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
@@ -171,6 +172,33 @@ Décision de Maxime, validée devant l'écran. Voir § Design et `docs/DESIGN.md
   ✅ Revérifié le 30 août sur la carte de passage de `/` : `outline` de 2 px
   présent malgré le coussin, contraste 10,32:1.
 
+### ⚠️ Le coup de cœur — 30 août 2026, et ce N'EST PAS un statut
+
+Demandé par Maxime. Colonne `coup_de_coeur_a` (migration 9), sixième filtre.
+Récit et mesures dans `docs/JOURNAL.md`, forme dans `docs/DESIGN.md`.
+
+1. ⚠️ **MARQUEUR TRANSVERSE, jamais une quatrième valeur de `statut`** — décision
+   de Maxime, prise après lui avoir montré les deux formes. Un statut est
+   exclusif : une offre likée aurait quitté l'écran du matin, et **candidater
+   aurait effacé le cœur**. Ne pas l'ajouter à `STATUTS` : `coup-de-coeur.test.ts`
+   échouera, et c'est fait pour.
+2. ⚠️ **Son compte NE S'ADDITIONNE PAS** avec ceux des trois statuts, comme
+   « Nouveau » : chaque offre likée porte aussi un statut.
+3. ⚠️ **Le filtre SQL ne passe PAS par `options.egal`**, qui ne sait produire que
+   `=eq.` : la condition est une **constante** du code, collée ou non par un
+   **booléen** — jamais par une chaîne reçue.
+4. ⚠️ **Le cœur PREND le verrou de tri conditionnellement, et le RESPECTE
+   toujours** — les deux ne vont pas ensemble. Il ne le prend que dans l'onglet
+   « Coup de cœur », seul endroit où délier fait sortir la ligne ; le prendre
+   partout gelait les 200 lignes pour rien pendant ~900 ms.
+   ⚠️ **Et le clic ne touche QU'UNE annonce**, contrairement au statut : propager
+   aux jumelles ne protégeait de rien et mettait quatre lignes pour un poste dans
+   un onglet qui ne regroupe pas. Les deux corrigés en revue le 30 août.
+5. ⚠️ **Le pêche est le SIXIÈME et DERNIER accent**, à **1,05:1 du rose
+   d'« Écarté »**, son voisin dans la ligne : c'est la **forme** qui les sépare.
+   ⚠️ **Pas d'icône de cœur sur la pilule de filtre** — ici, *le chiffre contre
+   l'icône* est ce qui distingue une pilule d'un bouton qui écrit en base.
+
 ### ✅ Filtres colorés, classement et thème — 29 août 2026
 
 Demandé par Maxime devant l'écran. Récit complet
@@ -178,7 +206,9 @@ dans `docs/JOURNAL.md`, décisions visuelles dans `docs/DESIGN.md`.
 
 - **Cinq pilules de filtre**, chacune à la teinte de ce qu'elle montre : à traiter
   (violet) · **Nouveau** (jaune) · candidaté (menthe) · écarté (rose) · toutes
-  (sans teinte). ⚠️ **C'est un REVIREMENT** : la règle précédente interdisait de
+  (sans teinte). ⚠️ **Six depuis le 30 août** — « Coup de cœur » (pêche) s'est
+  glissé en troisième position.
+  ⚠️ **C'est un REVIREMENT** : la règle précédente interdisait de
   teinter un onglet avec une couleur de signal, parce qu'une pilule menthe
   ressemble au bouton « Candidaté », qui lui **écrit en base**. Ce qui les sépare
   désormais est **le chiffre contre l'icône** — ne retirer ni l'un ni l'autre.
@@ -226,9 +256,9 @@ Composant unique, `app/(site)/_composants/etat-veille.tsx`, importé par `/` et
 
 | Brique | État |
 |---|---|
-| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte, **`/` le compte rendu de la nuit**, `/offres` (cinq filtres, trois classements, statuts), la fiche `/offres/[identifiant]` (statuts, note personnelle), **bouton de thème à trois états** (système / clair / sombre) |
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte, **`/` le compte rendu de la nuit**, `/offres` (six filtres, trois classements, statuts, **coup de cœur**), la fiche `/offres/[identifiant]` (statuts, note personnelle, coup de cœur), **bouton de thème à trois états** (système / clair / sombre) |
 | Supabase | Région Paris. `executions_veille` et `offres`. RLS activé, droits vérifiés |
-| Migrations | **8**, toutes appliquées. La 6ᵉ ajoute les statuts et la note personnelle ; la 7ᵉ corrige une contrainte de la 6ᵉ prise en défaut par son propre test ; la 8ᵉ ajoute `entreprise_identifiee` et `entreprise_intermediaire` |
+| Migrations | **9**, toutes appliquées. La 6ᵉ ajoute les statuts et la note personnelle ; la 7ᵉ corrige une contrainte de la 6ᵉ prise en défaut par son propre test ; la 8ᵉ ajoute `entreprise_identifiee` et `entreprise_intermediaire` ; la 9ᵉ ajoute `coup_de_coeur_a` |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
 | `pipeline/` | Collecte **et** notation sur le cron GitHub Actions à 02:23 UTC. ⚠️ **Seul le CDI est collecté** (`TYPE_CONTRAT` dans `config.py`) |
 | Modules | `collecte.py` · `notation.py` · `salaire.py` · `employeur.py` · `criteres_pertinence.txt` |
@@ -351,7 +381,8 @@ Récit de l'enquête : `docs/JOURNAL.md` § 27 août.
    données.
 3. ⚠️ **`interface/lib/statuts.ts`, `interface/lib/notes.ts`,
    `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`
-   `interface/lib/theme.ts` et `interface/lib/employeur.ts` sont les sept seuls modules de `lib/` sans
+   `interface/lib/theme.ts`, `interface/lib/employeur.ts` et
+   `interface/lib/coup-de-coeur.ts` sont les huit seuls modules de `lib/` sans
    `import "server-only"`** — `utils.ts` mis à part, qui ne porte que le `cn()` de
    shadcn. C'est leur raison d'être : les composants clients ont besoin des mêmes
    constantes que le serveur (libellés de statut, borne de longueur de la note,
@@ -382,8 +413,9 @@ Récit de l'enquête : `docs/JOURNAL.md` § 27 août.
    `noteInitiale`, un par un.
    ⚠️ **Ce qui rend la règle fragile** : `<BoutonsStatut offre={offre} />` ou
    `<NotePersonnelle offre={offre} />` compileraient sans la moindre erreur et
-   enverraient les vingt-deux colonnes dans la page — message d'erreur technique,
-   `contact_nom`, note personnelle. **Refaire la mesure après chaque nouveau
+   enverraient **toutes les colonnes** dans la page — message d'erreur technique,
+   `contact_nom`, note personnelle. ⚠️ **Ne pas y écrire de nombre** : il périme à
+   chaque migration, et trois fichiers en annonçaient trois différents le 30 août. **Refaire la mesure après chaque nouveau
    composant client**, c'est le seul garde-fou qui reste. ✅ Refaite une seconde
    fois le 29 août après `MenuTri` et `BasculeTheme` : douze colonnes cherchées sur
    deux vues de la liste, zéro trouvée, témoin positif. ✅ Première passe du 29 août :
@@ -639,7 +671,7 @@ which python                   # doit afficher .../veille-offres-emploi-ia/.venv
 
 ```bash
 # Interface — depuis interface/
-npm run verifie      # lint + typecheck + les 84 tests, DANS LES DEUX FUSEAUX
+npm run verifie      # lint + typecheck + les 93 tests, DANS LES DEUX FUSEAUX
 ```
 
 ⚠️ **`verifie` lance la suite deux fois, et la seconde est celle qui compte** :
@@ -818,10 +850,13 @@ mais l'application continue de parler shadcn (`bg-card`, `text-muted-foreground`
 Un jeton nomme un **rôle**, jamais une couleur : `bg-card` ne veut plus dire
 « beige papier » mais « la surface du système en cours ».
 
-**Cinq teintes de signal, un rôle chacune** : bleu = note d'intérêt · menthe =
+**Six teintes de signal, un rôle chacune** : bleu = note d'intérêt · menthe =
 accessibilité et candidaté · rose pastel = écarté · jaune/ocre = le temporel
-(« nouveau », état de la veille) · rose foncé = erreur. **Une teinte qui sert à
-deux choses ne sert plus à rien.**
+(« nouveau », état de la veille) · **pêche = coup de cœur** · rose foncé =
+erreur. **Une teinte qui sert à deux choses ne sert plus à rien.**
+⚠️ **Depuis le 30 août 2026 il ne reste AUCUN accent libre** : un septième signal
+devra réutiliser une teinte en la distinguant par la forme, ou rouvrir la palette
+— décision de système, pas détail d'écran.
 ⚠️ **Les pilules de filtre de `/offres` reprennent ces teintes**, chacune pour ce
 qu'elle filtre — c'est le revirement du 29 août, § État. Le déclencheur « Trier »
 prend le bleu parce que le classement par défaut EST l'intérêt : ce n'est pas un
@@ -829,6 +864,25 @@ sixième rôle, c'est un contrôle.
 ⚠️ **`--ecarte` (rose pastel) et `--destructive` (rose foncé) ne sont PAS un
 doublon** : le second est du texte d'erreur, donc 4,5:1 obligatoire ; le premier
 est un fond de bouton sous de l'encre foncée.
+
+⚠️ **L'état ENGAGÉ passe par des jetons `--*-engage`, en mode CLAIR seulement.**
+Corrigé le 30 août 2026 : la saturation seule ne distinguait rien — écart de
+clarté de **0,8 sur le jaune et 1,5 sur la menthe**, là où il en faut ~10.
+⚠️ **Et atténuer davantage le repos ne pouvait PAS marcher** : sur fond clair
+atténuer *éclaircit*, et ces deux pastels sont déjà presque blancs. La seule
+direction libre est vers le bas. ⚠️⚠️ **En sombre, `--*-engage` vaut le pastel
+nu — ne pas « nettoyer » ces cinq lignes** : l'écart y était déjà de 12-15 points
+et les teintes assombries le ramèneraient sous 1.
+⚠️ **Et l'option NON RETENUE d'une offre décidée se décolore** — mais **seulement
+si une décision existe** : sans cette condition, la liste « À traiter » (576 sur
+580) perdait toute couleur.
+⚠️ **La teinte assombrie n'a pas suffi : l'engagée porte AUSSI un contour**, seul
+signal de la rangée qui ne dépende d'aucune couleur — un écart de clarté est
+*relatif*, et six teintes différentes obligent à comparer. ⚠️ **`border-current`
+et jamais `border-foreground`** : l'encre de page est claire en sombre et tombait
+à **1,52:1** sur un pastel clair. ⚠️ **Bordure de 2 px sur les SIX pilules**
+(transparente au repos) **et sur le menu « Trier »**, sinon la rangée se décale ou
+se désaligne.
 
 ⚠️ **Trois pièges MESURÉS, qui ne se voient dans aucune erreur** (détail dans
 `docs/DESIGN.md`) :

@@ -46,39 +46,54 @@ export default function ChargementOffres() {
            l'oublier — c'est exactement ce qu'on attend d'un commentaire.
 
            ⚠️ **Les largeurs imitent les libellés réels** (« À traiter »,
-           « Nouveau », « Candidaté », « Écarté », « Toutes ») plutôt que d'être
-           égales : cinq rectangles identiques annonceraient une barre qui
-           n'arrive jamais.
+           « Nouveau », « Coup de cœur », « Candidaté », « Écarté », « Toutes »)
+           plutôt que d'être égales : six rectangles identiques annonceraient une
+           barre qui n'arrive jamais.
 
-           ⚠️ **30,5 px et non 29 — corrigé le 29 août 2026 en MESURANT.** Cette
-           hauteur était écrite à 29 px depuis la phase 4 ; la pilule réelle en
-           fait 30,5 (1 px de bordure × 2 + 6 px de `py-1.5` × 2 + 16,5 px de
-           hauteur de ligne). L'écart était de 1,5 px sur une rangée, donc 4,5 px
-           à 375 px où la barre se plie en deux lignes et où le menu prend la
-           sienne. Trop petit pour se voir, assez grand pour être faux — et c'est
-           le genre d'écart qui grandit à chaque élément ajouté.
+           ⚠️ **32,5 px depuis le 30 août 2026 — remesuré après le passage de la
+           bordure à 2 px.** L'historique de cette valeur dit tout du piège :
+           29 px écrits en phase 4 (faux), 30,5 mesurés le 29 août, **32,5**
+           mesurés le 30. Chaque fois l'écart était trop petit pour se voir et
+           assez grand pour être faux, et chaque fois il a fallu le DOM pour le
+           trouver. Décomposition actuelle : 2 px de bordure × 2 + 6 px de
+           `py-1.5` × 2 + 16,5 px de hauteur de ligne.
 
-           ⚠️ **CINQ pilules depuis le 29 août 2026, et pas quatre.** L'onglet
-           « Nouveau » est arrivé le même jour dans `filtres-statut.tsx` : sans
-           cette ligne-ci, la barre serait passée de quatre à cinq éléments à
-           l'arrivée des offres. À 375 px la cinquième fait passer la rangée sur
-           deux lignes, donc le saut n'aurait pas été de quelques pixels mais de
-           toute une hauteur de pilule. C'est le piège n° 5 du projet, qui n'a
-           aucun garde-fou mécanique — rien ne relie ce fichier à celui qu'il
-           double. */
+           ⚠️ **SIX pilules depuis le 30 août 2026** — cinq depuis le 29 août,
+           quatre avant. Chaque ajout à `filtres-statut.tsx` doit être répété
+           ici **dans le même geste** : sans cette ligne-ci, la barre passerait
+           d'un nombre de pilules à l'autre à l'arrivée des offres. À 375 px une
+           pilule de plus fait replier la rangée, donc le saut n'est pas de
+           quelques pixels mais de toute une hauteur de pilule. C'est le piège
+           n° 5 du projet, qui n'a **aucun garde-fou mécanique** — rien ne relie
+           ce fichier à celui qu'il double, et le défaut est invisible en
+           développement où le serveur répond en 80 ms. */
         filtres={
           <div aria-hidden="true" className="flex flex-wrap gap-1.5">
-            <div className="h-[1.90625rem] w-28 animate-pulse rounded-full bg-muted" />
-            <div className="h-[1.90625rem] w-26 animate-pulse rounded-full bg-muted" />
-            <div className="h-[1.90625rem] w-28 animate-pulse rounded-full bg-muted" />
-            <div className="h-[1.90625rem] w-24 animate-pulse rounded-full bg-muted" />
-            <div className="h-[1.90625rem] w-24 animate-pulse rounded-full bg-muted" />
+            {/* Largeurs REMESURÉES au DOM le 30 août 2026, après le passage de
+                la bordure à 2 px : 125,80 · 97,21 · 132,96 · 111,51 · 90,06 ·
+                104,36 px. Le total du squelette tombe à 693 px contre 691,91
+                réels — 1,1 px d'écart, sans effet sur le repli. */}
+            {/* « À traiter » — 125,80 px */}
+            <div className="h-[2.03125rem] w-32 animate-pulse rounded-full bg-muted" />
+            {/* « Nouveau » — 97,21 px */}
+            <div className="h-[2.03125rem] w-24 animate-pulse rounded-full bg-muted" />
+            {/* « Coup de cœur » — 132,96 px, le libellé le plus long des six */}
+            <div className="h-[2.03125rem] w-[8.3125rem] animate-pulse rounded-full bg-muted" />
+            {/* « Candidaté » — 111,51 px */}
+            <div className="h-[2.03125rem] w-28 animate-pulse rounded-full bg-muted" />
+            {/* « Écarté » — 90,06 px */}
+            <div className="h-[2.03125rem] w-[5.625rem] animate-pulse rounded-full bg-muted" />
+            {/* « Toutes » — 104,36 px */}
+            <div className="h-[2.03125rem] w-26 animate-pulse rounded-full bg-muted" />
           </div>
         }
         /* ⚠️ **Le menu de classement occupe la place, il ne s'anime pas seul.**
            Il partage la rangée des filtres : posé dans `EnTetePage`, il porte la
-           même hauteur qu'eux (30,5 px) et laisse la rangée identique avant et
-           après.
+           même hauteur qu'eux (**32,5 px**) et laisse la rangée identique avant
+           et après. ⚠️ Cette égalité a failli être perdue le 30 août : les
+           pilules sont passées à `border-2` et le déclencheur « Trier » est
+           resté à 1 px, donc à 30,5 px de haut contre 32,5 pour ses voisins
+           immédiats. Corrigé dans `menu-tri.tsx`, où le motif est expliqué.
 
            ⚠️ **Sa LARGEUR, elle, n'a aucun effet vertical** — et c'est pour ça
            qu'on la cale sur le cas par défaut (155 px mesurés pour « TRIER ·
@@ -89,7 +104,7 @@ export default function ChargementOffres() {
         tri={
           <div
             aria-hidden="true"
-            className="h-[1.90625rem] w-40 shrink-0 animate-pulse rounded-full bg-muted"
+            className="h-[2.03125rem] w-40 shrink-0 animate-pulse rounded-full bg-muted"
           />
         }
       />

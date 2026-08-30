@@ -122,17 +122,37 @@ export default function ChargementFiche() {
             <div className="h-[1.71875rem] w-24 bg-muted" />
           </div>
 
-          {/* ⚠️ **Les deux boutons de statut, arrivés en phase 4.** Sans cette
-              rangée le squelette faisait 117 px là où l'entête réel en fait
-              169 : **52 px de saut** au moment où l'offre arrive, mesuré au DOM
-              le 29 août 2026. La hauteur (1,6875 rem = 27 px) est celle d'un
-              bouton réel, la même valeur que `RYTHME_LIGNE.rangeeEntete` — mais
-              **recopiée ici et non importée**, parce que ce module dessine la
-              fiche et l'autre la liste : les deux se ressemblent aujourd'hui et
-              n'ont aucune raison de rester liées. */}
-          <div className="mt-5 flex gap-1.5">
-            <div className="h-[1.96875rem] w-[7.5rem] bg-muted" />
-            <div className="h-[1.96875rem] w-[6.25rem] bg-muted" />
+          {/* ⚠️ **Les boutons d'action, arrivés en phase 4.** Sans cette rangée
+              le squelette faisait 117 px là où l'entête réel en fait 169 :
+              **52 px de saut** au moment où l'offre arrive, mesuré au DOM le
+              29 août 2026. La hauteur (1,96875 rem = 31,5 px) est celle d'un
+              bouton réel — mais **recopiée ici et non importée**, parce que ce
+              module dessine la fiche et l'autre la liste : les deux se
+              ressemblent aujourd'hui et n'ont aucune raison de rester liées.
+
+              ⚠️ **TROIS boutons depuis le 30 août 2026**, le coup de cœur ayant
+              rejoint les deux statuts. Largeurs remesurées au DOM ce jour-là :
+              **155,41 · 130,05 · 104,70 px** — les deux anciennes valeurs
+              (120 et 100) avaient été laissées derrière par l'agrandissement de
+              l'échelle du 29 août et annonçaient des boutons trop courts.
+
+              ⚠️ **La structure imbriquée n'est PAS cosmétique : c'est elle qui
+              décide du repli à 375 px.** Dans la vraie fiche, `BoutonsStatut`
+              rend « Candidaté » et « Écarté » dans un conteneur unique et donc
+              **indivisible** ; la rangée ne peut se couper qu'entre le cœur et
+              ce groupe. Trois blocs frères se seraient repliés autrement —
+              cœur + candidaté sur la première ligne — et le squelette aurait
+              menti sur la hauteur d'un cran de 39,5 px. Mesuré : 31,5 px en
+              bureau, **71 px à 375 px** (deux lignes plus le `gap-2`). */}
+          <div className="mt-5 flex flex-wrap items-start gap-2">
+            {/* « Coup de cœur » — 155,41 px */}
+            <div className="h-[1.96875rem] w-[9.71875rem] bg-muted" />
+            <div className="flex gap-1.5">
+              {/* « Candidaté » — 130,05 px */}
+              <div className="h-[1.96875rem] w-[8.125rem] bg-muted" />
+              {/* « Écarté » — 104,70 px */}
+              <div className="h-[1.96875rem] w-[6.54375rem] bg-muted" />
+            </div>
           </div>
         </div>
 

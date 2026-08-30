@@ -1,8 +1,10 @@
 import Link from "next/link";
 
+import { aCoupDeCoeur } from "@/lib/coup-de-coeur";
 import { lireEmployeur } from "@/lib/employeur";
 import type { OffreEnListe } from "@/lib/offres";
 
+import { BoutonCoupDeCoeur } from "./bouton-coup-de-coeur";
 import { BoutonsStatut } from "./boutons-statut";
 import { Cartouche, CartoucheAbsent } from "./cartouche";
 import { BlocNotes, CartoucheEnAttente, etatNotation } from "./notes";
@@ -27,6 +29,7 @@ export function LigneOffre({
   offre,
   jumelles = [],
   nouvelle,
+  coupDeCoeurSortDeLaListe = false,
   maintenant,
 }: {
   offre: OffreEnListe;
@@ -41,6 +44,16 @@ export function LigneOffre({
    */
   jumelles?: string[];
   nouvelle: boolean;
+  /**
+   * Est-ce qu'un retrait de coup de cœur ferait **sortir cette ligne** de la
+   * liste ? Vrai seulement sur `/offres?statut=coup_de_coeur`.
+   *
+   * ⚠️ **Elle ne descend QUE vers le cœur, et sert à décider de prendre ou non
+   * le verrou de tri.** Le cœur le prenait à chaque clic, gelant les 200 lignes
+   * — boutons de statut compris — pendant le re-rendu, y compris dans les cinq
+   * onglets où liker ne réorganise rien. Relevé en revue le 30 août 2026.
+   */
+  coupDeCoeurSortDeLaListe?: boolean;
   maintenant: Date;
 }) {
   const datePubliee = formaterDate(offre.publiee_a, maintenant);
@@ -113,7 +126,29 @@ export function LigneOffre({
 
             ⚠️ **`compact` réduit au pictogramme sous 640 px** — le libellé passe
             en `sr-only`, il ne disparaît pas. */}
-        <div className="ml-auto">
+        {/* ⚠️ **Le cœur est à GAUCHE des deux boutons de statut**, dans le
+            même groupe. L'ordre se lit comme le geste : d'abord « celle-ci me
+            plaît », ensuite « j'en ai fait quelque chose ». Le mettre après
+            « Écarté » aurait fini par se lire comme un troisième statut, ce
+            qu'il n'est justement pas.
+
+            ⚠️ **`items-start` et non `items-center`** : chacun des deux
+            composants affiche son propre message d'erreur sous lui, et ils
+            n'ont pas la même hauteur quand l'un des deux échoue. Centré, le
+            cœur remonterait au milieu d'un message de trois lignes.
+
+            ⚠️ **Les jumelles ne descendent PAS jusqu'au cœur**, alors qu'elles
+            descendent jusqu'aux boutons de statut. Ce n'est pas un oubli : le
+            statut propage parce qu'une jumelle laissée « à traiter » ramènerait
+            le poste le lendemain, tandis que propager le cœur ne protégeait de
+            rien et remplissait l'onglet « Coup de cœur » — qui ne regroupe pas —
+            de quatre lignes pour un seul poste. Voir `definirCoupDeCoeur`. */}
+        <div className="ml-auto flex items-start gap-1.5">
+          <BoutonCoupDeCoeur
+            identifiant={offre.identifiant}
+            actif={aCoupDeCoeur(offre.coup_de_coeur_a)}
+            peutSortirDeLaListe={coupDeCoeurSortDeLaListe}
+          />
           <BoutonsStatut
             identifiant={offre.identifiant}
             jumelles={jumelles}

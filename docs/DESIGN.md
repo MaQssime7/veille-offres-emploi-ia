@@ -106,12 +106,12 @@ L'adaptation est signalée dans `components/pouf/pouf.css`.
 | `--color-blue` | `#9ec8ff` | *inchangé* | — |
 | `--color-mint` | `#a8f0d0` | *inchangé* | — |
 | `--color-yellow` | `#ffe58a` | *inchangé* | — |
-| `--color-orange` | `#ffb38a` | *inchangé* | — |
+| `--color-orange` | `#ffb38a` | *inchangé* | Coup de cœur (30 août 2026) |
 
 ⚠️ **Les pastels ne changent pas en mode sombre**, par conception du registre :
 ce sont eux la marque, et ils portent toujours de l'encre foncée.
 
-### Les cinq rôles de signal du produit
+### Les six rôles de signal du produit
 
 **Une teinte qui sert à deux choses ne sert plus à rien.** C'est la règle qui a
 survécu intacte à la refonte.
@@ -122,7 +122,26 @@ survécu intacte à la refonte.
 | **Accessibilité** (note) et **candidaté** | menthe | `--success` · `--success-barre` · `--success-texte` |
 | **Écarté** | rose pastel | `--ecarte` · `--ecarte-foreground` |
 | **Temporel** (« Nouveau », état de la veille) | jaune / ocre | `--signal` · `--signal-fort` |
+| **Coup de cœur** | pêche | `--coup-de-coeur` · `--coup-de-coeur-icone` |
 | **Erreur** | rose foncé | `--destructive` |
+
+⚠️ **Le pêche était le DERNIER accent libre, et il ne l'est plus depuis le
+30 août 2026.** Les six pastels de 1st-Pouf portent désormais un rôle chacun. Un
+septième signal ne pourra donc pas être une nouvelle couleur : il faudra soit
+réutiliser une teinte en la distinguant par la forme, soit rouvrir la palette —
+ce qui est une décision de système, pas un détail d'écran.
+
+⚠️ **Le pêche et le rose d'« Écarté » sont à 1,05:1 l'un de l'autre**, mesuré le
+30 août 2026 — c'est-à-dire **la même clarté exacte**. Ils ne se départagent que
+par la teinte, donc pas du tout pour un œil protanope ou deutéranope, et à peine
+sur un écran mal réglé. Or ils sont voisins : dans la rangée de filtres, et dans
+la ligne d'offre où le cœur touche le bouton « Écarté ».
+
+C'est **acceptable, et seulement parce que l'information ne tient sur aucune
+couleur** : un cœur contre une croix, un libellé « Coup de cœur » contre
+« Écarté ». Le jour où l'un des deux perdrait sa forme ou son mot — une pastille
+sans texte, un bouton sans icône —, il faudrait changer la couleur, pas discuter
+le contraste.
 
 ⚠️ **`--ecarte` et `--destructive` sont tous deux roses et ne sont PAS un
 doublon.** `--destructive` est une **erreur**, donc du texte, donc 4,5:1 — d'où
@@ -397,12 +416,12 @@ du matin seulement.** Il dit que la ligne en fond plusieurs — France Travail
 publie le même poste sous deux identifiants, et `/` n'en montre qu'un.
 **Il ne se retire jamais** : sans lui, deux annonces réelles deviendraient une
 ligne sans que rien ne l'indique, et un clic écarterait silencieusement une offre
-que Maxime n'a pas vue. **Teinte neutre**, comme ses voisins : les cinq teintes de
+que Maxime n'a pas vue. **Teinte neutre**, comme ses voisins : les six teintes de
 signal portent chacune un rôle, et un comptage n'en est aucun.
 
 ### Filtres et classement de `/offres`
 
-**Cinq pilules à gauche, un menu à droite**, sur une même rangée alignée sur les
+**Six pilules à gauche, un menu à droite**, sur une même rangée alignée sur les
 bords de la liste. En dessous de 640 px elles s'empilent — `flex-col` et non
 `flex-wrap`, sinon le menu se retrouverait collé à gauche sur sa propre ligne,
 c'est-à-dire aligné sur rien.
@@ -411,14 +430,15 @@ c'est-à-dire aligné sur rien.
 |---|---|---|
 | À traiter | violet | le défaut — ce qui reste à faire |
 | Nouveau | jaune | les offres de la dernière collecte réussie |
+| Coup de cœur | pêche | les offres likées, **tous statuts confondus** |
 | Candidaté | menthe | le statut du même nom |
 | Écarté | rose | le statut du même nom |
-| Toutes | aucune | l'absence de filtre, marquée par un contour |
+| Toutes | aucune | l'absence de filtre |
 
-**Repos** : pastel atténué, coussin **bombé**. **Engagé** : pastel plein, coussin
-**enfoncé**, graisse renforcée. C'est la grammaire des boutons de statut, reprise
-telle quelle : la couleur seule ne distingue rien puisque repos et engagé la
-partagent.
+**Repos** : pastel à 40 %, coussin **bombé**. **Engagé** : teinte **assombrie**
+(`--*-engage`, mode clair seulement), coussin **enfoncé**, graisse renforcée, et
+**un contour** — seul signal de la rangée qui ne dépende d'aucune couleur.
+Détail et mesures au § L'état engagé.
 
 ⚠️ **REVIREMENT du 29 août 2026, demandé par Maxime.** La règle précédente
 interdisait de teinter un onglet avec une couleur de signal : une pilule menthe
@@ -432,9 +452,9 @@ se détacher du libellé : sur un pastel plein, l'encre atténuée tombait à
 **3,43:1**. La distinction passe par la seule graisse, qui ne coûte rien.
 
 **Le menu « Trier »** prend le bleu — la teinte de l'intérêt, qui est le
-classement par défaut. Ce n'est pas un sixième signal : les cinq autres teintes
-sont prises par les filtres d'à côté, en réutiliser une ferait croire à un filtre
-de plus. Le critère en cours est **écrit sur le bouton** (« Trier · Intérêt ») :
+classement par défaut. Ce n'est pas un signal de plus : les autres teintes sont
+prises par les filtres d'à côté, en réutiliser une ferait croire à un filtre
+supplémentaire. Le critère en cours est **écrit sur le bouton** (« Trier · Intérêt ») :
 sans lui, il faut ouvrir le menu pour savoir pourquoi une offre est en haut.
 
 ⚠️ **Trier par accessibilité ne fusionne pas les deux notes** — c'est ce qui rend
@@ -613,10 +633,83 @@ onglets ouverts, en revanche, se synchronisent par l'événement `storage`.
 ⚠️ **`/connexion` respecte le choix mais n'offre pas le bouton** : il vit dans le
 groupe `(site)`, qui est une serrure et pas un rangement.
 
+### L'état engagé — la saturation ne suffisait pas
+
+⚠️ **Corrigé le 30 août 2026, sur un défaut vu par Maxime et dont la mesure a
+donné une cause qu'il ne pouvait pas deviner.** Il voyait que « tout garde la même
+couleur » quand on est dans une liste. L'écart de clarté entre une pilule engagée
+et une pilule au repos valait alors :
+
+| | violet | pêche | rose | menthe | jaune |
+|---|---|---|---|---|---|
+| avant | 8,4 | 6,0 | 5,4 | **1,5** | **0,8** |
+| **après** | **17,2** | **18,3** | **18,4** | **18,0** | **18,1** |
+
+Il en faut environ **10** pour qu'une différence de clarté se voie sans comparer
+côte à côte. Le jaune et la menthe étaient donc indiscernables.
+
+⚠️ **Le réflexe — atténuer DAVANTAGE le repos — ne pouvait pas marcher**, et c'est
+le point à retenir. Atténuer sur fond clair **éclaircit** vers le lavande ; or le
+jaune (L\*91) et la menthe (L\*89) sont déjà presque blancs. À 35 % d'opacité, le
+jaune ne gagnait que 1,3 point. **Il n'y a pas de place au-dessus : la seule
+direction libre est vers le bas.** D'où cinq jetons `--*-engage`, teintes
+assombries de chaque pastel, qui portent l'écart à 17-18 points tout en gardant
+l'encre foncée au-dessus de 4,5:1.
+
+⚠️ **La teinte assombrie n'a PAS suffi, et le motif vaut au-delà de ce cas.**
+Maxime, devant l'écran, a maintenu qu'il ne repérait pas l'onglet courant — alors
+que la mesure annonçait 17 à 18 points d'écart, bien au-dessus du seuil. **Les
+deux avaient raison** : un écart de clarté est un signal *relatif*, et comme
+chaque pilule porte sa propre teinte, repérer « la plus foncée » dans une rangée
+de six couleurs oblige à les comparer. Un jaune assombri reste plus clair qu'un
+violet au repos.
+
+D'où le **contour sur l'onglet engagé**, et lui seul : c'est le seul signal de
+cette rangée qui **ne dépend d'aucune couleur**, donc le seul qui se voie sans
+comparer — et le seul qui vaille aussi pour un œil daltonien. Les cinq pilules au
+repos sont passées de 55 % à 40 % dans le même geste : +2,9 points sur le violet,
++2,2 sur le pêche, +1,9 sur le rose… et **+0,2 sur le jaune**, toujours le même
+plafond.
+
+⚠️ **`border-current`, jamais `border-foreground` — mesuré, pas supposé.** Le
+réflexe est l'encre de la page : foncée en clair (contour à 4,64-5,99:1, très
+bien) et **claire en sombre**, où elle se pose sur un pastel clair — **1,52:1**,
+soit un contour invisible, dans le mode où l'on ne l'aurait jamais cherché.
+`border-current` reprend la couleur du *texte* de la pilule, déjà calculée pour ce
+fond-là : 4,64 à 5,99:1 en clair, **7,51 à 12:1** en sombre, sans aucune valeur à
+maintenir en double.
+
+⚠️ **La bordure fait 2 px sur les SIX pilules**, transparente sur les cinq au
+repos, et **le menu « Trier » a dû suivre** : resté à 1 px, il faisait 30,5 px de
+haut contre 32,5 pour ses voisins de la même rangée. Une bordure qui ne dessine
+rien n'est pas une bordure inutile.
+
+⚠️⚠️ **Ces jetons ne s'appliquent QU'EN MODE CLAIR.** En sombre, l'engagé est le
+pastel plein — donc le plus clair — et le repos s'atténue *vers* le fond : l'écart
+y est déjà de 12 à 15 points. Y poser les teintes assombries le ramènerait à
+**0,3 sur le rose et 0,7 sur le pêche**. Le bloc `.dark` les remet donc au pastel
+nu, et ces cinq lignes ne sont pas des redondances à nettoyer.
+
 ### Boutons de statut
 
 Les deux portent leur couleur **en permanence**, y compris au repos — décision de
 Maxime du 29 août 2026, pour donner de la couleur à la liste.
+
+⚠️ **Sauf une : depuis le 30 août 2026, l'option NON RETENUE d'une offre déjà
+décidée se décolore** — contour et encre atténuée, sans fond, comme l'onglet
+« Toutes ». Dans les listes « Candidaté » et « Écarté », toutes les lignes portent
+le même statut : deux pastels voisins ne se départageaient pas, et la décision
+n'était pas lisible.
+
+⚠️ **La décoloration ne joue QUE lorsqu'une décision existe, et cette condition
+est le cœur du réglage.** Appliquée sans elle, elle vidait de toute couleur la
+liste « À traiter » — **576 offres sur 580**, l'écran ouvert chaque matin — où
+aucun bouton n'est actif. Les deux rendus ont été construits et comparés avant de
+trancher. Contrastes du bouton décoloré : texte **5,90:1** et contour **3,80:1**
+en clair, **7,74:1** et **8,13:1** en sombre.
+
+⚠️ **Le survol lui rend sa teinte** : un bouton décoloré et inerte au survol se
+lirait comme désactivé.
 
 Quand le repos et l'état engagé partagent la même teinte, la couleur ne
 distingue plus rien. **Trois signaux portent donc la différence, et aucun n'est
@@ -637,6 +730,48 @@ répètent deux cents fois, chaque pixel de hauteur s'y paie en défilement.
 ⚠️ **L'opacité du repos diffère entre les deux modes** — 55 % en clair, 70 % en
 sombre : atténuer éclaircit sur une carte blanche et **assombrit** sur une carte
 sombre. Voir § Contrastes.
+
+### Le bouton de coup de cœur — 30 août 2026
+
+Un cœur, posé **à gauche** des deux boutons de statut. L'ordre se lit comme le
+geste : d'abord « celle-ci me plaît », ensuite « j'en ai fait quelque chose ».
+Le mettre après « Écarté » l'aurait fait lire comme un troisième statut, ce qu'il
+n'est justement pas.
+
+**Il ne suit PAS la grammaire des boutons de statut, et c'est délibéré :**
+
+| | Boutons de statut | Cœur |
+|---|---|---|
+| Au repos | pastel atténué + coussin bombé | **aucun fond, aucun coussin** |
+| Engagé | pastel plein + coussin enfoncé | pastel plein + coussin enfoncé |
+| Signal principal | saturation, relief, icône | **la forme : plein ou vide** |
+| Libellé en liste | `sr-only` sous 640 px | `sr-only` toujours |
+
+⚠️ **Pas de fond au repos**, sinon la ligne porterait **trois** pastilles
+colorées, deux cents fois. Le cœur creux se lit tout seul.
+
+⚠️ **L'état passe d'abord par le remplissage (`fill-current`), pas par la
+couleur** — voir § Les six rôles : le pêche et le rose d'« Écarté », qui est son
+voisin immédiat dans la ligne, ont la même clarté.
+
+⚠️ **Le survol ne change QUE la couleur du cœur, jamais le fond.** Un
+`hover:bg-accent` avait été ajouté par réflexe : le fond lavande `#e7dcff` se
+glissait sous le cœur, qui tombait de **3,66:1 à 2,80:1** — sous le plancher de
+3:1, et seulement au survol, c'est-à-dire dans l'état qu'aucune capture ne
+montre. Troisième occurrence du même piège : *une couleur se mesure sur la
+surface qui est vraiment derrière*.
+
+⚠️ **24 px de haut en bureau (`sm:p-[0.3125rem]`), et ce n'est pas un réglage
+esthétique.** Le cœur n'a pas de libellé visible : avec le `p-2` des boutons
+compacts il mesurait 30 px contre 24,5 pour ses voisins, la rangée d'en-tête
+passait de 27 à 30 px, et **les 200 lignes grandissaient de 3 px** sans que le
+squelette le sache. Sous 640 px il garde `p-2` (30 px), comme les boutons de
+statut compacts.
+
+⚠️ **Sur la fiche, il porte son libellé en toutes lettres.** On lit une fiche, on
+balaye une liste : un pictogramme muet y serait la seule commande sans nom de la
+page. La rangée passe alors en `flex-wrap` — à 375 px, les trois boutons aérés ne
+tiennent pas sur une ligne.
 
 ### Ligne d'offre
 
@@ -769,6 +904,12 @@ Les décisions d'avant la refonte ne sont conservées que si elles tiennent enco
 | 29 août 2026 (soir) | `items-baseline` sur le classement France Travail | Les boîtes étaient alignées, les lignes de base décalées de 6,8 px. C'est la ligne de base que l'œil apparie |
 | **30 août 2026** | **`/` et `/offres` portent le même `h1` « Bonjour Maxime »** | Demande de Maxime. Les titres d'onglet, eux, divergent — « Ce matin » et « Plan de travail » — parce que c'est l'onglet qu'on lit dans l'historique et les favoris |
 | 30 août 2026 | La date de la collecte n'est PAS répétée sous le salut | Vue à l'écran : la manchette l'affiche déjà 90 px plus haut. Le sous-titre ne dit que ce qu'elle ne dit pas — « 2 postes retenus sur 7 offres collectées » |
+| 30 août 2026 | Le coup de cœur prend le **pêche**, sixième et dernier accent | Plus aucune teinte libre. Il est à 1,05:1 du rose d'« Écarté », son voisin : c'est la **forme** qui les sépare, jamais la couleur |
+| 30 août 2026 | Pas d'icône de cœur sur la pilule de filtre | Ce qui distingue une pilule d'un bouton de statut ici, c'est *le chiffre contre l'icône*. Une pilule frappée d'un cœur serait le sosie du bouton qui écrit en base |
+| 30 août 2026 (soir) | L'onglet engagé prend une **teinte assombrie**, en mode clair seulement | Demande de Maxime. L'écart de clarté valait **0,8 sur le jaune** : atténuer davantage était impossible, ces pastels sont déjà presque blancs |
+| 30 août 2026 (soir) | …et **un contour** par-dessus (`border-current`) | La teinte n'a pas suffi : un écart de clarté est *relatif*, six teintes obligent à comparer. Le contour ne dépend d'aucune couleur. ⚠️ `border-foreground` tombait à **1,52:1** en sombre |
+| 30 août 2026 (soir) | « Toutes » perd son contour permanent | Relevé par Maxime. Il le portait au repos et le **perdait** engagé — l'inverse de la règle. Il se distingue désormais par son fond, comme les cinq autres |
+| 30 août 2026 (soir) | L'option non retenue d'une offre **décidée** se décolore | Demande de Maxime. ⚠️ Seulement si une décision existe : sans cette condition, la liste « À traiter » (576 sur 580) perdait toute couleur |
 | 30 août 2026 | Carte de passage chiffrée en bas de `/` | Sans elle, le reste de la base disparaît de vue et un matin calme ressemble à une base vide |
 | 30 août 2026 | Cartouche « N annonces », teinte neutre | Sans lui, le regroupement ferait disparaître une offre sans que rien ne l'indique. Neutre parce qu'un comptage n'est pas un signal |
 | 30 août 2026 | Le squelette de `/` imite **une** ligne, pas quatre | Mesuré : un panneau vide fait 230 px, une ligne 222. Une barre unique cale les deux cas ; trois se trompaient de 450 px dans les deux à la fois |

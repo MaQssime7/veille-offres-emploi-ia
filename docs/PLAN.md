@@ -733,6 +733,22 @@ régressions tant qu'il n'y a pas de tests automatisés.
 - [x] **Vérifier que `/offres` n'est PAS regroupé** — 200 lignes, « 570 offres · 200 affichées », zéro cartouche « annonces ». Le regroupement ne doit jamais déborder sur l'archive
 - [x] **Couper la base et ouvrir `/`** — « État de la veille indisponible » en manchette (et non « aucune veille »), panneau « La base est injoignable », carte de passage absente, et **aucune trace technique dans le document** : ni l'URL, ni le mot « supabase », ni la clé
 
+**Hors phase — le coup de cœur, 30 août 2026** — *déroulés en développement sur les 580 offres réelles*
+
+- [x] **Poser un coup de cœur et vérifier qu'il arrive en base** — clic sur `/offres`, colonne `coup_de_coeur_a` écrite avec son fuseau (`+00:00`), compteur de l'onglet passé de 4 à 5
+- [x] ⚠️ **Retrouver une offre ÉCARTÉE dans l'onglet « Coup de cœur »** — c'est LE parcours qui distingue un marqueur d'un quatrième statut : avec un statut exclusif, elle en serait absente. Vérifié sur `6324109`, `statut = ecarte` et cœur plein
+- [x] ⚠️ **Double-cliquer au MÊME PIXEL dans l'onglet « Coup de cœur »** — deux clics à 120 ms, `page.mouse.click(x, y)` sans re-résoudre le sélecteur : **une seule offre retirée**. Sans le verrou de tri, le second clic tomberait sur l'offre remontée à sa place. ⚠️ Un test qui re-résout son sélecteur ne teste PAS ce parcours
+- [x] **Vider les coups de cœur et lire l'écran vide** — « Aucune offre "Coup de cœur" … mais aucune ne porte de coup de cœur », et non le message générique qui affirmerait qu'une colonne `statut` porte cette valeur
+- [x] **Perdre sa session puis cliquer sur un cœur** — message « Session expirée ou réseau coupé », cœur revenu à la vérité de la base, bouton réutilisable, **et aucune écriture** (4 coups de cœur avant comme après)
+- [x] **Vérifier que la rangée de filtres et son squelette ont la même hauteur** — bloc substitué à l'original dans le DOM, même parent : **écart 0 px** à 375 px (103,5, trois lignes) comme en bureau (30,5, une ligne). Idem sur la fiche : 71 px et 31,5 px
+- [x] **Compter les colonnes sensibles reçues par le navigateur, après un nouveau composant client** — douze noms cherchés dans le document complet, flux RSC compris, sur quatre écrans : **0 occurrence**, témoin positif valide
+- [x] **Vérifier que le focus clavier reste visible sur le cœur** — `outline solid 2px` malgré le `cushion-*`, qui écrase tout `ring`
+- [x] ⚠️ **Cliquer un cœur HORS de l'onglet « Coup de cœur » et vérifier que les boutons de statut restent utilisables** — **0 bouton gelé sur 400** pendant le re-rendu, contre **15 sur 15** dans l'onglet où le verrou est nécessaire. Correctif de revue : le verrou est **pris** conditionnellement, **respecté** toujours
+- [x] ⚠️ **Vérifier que l'onglet où l'on se trouve se distingue des cinq autres** — écart de clarté porté de **0,8 à 18,1** sur le jaune et de **1,5 à 18,0** sur la menthe (mesuré au DOM par canvas, mode clair). ⚠️ **En sombre, rien ne change et c'est voulu** : l'écart y valait déjà 12 à 15 points, les teintes assombries l'auraient ramené sous 1
+- [x] ⚠️ **Vérifier que la liste « À traiter » garde ses couleurs** — c'est le piège de la décoloration : 576 offres sur 580 n'ont aucun bouton actif, et une règle « l'inactif se décolore » y aurait tout effacé. Les deux boutons y restent teintés ; la décoloration ne joue que sur une offre décidée
+- [x] **Console et débordements sur 8 combinaisons** — `/offres`, `/offres?statut=ecarte`, `/offres?statut=candidate`, `/`, en clair et en sombre, à 375 px et 1280 px : **0 erreur, 0 élément débordant**
+- [ ] ⚠️ **NON EXERCÉ : liker un poste REPUBLIÉ sur `/`.** Le cœur ne doit toucher qu'une annonce, jamais ses jumelles — sinon l'onglet « Coup de cœur », qui ne regroupe pas, montre quatre lignes pour un seul poste. **La collecte du 30 août n'a ramené aucun doublon** (6 offres, 6 postes), le cas n'a donc pas pu être joué sur données réelles. Ce qui est établi : `definirCoupDeCoeur` n'accepte plus qu'**un** identifiant, garanti par le typecheck, et `LigneOffre` ne passe plus `jumelles` au cœur
+
 **Après la phase 6**
 
 - [ ] Cliquer sur « Enrichir », voir la première étape en moins d'une seconde, puis les étapes de l'agent défiler

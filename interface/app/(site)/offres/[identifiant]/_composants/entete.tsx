@@ -1,3 +1,4 @@
+import { aCoupDeCoeur } from "@/lib/coup-de-coeur";
 import { lireEmployeur, provenanceEmployeur } from "@/lib/employeur";
 import type { OffreEnFiche } from "@/lib/offres";
 
@@ -7,6 +8,7 @@ import {
   formaterSalaire,
   formaterSalaireAnnuel,
 } from "../../../_composants/formats";
+import { BoutonCoupDeCoeur } from "../../../_composants/bouton-coup-de-coeur";
 import { BoutonsStatut } from "../../../_composants/boutons-statut";
 import { CartoucheEnAttente, etatNotation } from "../../../_composants/notes";
 
@@ -141,9 +143,24 @@ export function EnTeteOffre({
 
           ⚠️ **On passe `offre.identifiant` et `offre.statut`, jamais `offre`.**
           C'est le premier composant client de cette chaîne : lui donner l'objet
-          entier enverrait ses vingt colonnes dans le document du navigateur,
-          `contact_nom` compris. Règle opposable n° 6 du `CLAUDE.md`. */}
-      <div className="mt-5">
+          entier enverrait **toutes ses colonnes** dans le document du
+          navigateur, `contact_nom` et note personnelle compris. ⚠️ Ne pas y
+          remettre de nombre : la fiche en lit 31 aujourd'hui, et ce compte
+          bougera à la prochaine migration. Règle opposable n° 6 du `CLAUDE.md`. */}
+      {/* ⚠️ **`aere` sur les deux, et le cœur porte ici son libellé en toutes
+          lettres** — contrairement à la liste, où il est seul. Sur une fiche on
+          lit, on ne balaye pas : un pictogramme sans mot y serait la seule
+          commande muette de la page.
+
+          ⚠️ **`flex-wrap`** : à 375 px, « Coup de cœur » + « Candidaté » +
+          « Écarté » aérés ne tiennent pas sur une ligne. Sans lui, le troisième
+          bouton déborderait de la carte. */}
+      <div className="mt-5 flex flex-wrap items-start gap-2">
+        <BoutonCoupDeCoeur
+          identifiant={offre.identifiant}
+          actif={aCoupDeCoeur(offre.coup_de_coeur_a)}
+          aere
+        />
         <BoutonsStatut
           identifiant={offre.identifiant}
           statut={offre.statut}

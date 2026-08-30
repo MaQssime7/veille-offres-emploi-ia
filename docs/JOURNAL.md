@@ -6,6 +6,203 @@ tout l'historique est ici.
 
 ---
 
+## 30 août 2026 — Le coup de cœur, un marqueur et non un quatrième statut
+
+Maxime demande « un bouton à côté de à traiter et écarté, qui serait liké », pour
+retrouver ses offres coup de cœur. La demande est claire ; **la forme qu'elle
+suggère ne l'est pas**, et c'est là que la séance s'est jouée.
+
+### La question posée avant d'écrire une ligne
+
+Le geste décrit — un bouton dans la même rangée que les deux autres — porte
+implicitement une décision d'architecture : un **quatrième statut**. Deux
+conséquences en découlent mécaniquement, et aucune n'est souhaitable :
+
+1. Un statut est **exclusif**. Une offre likée aurait cessé d'être « à traiter »,
+   donc aurait **quitté l'écran du matin**, qui ne montre que `a_traiter`.
+2. **Candidater aurait effacé le cœur.** La liste des coups de cœur se serait
+   vidée à mesure que Maxime avance — l'inverse exact de ce qu'on lui demande.
+
+L'alternative — un marqueur **transverse** au statut — n'était pas une invention :
+l'onglet « Nouveau », posé le 29 août, a déjà cette forme. Une offre y figure quel
+que soit son statut, et son compte ne s'additionne pas avec les trois autres. Il y
+avait donc un précédent à suivre plutôt qu'une forme à inventer.
+
+Les deux options ont été montrées côte à côte, avec leur conséquence concrète.
+**Maxime a choisi le marqueur.**
+
+### Ce que la base a reçu — migration 9
+
+Une seule colonne, `coup_de_coeur_a`, de type `timestamptz`. `NULL` = pas de coup
+de cœur, une date = coup de cœur posé à cette date.
+
+⚠️ **Le couple booléen + date était le réflexe, et il ouvrait un état incohérent**
+qu'aucune contrainte simple ne ferme : `true` sans date. Le projet a déjà payé cet
+écart en phase 4, d'où la contrainte `statut_touche_est_date`. Ici, une seule
+colonne rend l'incohérence **inexprimable** — ce qui vaut toujours mieux qu'une
+règle à faire respecter. Aucune contrainte `check` n'a donc été ajoutée : il n'y a
+pas de valeur fausse à interdire.
+
+Vérifiée contre la vraie base après application : lecture, écriture (fuseau
+conservé, `+00:00`), effacement, deux valeurs invalides refusées par le moteur
+(`22007`), et la clé publiable toujours à **401**.
+
+### Trois défauts trouvés en MESURANT, invisibles à l'œil
+
+Aucun des trois ne se serait vu sur une capture d'écran.
+
+1. ⚠️ **La rangée d'en-tête de chaque ligne est passée de 27 à 30 px.** Le cœur
+   n'a pas de libellé visible : avec le `p-2` des boutons de statut compacts, il
+   ne contenait qu'une icône de 14 px et mesurait 30 px, contre 24,5 px pour
+   « Candidaté » et « Écarté », qui portent du texte. **Les 200 lignes
+   grandissaient de 3 px**, et `squelette-ligne.tsx` ne l'aurait jamais su.
+   Corrigé par `sm:p-[0.3125rem]` — 24 px, sous le `min-h` de la rangée.
+2. ⚠️ **Au survol, le cœur tombait à 2,80:1**, sous le plancher de 3:1. Le
+   `hover:bg-accent` ajouté par réflexe glissait un fond lavande `#e7dcff` sous
+   lui. C'est le piège du 29 août resservi une **troisième** fois : *une couleur
+   se mesure sur la surface qui est vraiment derrière*. Ici la surface changeait
+   avec l'état. Le fond a été retiré ; le cœur reste sur la carte (3,66:1 en
+   clair, 9,31:1 en sombre) et le survol reste lisible — il passe du violet
+   atténué au pêche foncé.
+3. ⚠️ **Le squelette de la fiche annonçait deux boutons sur une ligne**, et ses
+   deux largeurs (120 et 100 px) avaient été laissées derrière par
+   l'agrandissement d'échelle du 29 août. Remesurées : **155,41 · 130,05 ·
+   104,70 px**. Surtout, la structure imbriquée compte : `BoutonsStatut` rend ses
+   deux boutons dans un conteneur **indivisible**, donc à 375 px la rangée se
+   coupe entre le cœur et ce groupe — trois blocs frères se seraient repliés
+   autrement, et le squelette aurait menti de 39,5 px.
+
+**Calage vérifié après correction, par remplacement du bloc réel par le bloc du
+squelette dans le DOM** — même parent, même largeur disponible : écart **0 px**
+à 375 px comme en bureau, sur la liste comme sur la fiche.
+
+⚠️ **Deux tentatives de mesure fausses ont précédé la bonne**, et elles valent
+d'être notées : insérer le bloc du squelette *à côté* du bloc réel lui fait voler
+sa largeur (le squelette se repliait sur 2 lignes contre 1), et reconstruire à la
+main un conteneur qu'on n'a pas lu donne un écart de 12 px qui n'existe pas.
+**Un bloc de mesure se substitue à l'original, il ne se pose pas à côté.**
+
+### La couleur : le sixième et dernier accent
+
+Le pêche `--color-orange` (#ffb38a) était le seul des six accents de 1st-Pouf à
+n'avoir aucun rôle. Il l'a désormais. **Il n'en reste aucun de libre.**
+
+⚠️ **Le pêche et le rose d'« Écarté » sont à 1,05:1 l'un de l'autre** — la même
+clarté exacte. Ils ne se distinguent que par la teinte, donc **pas du tout** pour
+un œil protanope ou deutéranope. C'est acceptable ici parce que l'information ne
+tient jamais sur la couleur : un cœur contre une croix, un libellé « Coup de
+cœur » contre « Écarté ». Le jour où l'un des deux perdrait sa forme ou son mot,
+il faudrait changer la couleur, pas discuter le contraste.
+
+Deux jetons, comme pour les notes : le pastel nu ne pèse que **1,74:1** sur la
+carte blanche, d'où `--coup-de-coeur-icone` (#eb5200) pour le cœur en tant que
+forme. En sombre, le pastel passe nu (9,31:1) — le problème est propre au clair.
+
+⚠️ **La pilule de filtre n'a PAS d'icône de cœur**, alors que la maquette montrée
+à Maxime en portait une. Ce qui distingue une pilule d'un bouton de statut dans ce
+projet, c'est *le chiffre contre l'icône* : une pilule pêche frappée d'un cœur
+aurait été le sosie du bouton de la ligne — sauf que l'une filtre et que l'autre
+écrit en base.
+
+### Deux défauts corrigés APRÈS la revue
+
+⚠️ **La revue a relevé un commentaire qui disait le contraire de la vérité**, et
+c'est le genre d'erreur qu'on ne voit qu'à froid. Le cœur propageait aux jumelles
+du poste, par symétrie avec le clic de statut, et le commentaire le justifiait
+ainsi : *« sans ça, le poste apparaîtrait deux fois dans l'onglet Coup de cœur,
+une fois avec cœur, une fois sans »*. **C'est impossible** — le filtre est
+`coup_de_coeur_a=not.is.null`, une annonce sans cœur n'y figure pas.
+
+Le raisonnement du statut ne se transpose pas : le statut propage parce qu'une
+jumelle laissée « à traiter » **ramènerait le poste** dans l'écran du matin le
+lendemain, donc du travail à refaire. Le cœur n'a pas cette propriété. Propager
+ne protégeait de rien et **fabriquait du bruit** : un poste republié quatre fois
+— le cas MBDA, mesuré sur cette base — occupait quatre lignes dans l'onglet après
+un seul clic, et la pilule annonçait « 4 » pour un seul poste. L'action ne prend
+plus qu'un identifiant, ce qui a au passage supprimé la borne, le dédoublonnage
+et le chemin d'échec partiel.
+
+⚠️ **Second défaut : le cœur prenait le verrou de tri GLOBAL à chaque clic**,
+gelant les 200 lignes — boutons de statut compris — pendant les ~900 ms du
+re-rendu. C'était justifié dans l'onglet « Coup de cœur », où délier fait sortir
+la ligne, et inutile dans les **cinq autres**, où liker ne réorganise rien : un
+clic sur un cœur rendait le clic « Écarté » suivant inopérant pendant près d'une
+seconde. Le verrou est désormais **pris** conditionnellement et **respecté**
+toujours — les deux ne vont pas ensemble.
+
+Mesuré après correction : **0 bouton de statut gelé sur 400** hors de l'onglet,
+**15 sur 15** dedans.
+
+### Puis Maxime a regardé l'écran, et a vu un défaut plus ancien
+
+⚠️ **« Il garde tout sa même couleur »** — dans une liste filtrée, il ne
+distinguait pas l'onglet où il se trouvait, ni le bouton engagé de son voisin.
+Le défaut n'est pas né du coup de cœur : il datait du 29 août, et l'ajout d'une
+sixième pilule l'a rendu visible.
+
+**Son constat était juste, sa solution ne pouvait pas marcher** — il proposait
+d'atténuer davantage les éléments au repos. La mesure a donné la cause :
+
+| écart de clarté engagé/repos | violet | pêche | rose | menthe | jaune |
+|---|---|---|---|---|---|
+| avant | 8,4 | 6,0 | 5,4 | **1,5** | **0,8** |
+| après | 17,2 | 18,3 | 18,4 | 18,0 | 18,1 |
+
+Il faut ~10 points pour qu'une différence se voie sans comparer. Or **atténuer sur
+fond clair éclaircit**, et le jaune (L\*91) comme la menthe (L\*89) sont déjà
+presque blancs : à 35 % d'opacité, le jaune ne gagnait que 1,3 point. **La seule
+direction libre était vers le bas** — assombrir l'engagé, pas éclaircir le repos.
+
+Quatre options ont été construites pour de vrai et soumises à Maxime, qui a
+composé la sienne : **teinte foncée pour l'onglet où l'on est, éclairci pour les
+autres**, et **décoloration de l'option non retenue** dans les lignes.
+
+⚠️ **Deux garde-fous ont dû être posés par-dessus sa demande :**
+
+1. **Le violet de l'option choisie tombait à 4,44:1**, sous le plancher. Éclairci
+   à 4,64:1 ; l'écart passe de 18 à 17,2 points, ce qui ne se voit pas.
+2. ⚠️ **Sa règle de décoloration vidait l'écran principal.** « L'option non
+   retenue perd sa couleur » marche dans la liste « Écarté », mais dans « À
+   traiter » — **576 offres sur 580** — aucun bouton n'est actif : les deux se
+   décoloraient. Les deux rendus ont été construits côte à côte et Maxime a
+   tranché devant eux : la décoloration ne joue **que lorsqu'une décision
+   existe**.
+
+⚠️⚠️ **Et un troisième, qu'aucune demande ne pouvait anticiper : les teintes
+assombries ne s'appliquent qu'en mode CLAIR.** En sombre, l'engagé est le pastel
+plein — le plus clair — et le repos s'atténue vers le fond : l'écart y valait déjà
+12 à 15 points. Les y poser l'aurait ramené à **0,3 sur le rose, 0,7 sur le
+pêche** : elles auraient reproduit en sombre le défaut exact qu'elles corrigent en
+clair. Une phrase résume la cause : *atténuer éclaircit sur fond clair et
+assombrit sur fond sombre.*
+
+⚠️ **Une mesure fausse a précédé la bonne, et c'est le piège du 29 août qui
+remord.** Le premier relevé annonçait « 67,7 points d'écart » partout — un chiffre
+absurde qui aurait dû alerter tout de suite. Cause : Tailwind rend les fonds
+atténués en `oklab()`, et lire les nombres de la chaîne CSS revient à prendre
+`(0.79, 0.06, -0.10)` pour du RGB, donc du quasi-noir. **Le seul convertisseur
+fiable est un canvas 1×1** : on y peint la couleur sur son fond réel et on relit
+les octets. C'est aussi lui qui règle l'alpha, qu'aucune lecture de chaîne ne
+compose.
+
+### Ce qui a été éprouvé
+
+- Le clic écrit bien en base, et le compteur de l'onglet suit (4 → 5).
+- ⚠️ **Le double clic à coordonnées fixes** (`page.mouse.click(x, y)`, deux fois
+  au même pixel à 120 ms d'intervalle) dans l'onglet « Coup de cœur », où retirer
+  un cœur fait disparaître la ligne : **une seule offre retirée**. Le verrou de
+  tri, qui semblait inutile pour un like, est indispensable ici — c'est le seul
+  onglet où le coup de cœur est aussi un critère de sortie.
+- La transversalité, sur données réelles : une offre **écartée ET coup de cœur**
+  figure bien dans l'onglet. C'est précisément ce qu'un quatrième statut aurait
+  rendu impossible.
+- **Mesure de sécurité refaite** (règle n° 4) : douze noms de colonnes cherchés
+  dans le document complet — flux RSC compris — sur quatre écrans. **Zéro
+  trouvée**, témoin positif valide.
+- Console propre sur les cinq routes, `verifie` au vert (93 tests, deux fuseaux).
+
+---
+
 ## 30 août 2026 — L'enrichissement automatique passe de « reporté » à REFUSÉ
 
 Maxime demande de vérifier qu'aucun document ne prévoit d'enrichir « la meilleure

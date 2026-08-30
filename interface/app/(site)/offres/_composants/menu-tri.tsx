@@ -56,7 +56,14 @@ export function MenuTri({
         // `data-state="open"`, dont on se sert pour l'enfoncer pendant que le
         // menu est ouvert — c'est le même geste que les autres contrôles du
         // système.
-        className="cushion-control data-[state=open]:cushion-control-active inline-flex items-center gap-2 rounded-full border border-transparent bg-interet px-3.5 py-1.5 font-mono text-[0.6875rem] font-bold uppercase tracking-wider text-interet-foreground transition-colors focus-produit"
+        // ⚠️ **`border-2 border-transparent` ne dessine rien, et ne se retire
+        // pas pour autant.** Les pilules de filtre voisines portent une bordure
+        // de 2 px depuis le 30 août 2026 — visible sur l'engagée, transparente
+        // sur les autres. Sans la même ici, ce déclencheur ferait **30,5 px de
+        // haut contre 32,5** pour ses voisins immédiats, sur la même rangée.
+        // Mesuré au DOM : c'est le genre d'écart qu'on ne voit pas en le
+        // cherchant et qu'on sent en regardant l'écran.
+        className="cushion-control data-[state=open]:cushion-control-active inline-flex items-center gap-2 rounded-full border-2 border-transparent bg-interet px-3.5 py-1.5 font-mono text-[0.6875rem] font-bold uppercase tracking-wider text-interet-foreground transition-colors focus-produit"
         // ⚠️ **Le déclencheur annonce le classement EN TOUTES LETTRES, et c'est
         // un correctif de revue.** `DESCRIPTIONS_TRI` se disait « pour le lecteur
         // d'écran et l'infobulle du déclencheur » alors que le déclencheur

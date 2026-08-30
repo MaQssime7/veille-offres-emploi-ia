@@ -463,5 +463,37 @@ Quatre choses qui se défendent en entretien :
   « écart nul » avec assurance. **Un chiffre qui tombe pile doit éveiller le
   soupçon avant de rassurer.**
 
+### Le coup de cœur — 30 août 2026, hors phase
+
+Un cœur posé sur une offre, et un sixième filtre pour les retrouver. Demandé en
+une phrase — *« un bouton à côté de à traiter et écarté, qui serait liké »* — et
+c'est la forme, pas la fonctionnalité, qui a demandé une décision.
+
+Trois choses qui se défendent en entretien :
+
+- **La demande décrivait un bouton, elle impliquait une architecture.** Un
+  quatrième statut aurait été la lecture littérale, et elle produisait deux effets
+  que personne ne voulait : un statut étant **exclusif**, une offre likée cessait
+  d'être « à traiter » — donc quittait l'écran du matin — et **candidater effaçait
+  le cœur**, vidant la liste des coups de cœur à mesure qu'on avance. Les deux
+  formes ont été montrées avec leur conséquence concrète avant d'écrire une ligne.
+  Le choix retenu, un **marqueur transverse au statut**, n'était pas une invention :
+  l'onglet « Nouveau » a déjà cette forme, compte non additionnable compris.
+- **Une seule colonne, parce qu'une forme vaut mieux qu'une contrainte.**
+  `coup_de_coeur_a` est un `timestamptz` : `NULL` = pas de cœur, une date = un
+  cœur. Le réflexe — un booléen *et* sa date — ouvrait un état incohérent (`true`
+  sans date) qu'aucune contrainte simple ne ferme ; le projet avait déjà payé cet
+  écart en phase 4. Ici l'incohérence est **inexprimable**, donc il n'y a rien à
+  faire respecter.
+- **Trois défauts trouvés en mesurant, aucun visible à l'œil.** Le cœur, n'ayant
+  pas de libellé, mesurait 30 px contre 24,5 pour ses voisins : les 200 lignes
+  grandissaient de 3 px et le squelette de chargement l'ignorait. Un
+  `hover:bg-accent` ajouté par réflexe glissait un fond lavande sous le cœur, qui
+  tombait de 3,66:1 à **2,80:1** — sous le plancher, et seulement au survol, l'état
+  qu'aucune capture ne montre. Et le squelette de la fiche portait deux largeurs
+  périmées depuis un changement d'échelle antérieur. ⚠️ Deux tentatives de mesure
+  fausses ont précédé la bonne : **un bloc de mesure se substitue à l'original, il
+  ne se pose pas à côté** — sinon il lui vole sa largeur et se replie différemment.
+
 **Prochaine étape** : la phase 6, l'enrichissement à la demande — le Claude Agent
 SDK, déclenché au clic, borné par une enveloppe quotidienne de tokens.

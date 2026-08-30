@@ -218,6 +218,20 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
     bug de relance en boucle ou une série de clics ne puisse pas produire une
     facture que je découvrirais à la fin du mois.
 
+### Coups de cœur
+
+*Ajoutées le 30 août 2026, à la demande de Maxime. ⚠️ **Numérotées 40 et 41 et
+non 14-15** : les numéros d'US ne se réutilisent jamais dans ce document, même
+quand la story arrive thématiquement au milieu — un numéro recyclé rendrait
+illisibles les renvois des commits et du journal.*
+
+40. **US-40** — En tant que Maxime, je veux marquer une offre d'un « coup de
+    cœur » d'un clic, afin de mettre de côté celles qui m'accrochent vraiment
+    sans avoir à décider tout de suite si je candidate.
+41. **US-41** — En tant que Maxime, je veux retrouver mes coups de cœur dans une
+    liste dédiée **quel que soit leur statut**, afin de savoir où j'en suis sur
+    celles qui comptent — y compris celles auxquelles j'ai déjà candidaté.
+
 ## Critères de succès
 
 1. Le site affiche, chaque jour avant 8 h, les offres collectées dans la nuit,
@@ -491,6 +505,27 @@ marqueur « nouveau ».
 - La note personnelle s'enregistre seule, sans bouton, avec un indicateur d'état
   d'enregistrement. En cas d'échec, un message visible apparaît et le texte saisi
   n'est pas effacé.
+
+⚠️ **Le coup de cœur N'EST PAS un quatrième statut** — décision de Maxime du
+30 août 2026, prise après lui avoir montré ce que chaque forme impliquait. Un
+statut est exclusif : une offre likée aurait cessé d'être « à traiter », donc
+aurait quitté l'écran du matin, et **candidater aurait effacé le cœur**. La
+liste des coups de cœur se serait vidée à mesure qu'il avance, ce qui est
+l'inverse de ce qu'on lui demande.
+
+- Le coup de cœur est donc **transverse aux statuts** : une offre peut être
+  « candidaté + coup de cœur », ou même « écarté + coup de cœur ».
+- Il se pose et se retire d'un clic, depuis la liste, l'écran du matin ou la
+  fiche. ⚠️ **Le clic ne touche QU'UNE annonce**, contrairement aux boutons de
+  statut qui traitent le poste entier sur l'écran du matin. Le statut propage
+  parce qu'une jumelle laissée « à traiter » ramènerait le poste le lendemain ;
+  le cœur n'a pas cette propriété, et propager remplirait la liste des coups de
+  cœur de quatre lignes pour un seul poste — elle ne regroupe pas.
+- Un sixième filtre le montre, et **son compte ne s'additionne pas** avec ceux
+  des trois statuts : chaque offre likée en porte aussi un. Même forme que le
+  filtre « Nouveau ».
+- Aucune règle automatique ne pose de coup de cœur, jamais. C'est un geste de
+  Maxime et rien d'autre.
 
 ### Enrichissement de l'entreprise
 

@@ -51,6 +51,19 @@ export type OffreEnListe = {
   notation_motif_echec: string | null;
   notation_tentatives: number;
   statut: Statut;
+  /**
+   * Quand Maxime a posé un coup de cœur. `null` = aucun.
+   *
+   * ⚠️ **Ce n'est PAS un statut**, et la colonne est indépendante de `statut` :
+   * une offre peut être `candidate` **et** porter un coup de cœur. Voir
+   * `lib/coup-de-coeur.ts` pour le motif de cette forme.
+   *
+   * ⚠️ **La DATE remonte, pas un booléen**, alors que la liste n'affiche qu'un
+   * cœur plein ou vide. Convertir ici ferait perdre au passage la seule
+   * information qui permettra un jour de classer les coups de cœur du plus
+   * récent au plus ancien, pour une économie de quelques octets par ligne.
+   */
+  coup_de_coeur_a: string | null;
 };
 
 /**
@@ -128,6 +141,10 @@ export const COLONNES_LISTE = [
   // Critère d'acceptation du plan : « les notes personnelles ne sortent de la
   // base que là où elles s'affichent ».
   "statut",
+  // ⚠️ **Le coup de cœur entre en liste comme en fiche** : c'est un cœur posé
+  // sur chaque ligne, au même titre que le statut, pas un détail qu'on va
+  // chercher. Une date coûte 29 octets par offre.
+  "coup_de_coeur_a",
 ].join(",");
 
 /**
@@ -254,6 +271,19 @@ export type ResultatListe =
        * nouveauté un matin où il y en a peut-être vingt.
        */
       nouvelles: number | null;
+      /**
+       * Combien d'offres portent un coup de cœur — le compte de l'onglet
+       * homonyme.
+       *
+       * ⚠️ **Il vit à côté de `comptes` et surtout PAS dedans, pour la même
+       * raison que `nouvelles`** : une offre likée porte *aussi* un statut.
+       * Glissée dans le même objet, elle serait comptée deux fois par
+       * `totalBase()` et l'écran annoncerait une base plus grosse qu'elle n'est.
+       *
+       * `null` si le comptage a échoué : l'onglet se tait plutôt que d'afficher
+       * zéro, qui voudrait dire « tu n'as aucun coup de cœur ».
+       */
+      coupsDeCoeur: number | null;
     }
   | { ok: false; motif: MotifEchec; explication: string };
 
@@ -394,16 +424,67 @@ async function compterNouvelles(idExecution: number): Promise<number | null> {
 }
 
 /**
+ * La condition SQL qui retient les offres portant un coup de cœur.
+ *
+ * ⚠️ **C'est une CONSTANTE du code, et elle ne peut pas être autre chose.**
+ * `options.egal` de `lib/supabase.ts` est la seule façon de faire entrer une
+ * valeur extérieure dans une requête, et elle ne sait produire que `=eq.`. Un
+ * « la colonne n'est pas nulle » ne s'exprime pas ainsi : il doit donc vivre
+ * dans le `chemin`, où la règle 5 du `CLAUDE.md` n'autorise que des constantes.
+ * D'où la forme retenue partout ci-dessous — un **booléen** décide de coller ou
+ * non cette chaîne figée, et jamais un fragment reçu de l'appelant. Un booléen
+ * ne peut rien encoder ; une chaîne, si.
+ */
+const CONDITION_COUP_DE_COEUR = "&coup_de_coeur_a=not.is.null";
+
+/**
+ * Combien d'offres portent un coup de cœur, dans toute la base.
+ *
+ * Sort : le compte, ou `null` si PostgREST n'a pas renvoyé son en-tête.
+ *
+ * ⚠️ **Ce compte NE S'ADDITIONNE PAS avec ceux des statuts**, exactement comme
+ * celui des nouveautés : une offre likée porte *aussi* un statut, elle est donc
+ * déjà comptée dans l'un des trois. `totalBase()` (dans `offres/page.tsx`)
+ * additionne `comptes` et rien d'autre ; y glisser celui-ci annoncerait plus
+ * d'offres que la base n'en contient.
+ *
+ * ⚠️ **Il part avec les autres, sans dépendre de rien**, au contraire de
+ * `compterNouvelles` qui doit attendre l'identifiant de la dernière collecte.
+ * Il n'ajoute donc pas de profondeur au chemin critique, seulement un
+ * aller-retour de plus dans un lot déjà parallèle.
+ */
+async function compterCoupsDeCoeur(): Promise<number | null> {
+  const resultat = await interrogerBase<{ identifiant: string }>(
+    `offres?select=identifiant&limit=1${CONDITION_COUP_DE_COEUR}`,
+    { compter: true },
+  );
+
+  return resultat.ok ? resultat.total : null;
+}
+
+/**
  * La requête de liste elle-même, chemin et classement compris.
  *
  * ⚠️ **Le classement est choisi ICI par une clé, jamais reçu comme chaîne.**
  * `CLASSEMENTS[tri]` ne peut rendre que l'une des trois valeurs écrites dans ce
  * fichier ; c'est ce qui empêche `?tri=` de l'adresse d'atteindre le `&order=`.
  */
-function lireListe(tri: Tri, filtre?: Record<string, string>) {
+function lireListe(
+  tri: Tri,
+  filtre?: Record<string, string>,
+  /**
+   * Ne garder que les offres portant un coup de cœur.
+   *
+   * ⚠️ **Un booléen, et surtout pas la condition SQL elle-même.** Voir
+   * `CONDITION_COUP_DE_COEUR` : c'est ce qui garantit qu'aucune valeur venue de
+   * l'adresse ne peut atteindre le chemin de la requête.
+   */
+  coupsDeCoeurSeulement = false,
+) {
   return interrogerBase<OffreEnListe>(
     `offres?select=${COLONNES_LISTE}` +
-      `&order=${CLASSEMENTS[tri]}&limit=${PLAFOND_AFFICHAGE}`,
+      `&order=${CLASSEMENTS[tri]}&limit=${PLAFOND_AFFICHAGE}` +
+      (coupsDeCoeurSeulement ? CONDITION_COUP_DE_COEUR : ""),
     { compter: true, ...(filtre ? { egal: filtre } : {}) },
   );
 }
@@ -460,16 +541,31 @@ export async function listerOffres(
             ? lireListe(tri, { execution_id: String(lecture.identifiant) })
             : null,
         )
-      : // ⚠️ **Le filtre n'est ajouté que s'il en est un.** « Toutes » n'est pas
-        // un statut : lui chercher un `statut=eq.toutes` rendrait zéro ligne, et
-        // la page afficherait « aucune offre » sur une base pleine.
-        lireListe(tri, filtre === "toutes" ? undefined : { statut: filtre });
+      : // ⚠️ **« Coup de cœur » ne filtre AUCUN statut**, et c'est tout le
+        // propos : la liste montre les offres likées, qu'elles soient encore à
+        // traiter, déjà candidatées ou même écartées. Lui ajouter
+        // `statut=eq.a_traiter` ferait disparaître un coup de cœur au moment
+        // exact où Maxime candidate — le défaut que la forme « pas un statut »
+        // existe pour éviter.
+        filtre === "coup_de_coeur"
+        ? lireListe(tri, undefined, true)
+        : // ⚠️ **Le filtre n'est ajouté que s'il en est un.** « Toutes » n'est pas
+          // un statut : lui chercher un `statut=eq.toutes` rendrait zéro ligne, et
+          // la page afficherait « aucune offre » sur une base pleine.
+          lireListe(tri, filtre === "toutes" ? undefined : { statut: filtre });
 
   // Tout ce qui peut partir ensemble part ensemble : enchaînées, ces requêtes
   // multiplieraient l'attente avant le premier pixel.
-  const [offres, lectureExecution, nouvelles, ...parStatut] = await Promise.all(
-    [requeteOffres, promesseDerniere, promesseNouvelles, ...STATUTS.map(compterParStatut)],
-  );
+  const [offres, lectureExecution, nouvelles, coupsDeCoeur, ...parStatut] =
+    await Promise.all([
+      requeteOffres,
+      promesseDerniere,
+      promesseNouvelles,
+      // ⚠️ Lancé ici et pas dans une promesse préparée plus haut : il ne dépend
+      // de rien, donc rien ne gagne à le déclencher plus tôt.
+      compterCoupsDeCoeur(),
+      ...STATUTS.map(compterParStatut),
+    ]);
 
   // Le marqueur des lignes : `null` si on n'a pas pu savoir, ce qui ne marque
   // aucune offre plutôt que d'en marquer au hasard.
@@ -496,7 +592,15 @@ export async function listerOffres(
       };
     }
 
-    return { ok: true, offres: [], total: null, comptes, nouvelles, derniereExecution: null };
+    return {
+      ok: true,
+      offres: [],
+      total: null,
+      comptes,
+      nouvelles,
+      coupsDeCoeur,
+      derniereExecution: null,
+    };
   }
 
   if (!offres.ok) {
@@ -508,6 +612,7 @@ export async function listerOffres(
     offres: offres.lignes,
     comptes,
     nouvelles,
+    coupsDeCoeur,
     // ⚠️ Pas de repli sur `lignes.length` ici : une liste tronquée à 200 dont
     // l'en-tête de comptage manque annoncerait « 200 offres collectées »
     // comme si c'était toute la base. `null` remonte l'ignorance jusqu'à
@@ -624,6 +729,14 @@ export type OffreEnFiche = {
   contact_url_postulation: string | null;
   statut: Statut;
   /**
+   * Quand Maxime a posé un coup de cœur. `null` = aucun.
+   *
+   * ⚠️ **Indépendant de `statut`** — voir `lib/coup-de-coeur.ts`. Une offre
+   * candidatée garde son cœur, et c'est exactement la raison pour laquelle ce
+   * n'est pas une quatrième valeur de `statut`.
+   */
+  coup_de_coeur_a: string | null;
+  /**
    * La note libre de Maxime. `null` tant qu'il n'a rien écrit.
    *
    * ⚠️ **DONNÉE PERSONNELLE au sens du projet, et la seule qu'il produise
@@ -691,6 +804,7 @@ const COLONNES_FICHE = [
   // voyager dans un document de 200 lignes pour n'être rendues nulle part.
   "note_personnelle",
   "note_modifiee_a",
+  "coup_de_coeur_a",
 ].join(",");
 
 /**
@@ -836,6 +950,65 @@ export async function changerStatut(
       statut,
       statut_modifie_a:
         statut === "a_traiter" ? null : new Date().toISOString(),
+    },
+    egal: { identifiant: identifiant.toUpperCase() },
+  });
+}
+
+
+/**
+ * Poser ou retirer le coup de cœur d'une offre.
+ *
+ * Entre : un identifiant venu de l'extérieur, et un booléen — `true` pose le
+ * cœur, `false` le retire.
+ * Sort : `{ ok: true }`, ou un motif que l'action serveur traduira à l'écran.
+ * Casse : ne lève jamais — mêmes garanties que `changerStatut`.
+ *
+ * ⚠️ **L'identifiant est validé ICI, exactement comme en lecture et comme dans
+ * `changerStatut`.** Il vient d'un composant client, c'est-à-dire du navigateur,
+ * c'est-à-dire de n'importe où : une action serveur s'invoque par un `POST` que
+ * rien n'oblige à partir de notre page. `FORMAT_IDENTIFIANT` est réutilisée,
+ * jamais recopiée, sinon les trois expressions dérivent.
+ *
+ * ⚠️ **Une seule colonne écrite, et c'est ce qui rend cette fonction plus sûre
+ * que `changerStatut`.** Le statut a besoin d'un horodatage cohérent avec lui,
+ * d'où la contrainte `statut_touche_est_date` qui rattrape une écriture
+ * distraite. Ici la date **est** la valeur : il n'existe aucun état
+ * intermédiaire à trahir, donc rien à graver dans le moteur. Une forme qui rend
+ * l'incohérence inexprimable vaut mieux qu'une contrainte qui la refuse.
+ *
+ * ⚠️ **Retirer le cœur EFFACE la date, et c'est délibéré.** La colonne dit
+ * « quand Maxime a liké cette offre » : garder la date d'hier sur une offre
+ * délikée la ferait mentir, et le filtre `coup_de_coeur_a=not.is.null`
+ * continuerait à la ramener. Même choix que `statut_modifie_a` remis à `null`
+ * en repassant « à traiter ».
+ *
+ * ⚠️ **L'opération est IDEMPOTENTE, et c'est la vraie réponse au double clic.**
+ * Deux clics rapides envoient deux fois `actif = true` : la seconde écriture
+ * pose une date, comme la première. L'état final est le même — seul
+ * l'horodatage bouge de quelques millisecondes. On pose une valeur absolue,
+ * jamais une bascule calculée à partir de l'existant : un `NOT coup_de_coeur_a
+ * IS NULL` écrit en base ferait qu'un double envoi **annulerait** le premier
+ * clic, et la reprise réseau de `ecrireDansBase` deviendrait dangereuse.
+ * C'est la règle 6 du `CLAUDE.md`, appliquée au cas où elle est le plus
+ * tentante à enfreindre.
+ */
+export async function changerCoupDeCoeur(
+  identifiant: string,
+  actif: boolean,
+): Promise<ResultatEcriture> {
+  // ⚠️ `typeof` avant l'expression régulière — voir `lireOffre`.
+  if (typeof identifiant !== "string" || !FORMAT_IDENTIFIANT.test(identifiant)) {
+    return {
+      ok: false,
+      motif: "introuvable",
+      explication: "Cet identifiant ne ressemble à aucune offre.",
+    };
+  }
+
+  return ecrireDansBase("offres", {
+    valeurs: {
+      coup_de_coeur_a: actif ? new Date().toISOString() : null,
     },
     egal: { identifiant: identifiant.toUpperCase() },
   });

@@ -13,9 +13,13 @@
  * serveur, et aucune colonne sensible n'atteignait le navigateur.** Ce qui la
  * remplace n'est pas une propriété du code mais une discipline de props :
  * **on ne passe ici que des valeurs scalaires, jamais l'objet `offre`.** Lui
- * passer l'offre enverrait ses 20 colonnes dans le document — le message
+ * passer l'offre enverrait **toutes ses colonnes** dans le document — le message
  * d'erreur technique de notation, `contact_nom`, et dès l'étape suivante la
  * note personnelle de Maxime. Règle opposable n° 6 du `CLAUDE.md`.
+ * ⚠️ **Ne pas y remettre un NOMBRE.** Il en portait un ; il périme à chaque
+ * migration, et le 30 août 2026 trois fichiers en annonçaient trois différents
+ * (20, 22, 23) pour la même chose. Ce qui compte est *quelles* colonnes sont
+ * dangereuses, pas combien il y en a.
  *
  * ⚠️ **Deux boutons et non trois.** « À traiter » n'a pas le sien : c'est l'état
  * de départ, et on y revient en recliquant sur le bouton actif. Un troisième
@@ -44,7 +48,7 @@ export function BoutonsStatut({
    *
    * ⚠️ **Un tableau d'identifiants, jamais des objets `offre`.** C'est la règle
    * n° 4 du projet appliquée à la lettre : ce composant est un composant client,
-   * et lui passer les offres entières enverrait les vingt-deux colonnes dans le
+   * et lui passer les offres entières enverrait **toutes leurs colonnes** dans le
    * document — message d'erreur technique et note personnelle compris.
    *
    * ⚠️ **Vide partout sauf sur `/`**, où l'écran du matin regroupe les annonces
@@ -126,6 +130,17 @@ export function BoutonsStatut({
    */
   const [statutAffiche, poserOptimiste] = useOptimistic(statut);
 
+  /**
+   * Une décision a-t-elle été prise sur cette offre ?
+   *
+   * ⚠️ **Calculé sur `statutAffiche`, jamais sur `statut`** — donc sur l'état
+   * optimiste. Sans ça, la décoloration attendrait l'aller-retour vers Supabase
+   * pendant que le fond du bouton cliqué, lui, aurait déjà changé : on verrait
+   * les deux boutons pleins pendant ~900 ms, exactement l'état qu'on cherche à
+   * supprimer. Les deux moitiés du même geste doivent bouger ensemble.
+   */
+  const decide = statutAffiche !== STATUT_PAR_DEFAUT;
+
   function basculer(cible: Statut) {
     // Recliquer sur le bouton actif ramène à « à traiter » : la bascule est ce
     // qui permet de corriger un mauvais clic sans troisième bouton.
@@ -155,9 +170,20 @@ export function BoutonsStatut({
   return (
     <div className="flex flex-col items-start gap-1">
       <div className="flex flex-wrap items-center gap-1.5">
+        {/* ⚠️ **`decide` gouverne la DÉCOLORATION de l'option non retenue** —
+            demande de Maxime du 30 août 2026, et sa forme exacte est le fruit
+            d'un aller-retour. Il voulait que, dans la liste « Écarté », le
+            bouton « Candidaté » perde sa couleur pour que la distinction saute
+            aux yeux. Appliqué sans condition, ça vidait de toute couleur la
+            liste « À traiter » — **576 offres sur 580**, l'écran ouvert chaque
+            matin — puisqu'aucun bouton n'y est actif. Décision prise devant les
+            deux rendus : la décoloration ne joue **que lorsqu'une décision
+            existe**. Tant que l'offre est à traiter, les deux gardent leur
+            teinte, comme depuis le 29 août. */}
         <BoutonStatut
           cible="candidate"
           actif={statutAffiche === "candidate"}
+          decolore={decide && statutAffiche !== "candidate"}
           enCours={enCours || verrouille}
           compact={compact}
           onClick={() => basculer("candidate")}
@@ -167,6 +193,7 @@ export function BoutonsStatut({
         <BoutonStatut
           cible="ecarte"
           actif={statutAffiche === "ecarte"}
+          decolore={decide && statutAffiche !== "ecarte"}
           enCours={enCours || verrouille}
           compact={compact}
           onClick={() => basculer("ecarte")}
@@ -209,6 +236,7 @@ export function BoutonsStatut({
 function BoutonStatut({
   cible,
   actif,
+  decolore,
   enCours,
   compact,
   onClick,
@@ -217,6 +245,15 @@ function BoutonStatut({
 }: {
   cible: Statut;
   actif: boolean;
+  /**
+   * L'option **non retenue** d'une offre déjà décidée : elle perd son fond et
+   * ne garde qu'un contour.
+   *
+   * ⚠️ **Jamais vrai en même temps qu'`actif`**, et jamais vrai sur une offre
+   * « à traiter » — voir le commentaire de l'appelant. C'est ce qui empêche la
+   * liste principale de devenir grise.
+   */
+  decolore: boolean;
   enCours: boolean;
   compact: boolean;
   onClick: () => void;
@@ -287,13 +324,30 @@ function BoutonStatut({
   // Contrastes du libellé, les quatre combinaisons en clair : menthe pleine
   // 9,30:1 · menthe à 55 % 10,48:1 · rose plein 7,32:1 · rose à 55 % 9,22:1.
   // En sombre à 70 % : menthe 6,21:1 · rose 5,07:1 · pleines 11,44 et 9,00:1.
-  const habit = actif
-    ? teinte === "candidate"
-      ? "cushion-control-active bg-success text-success-foreground"
-      : "cushion-control-active bg-ecarte text-ecarte-foreground"
-    : teinte === "candidate"
-      ? "cushion-control bg-success/55 dark:bg-success/70 text-success-foreground hover:bg-success dark:hover:bg-success"
-      : "cushion-control bg-ecarte/55 dark:bg-ecarte/70 text-ecarte-foreground hover:bg-ecarte dark:hover:bg-ecarte";
+  //
+  // ⚠️ **TROISIÈME état depuis le 30 août 2026 : `decolore`.** L'option non
+  // retenue d'une offre déjà décidée n'a plus de fond du tout — contour et
+  // encre atténuée, comme l'onglet « Toutes ». C'est ce qui fait ressortir la
+  // décision dans les listes « Candidaté » et « Écarté », où toutes les lignes
+  // portent le même statut et où deux pastels voisins ne se départageaient pas.
+  //
+  // Contrastes mesurés le 30 août : texte `#6c5b94` sur la carte blanche
+  // **5,90:1**, contour `#9c60ff` **3,80:1** (plancher 3:1 pour un objet
+  // d'interface). En sombre, `#b8afcb` sur `#211f2b` : **7,74:1**, contour
+  // **8,13:1**.
+  //
+  // ⚠️ **Le survol lui rend sa teinte**, et ce n'est pas décoratif : c'est ce
+  // qui annonce que le bouton est toujours cliquable. Un bouton décoloré et
+  // inerte au survol se lirait comme désactivé.
+  const habit = decolore
+    ? "cushion-control border border-input text-muted-foreground hover:bg-accent hover:text-foreground"
+    : actif
+      ? teinte === "candidate"
+        ? "cushion-control-active bg-success text-success-foreground"
+        : "cushion-control-active bg-ecarte text-ecarte-foreground"
+      : teinte === "candidate"
+        ? "cushion-control bg-success/55 dark:bg-success/70 text-success-foreground hover:bg-success dark:hover:bg-success"
+        : "cushion-control bg-ecarte/55 dark:bg-ecarte/70 text-ecarte-foreground hover:bg-ecarte dark:hover:bg-ecarte";
 
   // Actif, l'icône devient une flèche de retour : c'est ce que le clic fera.
   // Un bouton doit annoncer son effet, pas répéter son état — celui-ci est déjà

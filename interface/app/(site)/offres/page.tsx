@@ -200,15 +200,18 @@ export default async function PageOffres({
             <FiltresStatut
               actif={filtre}
               tri={tri}
-              // ⚠️ **Les cinq comptes sont réunis ICI, et `totalBase` ne voit
+              // ⚠️ **Les six comptes sont réunis ICI, et `totalBase` ne voit
               // toujours que les trois statuts.** L'addition qui reconstitue le
               // total de la base n'est exacte que parce que chaque offre y est
-              // comptée une fois : « nouvelles » et « toutes » comptent les
-              // mêmes offres sous un autre angle, les additionner donnerait un
-              // total supérieur à la base.
+              // comptée une fois : « nouvelles », « coup de cœur » et
+              // « toutes » comptent les mêmes offres sous un autre angle, les
+              // additionner donnerait un total supérieur à la base. Le type de
+              // `totalBase` — `Record<Statut, …>` et non `Record<string, …>` —
+              // est ce qui empêche mécaniquement de lui passer cet objet-ci.
               comptes={{
                 ...resultat.comptes,
                 nouvelles: resultat.nouvelles,
+                coup_de_coeur: resultat.coupsDeCoeur,
                 toutes: totalBase(resultat.comptes),
               }}
             />
@@ -243,12 +246,16 @@ export default async function PageOffres({
           <AucuneOffreDansCeFiltre
             libelle={LIBELLES_FILTRE[filtre]}
             totalBase={totalBase(resultat.comptes)}
-            // ⚠️ « Nouveau » n'est pas un statut : la phrase par défaut
-            // affirmerait qu'une colonne le porte en base.
+            // ⚠️ **Ni « Nouveau » ni « Coup de cœur » ne sont des statuts** :
+            // la phrase par défaut affirmerait qu'une colonne `statut` les
+            // porte en base, alors que le premier se lit sur `execution_id` et
+            // le second sur `coup_de_coeur_a`.
             raison={
               filtre === "nouvelles"
                 ? "mais aucune ne vient de la dernière collecte"
-                : undefined
+                : filtre === "coup_de_coeur"
+                  ? "mais aucune ne porte de coup de cœur"
+                  : undefined
             }
           />
         )
@@ -283,6 +290,12 @@ export default async function PageOffres({
                   resultat.derniereExecution !== null &&
                   offre.execution_id === resultat.derniereExecution
                 }
+                // ⚠️ **Le SEUL onglet où retirer un cœur fait sortir la ligne**,
+                // donc le seul où le cœur doit prendre le verrou de tri. Partout
+                // ailleurs, liker ne réorganise rien et geler les 200 lignes
+                // rendrait les boutons de statut inopérants pour rien pendant
+                // près d'une seconde.
+                coupDeCoeurSortDeLaListe={filtre === "coup_de_coeur"}
                 maintenant={maintenant}
               />
             ))}
@@ -309,8 +322,9 @@ export default async function PageOffres({
  *
  * ⚠️ **Le paramètre est typé `Record<Statut, …>` et surtout PAS
  * `Record<string, …>` — correctif de revue du 29 août 2026.** Avec `string`,
- * l'objet à cinq clés passé aux onglets (`{...comptes, nouvelles, toutes}`)
- * était parfaitement assignable : quelqu'un l'extrayant dans une constante pour
+ * l'objet à six clés passé aux onglets
+ * (`{...comptes, nouvelles, coup_de_coeur, toutes}`) était parfaitement
+ * assignable : quelqu'un l'extrayant dans une constante pour
  * le réutiliser aurait obtenu 574 + 7 + 574 = **1 155 offres** dans l'onglet
  * « Toutes » et dans le message d'état vide, sans que TypeScript ne bronche.
  * Le type dit maintenant ce que le commentaire ci-dessus exigeait déjà.

@@ -14,16 +14,18 @@
  * D'où l'ordre, qui ne se réarrange pas :
  *
  * 1. `exigerSession()` — la serrure, en première ligne, sans exception.
- * 2. Valider la valeur contre la liste blanche `estStatut()`.
- * 3. Valider l'identifiant (fait par `changerStatut`, qui applique la même
- *    expression régulière que la lecture).
+ * 2. Valider la valeur reçue : liste blanche pour le statut (`estStatut()`),
+ *    type exact pour le coup de cœur et la note. Jamais une conversion
+ *    permissive, qui accepterait n'importe quoi en le rendant plausible.
+ * 3. Valider l'identifiant (fait par les fonctions de `lib/offres.ts`, qui
+ *    appliquent la même expression régulière que la lecture).
  * 4. Écrire, et laisser la contrainte de la base trancher en dernier ressort.
  */
 
 import { revalidatePath } from "next/cache";
 
 import { exigerSession } from "@/lib/acces";
-import { changerStatut, enregistrerNote } from "@/lib/offres";
+import { changerCoupDeCoeur, changerStatut, enregistrerNote } from "@/lib/offres";
 import { LONGUEUR_MAX_NOTE, normaliserNote } from "@/lib/notes";
 import { estStatut } from "@/lib/statuts";
 
@@ -159,6 +161,99 @@ export async function definirStatut(
   //
   // `"page"` suffit : `/` est une feuille, aucune route enfant n'affiche ces
   // offres. `"layout"` sur `/` invaliderait tout le site à chaque clic.
+  revalidatePath("/", "page");
+
+  return { ok: true };
+}
+
+
+/**
+ * Poser ou retirer le coup de cœur sur UNE annonce.
+ *
+ * Entre : un identifiant et un booléen, tous deux venus du navigateur.
+ * Sort : `{ ok: true }`, ou un message affichable.
+ * Casse : ne lève jamais pour une panne de base — `exigerSession()` peut lever
+ * pour rediriger, et c'est voulu.
+ *
+ * ⚠️ **UN identifiant, pas une liste — et c'est la différence de fond avec
+ * `definirStatut`.** La première version propageait le cœur aux jumelles du
+ * poste, par symétrie avec le clic de statut. **Le raisonnement ne se transpose
+ * pas, et une revue l'a relevé le 30 août 2026 :**
+ *
+ * - Le statut propage parce qu'écarter l'annonce affichée laisserait sa jumelle
+ *   « à traiter », et **le poste reviendrait** dans l'écran du matin le
+ *   lendemain. Il y a un travail à ne pas refaire.
+ * - Le coup de cœur n'a pas cette propriété. Propager ne protégeait de rien et
+ *   **fabriquait du bruit** : l'onglet « Coup de cœur » ne regroupe pas, donc un
+ *   poste republié quatre fois — le cas MBDA, mesuré sur cette base — y
+ *   occupait quatre lignes après un seul clic, et la pilule annonçait « 4 »
+ *   pour un seul poste. Exactement ce que cette liste doit éviter, sur l'écran
+ *   qu'on rouvre pour décider où postuler.
+ *
+ * ⚠️ **Le commentaire qui justifiait la propagation était FAUX**, et c'est le
+ * genre d'erreur qu'on ne voit qu'en la relisant à froid : il affirmait qu'une
+ * jumelle non likée « apparaîtrait dans l'onglet Coup de cœur, une fois avec
+ * cœur, une fois sans ». C'est impossible — le filtre est
+ * `coup_de_coeur_a=not.is.null`, une annonce sans cœur n'y figure pas.
+ *
+ * **Conséquence assumée** : sur `/offres`, qui ne regroupe pas, deux annonces du
+ * même poste peuvent porter des cœurs différents. Ce sont deux lignes distinctes
+ * de la base, et Maxime a liké celle qu'il avait sous les yeux.
+ */
+export async function definirCoupDeCoeur(
+  identifiant: string,
+  actif: boolean,
+): Promise<ResultatAction> {
+  // ⚠️ Première ligne, sans exception. Hors de tout try/catch : `redirect()`
+  // lève une exception que Next intercepte, l'attraper annulerait le renvoi.
+  await exigerSession();
+
+  // ⚠️ **`typeof` et non une conversion en booléen.** `Boolean(valeur)` aurait
+  // accepté `"non"`, `{}` ou `[]` en les rendant tous `true` : un appel forgé
+  // aurait liké une offre en envoyant n'importe quoi. On refuse ce qui n'est
+  // pas un booléen, plutôt que de deviner ce que l'appelant voulait dire.
+  if (typeof actif !== "boolean") {
+    console.error("[coup de cœur] valeur refusée — ce n'est pas un booléen");
+    return { ok: false, message: "Demande invalide." };
+  }
+
+  // ⚠️ **Le type est revérifié à l'exécution.** TypeScript disparaît à la
+  // compilation et l'appelant réel est un `POST` : il peut envoyer un tableau,
+  // un objet, `undefined`. Le format de l'identifiant, lui, est validé par
+  // `changerCoupDeCoeur` avec la même expression régulière que la lecture.
+  if (typeof identifiant !== "string") {
+    console.error("[coup de cœur] identifiant refusé — ce n'est pas une chaîne");
+    return { ok: false, message: "Demande invalide." };
+  }
+
+  // ⚠️ **Aucune borne à poser ici, contrairement à `definirStatut`** : une
+  // requête ne peut plus toucher qu'une ligne. La borne existait parce que le
+  // tableau venait du navigateur ; sans tableau, l'abus n'a plus de prise.
+  const resultat = await changerCoupDeCoeur(identifiant, actif);
+
+  if (!resultat.ok) {
+    const message =
+      resultat.motif === "introuvable"
+        ? "Cette offre n’existe plus."
+        : resultat.motif === "refusee"
+          ? "La base a refusé ce changement."
+          : resultat.motif === "configuration"
+            ? "Le site n’est pas correctement configuré."
+            : "Enregistrement impossible : la base n’a pas répondu.";
+    return { ok: false, message };
+  }
+
+  // `"layout"` couvre `/offres` **et** `/offres/[identifiant]` : le cœur se
+  // clique depuis les deux écrans, et le compteur de l'onglet change.
+  revalidatePath("/offres", "layout");
+  // ⚠️ **`/` en a besoin AUSSI, et l'oublier serait invisible en
+  // développement.** Le cœur s'affiche sur l'écran du matin : sans cette ligne,
+  // le bouton « retour » du navigateur ramènerait l'écran d'avant le clic, cœur
+  // vide sur une offre likée. Même défaut que celui mesuré le 29 août sur la
+  // note personnelle.
+  //
+  // `"page"` suffit : `/` est une feuille, aucune route enfant n'affiche ces
+  // offres. `"layout"` y invaliderait tout le site à chaque clic.
   revalidatePath("/", "page");
 
   return { ok: true };

@@ -62,8 +62,25 @@ describe("adresseListe", () => {
     );
   });
 
-  it("traite « toutes » et « nouvelles » comme des filtres à part entière", () => {
+  it("traite les trois filtres transverses comme des filtres à part entière", () => {
     assert.equal(adresseListe("toutes", "interet"), "/offres?statut=toutes");
     assert.equal(adresseListe("nouvelles", "interet"), "/offres?statut=nouvelles");
+    // ⚠️ Aucun de ces trois n'est un statut : `?statut=coup_de_coeur` ne
+    // désigne aucune valeur écrivable en base. Le paramètre garde son nom pour
+    // ne pas casser les favoris — voir `lib/filtres.ts`.
+    assert.equal(
+      adresseListe("coup_de_coeur", "interet"),
+      "/offres?statut=coup_de_coeur",
+    );
+  });
+
+  it("garde le coup de cœur ET le classement, sans en perdre un", () => {
+    // Le cas qui casse en usage réel : on trie ses coups de cœur par date, puis
+    // on change d'onglet. Sans cette préservation, le classement retomberait au
+    // défaut à chaque clic.
+    assert.equal(
+      adresseListe("coup_de_coeur", "recentes"),
+      "/offres?statut=coup_de_coeur&tri=recentes",
+    );
   });
 });

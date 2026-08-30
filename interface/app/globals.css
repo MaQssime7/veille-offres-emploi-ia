@@ -128,6 +128,15 @@
   --color-success-foreground: var(--success-foreground);
   --color-ecarte: var(--ecarte);
   --color-ecarte-foreground: var(--ecarte-foreground);
+  --color-coup-de-coeur: var(--coup-de-coeur);
+  --color-coup-de-coeur-foreground: var(--coup-de-coeur-foreground);
+  --color-coup-de-coeur-icone: var(--coup-de-coeur-icone);
+  /* Les cinq fonds d'onglet ENGAGÉ — voir le bloc « L'onglet engagé » plus bas. */
+  --color-primary-engage: var(--primary-engage);
+  --color-signal-engage: var(--signal-engage);
+  --color-coup-de-coeur-engage: var(--coup-de-coeur-engage);
+  --color-success-engage: var(--success-engage);
+  --color-ecarte-engage: var(--ecarte-engage);
 
   /* ⚠️ **Les rayons viennent de pouf et ils sont GROS** — 32 px pour une
      carte, 20 px pour un contrôle, contre 4 px auparavant. C'est le trait le
@@ -266,6 +275,72 @@
   --ecarte: var(--color-pink);
   --ecarte-foreground: var(--on-accent); /* 7,32:1 */
 
+  /* Le coup de cœur — pêche. Le SIXIÈME et dernier accent du système, le seul
+     qui restait libre le 30 août 2026 : violet, jaune, bleu, menthe et rose
+     portaient déjà un rôle chacun.
+
+     ⚠️ **Le pêche et le rose « Écarté » sont à 1,05:1 l'un de l'autre**, mesuré
+     le 30 août 2026 — c'est-à-dire exactement la même clarté. Ils ne se
+     distinguent que par leur teinte, donc **pas du tout** pour un œil
+     protanope ou deutéranope, et à peine sur un écran mal réglé. C'est
+     acceptable ici, et seulement parce que **l'information ne tient jamais sur
+     la couleur** : un cœur contre une croix, un libellé « Coup de cœur » contre
+     « Écarté ». Le jour où l'un des deux perdrait sa forme ou son mot, il
+     faudrait changer la couleur, pas discuter le contraste.
+
+     ⚠️ **DEUX jetons, comme pour les notes** — c'est le troisième cas du même
+     piège. Un pastel nu ne pèse que **1,74:1 sur la carte blanche** et
+     **1,48:1 sur le fond de page** : très en dessous des 3:1 qu'exige un objet
+     graphique. Le pastel sert donc de FOND (sous de l'encre foncée, 6,99:1),
+     et le cœur lui-même prend la variante assombrie. */
+  --coup-de-coeur: var(--color-orange);
+  --coup-de-coeur-foreground: var(--on-accent); /* 6,99:1 */
+  /* Le cœur en tant que forme pleine : 3,66:1 sur la carte, 3,10:1 sur le fond
+     de page. Même famille que `--interet-barre` et `--success-barre`, obtenue
+     de la même façon — la teinte d'origine (21°), la clarté descendue jusqu'à
+     franchir le plancher. */
+  --coup-de-coeur-icone: #eb5200;
+
+  /* -------------------------------------------------------------------------
+     L'onglet ENGAGÉ — cinq teintes assombries, mode clair UNIQUEMENT
+     -------------------------------------------------------------------------
+     ⚠️ **Ces jetons existent parce que la saturation seule ne distinguait
+     rien**, mesuré le 30 août 2026 sur demande de Maxime, qui voyait le défaut
+     sans pouvoir le nommer. L'écart de clarté entre une pilule engagée (pastel
+     plein) et une pilule au repos (pastel à 55 %) valait :
+
+       violet 8,4 · pêche 6,0 · rose 5,4 · menthe 1,5 · **jaune 0,8**
+
+     Il en faut environ **10** pour qu'une différence se voie sans comparer côte
+     à côte. Le jaune et la menthe étaient donc, littéralement, indiscernables.
+
+     ⚠️ **Et le réflexe — atténuer DAVANTAGE le repos — ne pouvait pas marcher.**
+     Atténuer sur un fond clair ÉCLAIRCIT vers le lavande ; or le jaune (L*91) et
+     la menthe (L*89) sont déjà presque blancs. À 35 % d'opacité, le jaune ne
+     gagnait que 1,3 point. Il n'y a pas de place au-dessus : la seule direction
+     libre est vers le bas. D'où ces cinq valeurs, qui portent l'écart à 17-19
+     points tout en gardant l'encre foncée au-dessus de 4,5:1.
+
+     ⚠️ **Le violet n'est PAS à sa valeur théorique.** L'assombrissement calculé
+     (#b384ff) tombait à 4,44:1 — sous le plancher. Éclairci jusqu'à 4,64:1 ;
+     l'écart passe de 18 à 17,2 points, ce qui ne se voit pas.
+
+     ⚠️⚠️ **AUCUN de ces jetons ne doit être appliqué en mode SOMBRE**, et c'est
+     le piège de ce bloc. En sombre, l'engagé est le pastel PLEIN (donc le plus
+     clair) et le repos s'atténue VERS le fond (donc s'assombrit) : l'écart y est
+     déjà de 12 à 15 points. Y poser ces teintes le ramènerait à **0,3 sur le
+     rose et 0,7 sur le pêche** — elles détruiraient la distinction là où elle
+     fonctionne. Le bloc `.dark` les ramène donc au pastel nu, et cette ligne-là
+     n'est pas une redondance à nettoyer.
+
+     Contrastes de l'encre foncée sur chacune : violet 4,64:1 · jaune 5,99:1 ·
+     pêche 4,81:1 · menthe 5,81:1 · rose 4,96:1. */
+  --primary-engage: #b689ff;
+  --signal-engage: #e1af00;
+  --coup-de-coeur-engage: #ff7e38;
+  --success-engage: #23cc81;
+  --ecarte-engage: #ff78ae;
+
   /* Le nom de l'entreprise. Violet à 4,53:1 : il doit se distinguer de
      l'intitulé, qui partage sa police et sa taille. */
   --marque: #8337ff;
@@ -335,6 +410,25 @@
   --interet-texte: var(--color-blue);
   --success-barre: var(--color-mint); /* 14,31:1 */
   --success-texte: var(--color-mint);
+  /* ⚠️ En sombre le pastel passe NU — 9,31:1 sur la carte, 10,77:1 sur le fond
+     de page. Le problème des pastels invisibles est propre au mode clair, où
+     ils se posent sur du blanc ; ici c'est l'inverse. Assombrir en sombre
+     rendrait le cœur illisible. */
+  --coup-de-coeur-icone: var(--color-orange);
+
+  /* ⚠️⚠️ **L'onglet engagé reprend le pastel NU en sombre — ne pas « nettoyer »
+     ces cinq lignes en les prenant pour des redondances.** Elles annulent
+     délibérément les teintes assombries du mode clair. Mesuré le 30 août 2026 :
+     appliquées ici, elles ramèneraient l'écart de clarté engagé/repos de ~14
+     points à **0,3 sur le rose, 0,7 sur le pêche, 1,5 sur la menthe** — c'est-à-dire
+     qu'elles reproduiraient en sombre le défaut exact qu'elles corrigent en
+     clair. La cause tient en une phrase : atténuer éclaircit sur fond clair et
+     assombrit sur fond sombre. */
+  --primary-engage: var(--color-purple);
+  --signal-engage: var(--color-yellow);
+  --coup-de-coeur-engage: var(--color-orange);
+  --success-engage: var(--color-mint);
+  --ecarte-engage: var(--color-pink);
   /* ⚠️ **En sombre, la piste NE PEUT PAS prendre le pastel de sa note** : le
      pastel y est déjà le remplissage, et une piste de la même couleur rendrait
      la barre uniformément pleine, donc illisible à toute valeur. Elle reste
