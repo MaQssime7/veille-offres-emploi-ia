@@ -116,7 +116,17 @@ _journal = logging.getLogger(__name__)
 # une relance crée une NOUVELLE tentative, dont les rangs repartent de zéro.
 PREMIER_RANG = 1
 
-MODELE_PAR_DEFAUT = "claude-sonnet-5"
+# ⚠️ **HAIKU TEMPORAIREMENT, à la demande de Maxime le 31 août 2026** — pour
+# regarder les étapes défiler sans consommer l'enveloppe au tarif Sonnet.
+# ⚠️ **À REMETTRE sur `claude-sonnet-5` avant tout usage réel** : Haiku valide le
+# TUYAU — les outils sont appelés, les étapes s'écrivent, la fiche s'écrit —
+# jamais la qualité de l'appariement, qui est le travail difficile. Mesuré sur
+# deux cas le 30 août : Haiku a bien recopié l'ancrage sans rien inventer, mais
+# aucun des deux ne l'a mis en difficulté.
+# ⚠️ **La trace garde le modèle utilisé** (colonne `modele`) : une fiche produite
+# par Haiku reste identifiable en base, et ne doit pas être prise pour une
+# référence de qualité.
+MODELE_PAR_DEFAUT = "claude-haiku-4-5-20251001"
 
 # ⚠️ **Trois bornes indépendantes, parce qu'elles n'attrapent pas la même
 # dérive.** Une boucle qui tourne en rond sur des outils gratuits n'est arrêtée
