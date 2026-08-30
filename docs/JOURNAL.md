@@ -6,6 +6,210 @@ tout l'historique est ici.
 
 ---
 
+## 30 août 2026 (nuit) — 6.3 : l'agent travaille pour de vrai
+
+La tranche 6.2 prouvait le tuyau avec des étapes de démonstration. Celle-ci met l'agent
+au travail. Trois décisions commandent la forme du module, et ce sont elles qu'il faut
+retenir plutôt que le code.
+
+**Les étapes affichées sont DÉRIVÉES du travail, jamais racontées par le modèle.** On
+aurait pu lui donner un outil « écris une étape » et le laisser commenter sa progression.
+Deux raisons de ne pas le faire. Une étape racontée peut mentir — rien n'empêche un
+modèle d'écrire « SIREN confirmé » sans avoir rien confirmé — alors qu'une étape dérivée
+d'un appel d'outil est la trace d'un travail qui a eu lieu, donc vraie par construction.
+Et chaque étape racontée coûterait un tour, donc des tokens d'entrée répétés à tous les
+tours suivants, pour de la prose que personne ne relit. Nos outils écrivent la leur avec
+leur résultat réel ; les outils intégrés sont observés dans le flux de messages.
+
+**L'agent rend sa fiche par un OUTIL, pas en texte libre.** L'outil valide et rend ses
+reproches au modèle, qui corrige et rappelle. L'alternative — écrire tel quel et laisser
+la base refuser — perdrait tout un enrichissement déjà payé pour une année manquante. Il
+est rappelable, la dernière version gagne : c'est ce qui donne un sens à « au-delà de la
+borne, il s'arrête et rend ce qu'il a trouvé », qui sinon ne rendrait rien du tout.
+
+**La borne de durée est INTERNE ; le `timeout` du workflow n'est qu'un filet.** Un job
+tué par GitHub ne conclut rien : la ligne reste `en_cours`, l'écran pulse jusqu'à la
+péremption, et les tokens brûlés sont perdus pour l'enveloppe. Le filet est passé de 5 à
+8 minutes, l'installation du SDK pesant 190 Mo.
+
+### `registre.py` est une frontière avant d'être un client HTTP
+
+Sa vraie responsabilité n'est pas d'appeler une API, c'est de décider **ce que le modèle a
+le droit de voir**. Le registre rend les dirigeants nommés avec leur date de naissance, et
+l'adresse de voie du siège — qui est le domicile du dirigeant pour une entreprise
+individuelle. La liste est donc blanche et non noire : un champ personnel ajouté demain
+par l'API restera invisible tant que personne ne l'aura explicitement demandé. C'est le
+même geste que la collecte, qui écarte les coordonnées **avant** écriture ; la différence
+est qu'ici aucune colonne ne viendrait l'arrêter en aval.
+
+### Trois enrichissements réels, dix-huit champs confrontés, zéro invention
+
+C'est le contrôle qui comptait le plus, et il a été fait à chaque fois : reprendre chaque
+colonne typée écrite par l'agent et la confronter au registre.
+
+| Offre | Modèle | Tours | Tokens | Durée | Appariement |
+|---|---|---|---|---|---|
+| `212JMCR` BnF | Haiku 4.5 | 7 | 71 479 | 40 s | `verifie` |
+| `6240618` Atos derrière NEW NET 3D | Haiku 4.5 | 6 | 63 127 | 52 s | `verifie` |
+| `6323372` Expertime — **en production** | **Sonnet 5** | 13 | **118 254** | 86 s | `probable` |
+
+Date de création, catégorie, tranche d'effectif, millésimes, chiffre d'affaires, SIREN :
+**identiques à la lettre, dix-huit fois sur dix-huit.** Le modèle recopie, il ne paraphrase
+pas. Et il omet plutôt que de deviner — la BnF n'a reçu que deux rubriques sur trois.
+
+**Le cas Expertime est le plus instructif, et c'est un échec qui se passe bien.** Le site
+officiel était inaccessible (erreur de certificat). L'agent est allé chercher ailleurs —
+recherche web, puis une source tierce — a trouvé un SIREN, l'a **confirmé au registre
+officiel**, et a conclu `probable` et non `verifie`, en écrivant pourquoi : *« le site
+officiel était techniquement inaccessible, donc pas de confirmation par mentions légales ;
+mais une source tierce corrobore le SIREN avec des agences cohérentes avec l'annonce »*.
+Il n'a écrit ni site officiel, ni groupe, ni effectif annoncé. C'est exactement la fiche
+qui déclare son doute plutôt que de le combler. ⚠️ **Et l'architecture y est pour
+quelque chose** : peu importe où le SIREN est trouvé, la confirmation passe toujours par
+le registre. La source tierce sert d'indice, jamais de preuve.
+
+### Deux défauts trouvés en REGARDANT, pas en relisant
+
+**Le libellé des lectures web n'affichait que le domaine.** Le premier enrichissement réel
+a produit trois « Lecture du site bnf.fr » à la suite, rigoureusement identiques, alors
+que l'agent lisait trois pages différentes dont les mentions légales. À l'écran, ça se lit
+comme une boucle bloquée. Mon propre commentaire dans le code affirmait que « le domaine
+suffit, l'adresse complète n'apprend rien de plus » — la première mesure l'a démenti.
+
+**Les libellés de catégorie INSEE contredisaient la tranche d'effectif de la même fiche.**
+OCTO ressort « GE » avec 500 à 999 salariés : un libellé nu (« grande entreprise, 5 000
+salariés et plus ») aurait fait écrire au modèle qu'elle en compte 5 000. L'INSEE calcule
+la catégorie au niveau du **groupe**. ⚠️ **La piste n° 6 du `CLAUDE.md`, marquée « mesurée
+sur un seul cas », en a maintenant trois** : OCTO (GE / 500-999) et Expertime (GE /
+100-199) trahissent une filiale, Atos France (GE / 5 000-9 999) est cohérente. La
+contradiction est désormais **dite au modèle comme un indice**, pas tue.
+
+### La revue de code : dix constats, dix corrigés
+
+Quatre méritent d'être retenus.
+
+**La conclusion n'était pas protégée.** `_requete()` ne réessaie jamais : un hoquet réseau
+sur le `PATCH` final laissait la ligne `en_cours`, l'index interdisait toute relance, et
+l'offre était bloquée dix minutes — agent déjà payé. Aggravant : le filet censé l'empêcher
+était **déjà mort**, `_faire_travailler` attrapant tout en amont. Un `try` qui a l'air
+prudent et ne se déclenche jamais est pire que pas de `try` : il fait croire que le cas
+est traité.
+
+**`entreprise_site` acceptait n'importe quoi.** C'est le seul champ de la fiche qui
+deviendra un lien cliquable, et il vient de pages web que personne ne contrôle. Une page
+hostile poussant le modèle à écrire `javascript:…` produisait un lien exécutable dès la
+6.4. La seule parade était une consigne dans le prompt — or une consigne se contourne, un
+contrôle non.
+
+**`2024-02-31` passait.** Format valide, date inexistante, colonne `date` : 400 sur la
+conclusion et enrichissement entier perdu pour un 31 février.
+
+**Les codes INSEE n'étaient pas validés, et le défaut aurait été SILENCIEUX.**
+`entreprise_tranche_effectif` acceptait « 500 à 999 salariés » au lieu du code `41`.
+Aucune contrainte ne l'aurait refusé, et l'écran de la 6.4 aurait cherché un code dans sa
+table de traduction, n'aurait rien trouvé, et n'aurait rien affiché — sans erreur nulle
+part. ⚠️ **Le piège venait du prompt lui-même** : on donne au modèle le libellé en toutes
+lettres pour qu'il le compare à l'effectif du site, donc c'est celui-là qu'il a sous les
+yeux au moment de remplir la fiche. Recopier le mauvais des deux est l'erreur la plus
+naturelle du monde.
+
+### Une vérification croisée qui recommandait ce qu'on faisait déjà — et qui a servi
+
+Maxime a demandé à une autre IA s'il existait mieux que le registre. Réponse : utiliser
+`recherche-entreprises.api.gouv.fr`, c'est-à-dire exactement ce qui venait d'être écrit.
+Elle vantait au passage les **dirigeants** que l'API renvoie — précisément ce qu'on filtre
+— et recommandait LinkedIn pour l'effectif réel, qui n'a pas d'API gratuite et dont la
+récupération contreviendrait à ses conditions d'utilisation.
+
+⚠️ **Mais aller vérifier son chiffre de « 7 requêtes par seconde » a fait lire la
+documentation en entier, et trouver deux vrais défauts.** Il existe une **seconde limite,
+30 requêtes par seconde et par ASN**, avec cet avertissement mot pour mot : *« il est donc
+probable de faire face à cette limite sur les cloud publics »*. GitHub Actions **est** un
+cloud public : nos requêtes y partagent leur ASN avec tous les autres runners. Un
+enrichissement payé pouvait échouer sur la seconde d'activité d'un inconnu. D'où un
+réessai, et un seul, réservé au 429. La documentation recommandait par ailleurs un
+`User-Agent` explicite, qu'on n'envoyait pas.
+
+**La leçon dépasse le cas** : le conseil pointait le bon service, mais le goulot n'était ni
+le nombre d'appels ni le choix de l'API — il était dans ce qui arrive quand une dépendance
+gratuite refuse de répondre pour une raison qui ne vous concerne pas. On ne se pose cette
+question qu'en lisant les conditions d'exploitation de ce dont on dépend.
+
+### Le coût réel, enfin mesuré : 11,7 centimes
+
+**0,1166 $ pour l'enrichissement d'Expertime** — 118 254 tokens, 13 tours, en Sonnet 5,
+sur un cas dégradé (site officiel inaccessible, recherche de secours). C'est le chiffre que
+le plan attendait depuis le cadrage, et il tranche deux estimations d'un coup :
+
+| Estimation | Valeur | Verdict |
+|---|---|---|
+| PRD, août 2026 | 0,20 € à 1 € | **Dix fois trop haut** |
+| `CLAUDE.md`, révisée le 30 août | 7 à 20 centimes | **Juste** — 11,7 c |
+| `COUT_PRESUME_TOKENS` | 150 000 tokens | Un peu haut, mais du bon ordre (118 254) |
+
+⚠️ **Et l'usage réel change la lecture de l'enveloppe.** Maxime l'a précisé le soir même :
+il ne fera **qu'un seul enrichissement par jour, et seulement en démo devant un
+recruteur**. L'enveloppe de 300 000 tokens n'est donc pas trop serrée — ce sont les trois
+enrichissements de cette séance de test qui l'ont épuisée, ce qui n'arrivera jamais en
+usage normal. À un par jour, elle laisse un facteur deux et demi de marge.
+
+⚠️ **Ce qui la remettra en cause, c'est la PHASE 7, pas le débit.** Elle ajoute quatre
+rubriques — ce que l'entreprise vend, à quels clients, ce qu'elle fait en IA, la technique
+attendue — donc davantage d'exploration et de pages lues. Si le coût double, un seul
+enrichissement consommera 250 000 des 300 000 tokens.
+
+⚠️ **Et alors un scénario très concret casse : l'échec suivi d'une relance, en pleine
+démo.** C'est le pire moment pour lire « plafond du jour atteint ». Aujourd'hui deux
+tentatives passent (2 × 118 k = 236 k) ; en phase 7 elles ne passeraient plus.
+**L'enveloppe doit donc permettre au moins DEUX enrichissements, pas un** — c'est un
+critère d'usage, pas un calcul de budget, et il est plus contraignant que le nombre
+d'enrichissements par jour.
+
+⚠️ **Non re-réglée pour autant, et délibérément.** Trois points de mesure ne font pas une
+distribution, et le seul en Sonnet portait sur un cas dégradé : c'est plutôt un **haut** de
+fourchette qu'une moyenne. Le plan place ce re-réglage en phase 7, quand la mesure portera
+sur la fiche complète. Le piège de méthode n° 1 s'applique mot pour mot : un point de
+mesure n'est pas une borne.
+
+### La liste d'étapes devient UNE LIGNE — revirement demandé devant l'écran
+
+Maxime a regardé un enrichissement réel défiler et a tranché : pas de liste verticale,
+**une seule ligne**, celle de l'étape en cours, remplacée par la suivante.
+
+Il a raison, et la version précédente est instructive sur la manière de rater une
+correction. Elle empilait les étapes dans un cadre défilant de 320 px, avec un compteur et
+un suivi automatique de la dernière arrivée — tout cela ajouté le 30 août pour répondre à
+un vrai défaut : à 40 étapes, la neuvième était tranchée à mi-hauteur sans rien pour dire
+qu'il y en avait trente et une autres. **La correction répondait à côté.** Le problème
+n'était pas que la liste fût mal coupée, c'est qu'une liste n'était pas le bon objet : ce
+qu'on regarde pendant qu'un agent travaille, c'est **où il en est**, pas par où il est
+passé.
+
+L'historique n'a pas disparu pour autant — il part dans un dépliant fermé, et seulement
+une fois le travail fini. Il garde une valeur, mais une autre : montrer en entretien le
+chemin qu'a suivi l'agent, ce qui est l'argument même du projet.
+
+**Trois défauts trouvés en regardant la nouvelle version**, dont un que j'introduisais
+moi-même :
+
+- **Le plancher de hauteur ne doit s'appliquer que pendant l'exécution.** Il empêche le
+  bouton de sauter quand le libellé passe d'une à deux lignes — mais posé en permanence, il
+  laissait un vide sous la ligne une fois l'enrichissement conclu, c'est-à-dire dans l'état
+  qu'on regarde le plus longtemps et le seul qui n'en avait aucun besoin.
+- **Le nombre d'étapes était affiché deux fois**, dans l'en-tête de section et dans le
+  résumé du dépliant, à trois centimètres l'un de l'autre.
+- ⚠️ **J'allais étendre un défaut d'accessibilité connu.** Les libellés du dépliant étaient
+  en `text-muted-foreground`, qui échoue le plancher en mode sombre (2,75:1 contre 4,5).
+  Ce défaut est signalé et laissé sur les libellés qui existaient déjà — ce n'est pas une
+  raison pour en ajouter. La hiérarchie passe par la taille et par le repli.
+
+⚠️ **`aria-live` est posé sur le conteneur, jamais sur la ligne qui change.** Une région
+vivante que React remplace à chaque étape serait retirée puis réinsérée, et les lecteurs
+d'écran n'annoncent pas le contenu d'une région qui vient d'apparaître — ils annoncent ce
+qui change **dans** une région déjà présente.
+
+---
+
 ## 30 août 2026 (soir) — La phase 6 s'ouvre : les tables, puis le tuyau
 
 Maxime demande à entamer la phase 6. Avant de proposer quoi que ce soit, deux

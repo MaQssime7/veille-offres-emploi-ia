@@ -515,28 +515,38 @@ dont le coût varie du simple au quintuple.
 
 ### Critères d'acceptation
 
-**⚠️ ÉTAT AU 30 AOÛT 2026 — tranches 6.1 (les tables) et 6.2 (le tuyau) CLOSES.** Ce qui
-est coché est vérifié à l'exécution, pas relu. Ce qui reste demande l'agent (6.3) ou la
-fiche à l'écran (6.4). Récit dans `docs/JOURNAL.md` § 30 août (soir).
+**⚠️ ÉTAT AU 30 AOÛT 2026 — tranches 6.1 (les tables), 6.2 (le tuyau) et 6.3 (l'agent)
+CLOSES.** Ce qui est coché est vérifié à l'exécution, pas relu. Ce qui reste demande la
+fiche à l'écran (6.4). Récit dans `docs/JOURNAL.md` § 30 août (soir) et (nuit).
+
+⚠️ **Trois enrichissements réels ont servi de preuve**, dont un **en production par le vrai
+bouton** : `212JMCR` (BnF, Haiku), `6240618` (Atos derrière un intermédiaire, Haiku),
+`6323372` (Expertime, **Sonnet 5, chemin complet clic → GitHub → agent → écran**).
 
 - [x] Le bouton n'apparaît que sur une offre non encore enrichie, et se désactive dès le premier clic
 - [x] **La garde qui compte est côté serveur** : deux requêtes envoyées simultanément ne produisent qu'un seul enrichissement — vérifiable sans passer par le navigateur.
       ✅ `enrichissements_un_seul_en_vol`, un index unique PARTIEL : le moteur refuse la seconde avant qu'elle n'atteigne le code. ⚠️ **Éprouvé séquentiellement, pas à la milliseconde près** — l'index le garantit par construction, mais la course réelle n'a pas été jouée
 - [x] Une **première étape « Demande reçue »** est écrite par le serveur en moins d'une seconde — critère de succès n° 4
 - [x] Le workflow GitHub est lancé par appel ; le jeton est **limité à ce dépôt et au seul droit de lancer un workflow**
-- [ ] L'agent est **borné en nombre d'étapes et en durée** ; au-delà il s'arrête et rend ce qu'il a trouvé
+- [x] L'agent est **borné en nombre d'étapes et en durée** ; au-delà il s'arrête et rend ce qu'il a trouvé.
+      ✅ **Trois bornes indépendantes** : 30 tours, 0,50 $, 240 s. ⚠️ **La borne de durée est INTERNE, le `timeout` du workflow (8 min) n'est qu'un filet** — un job tué par GitHub ne conclut rien. ⚠️ **« Rend ce qu'il a trouvé » repose sur un outil RAPPELABLE** dont la dernière version gagne ; éprouvé par doublure sur cinq scénarios, **jamais en vrai** (aucun enrichissement n'a atteint la borne : 40, 52 et 86 s pour 240 alloués)
 - [x] Un enrichissement se conclut — fiche produite ou échec signalé — **en moins de cinq minutes**
 - [x] Les étapes remontent par **sondage d'une route serveur toutes les 1,5 s** ; le navigateur ne parle jamais à Supabase
 - [x] Le sondage **s'arrête** quand l'enrichissement se conclut — pas de requête en boucle sur un onglet oublié
 - [x] Chaque étape apparaît en fondu-glissé décalé de 130 ms ; la pulsation « en cours » est **coupée sous `prefers-reduced-motion`**
-- [ ] La fiche remplit : nom officiel, date de création, site officiel, catégorie, tranche d'effectif, chiffre d'affaires
-- [ ] **Chaque rubrique porte son marqueur *vérifié* ou *déduit***, et une rubrique sans information affiche **« non disponible »** — jamais une supposition
-- [ ] Annonce émanant d'un intermédiaire sans employeur nommé : la fiche l'indique explicitement et **ne se rabat pas sur l'intermédiaire** — critère de succès n° 12
-- [ ] Entreprise non identifiable avec certitude : la fiche le **signale** au lieu de trancher
+- [x] La fiche remplit : nom officiel, date de création, site officiel, catégorie, tranche d'effectif, chiffre d'affaires.
+      ✅ **Vérifié en confrontant chaque champ au registre : dix-huit champs sur trois fiches, zéro divergence.** ⚠️ Le site officiel manque sur `6323372` — parce qu'il était injoignable, et c'est le comportement voulu : on n'écrit pas ce qu'on n'a pas vérifié
+- [x] **Chaque rubrique porte son marqueur *vérifié* ou *déduit***, et une rubrique sans information affiche **« non disponible »** — jamais une supposition.
+      ✅ Marqueurs écrits et contrôlés côté outil ET côté base. ⚠️ **L'affichage « non disponible » reste à faire en 6.4** — en base, l'absence est une ligne absente, jamais la chaîne
+- [x] Annonce émanant d'un intermédiaire sans employeur nommé : la fiche l'indique explicitement et **ne se rabat pas sur l'intermédiaire** — critère de succès n° 12.
+      ✅ Éprouvé sur `6240618` : France Travail déclare « NEW NET 3D », le drapeau intermédiaire est à vrai, et l'agent a produit **Atos France**. ⚠️ **Le cas « employeur final NON nommable » n'a PAS été rencontré** — la valeur `intermediaire` existe et est validée, mais aucun enrichissement réel ne l'a encore produite
+- [x] Entreprise non identifiable avec certitude : la fiche le **signale** au lieu de trancher.
+      ✅ **La meilleure preuve du lot**, sur `6323372` : site officiel injoignable, l'agent a trouvé le SIREN par une source tierce, l'a **confirmé au registre officiel**, et a conclu `probable` et non `verifie` en écrivant pourquoi. Il n'a écrit ni site, ni groupe, ni effectif annoncé. ⚠️ **`verifie` sans SIREN est refusé par l'outil ET par le moteur** — deux verrous
 - [x] Un enrichissement échoué affiche **son motif** et un bouton « Relancer » ; la relance remplace la fiche précédente
 - [x] Chaque enrichissement écrit sa trace : offre, déclenchement, horodatages, durée, étapes effectuées, issue, motif, **modèle**, compteurs bruts
 - [x] La colonne `declenchement` existe et vaut « manuel ». ⚠️ **Elle ne prépare PAS un retour de l'automatique**, refusé sans condition le 30 août 2026 : elle sert à l'écran de suivi d'exploitation, qui doit pouvoir dire d'où vient chaque enrichissement
-- [ ] Les compteurs alimentent `tokens_cumules`, **sans toucher** à `tokens_conversation` — le chemin d'écriture existe (`ajouter_tokens_a_l_offre`), rien ne l'alimente avant 6.3
+- [x] Les compteurs alimentent `tokens_cumules`, **sans toucher** à `tokens_conversation`.
+      ✅ Vérifié en base : 8 046 → 79 525 sur `212JMCR`. ⚠️ **Trois sources de compteurs par ordre de préférence** (`model_usage`, puis `usage`, puis la somme des messages dédupliquée par `message_id`) — la documentation officielle prévient qu'un plantage de session rend un résultat aux compteurs **remis à zéro**. Attraper l'exception ne suffit pas : il faut avoir compté en chemin
 - [x] **L'enveloppe quotidienne vit dans le fichier de configuration versionné**, valeur de départ **300 000 tokens**, et elle est **vérifiée côté serveur** — pas seulement affichée
 - [x] L'enveloppe consommée se **calcule en sommant les traces du jour**, jamais depuis un compteur séparé qui divergerait à la première écriture ratée
 - [x] Au-delà de l'enveloppe, le bouton indique « plafond du jour atteint » et **aucun enrichissement ne part** — vérifiable en envoyant la requête sans passer par le navigateur.
@@ -544,7 +554,8 @@ fiche à l'écran (6.4). Récit dans `docs/JOURNAL.md` § 30 août (soir).
 - [ ] Le compte **repart de zéro** le lendemain, à minuit heure de Paris — `debutDuJourParisien()` est écrite et éprouvée sur les deux nuits de bascule 2026, mais aucun minuit n'a encore été franchi en vrai
 - [ ] **La notation nocturne n'entre pas dans l'enveloppe** — vérifiable en constatant qu'une nuit à 400 offres notées ne consomme rien du plafond du lendemain
 - [x] **Aucune trace ne porte un déclenchement automatique** — critère de succès n° 3
-- [ ] Les rubriques **acceptent plusieurs paragraphes** — une rubrique dimensionnée pour une ligne invite l'agent à répondre en une ligne
+- [x] Les rubriques **acceptent plusieurs paragraphes** — une rubrique dimensionnée pour une ligne invite l'agent à répondre en une ligne.
+      ✅ 4 000 caractères en base, tronqué côté code avant écriture pour qu'une rubrique bavarde ne fasse pas perdre toute la fiche. ⚠️ **L'affichage sur plusieurs paragraphes reste à éprouver en 6.4** : la plus longue rubrique produite fait 258 caractères
 - [x] **États du bloc d'enrichissement** — les quatre du `DESIGN.md`, plus le débordement : pas encore lancé *(vide)* · en cours *(chargement et action en cours)* · terminé · échoué *(erreur)* · **un enrichissement de 40 étapes qui défile sans faire déborder le panneau ni la page**
 - [x] 375 px, mode sombre, focus clavier visible, console propre
 

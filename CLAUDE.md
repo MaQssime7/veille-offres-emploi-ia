@@ -20,6 +20,8 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | **Comment le modèle note** : profil, postes visés, barèmes | `pipeline/criteres_pertinence.txt` — **c'est une donnée, pas du code**. ⚠️ `//` = commentaire retiré avant l'envoi, `##` = titre envoyé au modèle |
 | **Ce que vaut chaque critère de collecte**, mesuré terme par terme | `pipeline/mots_cles.txt` et `pipeline/codes_rome.txt` (vide, et porte la mesure qui l'a vidé) — voir § Collecte |
 | **L'enrichissement — constantes, états, et le calcul qui borne la dépense** | `interface/lib/enrichissement.ts` (pur, **neuvième module sans `server-only`**) · `interface/lib/enrichissement-base.ts` (lit et écrit) · `interface/lib/github.ts` (lance le workflow) · `pipeline/enrichissement.py` (le sert) · `.github/workflows/enrichissement.yml` |
+| **L'AGENT : ses bornes, son prompt, la validation de sa fiche, et pourquoi les étapes sont dérivées** | `pipeline/enrichissement.py` — préambule et `_valider_fiche()`. ⚠️ Le prompt système y vit **délibérément**, pas dans un `.txt` comme `criteres_pertinence.txt` : il récite des noms d'outils et des valeurs d'énumération que la base contrôle |
+| **Ce que le modèle a le DROIT de voir du registre public**, et les trois pièges de l'API | `pipeline/registre.py` — `_assainir()` est une liste blanche, jamais noire |
 | **Pourquoi la fiche d'enrichissement a DEUX formes de stockage**, et ce que chaque contrainte interdit | le préambule de `supabase/migrations/…_ajoute_les_tables_d_enrichissement.sql` — il porte les mesures du registre public qui l'ont dictée |
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` |
 | **Comment le site est protégé** : cookie, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts`, abondamment commentés |
@@ -106,65 +108,88 @@ fichier :**
 
 **Cadrage complet** : `docs/PRD.md` — 37 user stories, 13 critères de succès.
 
-## État au 30 août 2026 — ⚠️ PHASE 6 EN COURS, tranche 6.2 close
+## État au 30 août 2026 — ⚠️ PHASE 6 EN COURS, tranche 6.3 close
 
 **Phases 1 à 5 CLOSES.** Le site est en ligne derrière son mot de passe, collecte et
 notation tournent sur le cron. `/` est le **compte rendu de la nuit**, `/offres` le
 **plan de travail**. L'interface écrit en base. **580 offres, 146 notées.**
 
-### ⚠️ PHASE 6 — l'enrichissement. 6.1 et 6.2 CLOSES, **6.3 est le prochain chantier**
+### ⚠️ PHASE 6 — l'enrichissement. 6.1, 6.2 et 6.3 CLOSES, **6.4 est le prochain chantier**
 
 Découpage validé par Maxime : **6.1 les tables · 6.2 le tuyau · 6.3 l'agent réel ·
 6.4 la fiche et les finitions**.
 
-✅ **Ce que 6.1 + 6.2 ont livré, et qui tourne en production** : migration 10 (trois
-tables), le clic qui ouvre une demande, l'appel de l'API GitHub, le workflow
-`enrichissement.yml`, les étapes qui remontent par sondage toutes les 1,5 s, la
-péremption, l'enveloppe. **Mesuré sur un vrai clic : agent démarré en 16 s, conclu en
-24 s** — le plan alloue 300 s. ⚠️ `pipeline/enrichissement.py` écrit des étapes de
-**DÉMONSTRATION** : aucun appel au modèle avant 6.3.
+✅ **Ce que 6.1 à 6.3 ont livré, et qui tourne en production** : migration 10 (trois tables),
+le clic qui ouvre une demande, l'appel de l'API GitHub, le workflow `enrichissement.yml`, les
+étapes qui remontent par sondage toutes les 1,5 s, la péremption, l'enveloppe — et **l'agent
+réel** : Claude Agent SDK, l'outil `registre`, la lecture du site pour confirmer, les
+marqueurs. **Trois enrichissements réels mesurés, dont un en production par le vrai bouton.**
 
-⚠️ **Sept faits opposables, qui ne se déduisent d'aucun fichier :**
+⚠️ **Onze faits opposables, qui ne se déduisent d'aucun fichier :**
 
 1. ⚠️ **Le projet est une PIÈCE DE DÉMONSTRATION, pas un outil quotidien** — dit par
-   Maxime le 30 août. L'enrichissement sert à montrer en entretien qu'il a branché un
-   agent ; il ne l'utilisera pas pour lui. **Conséquence sur 6.3 : les libellés d'étapes
-   doivent raconter le raisonnement** (« 4 candidats pour Orion », « SIREN confirmé »),
-   et une fiche qui déclare honnêtement son doute vaut mieux qu'une fiche complète
-   obtenue en devinant — c'est le point technique qu'il expliquera.
-2. ⚠️ **Le coût est ~10 fois PLUS BAS que l'estimation du PRD** : 7 à 20 centimes par
-   enrichissement contre « 0,20 à 1 € », calculé aux tarifs Sonnet 5.
-   ⚠️ **Toujours une estimation, jamais mesurée.** Le premier enrichissement réel donnera
-   le chiffre, et re-règlera **deux valeurs posées à l'aveugle** : l'enveloppe de 300 000
-   tokens/jour et `COUT_PRESUME_TOKENS` (150 000, probablement 3× trop haut).
-3. ⚠️ **L'enveloppe RÉSERVE le coût présumé de chaque enrichissement EN VOL.** Sans ça
-   elle avait un trou béant, trouvé en revue : les compteurs sont `NULL` tant qu'un
-   enrichissement tourne, et l'index unique ne sérialise que **par offre** — dix lancés
-   dans la même minute lisaient tous « 0 consommé ». `calculerConsommation()` est pure
-   et éprouvée par 8 tests.
-4. ⚠️ **Un workflow n'existe pour l'API GitHub que s'il est POUSSÉ sur la branche visée**
-   — y compris depuis un aperçu Vercel, qui isole le code mais lance les workflows de
-   `main`.
-5. ⚠️ **Deux horodatages comparés par une contrainte doivent venir de la MÊME horloge.**
-   Supabase est en avance de **184 ms** sur le Mac : `demande_a` posé par la base et
-   `termine_a` par Next faisait tomber la fin avant le début, la clôture était refusée,
-   et l'offre restait bloquée 10 minutes. Les deux viennent désormais du serveur Next.
-6. ⚠️ **PostgREST rend 409 pour DEUX violations opposées** — `23505` unicité, `23503`
-   clé étrangère absente. Le code HTTP seul faisait répondre « un enrichissement est déjà
-   en cours » à une offre inexistante. C'est le **code Postgres** qui tranche.
-7. ⚠️ **Le sondage passe par une ACTION serveur et ne re-rend PAS la page** : 323 octets
-   par tour contre 89 112 pour le document. La raison est précise — `suivreEnrichissement`
-   n'appelle pas `revalidatePath`. **Y en ajouter un ferait basculer le sondage en rendu
-   complet toutes les 1,5 seconde**, sans le moindre signal.
+   Maxime le 30 août. ⚠️ **Précisé le soir même, et c'est ce qui commande l'enveloppe :
+   il fera UN SEUL enrichissement PAR JOUR, uniquement en démo devant un recruteur.**
+   Ne jamais raisonner en débit ni en volume : la bonne question n'est pas « combien par
+   jour » mais « est-ce qu'UN enrichissement, plus sa relance si le premier rate, passe
+   sans buter sur le plafond ».
+2. ⚠️ **LE COÛT RÉEL EST MESURÉ : 0,1166 $ — 11,7 centimes**, pour 118 254 tokens et
+   13 tours en Sonnet 5, sur un cas dégradé (site officiel injoignable). Dix fois moins
+   que l'estimation du PRD (0,20 à 1 €), et pile dans la fourchette révisée. ⚠️ **C'est UN
+   point, sur un cas défavorable** — un haut de fourchette, pas une moyenne.
+3. ⚠️ **L'enveloppe de 300 000 tokens n'est PAS trop serrée — mais elle le deviendra en
+   phase 7.** Elle porte aujourd'hui deux enrichissements et demi. La phase 7 ajoute quatre
+   rubriques et donc de l'exploration ; si le coût double, un seul enrichissement mangera
+   250 000 tokens. ⚠️ **Le critère de re-réglage n'est pas le nombre par jour, c'est la
+   RELANCE APRÈS ÉCHEC EN PLEINE DÉMO** — le pire moment pour lire « plafond du jour
+   atteint ». **L'enveloppe doit permettre au moins DEUX enrichissements.**
+4. ⚠️ **`COUT_PRESUME_TOKENS` (150 000) est du bon ordre**, le réel étant 118 254. Ne pas
+   le baisser sur cette seule mesure : il réserve le coût d'un enrichissement EN VOL, et
+   sous-réserver rouvrirait le trou que la revue du 30 août avait bouché.
+5. ⚠️ **L'agent ne peut pas inventer son ancrage, et c'est VÉRIFIÉ** : sur trois
+   enrichissements, **dix-huit champs typés confrontés au registre, zéro divergence**.
+   Il recopie, il ne paraphrase pas. Il omet aussi plutôt que de deviner.
+6. ⚠️ **LES ÉTAPES SONT DÉRIVÉES DU TRAVAIL, JAMAIS RACONTÉES PAR LE MODÈLE.** Nos outils
+   écrivent la leur avec leur résultat réel ; les outils intégrés sont observés dans le
+   flux de messages. Une étape racontée pourrait mentir (« SIREN confirmé » sans rien
+   avoir confirmé) et coûterait un tour. **Ne pas ajouter d'outil « écris une étape ».**
+7. ⚠️ **L'agent rend sa fiche par un OUTIL rappelable, et la dernière version gagne.**
+   C'est ce qui donne un sens à « au-delà de la borne, il rend ce qu'il a trouvé » — sans
+   cela, une coupure ne rendrait rien. L'outil valide et rend ses reproches **au modèle**,
+   qui corrige : la base refuserait la fiche entière, déjà payée, pour une année manquante.
+8. ⚠️ **La borne de durée est INTERNE (240 s) ; le `timeout` du workflow (8 min) n'est
+   qu'un filet.** Un job tué par GitHub ne conclut rien : ligne bloquée `en_cours`, écran
+   qui pulse jusqu'à la péremption, tokens perdus pour l'enveloppe. **Ne jamais rapprocher
+   les deux valeurs** — et le filet doit rester sous les 10 min de `PEREMPTION_MINUTES`.
+9. ⚠️ **Le workflow d'enrichissement détient désormais une clé FACTURÉE.** Qui peut le
+   lancer peut faire dépenser. C'est ce qui rend `JETON_GITHUB` critique (portée fine, ce
+   seul dépôt, « Actions : write »). Le secret `ANTHROPIC_API_KEY` existait déjà au niveau
+   du dépôt pour la notation — rien à créer.
+10. ⚠️ **`registre.py` est une FRONTIÈRE avant d'être un client HTTP** : sa responsabilité
+    est de décider ce que le modèle a le droit de voir. Le registre rend les **dirigeants
+    nommés avec leur date de naissance**, et l'adresse de voie du siège — qui est le
+    domicile du dirigeant pour une entreprise individuelle. **Liste blanche, jamais
+    noire** : un champ personnel ajouté demain par l'API restera invisible.
+11. ⚠️ **Le registre limite à 30 requêtes/seconde PAR ASN, et sa documentation prévient
+    que « les cloud publics » y butent.** GitHub Actions en est un : on peut prendre un 429
+    à cause d'un autre runner. D'où un réessai, et un seul, réservé au 429. Un `User-Agent`
+    explicite est envoyé, comme la documentation le recommande.
 
-**Ce que 6.3 doit faire** : Claude Agent SDK (il **embarque son binaire**, pas de Node à
-installer ; `max_turns` et `max_budget_usd` existent nativement), un outil registre, la
-lecture du site officiel pour **confirmer** l'appariement, les marqueurs vérifié/déduit.
-⚠️ **L'agent doit transmettre ses compteurs de tokens MÊME quand il échoue**, sinon
-l'enveloppe perd ses échecs les plus coûteux.
-⚠️ **Le contenu de la fiche est TRANCHÉ** : identité (nom, site, année de création,
-groupe, modèle économique) + santé/taille (tranche INSEE vérifiée, effectif annoncé
-déduit, CA avec son année). **Business — clients, offre — reste en phase 7.**
+⚠️ **L'affichage des étapes est UNE LIGNE, pas une liste — revirement du 30 août 2026,
+demandé par Maxime devant l'écran.** L'étape en cours s'affiche seule et la suivante prend
+sa place ; l'historique complet part dans un dépliant fermé, **et seulement une fois le
+travail fini**. La version précédente empilait les étapes dans un cadre défilant : elle
+corrigeait un vrai défaut, mais à côté — le problème n'était pas que la liste fût mal
+coupée, c'est qu'une liste n'était pas le bon objet. Trois conséquences à ne pas défaire :
+le **plancher de hauteur ne vaut que pendant l'exécution** (sinon vide inutile à la fin) ·
+le **nombre d'étapes n'est écrit qu'une fois**, dans l'en-tête de section · **`aria-live`
+est sur le conteneur, jamais sur la ligne qui change**, sinon rien n'est annoncé.
+
+⚠️ **Ce que 6.4 doit faire** : afficher la fiche produite (l'ancrage typé et les rubriques
+avec leurs marqueurs), rendre « non disponible » l'absence de ligne, et rouvrir la question
+de la colonne unique. ⚠️ **Contenu de test déjà EN BASE** : trois vraies fiches — `212JMCR`
+(BnF, `verifie`, 2 rubriques), `6240618` (Atos, `verifie`, 2 rubriques), `6323372`
+(Expertime, **`probable`**, 1 rubrique, sans site ni CA — la fiche qui déclare son doute).
 ⚠️ **Reste à faire par Maxime** : poser `JETON_GITHUB` chez Vercel (il est en local
 seulement — voir `docs/HEBERGEMENT.md`). Sans lui, le bouton répond « jeton non
 configuré » **sur le site déployé uniquement**, et rien d'autre ne casse.
@@ -311,7 +336,7 @@ workflow finirait par mordre vers 4 ou 5 nuits.
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris · **5 variables** (`JETON_GITHUB` reste à y poser) |
 | GitHub Actions | `collecte-nocturne.yml` (cron 02:23 UTC, collecte **et** notation) · **`enrichissement.yml`** (lancé par l'interface au clic) |
 | `pipeline/` | ⚠️ **Seul le CDI est collecté** (`TYPE_CONTRAT` dans `config.py`) |
-| Modules | `collecte.py` · `notation.py` · `salaire.py` · `employeur.py` · **`enrichissement.py`** · `criteres_pertinence.txt` |
+| Modules | `collecte.py` · `notation.py` · `salaire.py` · `employeur.py` · **`enrichissement.py`** (l'agent) · **`registre.py`** (la frontière vers le registre public) · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
 | Tests | `npm run verifie` depuis `interface/` — lint, typecheck, **116 tests dans les deux fuseaux** |
 

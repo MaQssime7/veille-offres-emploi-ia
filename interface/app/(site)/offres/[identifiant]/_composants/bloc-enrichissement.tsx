@@ -22,8 +22,8 @@
  * tournent.
  */
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { AlertTriangle, Check, Sparkles } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { AlertTriangle, Check, ChevronRight, Sparkles } from "lucide-react";
 
 import type { EtatEnrichissement } from "@/lib/enrichissement";
 import { accorder } from "@/lib/francais";
@@ -219,7 +219,7 @@ export function BlocEnrichissement({
         )}
 
         {etapes.length > 0 && (
-          <ListeEtapes
+          <EtapeCourante
             etapes={etapes}
             enCours={etat.etat === "en_cours"}
           />
@@ -306,106 +306,143 @@ export function BlocEnrichissement({
 }
 
 /**
- * Les étapes franchies, de la plus ancienne à la plus récente.
+ * L'étape en cours, et elle seule.
+ *
+ * ⚠️ **UNE LIGNE, PAS UNE LISTE — revirement du 30 août 2026, demandé par
+ * Maxime après avoir vu un enrichissement réel défiler.** La version précédente
+ * empilait les étapes dans un cadre défilant de 320 px de haut. Elle avait été
+ * écrite pour répondre à un vrai défaut — à 40 étapes, la neuvième était
+ * tranchée à mi-hauteur sans rien pour dire qu'il y en avait trente et une
+ * autres — mais elle répondait à côté : le problème n'était pas que la liste
+ * fût mal coupée, c'est qu'une liste n'était pas le bon objet.
+ *
+ * Ce qu'on regarde pendant qu'un agent travaille, c'est **où il en est**, pas
+ * par où il est passé. L'historique complet n'a de valeur qu'une fois le
+ * travail fini, et pour une autre raison : montrer en entretien le chemin
+ * qu'a suivi l'agent. Il part donc dans un dépliant, fermé, et seulement à la
+ * fin.
+ *
+ * ⚠️ **Le décalage de 130 ms du `DESIGN.md` disparaît ici, et c'est logique** :
+ * il échelonnait l'apparition d'étapes qui arrivaient ensemble. Avec une seule
+ * ligne, il n'y a plus rien à échelonner — l'animation d'entrée demeure, le
+ * décalage n'a plus d'objet. Il reste utilisé par le dépliant, où les étapes
+ * apparaissent bien toutes d'un coup.
+ *
+ * ⚠️ **La hauteur est bornée en BAS et en HAUT, et c'est ce qui empêche un
+ * saut.** Les libellés n'ont pas tous la même longueur : « Lecture du site
+ * bnf.fr » tient sur une ligne, « Registre : 32 entreprises portent
+ * "Expertime", 5 examinées » en prend deux à 375 px, et la contrainte de base
+ * en autorise 200 caractères — six lignes sur mobile. Sans plancher, le bouton
+ * en dessous remonterait et redescendrait à chaque étape ; sans plafond, il
+ * serait chassé hors de l'écran. C'est le piège de méthode n° 5 du projet, pris
+ * à l'endroit où il se produit vraiment.
  *
  * ⚠️ **`aria-live="polite"` et pas `assertive`** : les étapes arrivent toutes
  * les quelques secondes ; `assertive` interromprait la lecture en cours à
  * chacune, ce qui rendrait la page inutilisable au lecteur d'écran.
- *
- * ⚠️ **La liste défile dans son propre cadre.** Sans `max-h` et `overflow-y`,
- * un enrichissement de 40 étapes pousserait le bouton hors de l'écran et
- * allongerait la page entière — le critère du plan le nomme explicitement.
  */
-function ListeEtapes({
+function EtapeCourante({
   etapes,
   enCours,
 }: {
   etapes: { rang: number; libelle: string; ecriteA: string }[];
   enCours: boolean;
 }) {
-  const listeRef = useRef<HTMLOListElement>(null);
-  /**
-   * ⚠️ **On ne suit la fin que si le lecteur y était déjà.** Rembobiner de
-   * force la liste sous les yeux de quelqu'un qui vient de remonter lire une
-   * étape passée serait la pire des « aides ». Ce drapeau est mis à jour au
-   * défilement, jamais pendant le rendu.
-   */
-  const auBas = useRef(true);
-
-  /**
-   * ⚠️ **Pendant qu'un enrichissement tourne, l'information est en BAS.**
-   * Sans cet effet, à 40 étapes on regardait la première pendant que la
-   * dernière — celle qui pulse, celle qui dit où on en est — était hors du
-   * cadre. Vu à l'écran le 30 août 2026.
-   *
-   * Le défilement est instantané et non « lissé » : la règle
-   * `prefers-reduced-motion` de `globals.css` force déjà `scroll-behavior:
-   * auto`, donc un lissage ne s'appliquerait qu'à une partie des visiteurs et
-   * ne serait jamais éprouvé sur l'autre.
-   */
-  useEffect(() => {
-    const liste = listeRef.current;
-    if (!liste || !enCours || !auBas.current) return;
-    liste.scrollTop = liste.scrollHeight;
-  }, [etapes.length, enCours]);
-  /**
-   * ⚠️ **Le décalage se compte depuis la PREMIÈRE étape affichée, pas depuis le
-   * rang absolu.** Sur un enrichissement rouvert plus tard, la 40ᵉ étape a le
-   * rang 39 : un délai fondé sur le rang la ferait apparaître cinq secondes
-   * après les autres. On plafonne de toute façon, mais partir du premier rang
-   * visible garde l'effet juste quand le bloc se remonte.
-   */
-  //
-  // ⚠️ **Un `useState` à initialiseur paresseux, jamais un `useRef`.** La
-  // première écriture utilisait une ref, et le lint l'a refusée avec raison :
-  // lire `ref.current` pendant le rendu est un piège connu de React — la valeur
-  // peut changer sans déclencher de nouveau rendu, et l'affichage se met alors
-  // à dépendre d'une donnée que React ne suit pas. `useState(() => …)` calcule
-  // la même valeur une seule fois, au montage, et elle est faite pour être lue
-  // pendant le rendu.
-  const [premierRang] = useState(() => etapes[0]?.rang ?? 0);
+  const courante = etapes[etapes.length - 1];
+  if (!courante) return null;
 
   return (
-    <ol
-      ref={listeRef}
-      aria-live="polite"
-      onScroll={(evenement) => {
-        const liste = evenement.currentTarget;
-        // 40 px de tolérance : on considère qu'on « suit » la fin même sans
-        // être collé au pixel près, sinon le moindre cran de molette décroche.
-        auBas.current =
-          liste.scrollTop + liste.clientHeight >= liste.scrollHeight - 40;
-      }}
-      className="flex max-h-80 flex-col gap-2 overflow-y-auto"
-    >
-      {etapes.map((etape, index) => {
-        const rangs = Math.min(
-          Math.max(0, etape.rang - premierRang),
-          DECALAGE_MAX_RANGS,
-        );
-        const derniere = index === etapes.length - 1;
-        return (
-          <li
-            key={etape.rang}
-            // `fill-mode-both` retient l'état initial pendant le délai : sans
-            // lui, l'étape s'affiche pleine, disparaît, puis réapparaît.
-            className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both flex items-start gap-2 text-base leading-relaxed text-foreground"
-            style={{ animationDelay: `${rangs * DECALAGE_MS}ms` }}
-          >
-            <span
+    <div className="flex flex-col gap-3">
+      {/* ⚠️ La zone vivante est le `div` extérieur, PAS la ligne qui change.
+          Une région `aria-live` posée sur un élément que React remplace à
+          chaque étape serait retirée puis réinsérée : les lecteurs d'écran
+          n'annoncent pas le contenu d'une région qui vient d'apparaître, ils
+          annoncent ce qui change DANS une région déjà présente. Posée ici, la
+          région survit à tous les remplacements. */}
+      {/* ⚠️ **Le plancher ne s'applique QUE pendant l'exécution**, et c'est
+          exactement ce qu'il protège : rien ne saute quand plus rien ne change.
+          Posé en permanence, il laissait un vide sous la ligne une fois
+          l'enrichissement conclu — c'est-à-dire dans l'état qu'on regarde le
+          plus longtemps, et le seul qui n'en avait aucun besoin. Vu en bureau
+          le 30 août 2026. */}
+      <div
+        aria-live="polite"
+        className={`flex items-start gap-2 ${enCours ? "min-h-13" : ""}`}
+      >
+        <span
+          key={`pastille-${courante.rang}`}
+          aria-hidden="true"
+          // ⚠️ La pulsation est coupée sous `prefers-reduced-motion` par la
+          // règle globale de `globals.css`, qui force
+          // `animation-iteration-count: 1` — la pastille s'allume une fois
+          // puis reste fixe, au lieu de battre indéfiniment.
+          className={`mt-2 size-2 shrink-0 rounded-full ${
+            enCours ? "animate-pulse bg-signal-fort" : "bg-muted-foreground"
+          }`}
+        />
+        {/* ⚠️ La `key` porte le rang : elle force React à REMONTER ce nœud à
+            chaque étape, ce qui rejoue l'animation d'entrée. Sans elle, React
+            réutiliserait le même élément en changeant son texte, et le libellé
+            se remplacerait sèchement — on ne verrait pas que quelque chose
+            vient de se passer. */}
+        <span
+          key={courante.rang}
+          className="animate-in fade-in slide-in-from-bottom-1 line-clamp-3 text-base leading-relaxed text-foreground"
+        >
+          {courante.libelle}
+        </span>
+      </div>
+
+      {/* ⚠️ Le chemin parcouru ne s'ouvre qu'une fois le travail fini. Proposer
+          de déplier pendant que ça tourne ferait concurrence à la seule ligne
+          qui compte à ce moment-là — et la liste dépliée grandirait sous les
+          doigts du lecteur. */}
+      {!enCours && etapes.length > 1 && (
+        <details className="group">
+          {/* ⚠️ **Le nombre n'est PAS répété ici.** Il vit déjà dans l'en-tête
+              de la section, où il sert pendant l'exécution — c'est lui qui
+              montre que ça avance quand le dépliant n'existe pas encore. Le
+              redire dans le résumé donnait « 14 ÉTAPES » et « 14 étapes » à
+              trois centimètres l'un de l'autre.
+
+              ⚠️ **`text-foreground` et non `text-muted-foreground`**, ici comme
+              sur les libellés ci-dessous : ce jeton échoue le plancher
+              d'accessibilité en mode sombre (2,75:1 sur les cartes contre 4,5
+              exigés, mesuré le 30 août). Le défaut est connu et laissé sur les
+              libellés qui existaient déjà — ce n'est pas une raison pour en
+              ajouter. La hiérarchie passe par la taille et par le repli, qui
+              ne coûtent rien à personne. */}
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden focus-produit">
+            <ChevronRight
               aria-hidden="true"
-              // ⚠️ La pulsation est coupée sous `prefers-reduced-motion` par la
-              // règle globale de `globals.css`, qui force
-              // `animation-iteration-count: 1` — la pastille s'allume une fois
-              // puis reste fixe, au lieu de battre indéfiniment.
-              className={`mt-2 size-2 shrink-0 rounded-full ${
-                derniere && enCours ? "animate-pulse bg-signal-fort" : "bg-muted-foreground"
-              }`}
+              className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
             />
-            <span>{etape.libelle}</span>
-          </li>
-        );
-      })}
-    </ol>
+            Le chemin suivi
+          </summary>
+          <ol className="mt-3 flex flex-col gap-2">
+            {etapes.map((etape, index) => (
+              <li
+                key={etape.rang}
+                // `fill-mode-both` retient l'état initial pendant le délai :
+                // sans lui, l'étape s'affiche pleine, disparaît, puis
+                // réapparaît.
+                className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both flex items-start gap-2 text-sm leading-relaxed text-foreground"
+                style={{
+                  animationDelay: `${
+                    Math.min(index, DECALAGE_MAX_RANGS) * DECALAGE_MS
+                  }ms`,
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground"
+                />
+                <span>{etape.libelle}</span>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
+    </div>
   );
 }
