@@ -49,7 +49,6 @@ import { DescriptionOffre } from "./_composants/description";
 import { EnTeteOffre } from "./_composants/entete";
 import { NotePersonnelle } from "./_composants/note-personnelle";
 import { Postuler } from "./_composants/postuler";
-import { Renseignements } from "./_composants/renseignements";
 
 /**
  * ⚠️ **`cache()` évite de lire l'offre DEUX fois.** Next appelle
@@ -238,7 +237,6 @@ export default async function PageOffre({
           dateInitiale={offre.note_modifiee_a}
         />
 
-        <Renseignements offre={offre} />
 
         {/* ⚠️ **Trois props scalaires et un état déjà réduit, jamais `offre`.**
             Ce composant est client : tout ce qu'on lui passe part dans le

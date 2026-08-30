@@ -230,26 +230,3 @@ export function preparerDescription(texte: string): string {
     .trim();
 }
 
-/**
- * Une exigence linguistique, telle qu'elle s'écrit.
- *
- * Entre : une entrée du champ `langues` de France Travail.
- * Sort : « Anglais exigé », « Anglais souhaité », ou le libellé seul.
- * Casse : renvoie `null` si l'entrée n'a pas de libellé — on n'affiche pas un
- * cartouche vide.
- *
- * ⚠️ **Un code d'exigence inconnu ne devient JAMAIS une supposition.** Deux
- * valeurs sont observées, `E` et `S` ; France Travail peut en ajouter demain.
- * Une troisième valeur fait afficher le libellé seul — « Anglais » — plutôt
- * que de le ranger d'office dans « exigé » ou « souhaité ». Même règle que les
- * périodes de salaire inconnues dans `pipeline/salaire.py`.
- */
-export function formaterLangue(langue: {
-  libelle?: string | null;
-  exigence?: string | null;
-}): string | null {
-  if (!langue.libelle) return null;
-  if (langue.exigence === "E") return `${langue.libelle} exigé`;
-  if (langue.exigence === "S") return `${langue.libelle} souhaité`;
-  return langue.libelle;
-}

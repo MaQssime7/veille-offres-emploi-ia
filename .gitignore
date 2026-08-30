@@ -18,3 +18,10 @@ venv/
 
 # Captures et traces des contrôles visuels Playwright
 .playwright-mcp/
+# ⚠️ Playwright dépose ses captures à la RACINE quand on lui passe un nom de
+# fichier nu, pas dans .playwright-mcp/ — et un `rm` lancé depuis interface/ les
+# manque. Une capture de 181 Ko est ainsi entrée dans un commit le 30 août 2026.
+# Un blob reste dans l'historique Git même après suppression du fichier : mieux
+# vaut qu'il n'y entre jamais.
+*.png
+!docs/**/*.png

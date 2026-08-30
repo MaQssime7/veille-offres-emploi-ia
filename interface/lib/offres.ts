@@ -682,31 +682,33 @@ export type OffreEnFiche = {
   justification_accessibilite: string | null;
   notation_motif_echec: string | null;
   notation_tentatives: number;
-  /**
-   * Comment le référentiel ROME classe cette offre. Renseignés tous les deux
-   * sur 560/560.
+  /*
+   * ⚠️ **`appellation_libelle`, `rome_libelle`, `qualification_libelle` et
+   * `langues` ONT ÉTÉ RETIRÉS DE LA FICHE le 30 août 2026**, avec le bloc
+   * « Classement France Travail » qui les portait. Décision de Maxime, sur
+   * pièce : « les informations sont bancales et elles ne me servent à rien ».
    *
-   * ⚠️ **Ils disent *pourquoi cette offre est là*.** C'est l'appellation que le
-   * moteur de recherche France Travail indexe — c'est par elle que le faux
-   * positif `IPR-IA` entrait dans la collecte, et non par l'intitulé. Les
-   * afficher prolonge sur la fiche ce que la liste fait déjà : rendre visible
-   * ce que les critères de collecte ramènent vraiment.
+   * ⚠️ **Les colonnes existent toujours EN BASE**, et rien ne les efface — la
+   * collecte continue de les écrire. C'est seulement la requête de la fiche qui
+   * ne les demande plus. Les rétablir à l'écran est un ajout de quatre chaînes
+   * ici, sans migration.
+   *
+   * Les mesures qui justifiaient de les afficher, conservées parce qu'elles
+   * restent vraies et qu'elles ont un usage ailleurs :
+   *   · L'appellation est ce que le moteur France Travail INDEXE, pas
+   *     l'intitulé — c'est par elle que le faux positif `IPR-IA` entrait dans
+   *     la collecte. Elle garde donc sa valeur pour régler les critères,
+   *     terrain sur lequel elle est déjà utilisée.
+   *   · `qualification_libelle` est absent sur deux tiers de la base.
+   *   · ⚠️ `langues` **ment par son absence** : sur 560 offres, **127 exigent
+   *     l'anglais dans leur texte et ce champ n'en capte que 10** — 92 %
+   *     d'angle mort. C'est la mesure qui donne raison au mot « bancal », et
+   *     l'exigence réelle remonte déjà dans la justification d'accessibilité,
+   *     lue dans le TEXTE par le modèle.
+   *
+   * ⚠️ **Ne pas les remettre sans une raison neuve** : un bloc retiré parce
+   * qu'il n'apprenait rien reviendrait avec le même défaut.
    */
-  appellation_libelle: string | null;
-  rome_libelle: string | null;
-  /** « Cadre », « Technicien »… Absent sur deux tiers de la base, présent sur 45 % des mieux notées. */
-  qualification_libelle: string | null;
-  /**
-   * ⚠️ **Ce champ ment par son absence, et l'écran doit en tenir compte.**
-   * Mesuré le 28 août 2026 : **127 offres sur 560 exigent l'anglais dans leur
-   * texte, et ce champ n'en capte que 10**. Il rate « Anglais niveau C1 CECRL »,
-   * « Bilingue anglais », « Anglais professionnel indispensable » — 92 %
-   * d'angle mort. **Ne jamais afficher de cartouche d'absence pour les
-   * langues** : « Langues : non précisé » se lirait « pas d'anglais exigé »
-   * alors que ça veut dire « la case n'a pas été remplie ». Même piège que
-   * `experience_libelle`, et même `NULL` ≠ `false` qu'en base.
-   */
-  langues: { libelle?: string | null; exigence?: string | null }[] | null;
   /** Renseignée sur 560/560 — mais l'annonce, elle, peut avoir été dépubliée. */
   url_origine: string | null;
   /**
@@ -790,10 +792,6 @@ const COLONNES_FICHE = [
   "justification_accessibilite",
   "notation_motif_echec",
   "notation_tentatives",
-  "appellation_libelle",
-  "rome_libelle",
-  "qualification_libelle",
-  "langues",
   "url_origine",
   "contact_nom",
   "contact_url_postulation",

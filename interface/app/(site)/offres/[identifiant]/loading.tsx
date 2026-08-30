@@ -5,7 +5,7 @@ import { CadrePage } from "../../_composants/cadre-page";
  *
  * ⚠️ **Son seul rôle est d'occuper la place**, pour que l'arrivée du contenu ne
  * fasse pas sauter la page. Il reprend donc les hauteurs réelles de la fiche :
- * lien de retour, entête, résumé, notes, **note personnelle**, renseignements,
+ * lien de retour, entête, résumé, notes, **note personnelle**,
  * description, et le bloc de candidature.
  *
  * ⚠️ **Les hauteurs sont mesurées, pas estimées — et l'exactitude est
@@ -48,10 +48,9 @@ import { CadrePage } from "../../_composants/cadre-page";
  * | Résumé | 101,3 px | 100 – 126 |
  * | Évaluation | 192,4 px | 156 – 234 |
  * | Ma note | 208,5 px | fixe (champ vide) |
- * | Classement | 130 px | 114 – 154 |
  * | L'annonce | 52 px | fixe (replié) |
  * | Candidater | 119,1 px | 115,5 – 150 |
- * | **Total** | **1 402 px** | mesuré sur 20 fiches |
+ * | **Total** | **1 272 px** | 1 402 avant le retrait du classement |
  *
  * ⚠️ **L'évaluation a repris 4 px le 29 août** en fin de journée, quand son
  * chiffre est passé de 12 à 14 px. Une hauteur de squelette se remesure à
@@ -193,11 +192,6 @@ export default function ChargementFiche() {
           <div>
             <div className="mb-3 h-4 w-20 bg-muted" />
             <div className="h-[13.03rem] carte-produit" />
-          </div>
-
-          <div>
-            <div className="mb-3 h-4 w-40 bg-muted" />
-            <div className="h-[8.125rem] carte-produit" />
           </div>
 
           {/* ⚠️ **Le bloc d'enrichissement, arrivé le 30 août 2026 — et ajouté
