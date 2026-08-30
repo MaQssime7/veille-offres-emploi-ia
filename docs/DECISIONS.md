@@ -400,7 +400,7 @@ Quatre questions de la liste ouverte sont fermées. Le détail est dans
 |---|---|
 | Ce que contient exactement une fiche d'offre à l'écran | Entête, les deux notes avec justification, résumé court, description intégrale repliée, lien d'origine, bloc d'enrichissement, note personnelle |
 | Heure de la veille, fréquence, comportement un jour sans offre | Une exécution par jour, tôt le matin, heure de Paris. Un jour sans offre est un jour normal : état vide explicite, et aucun enrichissement lancé |
-| Enrichissement automatique, bouton manuel, ou les deux | ~~**Les deux.**~~ **Amendé le 16 août 2026 : manuel uniquement.** Voir section 9 |
+| Enrichissement automatique, bouton manuel, ou les deux | ~~**Les deux.**~~ **Amendé le 16 août 2026 : manuel uniquement.** ⚠️ **Durci le 30 août 2026 : l'automatique passe de « reporté » à REFUSÉ**, hors périmètre du PRD, sans condition de retour. Voir section 9 |
 | Comment éviter qu'un recruteur lise la note d'accessibilité de sa propre entreprise | **Mot de passe unique**, vérifié côté serveur, couvrant pages et adresses de données. Ni comptes, ni rôles. Écarte du même coup le risque de facture ouverte sur le bouton d'enrichissement |
 
 Le cadrage a aussi ajouté deux exigences qui n'étaient dans aucune liste :

@@ -297,6 +297,18 @@ paraît bonne sur le moment.
   qui interroge toutes les offres collectées. Figurait en évolution prévue jusqu'au
   16 août 2026, remplacé par la conversation *par offre* — dont le contexte et le
   coût sont bornés, ce qu'une conversation sur toute la base n'est pas.
+- **Enrichissement automatique, sous quelque forme que ce soit.** Aucune offre ne
+  s'enrichit sans un clic de Maxime : ni « la meilleure offre chaque jour », ni
+  « au plus deux par nuit », ni aucune règle de sélection automatique. Retiré de
+  la v1 le 16 août 2026 (il aurait produit ~60 fiches par mois, lues ou non, sur
+  des seuils non calibrés), il y figurait encore en **évolution prévue** avec une
+  condition de retour — *« quand les seuils auront été calibrés et le coût
+  mesuré »*. **Décision de Maxime le 30 août 2026 : la condition disparaît et la
+  ligne passe ici.** Le motif est plus fort que le coût : le bon déclencheur d'un
+  enrichissement est la lecture d'une offre qui accroche, et cela ne se devine
+  pas. ⚠️ **Ce qui NE change pas** : la colonne `declenchement` reste sur la trace
+  d'enrichissement, même si elle ne portera jamais que « manuel ». Elle sert à
+  l'écran de suivi d'exploitation, pas à préparer un retour.
 
 ## Évolutions prévues
 
@@ -312,7 +324,6 @@ c'est du hors périmètre — ou une idée qui attendra d'être demandée.
 |---|---|---|
 | **Écran de suivi d'exploitation** — nombre d'exécutions, taux de réussite, durée moyenne, volumes traités, coût cumulé | Aucune valeur tant qu'il n'y a pas plusieurs semaines d'exécutions à comparer | Écrire une trace à chaque exécution et à chaque enrichissement dès le premier jour, avec les **compteurs de consommation bruts** et jamais un montant en euros seul. Un historique ne se reconstitue pas après coup, et un prix mal calculé fige une erreur définitive |
 | **Conversation avec l'agent sur une offre enrichie** — poser des questions et challenger la fiche d'enrichissement d'une offre précise, l'annonce et la fiche en contexte | La fiche d'enrichissement doit d'abord exister et être jugée utile. Discuter d'une fiche qu'on n'a jamais lue ne démontre rien | Trois choses. **1.** Stocker la fiche d'enrichissement en **champs séparés** (taille, date de création, chiffre d'affaires, secteur, technique attendue) et pas en texte rédigé — voir la justification renforcée ci-dessous. **2.** Conserver un identifiant d'offre stable, jamais renuméroté : la conversation s'y rattache. **3.** Décider **avant la première table** une enveloppe de consommation par offre, comptée en **tokens cumulés (entrée + sortie)** et affichée en pourcentage. Elle s'accompagnera d'une **enveloppe quotidienne de conversation, distincte de celle des enrichissements** — les deux ne doivent pas se voler leur budget, sans quoi une matinée d'enrichissement bloquerait toute discussion l'après-midi. Rien à prévoir dans le schéma : elle se calculera en sommant les traces du jour, comme celle des enrichissements |
-| **Enrichissement automatique nocturne** — au plus deux offres par nuit, choisies parmi celles dont l'intérêt **et** l'accessibilité atteignent 50, triées par accessibilité décroissante | Retiré de la v1 le 16 août 2026. Il produirait une soixantaine de fiches par mois, lues ou non, sur une sélection reposant sur des seuils que deux semaines de données réelles n'ont pas encore calibrés. **Condition de retour : quand les seuils auront été re-réglés sur des données réelles et que le coût par enrichissement aura été mesuré** — deux chiffres que la v1 produit | Presque rien, et c'est pourquoi il se retire sans dommage : le mécanisme d'agent est identique, seule la règle de sélection change. Deux choses à ne pas perdre, toutes deux déjà acquises. **1.** Conserver **toutes les notes de toutes les offres**, y compris celles sous le seuil, sans quoi il sera impossible de calibrer la sélection le jour venu. **2.** Garder la colonne `declenchement` sur la trace d'enrichissement, même si elle ne porte que « manuel » en v1 : elle ne se rajoute pas rétroactivement sur l'historique |
 
 **Pourquoi la fiche en champs séparés, même sans conversation globale.** Cette
 contrainte figurait auparavant sous une autre évolution — un agent conversationnel
@@ -484,8 +495,9 @@ marqueur « nouveau ».
 ### Enrichissement de l'entreprise
 
 - **Exclusivement manuel.** Tranché le 16 août 2026 : rien ne s'enrichit sans un
-  clic. L'enrichissement automatique nocturne est reporté — voir Évolutions
-  prévues. Motif : il aurait produit une soixantaine de fiches par mois, lues ou
+  clic. ⚠️ **L'enrichissement automatique n'est plus « reporté » mais REFUSÉ**
+  depuis le 30 août 2026 — il est passé en Hors périmètre, et sa condition de
+  retour a été supprimée. Motif : il aurait produit une soixantaine de fiches par mois, lues ou
   non, sur une sélection reposant sur des seuils explicitement marqués « à
   re-régler après deux semaines de données réelles ». Le bon déclencheur est la
   lecture d'une offre qui accroche.
@@ -596,14 +608,35 @@ couvre l'indicateur de dernière veille réussie.
 d'accessibilité sont visibles par quiconque détient le mot de passe. Le donner en
 entretien expose l'appréciation portée sur l'entreprise de l'interlocuteur.
 
-**Coût estimé** — Ordre de grandeur non vérifié, **révisé le 16 août 2026 après le
-retrait de l'enrichissement automatique** : environ 5 à 8 $ par mois pour la
-notation (Sonnet 5, cache de prompt et API Batches), et 0,20 € à 1 € par
-enrichissement déclenché à la main. Sur une dizaine à une vingtaine
-d'enrichissements par mois, le total se situe autour de **7 à 30 € par mois**, au
-lieu des 12 à 60 € qu'imposait l'automatique. L'enveloppe quotidienne de 300 000
-tokens plafonne le pire cas indépendamment de cette estimation. À confirmer contre
-la tarification réelle avant la mise en service.
+**Coût — MESURÉ le 30 août 2026**, contre les compteurs de tokens que le pipeline
+écrit dans `executions_veille` à chaque exécution. Remplace l'estimation « 5 à 8 $
+par mois » du 16 août, qui était un ordre de grandeur non vérifié et se révèle
+**trois fois trop haute**.
+
+Par offre notée (notation + résumé + identification de l'employeur, un seul appel) :
+5 383 tokens de cache lu, 1 423 d'entrée, 233 de sortie. Le préfixe n'est écrit
+qu'une fois par nuit puis relu à 10 % du prix — vérifié sur la nuit du 30 : 4 273
+tokens écrits, 21 365 lus pour 6 offres.
+
+Au régime mesuré de **6 à 7 offres nouvelles par nuit** (~200/mois) :
+
+| | Tarif d'introduction | Tarif normal, dès le 1ᵉʳ septembre 2026 |
+|---|---|---|
+| Notation seule | 1,39 $ | 2,09 $ |
+| + identification de l'employeur | +0,23 $ | +0,34 $ |
+| **Total** | **1,62 $/mois** | **2,43 $/mois** |
+
+⚠️ **Le tarif d'introduction de Sonnet 5 expire le 31 août 2026** : l'entrée passe
+de 2 à 3 $/M et la sortie de 10 à 15 $/M, soit **+50 % sans rien changer au code**.
+
+⚠️ **Le volume est mesuré sur 3 nuits seulement**, les seules depuis le filtre CDI.
+Les 189 et 346 offres des 20 et 26 août étaient des remplissages initiaux : les
+inclure donnerait 1 582 offres/mois et un coût dix fois trop élevé. À 15 offres par
+nuit, compter 4 à 5 $/mois.
+
+L'enrichissement manuel reste estimé à 0,20 € à 1 € pièce, **non mesuré** — il
+n'existe pas encore. L'enveloppe quotidienne de 300 000 tokens plafonne le pire cas
+indépendamment de cette estimation.
 
 **Évolutions prévues** — Voir la section dédiée plus haut. Deux items à ce jour :
 l'écran de suivi d'exploitation et la conversation avec l'agent **sur une offre

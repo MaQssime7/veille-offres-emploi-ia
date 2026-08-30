@@ -22,7 +22,7 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` |
 | **Comment le site est protégé** : cookie, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts`, abondamment commentés |
 | **Comment l'interface ÉCRIT en base** : garde-fous, idempotence | `ecrireDansBase()` dans `interface/lib/supabase.ts` |
-| Statuts, note personnelle, **accords et dates en français**, filtres et classement de la liste, thème : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`, `interface/lib/theme.ts` — ⚠️ **les six seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
+| Statuts, note personnelle, **accords et dates en français**, filtres et classement de la liste, thème, **quel nom d'employeur afficher** : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`, `interface/lib/theme.ts`, `interface/lib/employeur.ts` — ⚠️ **les sept seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
 | **Ce que la liste montre et dans quel ordre** : les cinq filtres (dont « Nouveau »), les trois classements, et la table de chaînes SQL qu'aucune valeur d'adresse n'atteint | `interface/lib/filtres.ts` et `interface/lib/tri.ts` pour les constantes · `interface/lib/offres.ts` pour `CLASSEMENTS`, qui **ne descend jamais** dans les deux premiers |
 | **Ce que l'écran du matin montre** : le seuil de 50, les six écrans vides et l'ORDRE qui les départage | `interface/lib/matin.ts` — lecture et calcul séparés, `choisirAffichage()` est une fonction pure, éprouvée par `matin.test.ts` |
 | **L'état de santé de la veille** : les cinq états, le seuil d'alerte de 36 h, celui des 60 min qui démasque une collecte tuée | `interface/lib/veille.ts` — lecture et calcul séparés, `calculerEtat()` est une fonction pure. ⚠️ Les **dateurs** sont dans `francais.ts`, pas ici : purs, ils ne doivent pas être enfermés derrière `server-only` |
@@ -65,7 +65,7 @@ minutes le matin et ouvre parfois le site en entretien.
 candidature automatique · toute source autre que France Travail · toute zone hors
 Île-de-France · comptes utilisateurs et rôles · suivi de candidature avancé
 (calendrier, relances, CV) · réglage des critères depuis l'interface ·
-modification manuelle des notes du modèle · analyse du marché de l'emploi
+modification manuelle des notes du modèle · **enrichissement automatique, sous toute forme** · analyse du marché de l'emploi
 (tendances, salaires, graphiques) · application mobile installable · démo
 publique à données fictives · traduction et offres hors France · import de CV.
 
@@ -109,63 +109,46 @@ fichier :**
 prochain chantier.**
 Le site est en ligne derrière son mot de passe, collecte et notation tournent sur
 le cron. `/` est le **compte rendu de la nuit**, `/offres` le **plan de travail**.
-**L'interface écrit en base** — statuts et note personnelle. **574 offres,
-137 notées, 570 à traiter / 0 candidaté / 4 écarté.**
+**L'interface écrit en base** — statuts et note personnelle. **580 offres,
+146 notées, 576 à traiter / 0 candidaté / 4 écarté.**
 
-### ⚠️ Ce que la phase 5 a livré, et la question qu'elle laisse ouverte
+### ⚠️ Ce que la phase 5 a livré — huit faits opposables
 
-`/` affiche les offres de la **dernière collecte réussie** qui restent à traiter et
-qui dépassent **50/100 en intérêt**, sous la même manchette que `/offres`, plus une
-carte de passage chiffrée vers le plan de travail. Récit dans `docs/JOURNAL.md`.
+`/` affiche les offres de la **dernière collecte réussie** encore à traiter qui
+dépassent le seuil d'intérêt, sous la même manchette que `/offres`, plus une carte
+de passage vers le plan de travail. Récit dans `docs/JOURNAL.md`, barèmes et
+mesures dans `interface/lib/matin.ts` et `regroupement.ts`.
 
-- ⚠️ **`/` REGROUPE LES ANNONCES D'UN MÊME POSTE, `/offres` NON.** France Travail
-  publie le même poste plusieurs fois — version « f/h » et version « (H/F) », deux
-  identifiants, donc deux lignes que la déduplication du pipeline ne voit pas :
-  **29 annonces en trop sur 574, soit 5,1 %**. Mécanisme dans
-  `interface/lib/regroupement.ts`. ⚠️ **L'employeur SÉPARE, il ne rapproche
-  pas** — la clé est l'intitulé normalisé + le lieu, et un groupe n'éclate que
-  s'il réunit deux employeurs *nommés* différents. Mettre l'entreprise dans la clé
-  a été essayé et **ne regroupait rien** : 36 % des offres n'ont pas d'employeur
-  nommé, dont les quatre annonces MBDA qui ont motivé le module.
-  ⚠️ **Le clic de statut traite le POSTE ENTIER** (décision de Maxime) : l'action
-  `definirStatut` prend une **liste** d'identifiants, bornée à 8. Sans ça, écarter
-  l'annonce affichée laisserait sa jumelle « à traiter ».
-  ⚠️ **Ne PAS étendre le regroupement à `/offres`** : c'est l'archive (US-22), et
-  sa liste est plafonnée à 200 sur 570 — deux jumelles peuvent être l'une dedans
-  et l'autre dehors, et le compteur deviendrait faux.
-- ⚠️ **Deux annonces du même poste sont parfois notées TRÈS différemment** : 68 et
-  45 sur la paire mesurée le 30 août, pour des justifications qui disaient la même
-  chose. Sur 7 paires comparables : 4 identiques, 2 à 2 points, 1 à 23. **Les
-  doublons sont un banc d'essai gratuit de la notation.** Constat noté, non traité.
-- ⚠️ **LE SEUIL EST À 35, ET C'EST UNE DÉCISION DE MAXIME — pas la valeur du
-  plan.** `docs/PLAN.md` écrivait 50 ; mesuré le 30 août sur les six dernières
-  collectes, à 50 l'écran était vide **quatre matins sur six** (1, 0, 5, 0, 0, 0
-  offres à lire). À 35 : 4, 2, 6, 0, 1, 0 — deux matins vides, et les deux sont des
-  collectes réellement sans rien. Sur toute la base on passe de 10 à 20 offres.
-  ⚠️ **Descendre à 25 n'ajouterait que 7 offres** : le gain s'aplatit, et chaque
-  cran rapproche `/` d'un second plan de travail. Barème complet et raisonnement
-  dans `interface/lib/matin.ts`, au-dessus de la constante.
-- ⚠️ **SIX écrans vides, pas trois**, et le quatrième n'était pas au plan :
-  **« la notation n'a pas tourné »**. Sans lui, une collecte réussie suivie d'une
-  notation tombée s'affichait « journée calme ». La manchette ne rattrape pas : elle
-  ne regarde que l'étape `collecte`. ⚠️ **L'ORDRE des tests de `choisirAffichage()`
-  EST la logique** — « aucune n'atteint le seuil » n'est vrai que si la collecte a
-  ramené quelque chose *et* que ce quelque chose a été noté.
-- ⚠️ **La date de la collecte n'est PAS répétée sous le salut** — la manchette
-  l'affiche 90 px plus haut, et le rendu montrait « Hier, 11:11 » deux fois. Ce
-  qu'on accepte en échange est écrit dans `page.tsx` : deux lectures distinctes,
-  donc une divergence possible de quelques millisecondes par jour.
-- ⚠️ **`(site)/_composants/` est désormais le dossier des briques PARTAGÉES** —
-  lignes d'offre, boutons de statut, cartouches, notes, panneaux d'état, verrou de
-  tri, formats, rythme, adresses. `offres/_composants/` ne garde que ses filtres et
-  son menu de tri. `actions.ts` est remonté avec eux : `definirStatut` n'appartient
-  plus à `/offres`.
-- ⚠️ **`definirStatut` revalide `/` EN PLUS de `/offres`** — sans quoi le bouton
-  retour du navigateur ramène une offre déjà classée sur l'écran du matin.
-- ⚠️ **Le squelette de `/` imite UNE ligne, et c'est mesuré** : un panneau vide fait
-  230 px, une ligne d'offre 222. Une barre unique cale les deux cas ; trois barres
-  se trompaient de 450 px dans les deux à la fois. **Un squelette s'aligne sur ce
-  que SA page affiche le plus souvent, jamais sur celui d'à côté.**
+1. ⚠️ **`/` REGROUPE les annonces d'un même poste, `/offres` NON.** France Travail
+   publie le même poste en « f/h » et en « (H/F) » — deux identifiants, donc deux
+   lignes que la déduplication du pipeline ne voit pas : **29 en trop sur 574**.
+   ⚠️ **Ne PAS étendre le regroupement à `/offres`** : c'est l'archive, plafonnée à
+   200 sur 576, et deux jumelles peuvent être l'une dedans et l'autre dehors.
+2. ⚠️ **L'employeur SÉPARE, il ne rapproche jamais.** La clé est l'intitulé
+   normalisé + le lieu ; un groupe n'éclate que s'il réunit deux employeurs
+   différents — `entreprise_nom` **ou** `entreprise_identifiee`, voir
+   `nomSeparateur()`. Mettre l'entreprise dans la clé a été essayé et **ne
+   regroupait rien** : 39 % des offres n'ont pas d'employeur nommé, dont les quatre
+   annonces MBDA qui ont motivé le module.
+3. ⚠️ **Le clic de statut traite le POSTE ENTIER** (décision de Maxime) :
+   `definirStatut` prend une **liste** d'identifiants, bornée à 8. Sans ça, écarter
+   l'annonce affichée laisserait sa jumelle « à traiter ».
+4. ⚠️ **LE SEUIL EST À 35 — décision de Maxime, pas la valeur du plan** (qui
+   écrivait 50, et laissait l'écran vide quatre matins sur six). Descendre à 25
+   n'ajouterait que 7 offres et rapprocherait `/` d'un second plan de travail.
+5. ⚠️ **SIX écrans vides, pas trois**, dont « la notation n'a pas tourné » qui
+   n'était pas au plan. ⚠️ **L'ORDRE des tests de `choisirAffichage()` EST la
+   logique** — « aucune n'atteint le seuil » n'est vrai que si la collecte a ramené
+   quelque chose *et* que ce quelque chose a été noté.
+6. ⚠️ **Deux annonces du même poste sont parfois notées TRÈS différemment** : 68 et
+   45 sur la paire mesurée le 30 août. **Les doublons sont un banc d'essai gratuit
+   de la notation.** Constat noté, non traité.
+7. ⚠️ **`(site)/_composants/` est le dossier des briques PARTAGÉES**, `actions.ts`
+   compris : `definirStatut` n'appartient plus à `/offres`. Il **revalide `/` EN
+   PLUS de `/offres`**, sans quoi le bouton retour ramène une offre déjà classée.
+8. ⚠️ **La date de collecte n'est PAS répétée sous le salut** (la manchette
+   l'affiche 90 px plus haut), et **le squelette de `/` imite UNE ligne** : un
+   squelette s'aligne sur ce que SA page affiche le plus souvent.
 
 ### ⚠️ Refonte du système de design — 29 août 2026, branche `refonte-design-pouf`
 
@@ -217,47 +200,71 @@ dans `docs/JOURNAL.md`, décisions visuelles dans `docs/DESIGN.md`.
 
 ### ✅ La manchette d'état — partagée par les deux écrans depuis le 30 août 2026
 
-- **`/` et `/offres` portent la MÊME manchette** : ligne pleine largeur en
-  `libelle-mono`, état de la veille à gauche, horodatage à droite, filet, puis le
-  titre. Composant unique, `app/(site)/_composants/etat-veille.tsx` — importé par
-  les deux, jamais recopié.
-  ⚠️ **Les deux `h1` disent « Bonjour Maxime », et les titres d'ONGLET diffèrent**
-  (« Ce matin » et « Plan de travail ») — décision de Maxime le 30 août. La règle
-  qui liait `h1` et onglet valait tant que les deux *nommaient* l'écran ; un salut
-  ne nomme rien. L'onglet est ce qu'on lit dans l'historique et dans un favori.
+Composant unique, `app/(site)/_composants/etat-veille.tsx`, importé par `/` et
+`/offres` et jamais recopié. Détail des seuils dans `interface/lib/veille.ts`.
+
+- ⚠️ **Cinq états, et le `switch` est exhaustif** : à jour · en retard (> 36 h) ·
+  dernier passage raté · aucune veille · état indisponible. Les deux derniers sont
+  distincts à dessein — « aucune veille » est une base neuve, « indisponible » une
+  lecture ratée ; les confondre annoncerait une panne un jour où seule la base est
+  injoignable.
+- ⚠️ **Une collecte TUÉE en plein vol compte comme un ratage, et c'est un seuil de
+  TEMPS qui la démasque.** Une exécution tuée laisse `issue = 'en_cours'` que le
+  pipeline ne referme qu'à son démarrage suivant : sans seuil, le bandeau affichait
+  « à jour » pendant 24 h sur une nuit morte. Au-delà de **60 minutes** — le double
+  du `timeout-minutes` du workflow — un `en_cours` est un ratage. Le libellé
+  distingue « en échec » (un motif existe) d'« interrompue » (aucun motif à
+  chercher).
+- ⚠️ **Les deux `h1` disent « Bonjour Maxime », les titres d'ONGLET diffèrent**
+  (« Ce matin », « Plan de travail ») — décision de Maxime. La règle qui liait `h1`
+  et onglet valait tant que les deux *nommaient* l'écran ; un salut ne nomme rien.
   ⚠️ **Le salut ne varie PAS avec l'heure** : le rendu est serveur, et deviner le
-  fuseau du visiteur est la classe de bug que `verifie` traque en rejouant les
-  tests en UTC.
-- ⚠️ **Cinq états, pas deux, et le `switch` qui les affiche est exhaustif** :
-  à jour · en retard (> 36 h) · dernier passage raté · aucune veille · état
-  indisponible. Les deux derniers sont distincts à dessein : « aucune veille » est
-  une base neuve, « indisponible » est une lecture ratée — les confondre annoncerait
-  une panne de collecte un jour où seule la base est injoignable.
-- ⚠️ **Une collecte TUÉE en plein vol compte comme un ratage, et c'est un seuil
-  de temps qui la démasque.** Une exécution tuée laisse `issue = 'en_cours'`, et le
-  pipeline ne la referme en `echec` qu'à son **démarrage suivant**, soit la nuit
-  d'après : sans ce seuil, le bandeau affichait « à jour » pendant près de 24 h sur
-  une nuit morte. Au-delà de **60 minutes** — le double du `timeout-minutes` du
-  workflow — un `en_cours` est donc traité comme un ratage. En dessous, c'est une
-  collecte qui tourne, et l'alerte ne clignote pas.
-  Le libellé distingue les deux : « en échec » (le pipeline a écrit son échec, un
-  motif existe) et « interrompue » (tuée avant d'avoir rien pu écrire, il n'y a
-  aucun motif à aller chercher).
+  fuseau du visiteur est la classe de bug que `verifie` traque en rejouant en UTC.
 - ⚠️ **`EnTetePage` prend quatre propriétés NOMMÉES** (`manchette`, `sousTitre`,
-  `filtres`, `tri`) au lieu d'un `children` fourre-tout. C'est ce qui rend l'égalité
-  de hauteur avec les `loading.tsx` vérifiable dans le code au lieu de l'être à
-  l'écran. ⚠️ `sousTitre` s'appelait `compte` jusqu'au 30 août, quand `/` est venu y
-  mettre autre chose qu'un nombre.
+  `filtres`, `tri`) au lieu d'un `children` fourre-tout : c'est ce qui rend
+  l'égalité de hauteur avec les `loading.tsx` vérifiable dans le code.
 
 | Brique | État |
 |---|---|
 | `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte, **`/` le compte rendu de la nuit**, `/offres` (cinq filtres, trois classements, statuts), la fiche `/offres/[identifiant]` (statuts, note personnelle), **bouton de thème à trois états** (système / clair / sombre) |
 | Supabase | Région Paris. `executions_veille` et `offres`. RLS activé, droits vérifiés |
-| Migrations | **7**, toutes appliquées. La 6ᵉ ajoute `statut`, `statut_modifie_a`, `note_personnelle`, `note_modifiee_a` ; la 7ᵉ corrige une contrainte de la 6ᵉ prise en défaut par son propre test |
+| Migrations | **8**, toutes appliquées. La 6ᵉ ajoute les statuts et la note personnelle ; la 7ᵉ corrige une contrainte de la 6ᵉ prise en défaut par son propre test ; la 8ᵉ ajoute `entreprise_identifiee` et `entreprise_intermediaire` |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
 | `pipeline/` | Collecte **et** notation sur le cron GitHub Actions à 02:23 UTC. ⚠️ **Seul le CDI est collecté** (`TYPE_CONTRAT` dans `config.py`) |
-| Modules | `collecte.py` · `notation.py` · `salaire.py` · `criteres_pertinence.txt` |
+| Modules | `collecte.py` · `notation.py` · `salaire.py` · `employeur.py` · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
+
+### ✅ L'employeur réel, lu dans le texte de l'annonce — 30 août 2026
+
+**`entreprise_nom` de France Travail ne vaut pas ce qu'on croit**, mesuré sur les
+580 offres : **absent sur 39 %** (47 % des notées), intermédiaire dans **36 %**
+des cas, et **parfois faux** — `6426819` l'annonce à « NEW NET 3D » quand sa
+description dit « L'entreprise Wavestone recherche des profils ». Le modèle
+extrait donc l'employeur **dans l'appel de notation qui existe déjà**. Migration 8 :
+`entreprise_identifiee`, `entreprise_intermediaire`. Détail et mesures dans
+`pipeline/employeur.py`, `interface/lib/employeur.ts` et `docs/JOURNAL.md`.
+
+⚠️ **Cinq faits qui ne se déduisent d'aucun fichier :**
+
+1. **`entreprise_nom` n'est JAMAIS écrasé** — la déduction vient à côté. Un nom
+   absent se voit, un nom faux se croit.
+2. **Le garde-fou est DÉTERMINISTE** : `verifier()` cherche le nom rendu dans le
+   texte envoyé, sinon le jette. Une consigne se contourne, pas une comparaison de
+   chaînes. **Ce qui se vérifie ne se croit pas.**
+3. **ESN ≠ cabinet de recrutement.** Le cabinet recrute *pour* un tiers → rendre le
+   tiers ; l'ESN embauche *elle-même* → rendre l'ESN, jamais son client. La
+   première consigne confondait les deux et rendait `null` sur les ESN.
+4. **Le rattrapage se filtre sur le DRAPEAU, jamais sur le nom** — le modèle répond
+   `null` sur ~1 offre sur 6, et filtrer sur le nom les refacturait à chaque
+   relance.
+5. **Le nom identifié SÉPARE au regroupement, sans jamais rapprocher.** Sans ça, un
+   clic de statut écrivait sur une offre jamais vue.
+
+⚠️ **`entreprise_intermediaire` VARIE d'un appel à l'autre sur la même offre** —
+observé sur `6426819`. Ne rien bâtir de structurant dessus.
+
+**Premier rattrapage (18 offres ≥ 35)** : 15 identifiées, 0 échec — 4 comblées,
+3 corrigées, 6 confirmées, 2 abrégées (rattrapées à l'affichage). ~16 centimes.
 
 ### Ce qui reste ouvert
 
@@ -266,7 +273,7 @@ dans `docs/JOURNAL.md`, décisions visuelles dans `docs/DESIGN.md`.
 | ⚠️ **La note d'apprentissage de la phase 5 reste à écrire** | Obligation du `CLAUDE.md` global — une note de diagnostic par phase dans `~/Documents/Coffre Obsidian/Maxime M/Apprentissage/`, dans le sous-dossier du sujet. Matière disponible : le regroupement en fonction pure, l'action serveur qui écrit plusieurs lignes et dit son échec partiel, et la leçon du calage de squelette (mesurer le bas du contenu, pas la hauteur d'un conteneur `flex-1`) |
 | ⚠️ **La rustine `gh workflow run` EFFACE le compte rendu de la nuit** | Trouvé en revue le 30 août. La collecte écrit en `ignore-duplicates` : une offre déjà connue reste rattachée à l'exécution qui l'a vue **en premier**. Donc la collecte relancée à la main le matin réussit avec **zéro offre nouvelle**, devient « la dernière collecte réussie », et `/` remplace les offres de la nuit par « la collecte n'a rien rapporté ». ⚠️ **Non corrigé délibérément** : le plan dit « c'est la dernière réussie qui fait foi », et préférer « la dernière non vide » empêcherait d'afficher une vraie nuit blanche. Le **texte** a été corrigé pour ne plus mentir, et les offres restent atteignables par la carte de passage. **La question appartient à Maxime**, et elle disparaîtra d'elle-même avec le déclencheur externe de la phase 6 |
 | ⚠️ **L'indicateur de veille ne vieillit pas dans un onglet resté ouvert** | Il est calculé au rendu serveur : un onglet laissé ouvert toute la journée affiche encore « Aujourd'hui, 11:11 » le lendemain matin, et ne passera jamais en alerte tout seul. Le corriger demanderait une horloge dans le navigateur, donc un composant client, pour une information qui change une fois par jour. **Signalé, non corrigé** — écrit dans `etat-veille.tsx` pour ne pas passer pour un oubli |
-| ⚠️ **Le plafond de 200 lignes — desserré, pas résolu** | La liste montre les 200 meilleures de tous les temps : le jour où plus de 200 offres portent une note, celles de la nuit disparaissent. Le filtre de la phase 4 desserre (une offre triée libère sa place) mais ne résout pas : tant que rien n'est trié, les 574 restent « à traiter ». **L'échéance est un compte, pas une date.** Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut. ⚠️ **Ne pas forcer en payant** (~40 centimes pour noter 60 offres de plus) : c'est un raisonnement, pas une économie — 200 est aussi le seuil où l'écran casse. Simulation dans `docs/PLAN.md` § Phase 2 |
+| ⚠️ **Le plafond de 200 lignes — desserré, pas résolu** | La liste montre les 200 meilleures de tous les temps : le jour où plus de 200 offres portent une note, celles de la nuit disparaissent. Le filtre de la phase 4 desserre (une offre triée libère sa place) mais ne résout pas : tant que rien n'est trié, les 576 restent « à traiter ». **L'échéance est un compte, pas une date.** Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut. ⚠️ **Ne pas forcer en payant** (~40 centimes pour noter 60 offres de plus) : c'est un raisonnement, pas une économie — 200 est aussi le seuil où l'écran casse. Simulation dans `docs/PLAN.md` § Phase 2 |
 | ⚠️ **`intelligence artificielle` : le seul critère non arbitré** | 127 offres nettes/mois pour une moyenne de 8/100 et un maximum de 15 sur 27 notées — le profil exact qui a fait tomber les codes ROME. Et on ne perdrait rien : les 9 offres ≥ 25 sont toutes rattrapées par `IA` ou `AI`, vérifié une par une. Maxime l'a **gardé** le 28 août. ⚠️ **Ne pas le retirer seul** |
 | Qualité d'`automatisation` | 11 offres nettes/mois, **aucune notée** : sa qualité est **inconnue**, ce qui n'est pas la même chose que « bonne » |
 | Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | Inatteignable depuis le 26 août — le bug ne se déclenche que sur une offre déjà notée. L'analyse et le correctif vivent en commentaire dans `pipeline/notation.py` au-dessus de `apercevoir()`, **au point d'usage** : celui qui ressortira `--renoter` tombera dessus |
@@ -344,7 +351,7 @@ Récit de l'enquête : `docs/JOURNAL.md` § 27 août.
    données.
 3. ⚠️ **`interface/lib/statuts.ts`, `interface/lib/notes.ts`,
    `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`
-   et `interface/lib/theme.ts` sont les six seuls modules de `lib/` sans
+   `interface/lib/theme.ts` et `interface/lib/employeur.ts` sont les sept seuls modules de `lib/` sans
    `import "server-only"`** — `utils.ts` mis à part, qui ne porte que le `cn()` de
    shadcn. C'est leur raison d'être : les composants clients ont besoin des mêmes
    constantes que le serveur (libellés de statut, borne de longueur de la note,
@@ -605,6 +612,14 @@ porte. L'identifiant est celui de France Travail, **validé avant d'atteindre la
 base**.
 
 **Enrichissement** : **exclusivement manuel** — rien ne s'enrichit sans un clic.
+⚠️ **REFUSÉ et non « reporté » depuis le 30 août 2026** : l'enrichissement
+automatique était en évolution prévue avec une condition de retour qui se
+remplissait d'elle-même (seuils calibrés + coût mesuré, deux chiffres que la v1
+produit). Maxime l'a fait passer en **hors périmètre opposable**, condition
+supprimée. Ni « la meilleure offre chaque jour », ni « deux par nuit », ni aucune
+règle de sélection : **le déclencheur est la lecture d'une offre qui accroche, et
+ça ne se devine pas.** ⚠️ La colonne `declenchement` reste quand même sur la
+trace — elle sert à l'écran de suivi, pas à préparer un retour.
 Une **enveloppe quotidienne de 300 000 tokens** borne la dépense : fichier de
 configuration versionné, **vérifiée côté serveur**, calculée en sommant les traces
 du jour et non dans un compteur qui divergerait. **La notation nocturne n'y entre
@@ -624,7 +639,7 @@ which python                   # doit afficher .../veille-offres-emploi-ia/.venv
 
 ```bash
 # Interface — depuis interface/
-npm run verifie      # lint + typecheck + les 39 tests, DANS LES DEUX FUSEAUX
+npm run verifie      # lint + typecheck + les 84 tests, DANS LES DEUX FUSEAUX
 ```
 
 ⚠️ **`verifie` lance la suite deux fois, et la seconde est celle qui compte** :

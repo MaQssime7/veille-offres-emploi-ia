@@ -530,7 +530,7 @@ dont le coût varie du simple au quintuple.
 - [ ] Entreprise non identifiable avec certitude : la fiche le **signale** au lieu de trancher
 - [ ] Un enrichissement échoué affiche **son motif** et un bouton « Relancer » ; la relance remplace la fiche précédente
 - [ ] Chaque enrichissement écrit sa trace : offre, déclenchement, horodatages, durée, étapes effectuées, issue, motif, **modèle**, compteurs bruts
-- [ ] La colonne `declenchement` existe et vaut « manuel » — elle ne se rajoute pas rétroactivement sur l'historique le jour où l'automatique reviendra
+- [ ] La colonne `declenchement` existe et vaut « manuel ». ⚠️ **Elle ne prépare PAS un retour de l'automatique**, refusé sans condition le 30 août 2026 : elle sert à l'écran de suivi d'exploitation, qui doit pouvoir dire d'où vient chaque enrichissement
 - [ ] Les compteurs alimentent `tokens_cumules`, **sans toucher** à `tokens_conversation`
 - [ ] **L'enveloppe quotidienne vit dans le fichier de configuration versionné**, valeur de départ **300 000 tokens**, et elle est **vérifiée côté serveur** — pas seulement affichée
 - [ ] L'enveloppe consommée se **calcule en sommant les traces du jour**, jamais depuis un compteur séparé qui divergerait à la première écriture ratée
@@ -578,7 +578,7 @@ Phase 6.
 
 ---
 
-## Phase retirée : l'enrichissement automatique nocturne
+## Phase retirée, puis REFUSÉE : l'enrichissement automatique nocturne
 
 Le plan comptait huit phases jusqu'au 16 août 2026. La huitième — *l'enrichissement
 automatique, chaque nuit* — a été retirée le jour même de l'écriture du plan, avant tout
@@ -593,6 +593,17 @@ fiable. Le bon déclencheur d'un enrichissement est la lecture d'une offre qui a
 **Ce qui l'a remplacée** : l'enveloppe quotidienne de tokens en phase 6. Retirer
 l'automatique retirait aussi « au plus deux par nuit », qui était le seul plafond de
 dépense du système — l'enveloppe le remplace et borne mieux, en euros plutôt qu'en clics.
+
+⚠️ **Elle ne reviendra pas, et la question est CLOSE depuis le 30 août 2026.** Elle
+figurait en **Évolutions prévues** du PRD avec une condition de retour — *quand les
+seuils auront été calibrés sur des données réelles et que le coût par enrichissement aura
+été mesuré* — et cette condition était en train de se remplir toute seule : 149 offres
+notées, et le coût mesuré au token près le 30 août. **Décision de Maxime : la ligne passe
+en Hors périmètre et la condition disparaît.** Le motif n'est plus le coût mais le
+déclencheur : enrichir se décide en lisant une offre qui accroche, et cela ne se devine
+pas. Ne pas la reproposer.
+
+Ce qui suit décrit l'ancienne condition de retour, conservé pour mémoire :
 
 Elle figure en **Évolutions prévues** du PRD avec sa condition de retour : *quand les
 seuils auront été calibrés sur des données réelles et que le coût par enrichissement aura

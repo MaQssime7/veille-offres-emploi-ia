@@ -6,6 +6,110 @@ tout l'historique est ici.
 
 ---
 
+## 30 août 2026 — L'enrichissement automatique passe de « reporté » à REFUSÉ
+
+Maxime demande de vérifier qu'aucun document ne prévoit d'enrichir « la meilleure
+offre automatiquement chaque jour », et de l'enlever le cas échéant. Vérification
+faite : **c'était déjà retiré de la v1** depuis le 16 août, et les quatre documents
+qui font autorité le disaient — PRD, PLAN, DECISIONS, CLAUDE.md.
+
+**Mais la porte était entrouverte, et elle s'ouvrait toute seule.** La phase
+figurait en *Évolutions prévues* du PRD avec une condition de retour écrite noir
+sur blanc : *« quand les seuils auront été calibrés sur des données réelles et que
+le coût par enrichissement aura été mesuré »*. Or ces deux chiffres, la v1 venait
+de les produire — 149 offres notées, et le coût du pipeline mesuré au token près le
+matin même. Un relecteur de bonne foi, dans six mois, aurait trouvé la condition
+remplie et proposé la fonctionnalité.
+
+**Décision de Maxime : la ligne passe en Hors périmètre, la condition disparaît.**
+Ni « la meilleure offre chaque jour », ni « au plus deux par nuit », ni aucune
+règle de sélection automatique. Le motif a changé de nature en chemin : en août
+c'était le coût et des seuils non calibrés — deux objections que le temps règle —
+maintenant c'est le **déclencheur**. Enrichir se décide en lisant une offre qui
+accroche, et cela ne se devine pas. Cette objection-là ne se périme pas.
+
+⚠️ **Ce qui ne change pas** : la colonne `declenchement` reste prévue sur la trace
+d'enrichissement, même si elle ne portera jamais que « manuel ». Elle sert à
+l'écran de suivi d'exploitation. La retirer serait confondre « on ne fera pas
+d'automatique » avec « on ne tracera pas ce qu'on fait ».
+
+**La leçon de méthode** : une évolution « reportée sous condition » n'est pas un
+refus, c'est un compte à rebours. Quand la condition est un chiffre que le produit
+lui-même fabrique, elle finit forcément par se remplir — et personne ne revient
+demander si l'intention initiale tenait toujours.
+
+## 30 août 2026 — L'employeur réel, lu dans le texte de l'annonce
+
+**Le constat vient de Maxime, devant l'écran du matin** : une offre affichait
+« NEW NET 3D », et le clic vers France Travail montrait un cabinet recrutant pour
+Wavestone. Son œil ne s'est pas trompé sur le problème — mais l'objet qu'il
+désignait n'en était pas la cause. NEW NET 3D n'est ni l'employeur, ni même
+l'intermédiaire : la description dit « En tant qu'organisateur de forums de
+recrutement, **Talents Handicap** accompagne […] L'entreprise **Wavestone**
+recherche actuellement des profils ». Trois entités, et le champ officiel en
+nommait une quatrième.
+
+**Mesure avant décision**, sur les 580 offres : `entreprise_nom` est absent sur
+**229 (39 %)**, 47 % des offres notées ; **206 descriptions (36 %)** portent un
+motif d'intermédiaire, dont 185 pour le seul « notre client ». Le nom réel, lui,
+est presque toujours dans le texte.
+
+### Ce qui a été construit
+
+Migration 8, purement additive : `entreprise_identifiee` et
+`entreprise_intermediaire`. L'extraction entre **dans l'appel de notation qui
+existe déjà** — deux champs de plus en sortie coûtent ~0,03 centime l'offre, un
+second appel dix fois ça pour relire le même texte. *On ne paie pas deux fois la
+lecture d'un document qui n'a pas changé.*
+
+**Le cœur du module est le garde-fou déterministe.** Demander « quelle est
+l'entreprise ? » à un modèle finit par en produire une, même quand l'annonce
+n'en nomme aucune. `verifier()` cherche donc le nom rendu **dans le texte
+envoyé** et le jette s'il n'y est pas. Éprouvé sur les vraies annonces :
+« Capgemini » rejeté, « Groupe Wavestone » rejeté — le modèle avait enjolivé.
+
+### Quatre défauts trouvés en les cherchant
+
+1. **La consigne confondait ESN et cabinet de recrutement.** « L'entreprise chez
+   qui la personne travaillerait » est ambigu : chez une ESN on est *employé par*
+   l'ESN et on *travaille chez* son client. Le modèle rendait `null` sur LORDS IT,
+   et aurait pu afficher le nom d'un client final chez qui Maxime n'aurait pas été
+   salarié. Corrigé en distinguant explicitement les deux cas.
+2. **Le rattrapage refacturait les offres sans employeur trouvable** (revue de
+   code). Le filtre portait sur le nom ; quand le modèle répond `null` — 3 offres
+   sur 18 — la colonne restait vide et l'offre ressortait à chaque relance. Le
+   filtre porte désormais sur le drapeau, qui dit « déjà regardée ».
+3. **Le regroupement de `/` était aveugle au nouveau nom** (revue de code). Deux
+   annonces anonymes de même intitulé mais d'employeurs identifiés différents
+   restaient groupées : un clic sur « Écarté » aurait classé une offre jamais vue.
+4. **La vérification acceptait un fragment de mot** (revue de code). `verifier("IA")`
+   passait, et comme le nom identifié l'emporte, il aurait remplacé un nom correct
+   par deux lettres. Bornes 3–120 caractères et frontières de mot ajoutées.
+
+### Deux leçons de méthode
+
+⚠️ **Un contraste mesuré juste après un changement de thème en JavaScript est
+faux.** Poser `data-theme="dark"` puis lire les styles dans la même foulée donne
+un état intermédiaire : le fond était recalculé, la couleur du texte pas encore.
+Mesure annoncée à 3,18:1, réelle à **8,95:1** après rechargement. Variante du
+piège déjà connu sur `oklab()` — **un thème se mesure sur une page rechargée.**
+
+⚠️ **Le modèle rend la forme COURTE quand c'est elle qui figure dans le texte** —
+« IPPON » là où France Travail disait « IPPON Technologies ». La règle
+« l'identifié l'emporte » remplaçait donc un nom complet par son abréviation.
+Ce n'est pas une correction : c'est le même employeur, écrit moins bien.
+
+### Résultat du premier rattrapage
+
+18 offres à traiter au-dessus de 35, **15 identifiées, 0 échec** : 4 comblées
+(France Travail muet), 3 corrigées (Wavestone ×2, Atos), 6 confirmées, 2 abrégées
+et rattrapées à l'affichage. ~16 centimes, essais compris.
+
+⚠️ **Constat non traité** : `entreprise_intermediaire` varie d'un appel à l'autre
+sur la même offre — `6426819` marquée `true` puis `false` à quelques minutes
+d'écart. Le champ n'alimente que la phrase de provenance ; ne rien bâtir de
+structurant dessus sans l'éprouver.
+
 ## 16 août 2026 — Cadrage, design, plan
 
 **`/cadre`** : critères de recherche, notation à deux axes, forme du livrable,
