@@ -825,7 +825,12 @@ const COLONNES_FICHE = [
  * ouvrir la fiche, pas une page « introuvable ». Le site est privé — deux
  * adresses pour une même offre n'ont ici aucune conséquence.
  */
-const FORMAT_IDENTIFIANT = /^[0-9A-Za-z]{7}$/;
+// ⚠️ **Exportée depuis le 30 août 2026 pour l'enrichissement, et c'est une
+// exportation à défendre** : `lib/enrichissement-base.ts` valide le même
+// identifiant, et deux expressions régulières décrivant la même chose
+// finiraient par diverger — l'une accepterait ce que l'autre refuse, sur le
+// paramètre qui désigne la ligne à écrire.
+export const FORMAT_IDENTIFIANT = /^[0-9A-Za-z]{7}$/;
 
 export type ResultatFiche =
   | { ok: true; offre: OffreEnFiche }

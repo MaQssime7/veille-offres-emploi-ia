@@ -154,3 +154,50 @@ export function duree(heures: number): string {
 function majuscule(texte: string): string {
   return texte.charAt(0).toUpperCase() + texte.slice(1);
 }
+
+/**
+ * De combien Paris est en avance sur UTC à cet instant, en minutes (60 ou 120).
+ *
+ * ⚠️ **Jamais une constante.** Écrire « Paris = UTC+1 » donnerait une heure
+ * fausse la moitié de l'année, et écrire « UTC+2 » l'autre moitié. Le décalage
+ * se demande au moteur de dates du navigateur, pour l'instant précis considéré.
+ *
+ * La ruse : `sv-SE` formate en `AAAA-MM-JJ HH:MM:SS`, le seul format de la
+ * bibliothèque standard qui se relise directement. On relit l'heure parisienne
+ * *comme si* elle était en UTC, et l'écart avec l'instant réel EST le décalage.
+ */
+function decalageParisMinutes(instant: Date): number {
+  const commeSiUtc = new Date(
+    `${instant.toLocaleString("sv-SE", { timeZone: FUSEAU }).replace(" ", "T")}Z`,
+  );
+  return (commeSiUtc.getTime() - instant.getTime()) / 60000;
+}
+
+/**
+ * Minuit, heure de Paris, du jour en cours — rendu comme instant.
+ *
+ * Entre : l'heure de référence.
+ * Sort : l'instant exact où la journée parisienne a commencé.
+ * Casse : ne lève pas ; une date invalide donnerait un instant invalide, que
+ * l'appelant verrait immédiatement en le sérialisant.
+ *
+ * ⚠️ **C'est la borne de l'enveloppe quotidienne d'enrichissement.** Le critère
+ * du plan dit « le compte repart de zéro le lendemain, à minuit heure de
+ * Paris ». Sur Vercel, le serveur tourne en UTC : un « début de journée »
+ * calculé naïvement ferait repartir l'enveloppe à 02:00 du matin en été, et une
+ * série de clics à 00 h 30 serait imputée à la veille.
+ *
+ * ⚠️ **Le décalage est mesuré à minuit UTC du jour, pas à l'heure courante** —
+ * et ce n'est pas équivalent. Les deux changements d'heure français ont lieu à
+ * 01:00 UTC, donc minuit UTC tombe toujours du même côté de la bascule que le
+ * minuit parisien qu'on cherche. Mesurer à l'heure courante donnerait un
+ * décalage postérieur à la bascule un dimanche de mars, et minuit parisien
+ * serait situé une heure trop tôt.
+ *
+ * Vérifié sur les deux nuits de bascule de 2026 dans `francais.test.ts`.
+ */
+export function debutDuJourParisien(maintenant: Date): Date {
+  const jour = jourParisien(maintenant);
+  const minuitUtc = new Date(`${jour}T00:00:00Z`);
+  return new Date(minuitUtc.getTime() - decalageParisMinutes(minuitUtc) * 60000);
+}

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { accorder, daterPassage, duree } from "@/lib/francais";
+import {
+  accorder,
+  daterPassage,
+  debutDuJourParisien,
+  duree,
+} from "@/lib/francais";
 
 /**
  * Ce que ces tests protègent.
@@ -116,6 +121,51 @@ describe("daterPassage — l'heure de Paris, toujours", () => {
     assert.equal(
       daterPassage("2026-10-25T12:00:00Z", new Date("2026-10-25T23:30:00Z")),
       "Hier, 13:00",
+    );
+  });
+});
+
+describe("debutDuJourParisien", () => {
+  /**
+   * ⚠️ Ces cas sont écrits en UTC de bout en bout, et c'est délibéré : c'est le
+   * fuseau de Vercel, donc celui où le calcul doit être juste. Sur le Mac de
+   * développement, à l'heure de Paris, une implémentation fausse passerait.
+   */
+  it("rend minuit à Paris, pas minuit UTC, en heure d'été (UTC+2)", () => {
+    assert.equal(
+      debutDuJourParisien(new Date("2026-08-30T18:09:00Z")).toISOString(),
+      "2026-08-29T22:00:00.000Z",
+    );
+  });
+
+  it("rend minuit à Paris en heure d'hiver (UTC+1)", () => {
+    assert.equal(
+      debutDuJourParisien(new Date("2026-01-15T09:00:00Z")).toISOString(),
+      "2026-01-14T23:00:00.000Z",
+    );
+  });
+
+  it("place dans la BONNE journée un instant qui a déjà changé de jour à Paris", () => {
+    // 22:30 UTC en août = 00:30 le lendemain à Paris. L'enveloppe de tokens
+    // doit déjà être repartie de zéro, sinon les clics de la nuit sont imputés
+    // à la journée de la veille.
+    assert.equal(
+      debutDuJourParisien(new Date("2026-08-30T22:30:00Z")).toISOString(),
+      "2026-08-30T22:00:00.000Z",
+    );
+  });
+
+  it("tient la nuit du passage à l'heure d'ÉTÉ, où la journée fait 23 h", () => {
+    assert.equal(
+      debutDuJourParisien(new Date("2026-03-29T10:00:00Z")).toISOString(),
+      "2026-03-28T23:00:00.000Z",
+    );
+  });
+
+  it("tient la nuit du passage à l'heure d'HIVER, où la journée fait 25 h", () => {
+    assert.equal(
+      debutDuJourParisien(new Date("2026-10-25T10:00:00Z")).toISOString(),
+      "2026-10-24T22:00:00.000Z",
     );
   });
 });

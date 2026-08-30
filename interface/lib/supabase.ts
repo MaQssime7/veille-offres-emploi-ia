@@ -404,9 +404,28 @@ export async function ecrireDansBase(
   {
     valeurs,
     egal,
+    filtreConstant,
   }: {
     valeurs: Record<string, string | number | boolean | null>;
     egal: Record<string, string>;
+    /**
+     * Un filtre supplémentaire, **écrit en dur dans le code appelant**.
+     *
+     * ⚠️ **Il n'est PAS encodé, et c'est pourquoi il ne doit JAMAIS porter une
+     * valeur reçue.** `egal` reste la seule porte par laquelle une valeur
+     * extérieure entre dans une requête. Ce paramètre existe pour les
+     * conditions que `=eq.` ne sait pas exprimer — typiquement
+     * `issue=in.(demande,en_cours)`, qui rend une écriture conditionnelle : la
+     * ligne n'est modifiée que si elle est encore dans l'état attendu.
+     *
+     * ⚠️ **Ajouté le 30 août 2026 après une revue**, qui a relevé une asymétrie
+     * réelle : le pipeline Python garde toutes ses écritures d'enrichissement
+     * par `&issue=in.(demande,en_cours)`, l'interface non. Entre le moment où
+     * elle jugeait une tentative périmée et celui où elle la refermait, l'agent
+     * pouvait conclure en réussite — et la clôture écrasait alors une fiche
+     * aboutie par un « interrompu ».
+     */
+    filtreConstant?: string;
   },
 ): Promise<ResultatEcriture> {
   // ⚠️ Le garde-fou du point 3. Un objet vide est une erreur de programmation,
@@ -439,12 +458,13 @@ export async function ecrireDansBase(
   // Même construction que pour la lecture : l'opérateur `eq.` est écrit ici, le
   // nom de colonne vient du code, seule la valeur est étrangère — et c'est elle
   // qu'on encode.
-  const filtres = colonnesFiltre
-    .map((colonne, rang) => {
-      const separateur = rang === 0 ? "?" : "&";
-      return `${separateur}${colonne}=eq.${encodeURIComponent(egal[colonne])}`;
-    })
-    .join("");
+  const filtres =
+    colonnesFiltre
+      .map((colonne, rang) => {
+        const separateur = rang === 0 ? "?" : "&";
+        return `${separateur}${colonne}=eq.${encodeURIComponent(egal[colonne])}`;
+      })
+      .join("") + (filtreConstant ? `&${filtreConstant}` : "");
 
   const enTetes: Record<string, string> = {
     apikey: configuration.cle,
@@ -538,4 +558,186 @@ export async function ecrireDansBase(
   }
 
   return { ok: true };
+}
+
+/**
+ * Ce que rend une insertion.
+ *
+ * ⚠️ **`conflit` est un motif à part entière, et pas un cas de `refusee`.** Une
+ * contrainte d'unicité violée n'est pas une erreur de programmation : c'est la
+ * base qui applique une règle métier — « un seul enrichissement en vol par
+ * offre ». L'appelant doit pouvoir l'afficher comme un fait normal
+ * (« un enrichissement est déjà en cours ») et non comme une panne.
+ */
+export type ResultatInsertion<T> =
+  | { ok: true; ligne: T }
+  | {
+      ok: false;
+      motif: MotifEchec | "refusee" | "conflit" | "introuvable";
+      explication: string;
+    };
+
+/**
+ * Les deux codes Postgres que PostgREST confond derrière un même HTTP 409.
+ *
+ * ⚠️ **Mesuré le 30 août 2026, et c'est un piège qui rend un message FAUX.**
+ * PostgREST répond `409` aussi bien pour une violation d'unicité (`23505`) que
+ * pour une clé étrangère absente (`23503`). Se fier au seul code HTTP faisait
+ * répondre « un enrichissement est déjà en cours sur cette offre » à une
+ * demande portant un identifiant qui n'existe pas — l'exact contraire de ce qui
+ * s'est produit. Relevé en revue, puis vérifié contre la vraie base :
+ * `POST` sur une offre inexistante → `409 / 23503` · doublon en vol →
+ * `409 / 23505` · contrainte `check` → `400 / 23514`.
+ */
+const UNICITE_VIOLEE = "23505";
+const REFERENCE_ABSENTE = "23503";
+
+/** Le code d'erreur Postgres, quand la réponse en porte un. */
+function codePostgres(corps: string): string | null {
+  try {
+    const objet = JSON.parse(corps) as { code?: string };
+    return objet?.code ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Insérer une ligne — un `POST` PostgREST.
+ *
+ * Entre : un nom de table (constante du code), les valeurs à écrire, et la
+ * liste des colonnes à renvoyer (constante du code elle aussi).
+ * Sort : la ligne créée, réduite aux colonnes demandées — ou un motif d'échec.
+ * Casse : ne lève jamais. Réseau coupé, délai dépassé, contrainte violée,
+ * conflit d'unicité : tout revient en `{ ok: false }`.
+ *
+ * ⚠️ **AUCUNE REPRISE RÉSEAU, contrairement à `interrogerBase` et
+ * `ecrireDansBase` — et c'est la seule différence qui compte.** Les deux autres
+ * peuvent rejouer leur requête parce qu'elles sont idempotentes : relire ne
+ * change rien, et poser `statut = 'candidate'` deux fois donne le même état.
+ * **Une insertion, non.** Un aléa réseau après que la base a écrit la ligne
+ * mais avant que la réponse n'arrive laisserait croire à un échec ; rejouer
+ * créerait un second enrichissement, donc un second lancement d'agent, donc une
+ * seconde facture.
+ *
+ * Le coût de ce choix est mesuré et faible : l'enquête du 28 août 2026 chiffrait
+ * l'aléa réseau à 0,2 % des requêtes. Une fois sur cinq cents, le clic échoue et
+ * Maxime reclique. C'est très préférable à un paiement en double une fois sur
+ * cinq cents.
+ *
+ * ⚠️ **Les contraintes d'unicité rattrapent quand même le cas.** Si la ligne a
+ * bien été écrite et que la reprise avait lieu malgré tout, l'index
+ * `enrichissements_un_seul_en_vol` refuserait la seconde. La sécurité ne repose
+ * donc pas sur l'absence de reprise seule — mais on ne s'en remet pas au filet
+ * quand on peut ne pas tomber.
+ *
+ * ⚠️ **`renvoyer` est une constante du code, jamais une valeur reçue.** Elle
+ * part dans l'adresse, à l'endroit où PostgREST lit `select` : une valeur
+ * extérieure y ferait remonter n'importe quelle colonne, `charge_brute`
+ * comprise. Même raisonnement que pour `chemin` dans `interrogerBase`.
+ */
+export async function insererDansBase<T>(
+  table: string,
+  {
+    valeurs,
+    renvoyer,
+  }: {
+    valeurs: Record<string, string | number | boolean | null>;
+    renvoyer: string;
+  },
+): Promise<ResultatInsertion<T>> {
+  let configuration;
+  try {
+    configuration = lireConfiguration();
+  } catch (erreur) {
+    if (erreur instanceof ConfigurationBaseManquante) {
+      return {
+        ok: false,
+        motif: "configuration",
+        explication: `Variable d'environnement absente : ${erreur.message}.`,
+      };
+    }
+    throw erreur;
+  }
+
+  let reponse: Response;
+  const debut = Date.now();
+  try {
+    reponse = await fetch(
+      `${configuration.url}/rest/v1/${table}?select=${renvoyer}`,
+      {
+        method: "POST",
+        headers: {
+          apikey: configuration.cle,
+          Authorization: `Bearer ${configuration.cle}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify(valeurs),
+        signal: AbortSignal.timeout(DELAI_MS),
+        cache: "no-store",
+      },
+    );
+  } catch (erreur) {
+    // ⚠️ Le journal ne porte que le nom de la table — jamais `valeurs`, qui
+    // contient du texte venu de l'annonce et, un jour, autre chose.
+    console.error(
+      `[base] insertion impossible — ${decrireEchec(erreur, Date.now() - debut)} sur ${table}`,
+    );
+    return {
+      ok: false,
+      motif: "injoignable",
+      explication: "La base n'a pas répondu.",
+    };
+  }
+
+  if (!reponse.ok) {
+    const brut = await reponse.text().catch(() => "");
+    console.error(`[base] HTTP ${reponse.status} sur ${table} (insertion) — ${assainir(brut)}`);
+
+    // ⚠️ Un 409 recouvre DEUX situations opposées — voir `UNICITE_VIOLEE`.
+    // C'est le code Postgres qui tranche, jamais le code HTTP seul.
+    if (reponse.status === 409) {
+      const code = codePostgres(brut);
+      if (code === REFERENCE_ABSENTE) {
+        return {
+          ok: false,
+          motif: "introuvable",
+          explication: "La ligne référencée n'existe pas.",
+        };
+      }
+      return {
+        ok: false,
+        motif: "conflit",
+        explication:
+          code === UNICITE_VIOLEE
+            ? "Une ligne équivalente existe déjà."
+            : "La base a refusé cette insertion.",
+      };
+    }
+    if (reponse.status === 400) {
+      return {
+        ok: false,
+        motif: "refusee",
+        explication: "La base a refusé cette valeur.",
+      };
+    }
+    return {
+      ok: false,
+      motif: "injoignable",
+      explication: `La base a répondu ${reponse.status}.`,
+    };
+  }
+
+  const lignes = (await reponse.json().catch(() => null)) as T[] | null;
+  if (!Array.isArray(lignes) || lignes.length === 0) {
+    console.error(`[base] insertion sur ${table} — réponse vide`);
+    return {
+      ok: false,
+      motif: "injoignable",
+      explication: "La base n'a rien renvoyé.",
+    };
+  }
+
+  return { ok: true, ligne: lignes[0] };
 }
