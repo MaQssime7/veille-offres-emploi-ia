@@ -67,6 +67,173 @@ export type Enrichissement = {
   demandeA: string;
   termineA: string | null;
   motifEchec: string | null;
+  /** L'ancrage vérifiable. `null` partout tant que l'agent n'a pas conclu. */
+  fiche: FicheEntreprise | null;
+};
+
+/** Les quatre degrés de certitude du rapprochement. Ordre du plus sûr au moins. */
+export const APPARIEMENTS = [
+  "verifie",
+  "probable",
+  "non_identifie",
+  "intermediaire",
+] as const;
+export type Appariement = (typeof APPARIEMENTS)[number];
+
+export function estAppariement(valeur: unknown): valeur is Appariement {
+  return (
+    typeof valeur === "string" &&
+    (APPARIEMENTS as readonly string[]).includes(valeur)
+  );
+}
+
+/** *vérifié* = lu sur une source qui fait foi · *déduit* = inféré par l'agent. */
+export const MARQUEURS = ["verifie", "deduit"] as const;
+export type Marqueur = (typeof MARQUEURS)[number];
+
+export function estMarqueur(valeur: unknown): valeur is Marqueur {
+  return (
+    typeof valeur === "string" && (MARQUEURS as readonly string[]).includes(valeur)
+  );
+}
+
+/**
+ * Une rubrique RÉDIGÉE, avec son marqueur.
+ *
+ * ⚠️ **L'absence de rubrique veut dire « non disponible », et cette chaîne ne
+ * vient JAMAIS de la base** — c'est une règle du schéma, et c'est ici qu'elle se
+ * paie : c'est l'affichage qui doit rendre l'absence en toutes lettres.
+ */
+export type Rubrique = {
+  rubrique: string;
+  valeur: string;
+  marqueur: Marqueur;
+  rang: number;
+};
+
+/**
+ * L'ancrage en colonnes typées, plus les rubriques rédigées.
+ *
+ * ⚠️ **`chiffreAffaires` et `chiffreAffairesAnnee` sont INDISSOCIABLES**, comme
+ * `trancheEffectif` et son millésime — la base l'impose par contrainte, et
+ * l'écran ne doit jamais afficher l'un sans l'autre. Le registre public ne rend
+ * que le dernier exercice DÉPOSÉ : mesuré à huit ans d'âge sur OCTO Technology.
+ * Un chiffre d'affaires sans son année laisse croire qu'il est récent, ce qui
+ * n'est pas une imprécision mais un mensonge.
+ */
+export type FicheEntreprise = {
+  appariement: Appariement;
+  appariementMotif: string | null;
+  siren: string | null;
+  nomOfficiel: string | null;
+  creeeLe: string | null;
+  categorie: string | null;
+  trancheEffectif: string | null;
+  trancheEffectifAnnee: number | null;
+  chiffreAffaires: number | null;
+  chiffreAffairesAnnee: number | null;
+  site: string | null;
+  siteMarqueur: Marqueur | null;
+  rubriques: Rubrique[];
+};
+
+/**
+ * Le CODE INSEE de tranche d'effectif traduit en toutes lettres.
+ *
+ * ⚠️ **La base stocke le CODE, jamais le libellé** — décision de la migration
+ * 10, et c'est cette table qui la rend lisible. Une copie de la même table vit
+ * dans `pipeline/registre.py`, et ce **n'est pas un doublon fonctionnel** : là-bas
+ * elle sert à donner au modèle de quoi comparer la tranche officielle à
+ * l'effectif revendiqué sur un site, ici elle sert à écrire une phrase. Les deux
+ * peuvent diverger sans conséquence — mais si celle-ci perd un code, l'écran
+ * n'affichera rien, sans erreur.
+ */
+export const TRANCHES_EFFECTIF: Record<string, string> = {
+  NN: "effectif non renseigné",
+  "00": "aucun salarié",
+  "01": "1 ou 2 salariés",
+  "02": "3 à 5 salariés",
+  "03": "6 à 9 salariés",
+  "11": "10 à 19 salariés",
+  "12": "20 à 49 salariés",
+  "21": "50 à 99 salariés",
+  "22": "100 à 199 salariés",
+  "31": "200 à 249 salariés",
+  "32": "250 à 499 salariés",
+  "41": "500 à 999 salariés",
+  "42": "1 000 à 1 999 salariés",
+  "51": "2 000 à 4 999 salariés",
+  "52": "5 000 à 9 999 salariés",
+  "53": "10 000 salariés et plus",
+};
+
+/**
+ * La catégorie INSEE en toutes lettres, et l'effectif MINIMAL qu'elle suppose.
+ *
+ * ⚠️ **Cette catégorie est calculée au niveau du GROUPE, pas de la société.**
+ * Mesuré sur trois entreprises réelles le 30 août 2026 : OCTO Technology ressort
+ * « GE » avec 500 à 999 salariés, et Expertime « GE » avec 100 à 199. Afficher
+ * le code nu — ou même « grande entreprise » sans nuance — ferait lire
+ * « 5 000 salariés » sur une société qui en compte cent cinquante. C'est
+ * exactement la fiche fausse d'apparence rigoureuse que le PRD redoute, et elle
+ * serait dite en entretien.
+ *
+ * `depuis` sert à détecter la contradiction avec la tranche d'effectif réelle :
+ * quand la catégorie suppose beaucoup plus de monde que la tranche n'en compte,
+ * c'est l'indice d'une filiale — piste utile, jamais une affirmation.
+ */
+export const CATEGORIES_INSEE: Record<string, { libelle: string; depuis: number }> =
+  {
+    PME: { libelle: "Petite ou moyenne entreprise", depuis: 0 },
+    ETI: { libelle: "Entreprise de taille intermédiaire", depuis: 250 },
+    GE: { libelle: "Grande entreprise", depuis: 5000 },
+  };
+
+/** Le HAUT de chaque tranche INSEE — sert à repérer la contradiction ci-dessus. */
+export const PLAFOND_TRANCHE: Record<string, number> = {
+  NN: 0, "00": 0, "01": 2, "02": 5, "03": 9, "11": 19, "12": 49, "21": 99,
+  "22": 199, "31": 249, "32": 499, "41": 999, "42": 1999, "51": 4999,
+  "52": 9999, "53": Number.POSITIVE_INFINITY,
+};
+
+/**
+ * La catégorie déclarée dépasse-t-elle largement l'effectif constaté ?
+ *
+ * ⚠️ **Rend `false` dès qu'une des deux valeurs manque** — on ne conclut pas sur
+ * une absence. Et la conclusion reste un INDICE : elle se formule « suggère »,
+ * jamais « est une filiale ». Trois cas mesurés ne font pas une règle.
+ */
+export function categorieDepasseEffectif(
+  categorie: string | null,
+  tranche: string | null,
+): boolean {
+  if (!categorie || !tranche) return false;
+  const seuil = CATEGORIES_INSEE[categorie]?.depuis;
+  const plafond = PLAFOND_TRANCHE[tranche];
+  if (seuil === undefined || plafond === undefined) return false;
+  return plafond < seuil;
+}
+
+/** Le titre affiché de chaque rubrique rédigée. */
+export const TITRES_RUBRIQUES: Record<string, string> = {
+  groupe: "Groupe",
+  modele_economique: "Modèle économique",
+  effectif_annonce: "Effectif annoncé",
+};
+
+/**
+ * Ce que l'appariement dit au lecteur, en français.
+ *
+ * ⚠️ **Ces phrases sont l'endroit où le doute devient visible**, et c'est le
+ * critère de succès n° 12 du projet : une fiche qui se trompe d'entreprise est
+ * pire qu'une fiche absente, parce qu'elle a l'air rigoureuse. « Probable » ne
+ * doit donc jamais se lire comme « vérifié » d'un coup d'œil.
+ */
+export const DITS_APPARIEMENT: Record<Appariement, string> = {
+  verifie: "Identité vérifiée",
+  probable: "Identité probable",
+  non_identifie: "Entreprise non identifiée",
+  intermediaire: "Annonce d’un intermédiaire",
 };
 
 /** Une étape franchie. */

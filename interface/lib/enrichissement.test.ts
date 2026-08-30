@@ -33,6 +33,7 @@ function tentative(partiel: Partial<Enrichissement> = {}): Enrichissement {
     demandeA: REFERENCE.toISOString(),
     termineA: null,
     motifEchec: null,
+    fiche: null,
     ...partiel,
   };
 }

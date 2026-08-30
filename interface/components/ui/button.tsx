@@ -58,15 +58,57 @@ const buttonVariants = cva(
   }
 )
 
+/**
+ * Le tourniquet d'attente, repris du registre 1st-Pouf.
+ *
+ * ⚠️ **Repris à la main, et non par `shadcn add button.json` — c'est la
+ * quatrième adaptation de ce fichier, et la commande aurait effacé les trois
+ * autres.** Le bouton du registre est un composant DIFFÉRENT : il a sa propre
+ * API (`tone`, `variant: solid | quiet`, `forwardRef`), il ne connaît ni les
+ * variantes shadcn dont l'application se sert partout, ni le focus en
+ * `outline` qui a été mis en place le 29 août parce que les `ring-*` de
+ * Tailwind sont écrasés par les `cushion-*`. L'installer aurait rendu tous les
+ * boutons du site inutilisables au clavier, **sans erreur ni avertissement**.
+ * On prend donc la seule chose qui manquait : ce tourniquet.
+ *
+ * ⚠️ **`pouf-spin` existe DÉJÀ dans `components/pouf/pouf.css`** (ligne 374) :
+ * rien à installer, rien à ajouter au CSS. Vérifié avant de coller la classe.
+ *
+ * ⚠️ **La bordure est en `currentColor` à 24 %, jamais en jeton de couleur** :
+ * le tourniquet vit sur des fonds différents selon la variante du bouton, et
+ * une couleur fixe disparaîtrait sur l'un d'eux. `currentColor` suit l'encre du
+ * bouton, quelle que soit la variante.
+ */
+function Tourniquet() {
+  return (
+    <span
+      aria-hidden="true"
+      className="size-[15px] shrink-0 rounded-full border-[3px] border-solid border-[color-mix(in_srgb,currentColor_24%,transparent)] border-t-current [animation:pouf-spin_620ms_linear_infinite] motion-reduce:animate-none"
+    />
+  )
+}
+
 function Button({
   className,
   variant = "default",
   size = "default",
   asChild = false,
+  loading = false,
+  disabled,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    /**
+     * ⚠️ **`loading` DÉSACTIVE le bouton, et ce n'est pas cosmétique.** Un
+     * bouton qui a l'air actif pendant qu'une écriture est en vol se clique
+     * deux fois — et ici le second clic partirait vers une action serveur
+     * facturée. Le registre 1st-Pouf le formule bien : « un envoi qui part deux
+     * fois parce qu'il avait l'air inactif est une vraie double écriture ; l'état
+     * d'attente n'est pas une décoration, c'est une propriété de sûreté ».
+     */
+    loading?: boolean
   }) {
   const Comp = asChild ? Slot.Root : "button"
 
@@ -75,9 +117,23 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      // ⚠️ `aria-busy` prévient les lecteurs d'écran que le bouton travaille.
+      // Sans lui, un utilisateur non voyant n'a AUCUN signal : le tourniquet
+      // est `aria-hidden`, et le seul autre indice est le libellé, qui n'est
+      // pas systématiquement changé par l'appelant.
+      aria-busy={loading || undefined}
+      disabled={disabled || loading}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
+    >
+      {/* ⚠️ Le tourniquet REMPLACE l'icône plutôt que de s'y ajouter quand
+          l'appelant lui donne `data-icon` — sinon la largeur du bouton saute au
+          démarrage. Ici on le place simplement en tête : les appelants du
+          projet passent leur icône dans `children`, et c'est à eux de la
+          retirer pendant l'attente s'ils veulent une largeur stable. */}
+      {loading && <Tourniquet />}
+      {children}
+    </Comp>
   )
 }
 

@@ -16,10 +16,14 @@ import {
   calculerConsommation,
   ENVELOPPE_QUOTIDIENNE_TOKENS,
   MOTIF_INTERROMPU,
+  estAppariement,
   estIssue,
+  estMarqueur,
   estPerime,
   type Enrichissement,
   type Etape,
+  type FicheEntreprise,
+  type Marqueur,
 } from "@/lib/enrichissement";
 import type { LigneConsommation } from "@/lib/enrichissement";
 import { debutDuJourParisien } from "@/lib/francais";
@@ -31,8 +35,14 @@ import { ecrireDansBase, insererDansBase, interrogerBase } from "@/lib/supabase"
  * d'échec rédigés par un agent et, demain, l'ancrage complet de l'entreprise :
  * ce qui n'est pas demandé ne peut pas fuir vers un écran par distraction.
  */
-const COLONNES_ENRICHISSEMENT = "id,issue,demande_a,termine_a,motif_echec";
+const COLONNES_ENRICHISSEMENT =
+  "id,issue,demande_a,termine_a,motif_echec," +
+  "appariement,appariement_motif,entreprise_siren,entreprise_nom_officiel," +
+  "entreprise_creee_le,entreprise_categorie,entreprise_tranche_effectif," +
+  "entreprise_tranche_effectif_annee,chiffre_affaires,chiffre_affaires_annee," +
+  "entreprise_site,entreprise_site_marqueur";
 const COLONNES_ETAPE = "rang,libelle,ecrite_a";
+const COLONNES_RUBRIQUE = "rubrique,valeur,marqueur,rang";
 const COLONNES_TOKENS =
   "tokens_entree,tokens_sortie,tokens_cache_lu,tokens_cache_ecrit";
 
@@ -42,9 +52,28 @@ type LigneEnrichissement = {
   demande_a: string;
   termine_a: string | null;
   motif_echec: string | null;
+  appariement: string | null;
+  appariement_motif: string | null;
+  entreprise_siren: string | null;
+  entreprise_nom_officiel: string | null;
+  entreprise_creee_le: string | null;
+  entreprise_categorie: string | null;
+  entreprise_tranche_effectif: string | null;
+  entreprise_tranche_effectif_annee: number | null;
+  chiffre_affaires: number | null;
+  chiffre_affaires_annee: number | null;
+  entreprise_site: string | null;
+  entreprise_site_marqueur: string | null;
 };
 
 type LigneEtape = { rang: number; libelle: string; ecrite_a: string };
+
+type LigneRubrique = {
+  rubrique: string;
+  valeur: string;
+  marqueur: string;
+  rang: number;
+};
 
 
 
@@ -57,7 +86,10 @@ type LigneEtape = { rang: number; libelle: string; ecrite_a: string };
  * doit alors se comporter de façon définie plutôt que de propager une chaîne
  * inconnue jusqu'à un `switch` qui ne la prévoit pas.
  */
-function enObjet(ligne: LigneEnrichissement): Enrichissement | null {
+function enObjet(
+  ligne: LigneEnrichissement,
+  rubriques: LigneRubrique[] = [],
+): Enrichissement | null {
   if (!estIssue(ligne.issue)) {
     console.error(`[enrichissement] issue inconnue en base sur la ligne ${ligne.id}`);
     return null;
@@ -68,6 +100,66 @@ function enObjet(ligne: LigneEnrichissement): Enrichissement | null {
     demandeA: ligne.demande_a,
     termineA: ligne.termine_a,
     motifEchec: ligne.motif_echec,
+    fiche: enFiche(ligne, rubriques),
+  };
+}
+
+/**
+ * L'ancrage de l'entreprise, ou `null` si l'agent n'a rien conclu.
+ *
+ * ⚠️ **`appariement` commande TOUTE la fiche.** Sans lui, il n'y a pas de fiche
+ * du tout — pas même partielle — parce que des données exactes sur la mauvaise
+ * entreprise restent fausses. La base dit la même chose autrement avec
+ * `reussite_conclut_l_appariement` : une réussite doit avoir conclu quelque
+ * chose sur l'identité, même si cette conclusion est « je n'ai pas trouvé ».
+ *
+ * ⚠️ **Les deux couples se cassent ENSEMBLE.** Un chiffre d'affaires dont
+ * l'année manquerait — ce que la contrainte interdit, mais qu'une migration
+ * maladroite pourrait rouvrir — est jeté plutôt qu'affiché seul. Le registre ne
+ * rend que le dernier exercice DÉPOSÉ, parfois vieux de huit ans : sans son
+ * millésime, le montant se lit comme s'il datait d'aujourd'hui.
+ */
+function enFiche(
+  ligne: LigneEnrichissement,
+  rubriques: LigneRubrique[],
+): FicheEntreprise | null {
+  if (!estAppariement(ligne.appariement)) return null;
+
+  const caDate =
+    ligne.chiffre_affaires !== null && ligne.chiffre_affaires_annee !== null;
+  const effectifDate =
+    ligne.entreprise_tranche_effectif !== null &&
+    ligne.entreprise_tranche_effectif_annee !== null;
+  const siteMarque =
+    ligne.entreprise_site !== null && estMarqueur(ligne.entreprise_site_marqueur);
+
+  return {
+    appariement: ligne.appariement,
+    appariementMotif: ligne.appariement_motif,
+    siren: ligne.entreprise_siren,
+    nomOfficiel: ligne.entreprise_nom_officiel,
+    creeeLe: ligne.entreprise_creee_le,
+    categorie: ligne.entreprise_categorie,
+    trancheEffectif: effectifDate ? ligne.entreprise_tranche_effectif : null,
+    trancheEffectifAnnee: effectifDate
+      ? ligne.entreprise_tranche_effectif_annee
+      : null,
+    chiffreAffaires: caDate ? ligne.chiffre_affaires : null,
+    chiffreAffairesAnnee: caDate ? ligne.chiffre_affaires_annee : null,
+    site: siteMarque ? ligne.entreprise_site : null,
+    siteMarqueur: siteMarque ? (ligne.entreprise_site_marqueur as Marqueur) : null,
+    // ⚠️ Une rubrique dont le marqueur est inconnu est ÉCARTÉE, pas affichée
+    // sans marqueur : c'est la même règle que pour le site. Un texte sans
+    // marqueur laisserait le lecteur croire qu'il est vérifié.
+    rubriques: rubriques
+      .filter((r) => estMarqueur(r.marqueur) && r.valeur.trim() !== "")
+      .map((r) => ({
+        rubrique: r.rubrique,
+        valeur: r.valeur,
+        marqueur: r.marqueur as Marqueur,
+        rang: r.rang,
+      }))
+      .sort((a, b) => a.rang - b.rang),
   };
 }
 
@@ -104,16 +196,35 @@ export async function lireDernierEnrichissement(
   const ligne = tentatives.lignes[0];
   if (!ligne) return { ok: true, dernier: null, etapes: [] };
 
-  const dernier = enObjet(ligne);
+  const etapes = await interrogerBase<LigneEtape>(
+    `etapes_enrichissement?select=${COLONNES_ETAPE}&order=rang.asc`,
+    { egal: { enrichissement_id: String(ligne.id) } },
+  );
+  if (!etapes.ok) return { ok: false, explication: etapes.explication };
+
+  // ⚠️ **Les rubriques ne sont lues QUE sur une réussite**, et c'est une
+  // requête économisée sur le chemin le plus fréquent — le sondage, qui repasse
+  // ici toutes les 1,5 seconde pendant qu'un enrichissement tourne. Une
+  // tentative en vol n'a par construction aucune rubrique : elles ne s'écrivent
+  // qu'à la conclusion.
+  let rubriques: LigneRubrique[] = [];
+  if (ligne.issue === "reussite") {
+    const lues = await interrogerBase<LigneRubrique>(
+      `rubriques_enrichissement?select=${COLONNES_RUBRIQUE}&order=rang.asc`,
+      { egal: { enrichissement_id: String(ligne.id) } },
+    );
+    // ⚠️ Une lecture de rubriques ratée ne fait PAS échouer la lecture entière.
+    // L'ancrage typé, lui, est déjà là : mieux vaut une fiche sans ses
+    // paragraphes qu'un écran qui annonce « état illisible » alors que
+    // l'essentiel — qui est cette entreprise, et avec quelle certitude — a bien
+    // été lu.
+    if (lues.ok) rubriques = lues.lignes;
+  }
+
+  const dernier = enObjet(ligne, rubriques);
   if (dernier === null) {
     return { ok: false, explication: "État d'enrichissement illisible." };
   }
-
-  const etapes = await interrogerBase<LigneEtape>(
-    `etapes_enrichissement?select=${COLONNES_ETAPE}&order=rang.asc`,
-    { egal: { enrichissement_id: String(dernier.id) } },
-  );
-  if (!etapes.ok) return { ok: false, explication: etapes.explication };
 
   return {
     ok: true,

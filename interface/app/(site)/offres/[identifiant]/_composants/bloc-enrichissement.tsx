@@ -23,7 +23,18 @@
  */
 
 import { useEffect, useState, useTransition } from "react";
-import { AlertTriangle, Check, ChevronRight, Sparkles } from "lucide-react";
+import { AlertTriangle, Check, Eye, Sparkles } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContenu,
+  DialogCorps,
+  DialogEntete,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+import { FicheEnrichissement } from "./fiche-enrichissement";
 
 import type { EtatEnrichissement } from "@/lib/enrichissement";
 import { accorder } from "@/lib/francais";
@@ -52,18 +63,6 @@ import { demanderEnrichissement, suivreEnrichissement } from "../../../actions";
  */
 const RYTHME_MS = 1500;
 
-/**
- * Le décalage du fondu-glissé, et son PLAFOND.
- *
- * ⚠️ **Le plafond n'est pas une coquetterie.** Le `DESIGN.md` demande 130 ms
- * entre deux étapes, ce qui est juste quand elles arrivent par une ou deux.
- * Mais rouvrir la fiche d'un enrichissement déjà terminé les monte **toutes en
- * même temps** : à 40 étapes, le dernier commencerait à apparaître 5,2 secondes
- * après l'ouverture de la page. On plafonne donc le cumul à sept rangs, soit
- * 780 ms — l'effet de cascade reste lisible, l'attente disparaît.
- */
-const DECALAGE_MS = 130;
-const DECALAGE_MAX_RANGS = 6;
 
 export function BlocEnrichissement({
   identifiant,
@@ -147,6 +146,15 @@ export function BlocEnrichissement({
 
   const etapes = etat.etat === "absent" ? [] : etat.etapes;
 
+  /**
+   * ⚠️ **Trois causes d'attente, un seul état visible.** Le clic est parti
+   * (`enCoursDeClic`), le serveur a répondu et le sondage prend le relais
+   * (`etat.etat === "en_cours"`) : pour qui regarde, c'est la même chose. Les
+   * séparer à l'écran ferait clignoter le bouton entre deux apparences pendant
+   * la seconde qui les sépare.
+   */
+  const enAttente = enCoursDeClic || etat.etat === "en_cours";
+
   const lancer = () => {
     setMessage(null);
     demarrer(async () => {
@@ -164,6 +172,9 @@ export function BlocEnrichissement({
             demandeA: new Date().toISOString(),
             termineA: null,
             motifEchec: null,
+            // Rien n'a encore été cherché : il n'y a pas de fiche à montrer, et
+            // il n'y en aura pas avant la conclusion.
+            fiche: null,
           },
           etapes: [],
         });
@@ -185,7 +196,10 @@ export function BlocEnrichissement({
         <h2 id="titre-enrichissement" className="titre-section">
           Enrichissement
         </h2>
-        {etapes.length > 0 && (
+        {/* Le compte accompagne la ligne unique : c'est lui qui montre que ça
+            avance quand une seule étape est visible à la fois. Il disparaît
+            avec elle, le chemin complet étant repris dans la fenêtre. */}
+        {etat.etat === "en_cours" && etapes.length > 0 && (
           <span className="libelle-mono text-muted-foreground">
             {etapes.length} {accorder(etapes.length, "étape")}
           </span>
@@ -210,19 +224,14 @@ export function BlocEnrichissement({
           </p>
         )}
 
-        {etat.etat === "absent" && !indisponible && (
-          <p className="text-base leading-relaxed text-muted-foreground">
-            Personne n’a encore cherché qui est cet employeur. L’enrichissement
-            interroge le registre public des entreprises et lit le site de la
-            société pour vérifier qu’il s’agit bien d’elle.
-          </p>
-        )}
-
-        {etapes.length > 0 && (
-          <EtapeCourante
-            etapes={etapes}
-            enCours={etat.etat === "en_cours"}
-          />
+        {/* ⚠️ **La ligne d'étape ne vit que PENDANT le travail.** Une fois
+            l'enrichissement conclu, ce qu'on veut savoir n'est plus « où il en
+            est » mais « qu'a-t-il trouvé » — et cela vit dans la fenêtre. La
+            laisser afficherait une quatrième ligne dans une section que Maxime
+            a demandée à trois : le bouton, la confirmation, l'accès à la
+            fiche. */}
+        {etat.etat === "en_cours" && etapes.length > 0 && (
+          <EtapeCourante etapes={etapes} />
         )}
 
         {etat.etat === "reussi" && (
@@ -239,6 +248,47 @@ export function BlocEnrichissement({
           </p>
         )}
 
+        {/* ⚠️ **La fiche s'ouvre en fenêtre, elle ne se déplie pas dans la
+            page.** Décision de Maxime le 30 août 2026. Ce que ça gagne : la
+            section reste courte quel que soit ce que l'agent a trouvé, et la
+            fiche dispose de toute la surface plutôt que d'une colonne de
+            1 000 px partagée avec le reste.
+            ⚠️ Ce que ça impose en retour, et que Radix prend en charge : le
+            focus doit être piégé dans la fenêtre, `Échap` doit fermer, et le
+            reste de la page doit passer en `aria-hidden`. Une `<div>` posée
+            par-dessus ne ferait rien de tout cela — un lecteur d'écran
+            continuerait de lire la page dessous comme si de rien n'était. */}
+        {/* ⚠️ **`items-start` sur l'enveloppe, sinon le bouton s'étire.** Le
+            cadre est un `flex flex-col`, dont l'alignement par défaut est
+            `stretch` : un bouton posé directement dedans occupe toute la
+            largeur et cesse de ressembler à un bouton. Vu à l'écran. */}
+        {etat.etat === "reussi" && etat.enrichissement.fiche && (
+          <div className="flex flex-col items-start">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button type="button" variant="outline" size="lg">
+                <Eye className="size-4 shrink-0" aria-hidden="true" />
+                Voir l’enrichissement
+              </Button>
+            </DialogTrigger>
+            <DialogContenu large>
+              <DialogEntete
+                titre="Ce que l’agent a trouvé"
+                description={
+                  etat.enrichissement.fiche.nomOfficiel ?? undefined
+                }
+              />
+              <DialogCorps>
+                <FicheEnrichissement
+                  fiche={etat.enrichissement.fiche}
+                  etapes={etapes}
+                />
+              </DialogCorps>
+            </DialogContenu>
+          </Dialog>
+          </div>
+        )}
+
         {etat.etat === "echoue" && (
           <p
             role="alert"
@@ -253,41 +303,51 @@ export function BlocEnrichissement({
         )}
 
         <div className="flex flex-col items-start gap-2">
-          <button
+          {/* ⚠️ **Le `<button>` natif cède la place au `Button` du projet le
+              30 août 2026**, pour son état d'attente — un tourniquet repris du
+              registre 1st-Pouf. Ce n'est pas une préférence de style : `loading`
+              DÉSACTIVE le bouton, et un bouton qui a l'air actif pendant qu'une
+              demande est en vol se clique deux fois. Le second clic partirait
+              vers une action serveur facturée.
+              ⚠️ Pendant l'attente, l'icône disparaît au profit du tourniquet —
+              sinon les deux se disputeraient la place et la largeur du bouton
+              sauterait au démarrage. */}
+          <Button
             type="button"
+            size="lg"
             onClick={lancer}
-            disabled={
-              etat.etat === "en_cours" ||
-              enCoursDeClic ||
-              plafondAtteint ||
-              enveloppeIllisible ||
-              indisponible
-            }
-            // ⚠️ Focus par `outline` via `focus-produit`, jamais par `ring` : le
-            // `cushion-control` pose un `box-shadow` brut qui écrase les
-            // `ring-*` de Tailwind, et l'anneau disparaît du style calculé.
-            className="cushion-control inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors focus-produit hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            loading={enAttente}
+            disabled={plafondAtteint || enveloppeIllisible || indisponible}
           >
-            <Sparkles className="size-4 shrink-0" aria-hidden="true" />
-            {etat.etat === "en_cours"
-              ? "Enrichissement en cours…"
+            {!enAttente && (
+              <Sparkles className="size-4 shrink-0" aria-hidden="true" />
+            )}
+            {enAttente
+              ? "Enrichissement en cours"
               : plafondAtteint
                 ? "Plafond du jour atteint"
                 : enveloppeIllisible
                   ? "Enveloppe non vérifiable"
                   : etat.etat === "absent"
-                    ? "Enrichir cette offre"
+                    ? "Enrichissement par IA"
                     : "Relancer l’enrichissement"}
-          </button>
+          </Button>
 
-          {plafondAtteint && (
+          {/* ⚠️ **Les deux avertissements d'enveloppe se taisent pendant qu'un
+              enrichissement tourne.** Vu à l'écran le 30 août 2026 : « le
+              plafond du jour est atteint » s'affichait sous un bouton qui
+              annonçait « Enrichissement en cours », ce qui se lit comme une
+              contradiction — celui qui tourne, lui, ira au bout. Ces messages
+              expliquent pourquoi on ne peut PAS lancer ; ils n'ont rien à dire
+              tant que quelque chose est déjà parti. */}
+          {plafondAtteint && !enAttente && (
             <p className="text-sm leading-relaxed text-muted-foreground">
               L’enveloppe quotidienne de tokens est consommée. Elle repart de
               zéro à minuit.
             </p>
           )}
 
-          {enveloppeIllisible && (
+          {enveloppeIllisible && !enAttente && (
             <p className="text-sm leading-relaxed text-muted-foreground">
               Impossible de vérifier ce qui a été dépensé aujourd’hui. Rien ne
               part tant qu’on ne le sait pas — rechargez la page.
@@ -306,36 +366,28 @@ export function BlocEnrichissement({
 }
 
 /**
- * L'étape en cours, et elle seule.
+ * L'étape en cours, et elle seule — affichée pendant que l'agent travaille.
  *
  * ⚠️ **UNE LIGNE, PAS UNE LISTE — revirement du 30 août 2026, demandé par
  * Maxime après avoir vu un enrichissement réel défiler.** La version précédente
- * empilait les étapes dans un cadre défilant de 320 px de haut. Elle avait été
- * écrite pour répondre à un vrai défaut — à 40 étapes, la neuvième était
- * tranchée à mi-hauteur sans rien pour dire qu'il y en avait trente et une
- * autres — mais elle répondait à côté : le problème n'était pas que la liste
- * fût mal coupée, c'est qu'une liste n'était pas le bon objet.
+ * empilait les étapes dans un cadre défilant de 320 px. Elle avait été écrite
+ * pour répondre à un vrai défaut — à 40 étapes, la neuvième était tranchée à
+ * mi-hauteur sans rien pour dire qu'il y en avait trente et une autres — mais
+ * elle répondait à côté : le problème n'était pas que la liste fût mal coupée,
+ * c'est qu'une liste n'était pas le bon objet. Ce qu'on regarde pendant qu'un
+ * agent travaille, c'est **où il en est**, pas par où il est passé.
  *
- * Ce qu'on regarde pendant qu'un agent travaille, c'est **où il en est**, pas
- * par où il est passé. L'historique complet n'a de valeur qu'une fois le
- * travail fini, et pour une autre raison : montrer en entretien le chemin
- * qu'a suivi l'agent. Il part donc dans un dépliant, fermé, et seulement à la
- * fin.
- *
- * ⚠️ **Le décalage de 130 ms du `DESIGN.md` disparaît ici, et c'est logique** :
- * il échelonnait l'apparition d'étapes qui arrivaient ensemble. Avec une seule
- * ligne, il n'y a plus rien à échelonner — l'animation d'entrée demeure, le
- * décalage n'a plus d'objet. Il reste utilisé par le dépliant, où les étapes
- * apparaissent bien toutes d'un coup.
+ * ⚠️ **Le chemin complet n'est plus ici du tout** : il est repris dans la
+ * fenêtre « Voir l'enrichissement », avec la fiche. Ce composant ne connaît que
+ * le présent.
  *
  * ⚠️ **La hauteur est bornée en BAS et en HAUT, et c'est ce qui empêche un
  * saut.** Les libellés n'ont pas tous la même longueur : « Lecture du site
  * bnf.fr » tient sur une ligne, « Registre : 32 entreprises portent
- * "Expertime", 5 examinées » en prend deux à 375 px, et la contrainte de base
- * en autorise 200 caractères — six lignes sur mobile. Sans plancher, le bouton
- * en dessous remonterait et redescendrait à chaque étape ; sans plafond, il
- * serait chassé hors de l'écran. C'est le piège de méthode n° 5 du projet, pris
- * à l'endroit où il se produit vraiment.
+ * "Expertime", 5 examinées » en prend deux, et la contrainte de base en
+ * autorise 200 caractères. Sans plancher, le bouton en dessous remonterait et
+ * redescendrait à chaque étape ; sans plafond, il serait chassé hors de
+ * l'écran. C'est le piège de méthode n° 5 du projet, pris là où il se produit.
  *
  * ⚠️ **`aria-live="polite"` et pas `assertive`** : les étapes arrivent toutes
  * les quelques secondes ; `assertive` interromprait la lecture en cours à
@@ -343,106 +395,36 @@ export function BlocEnrichissement({
  */
 function EtapeCourante({
   etapes,
-  enCours,
 }: {
   etapes: { rang: number; libelle: string; ecriteA: string }[];
-  enCours: boolean;
 }) {
   const courante = etapes[etapes.length - 1];
   if (!courante) return null;
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* ⚠️ La zone vivante est le `div` extérieur, PAS la ligne qui change.
-          Une région `aria-live` posée sur un élément que React remplace à
-          chaque étape serait retirée puis réinsérée : les lecteurs d'écran
-          n'annoncent pas le contenu d'une région qui vient d'apparaître, ils
-          annoncent ce qui change DANS une région déjà présente. Posée ici, la
-          région survit à tous les remplacements. */}
-      {/* ⚠️ **Le plancher ne s'applique QUE pendant l'exécution**, et c'est
-          exactement ce qu'il protège : rien ne saute quand plus rien ne change.
-          Posé en permanence, il laissait un vide sous la ligne une fois
-          l'enrichissement conclu — c'est-à-dire dans l'état qu'on regarde le
-          plus longtemps, et le seul qui n'en avait aucun besoin. Vu en bureau
-          le 30 août 2026. */}
-      <div
-        aria-live="polite"
-        className={`flex items-start gap-2 ${enCours ? "min-h-13" : ""}`}
+    // ⚠️ La zone vivante est ce `div`, PAS la ligne qui change. Une région
+    // `aria-live` posée sur un élément que React remplace à chaque étape serait
+    // retirée puis réinsérée : les lecteurs d'écran n'annoncent pas le contenu
+    // d'une région qui vient d'apparaître, ils annoncent ce qui change DANS une
+    // région déjà présente. Posée ici, elle survit à tous les remplacements.
+    <div aria-live="polite" className="flex min-h-13 items-start gap-2">
+      <span
+        aria-hidden="true"
+        // ⚠️ La pulsation est coupée sous `prefers-reduced-motion` par la règle
+        // globale de `globals.css`, qui force `animation-iteration-count: 1`.
+        className="mt-2 size-2 shrink-0 animate-pulse rounded-full bg-signal-fort"
+      />
+      {/* ⚠️ La `key` porte le rang : elle force React à REMONTER ce nœud à
+          chaque étape, ce qui rejoue l'animation d'entrée. Sans elle, React
+          réutiliserait le même élément en changeant son texte, et le libellé se
+          remplacerait sèchement — on ne verrait pas que quelque chose vient de
+          se passer. */}
+      <span
+        key={courante.rang}
+        className="animate-in fade-in slide-in-from-bottom-1 line-clamp-3 text-base leading-relaxed text-foreground"
       >
-        <span
-          key={`pastille-${courante.rang}`}
-          aria-hidden="true"
-          // ⚠️ La pulsation est coupée sous `prefers-reduced-motion` par la
-          // règle globale de `globals.css`, qui force
-          // `animation-iteration-count: 1` — la pastille s'allume une fois
-          // puis reste fixe, au lieu de battre indéfiniment.
-          className={`mt-2 size-2 shrink-0 rounded-full ${
-            enCours ? "animate-pulse bg-signal-fort" : "bg-muted-foreground"
-          }`}
-        />
-        {/* ⚠️ La `key` porte le rang : elle force React à REMONTER ce nœud à
-            chaque étape, ce qui rejoue l'animation d'entrée. Sans elle, React
-            réutiliserait le même élément en changeant son texte, et le libellé
-            se remplacerait sèchement — on ne verrait pas que quelque chose
-            vient de se passer. */}
-        <span
-          key={courante.rang}
-          className="animate-in fade-in slide-in-from-bottom-1 line-clamp-3 text-base leading-relaxed text-foreground"
-        >
-          {courante.libelle}
-        </span>
-      </div>
-
-      {/* ⚠️ Le chemin parcouru ne s'ouvre qu'une fois le travail fini. Proposer
-          de déplier pendant que ça tourne ferait concurrence à la seule ligne
-          qui compte à ce moment-là — et la liste dépliée grandirait sous les
-          doigts du lecteur. */}
-      {!enCours && etapes.length > 1 && (
-        <details className="group">
-          {/* ⚠️ **Le nombre n'est PAS répété ici.** Il vit déjà dans l'en-tête
-              de la section, où il sert pendant l'exécution — c'est lui qui
-              montre que ça avance quand le dépliant n'existe pas encore. Le
-              redire dans le résumé donnait « 14 ÉTAPES » et « 14 étapes » à
-              trois centimètres l'un de l'autre.
-
-              ⚠️ **`text-foreground` et non `text-muted-foreground`**, ici comme
-              sur les libellés ci-dessous : ce jeton échoue le plancher
-              d'accessibilité en mode sombre (2,75:1 sur les cartes contre 4,5
-              exigés, mesuré le 30 août). Le défaut est connu et laissé sur les
-              libellés qui existaient déjà — ce n'est pas une raison pour en
-              ajouter. La hiérarchie passe par la taille et par le repli, qui
-              ne coûtent rien à personne. */}
-          <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden focus-produit">
-            <ChevronRight
-              aria-hidden="true"
-              className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
-            />
-            Le chemin suivi
-          </summary>
-          <ol className="mt-3 flex flex-col gap-2">
-            {etapes.map((etape, index) => (
-              <li
-                key={etape.rang}
-                // `fill-mode-both` retient l'état initial pendant le délai :
-                // sans lui, l'étape s'affiche pleine, disparaît, puis
-                // réapparaît.
-                className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both flex items-start gap-2 text-sm leading-relaxed text-foreground"
-                style={{
-                  animationDelay: `${
-                    Math.min(index, DECALAGE_MAX_RANGS) * DECALAGE_MS
-                  }ms`,
-                }}
-              >
-                <span
-                  aria-hidden="true"
-                  className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground"
-                />
-                <span>{etape.libelle}</span>
-              </li>
-            ))}
-          </ol>
-        </details>
-      )}
+        {courante.libelle}
+      </span>
     </div>
   );
 }

@@ -40,16 +40,27 @@ export function EnTeteOffre({
 
   return (
     <header className="mb-6 border-b border-border pb-6">
-      {/* ⚠️ **`text-lg` par-dessus `nom-entreprise`, et l'ordre compte.**
-          L'utilitaire fixe `font-size: 0.9375rem` (15 px) pour la liste ; sur la
-          fiche, l'entreprise se retrouvait **plus petite que le texte courant**
-          passé à 16 px, ce qui inversait la hiérarchie. Les deux classes se
-          disputent la même propriété à spécificité égale — exactement le piège
-          déjà rencontré avec `accentue` dans `cartouche.tsx` — donc la valeur
-          retenue dépend de la feuille compilée et **doit être vérifiée au DOM**,
-          pas supposée. Mesuré : 18 px. */}
+      {/* ⚠️ **`nom-entreprise` est ABANDONNÉ ICI le 30 août 2026 — pas
+          surchargé.** Demande de Maxime : le nom doit prendre la police et la
+          taille de l'intitulé, en gardant sa couleur. L'utilitaire déclare
+          `font-family` ET `font-size` ; le surcharger par `font-display
+          text-2xl` aurait remis en scène le piège que l'ancien commentaire de
+          ce bloc décrivait — deux classes qui se disputent la même propriété à
+          spécificité égale, dont l'issue dépend de l'ordre dans la feuille
+          compilée et non du code qu'on lit. On écrit donc les trois propriétés
+          en clair, et la couleur passe par `text-marque`, l'utilitaire que
+          `--color-marque` fait générer.
+          ⚠️ **`nom-entreprise` reste en usage dans la LISTE**, où sa taille de
+          15 px est juste : ne pas le supprimer de `globals.css`.
+          ⚠️ La ligne « Entreprise non communiquée », plus bas, garde
+          délibérément sa petite taille : une absence n'a pas à occuper la place
+          d'une présence, et 39 % des offres ne nomment pas leur employeur. */}
       {employeur.nom ? (
-        <p className={`nom-entreprise text-lg ${provenance ? "" : "mb-2"}`}>
+        <p
+          className={`font-display text-2xl leading-tight font-bold text-marque sm:text-3xl ${
+            provenance ? "" : "mb-2"
+          }`}
+        >
           {employeur.nom}
         </p>
       ) : (
