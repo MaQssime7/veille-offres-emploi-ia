@@ -175,6 +175,32 @@ marqueurs. **Trois enrichissements réels mesurés, dont un en production par le
     à cause d'un autre runner. D'où un réessai, et un seul, réservé au 429. Un `User-Agent`
     explicite est envoyé, comme la documentation le recommande.
 
+⚠️ **LA FICHE COMPTERA TROIS SECTIONS, et la troisième est TRANCHÉE mais NON
+CONSTRUITE — décision de Maxime le 31 août 2026.** Il a décrit « Business »
+pendant la 6.4 puis choisi de la laisser à la phase 7 : « on peut construire ça
+en phase sept, juste on met à jour la documentation ». **La frontière 6/7 ne
+bouge pas.**
+
+| Section | Contenu | État |
+|---|---|---|
+| **Identité** | nom officiel, SIREN, création, site | ✅ 6.4 |
+| **Taille et santé** | effectif millésimé, CA avec son exercice | ✅ 6.4 |
+| **Business** | modèle économique · clients · offre commerciale · ce qu'elle fait en IA | ⬜ phase 7 |
+
+⚠️ **`modele_economique` DÉMÉNAGERA dans « Business »**, et le titre « Ce que
+l'agent a compris » disparaîtra avec — les quatre bulles répondent à la même
+question, de quoi vit cette entreprise.
+⚠️ **`offre_commerciale`, JAMAIS `offre`** : dans ce projet « offre » veut dire
+*offre d'emploi*, partout — table `offres`, routes `/offres`,
+`offre_identifiant`. C'est le piège du vocabulaire figé pris à l'envers : un seul
+mot pour deux choses, au lieu de deux mots pour la même.
+⚠️ **Migration 11 nécessaire** (`rubrique_connue` n'autorise que trois noms), et
+la migration 10 l'annonçait déjà. `groupe` et `effectif_annonce` y restent : ils
+ne sont plus produits, et les retirer casserait les fiches qui les portent.
+⚠️ **« La technique attendue sur ce poste » (US-19) n'a pas été reprise** dans
+l'énumération du 31 août — **à trancher en début de phase 7**, pas à supposer.
+Détail complet dans `docs/PLAN.md` § Phase 7.
+
 ⚠️ **LE CONTENU DE LA FICHE A ÉTÉ RÉDUIT le 30 août 2026, et le retrait porte
 sur ce que l'agent CHERCHE — pas seulement sur ce que l'écran montre.** Décision
 de Maxime devant la fenêtre : l'appartenance à un **groupe** est « dure à

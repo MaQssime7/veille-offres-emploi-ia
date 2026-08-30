@@ -572,12 +572,57 @@ Phases 2 et 3.
 ### Ce qu'on livre
 
 L'agent explore le site de l'entreprise et complète la fiche : ce qu'elle vend et à quels
-clients, ce qu'elle fait réellement en IA, la technique attendue sur ce poste — et les
-sources consultées.
+clients, ce qu'elle fait réellement en IA — et les sources consultées.
+
+### ⚠️ La forme est TRANCHÉE depuis le 31 août 2026 — décision de Maxime devant l'écran
+
+Il a décrit la section pendant la tranche 6.4, puis **choisi de ne pas l'y construire** :
+« on peut construire ça en phase sept, juste on met à jour la documentation sur ce qu'on
+vient de trancher ». La frontière 6/7 ne bouge donc pas ; ce qui suit est ce que la phase 7
+doit livrer, sans avoir à le redécider.
+
+**La fiche d'enrichissement comptera TROIS sections, dans cet ordre :**
+
+| Section | Contenu | État |
+|---|---|---|
+| **Identité** | nom officiel, SIREN, date de création, site officiel | ✅ livrée en 6.4 |
+| **Taille et santé** | tranche d'effectif millésimée, chiffre d'affaires avec son exercice | ✅ livrée en 6.4 |
+| **Business** | modèle économique · clients · offre commerciale · ce qu'elle fait en IA | ⬜ phase 7 |
+
+⚠️ **`modele_economique` DÉMÉNAGE dans « Business »** — il est aujourd'hui seul sous un
+titre « Ce que l'agent a compris », qui **disparaîtra** en même temps. Ce n'est pas un
+déplacement cosmétique : les quatre bulles répondent à la même question — de quoi vit
+cette entreprise — et les séparer obligerait à lire deux endroits pour la même chose.
+
+⚠️ **`offre_commerciale`, JAMAIS `offre`.** Dans ce projet « offre » veut dire *offre
+d'emploi*, partout : la table `offres`, les routes `/offres`, `offre_identifiant`,
+`OffreEnFiche`. Une rubrique nommée `offre` créerait une collision de vocabulaire dans un
+projet qui a déjà figé « enrichissement, jamais enquête » pour cette raison exacte. Le
+piège se répète ici à l'envers — un seul mot pour deux choses au lieu de deux mots pour la
+même.
+
+⚠️ **« La technique attendue sur ce poste » n'a PAS été reprise** dans la description du
+31 août : Maxime a énuméré quatre bulles et conclu « la fiche est complète à partir de ça ».
+Elle reste écrite ci-dessous parce qu'elle vient d'US-19 et que rien ne l'a explicitement
+retirée — **à trancher au début de la phase 7**, pas à supposer. Si elle est gardée,
+« Business » en compte cinq.
+
+⚠️ **Une MIGRATION est nécessaire, et elle était prévue.** `rubrique_connue` (migration 10)
+n'autorise que `groupe`, `modele_economique`, `effectif_annonce` : il faut y ajouter
+`clients`, `offre_commerciale` et `activite_ia`. Le préambule de la migration 10 l'annonçait
+mot pour mot — « la phase 7 devra l'étendre par une migration d'une ligne. C'est le prix
+assumé de la fermeture ». ⚠️ `groupe` et `effectif_annonce` peuvent rester dans la liste
+sans dommage : ils ne sont plus produits depuis le 30 août, et les retirer casserait les
+fiches qui les portent déjà.
 
 ### Critères d'acceptation
 
-- [ ] Quatre rubriques ajoutées : ce qu'elle vend · à quel type de clients · ce qu'elle fait réellement en IA · la technique attendue sur ce poste
+- [ ] **Migration 11** : `clients`, `offre_commerciale` et `activite_ia` ajoutés à `rubrique_connue`
+- [ ] Section **« Business »** créée après « Taille et santé », et « Ce que l'agent a compris » supprimée
+- [ ] `modele_economique` déplacé dedans, sans changer sa forme ni son marqueur
+- [ ] Trois rubriques ajoutées : **clients** · **offre commerciale** · **ce qu'elle fait réellement en IA**
+- [ ] ⚠️ **Le prompt cadre le piège des « clients »** : sur une page de références, un logo peut être un partenaire, un investisseur ou une technologie employée. Une liste de logos n'est pas une liste de clients, et le marqueur reste *déduit*
+- [ ] *(à trancher)* La technique attendue sur ce poste — voir l'avertissement ci-dessus
 - [ ] Chacune porte son marqueur *vérifié* ou *déduit*
 - [ ] **Les sources consultées sont listées**, chacune avec son adresse
 - [ ] Un site officiel injoignable **ne fait pas échouer l'enrichissement** : la fiche se rend partielle, les rubriques manquantes en « non disponible »

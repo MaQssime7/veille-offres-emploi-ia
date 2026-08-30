@@ -6,6 +6,116 @@ tout l'historique est ici.
 
 ---
 
+## 31 août 2026 — La 6.4 sort de l'écran, et « Business » est tranché sans être construit
+
+Séance d'interface, entièrement conduite par Maxime devant le rendu. Sept demandes, toutes
+formulées après avoir regardé — aucune sur croquis.
+
+### La fiche d'enrichissement s'ouvre en fenêtre
+
+La section ne montre plus qu'un bouton « Enrichissement par IA ». Pendant le travail, il
+passe en attente avec un tourniquet ; conclu, il reprend sa forme et un second bouton
+« Voir l'enrichissement » ouvre la fiche par-dessus la page.
+
+**Le tourniquet a été repris À LA MAIN du registre 1st-Pouf, pas installé.**
+`shadcn add button.json` aurait remplacé le `Button` du projet par un composant à l'API
+différente, effaçant les trois adaptations du 29 août — dont le focus passé de `ring` à
+`outline` parce que les `cushion-*` écrasent les `ring-*`. **Tous les boutons du site
+seraient devenus inutilisables au clavier, sans erreur ni avertissement.** L'animation
+`pouf-spin` existait déjà dans le CSS : il ne manquait que quinze lignes.
+
+**La fenêtre est posée sur Radix, et `pouf.css` l'attendait.** Le registre n'expose aucun
+`dialog`, mais le CSS portait déjà `.pouf-overlay`, `.pouf-dialog`, `.pouf-dialog__head` et
+`.pouf-dialog__body`, **écrits pour les `data-state` de Radix**. Le style attendait son
+composant. Ce que Radix apporte et qu'une `<div>` ne donnerait pas : focus piégé, `Échap`
+qui ferme, reste de la page en `aria-hidden`, et sortie animée.
+
+### Trois défauts trouvés en regardant, et un commentaire faux corrigé
+
+- **La catégorie INSEE s'affichait en code nu** — « GE » sur une société de 100 à 199
+  salariés. Lu en entretien, ça aurait fait dire qu'Expertime est une grande entreprise.
+- **« L'enveloppe est consommée » s'affichait sous « Enrichissement en cours »** : deux
+  messages qui se contredisent. Ces avertissements disent pourquoi on ne peut PAS lancer ;
+  ils n'ont rien à dire quand quelque chose est déjà parti.
+- **« non disponible » en `muted-foreground`**, qui échoue le plancher en mode sombre —
+  j'étendais un défaut connu à l'endroit précis où une fiche pauvre en affiche le plus. La
+  règle du projet existait déjà pour « Entreprise non communiquée » : l'italique met en
+  retrait, jamais une couleur affaiblie.
+- ⚠️ **Un commentaire que j'avais écrit affirmait le contraire de ce qui se voit.** À
+  propos du prénom surligné, j'avais noté que les deux usages du jaune « ne se rencontrent
+  sur aucun écran ». Sur `/offres`, le prénom, la pilule « Nouveau » et le badge
+  « Nouveau » sont visibles ensemble. **Un commentaire faux est pire que pas de
+  commentaire** : celui-ci aurait servi d'argument pour ajouter un troisième jaune.
+
+### La typographie gagne du terrain, mesure par mesure
+
+Quatre amendements au système, tous demandés sur pièce : le nom d'employeur, les titres de
+section de la fiche et les étiquettes des deux notes passent en **Fredoka** ; les titres de
+section montent de 11 à 16 px.
+
+⚠️ **Le rapport était inversé** : 11 px de titre pour 16 px de texte, un titre qui pesait
+moins que ce qu'il annonce.
+
+⚠️ **Trois pièges, tous liés au même mécanisme.**
+1. **Le squelette décalait de 38 px** — un titre fait 22,4 px de haut au lieu de 15,4, et
+   `loading.tsx` en réservait 16. C'est le piège de méthode n° 5 avec une variante à
+   retenir : **il ne se déclenche pas qu'en AJOUTANT une section, mais aussi en changeant
+   une taille de police.**
+2. **Une supposition démentie par la mesure** : j'avais élargi le couloir des étiquettes en
+   croyant Fredoka plus large que le mono. Mesuré, « ACCESSIBILITÉ » fait **86,4 px** en
+   Fredoka pour 108 px réservés — **c'est le mono qui était le plus large**, sa chasse fixe
+   donnant au « I » la largeur du « M ». Élargir aurait creusé un blanc et forcé à recaler
+   un second squelette, pour rien.
+3. ⚠️ **FREDOKA N'A PAS D'ITALIQUE.** Changer `nom-entreprise` touchait aussi les deux
+   « Entreprise non communiquée » : le navigateur en aurait synthétisé une oblique
+   mécanique. Elles gardent Nunito — et ce n'est pas qu'une question de rendu, **une
+   absence n'est pas un nom**, et 39 % des offres sont dans ce cas.
+
+⚠️ **La parade au conflit de classes est devenue une règle** : `libelle-accent` ne déclare
+**aucune** `font-size`, ce qui lui permet d'en porter deux — 13 px sur la fiche, 11 en
+liste. **Un utilitaire qui ne déclare pas une propriété ne peut pas se la disputer.** Le
+projet avait déjà payé ce conflit trois fois (`nom-entreprise`, `accentue`,
+`libelle-mono`) : à spécificité égale, c'est l'ordre dans la feuille compilée qui tranche,
+pas le code qu'on lit. Ça « marche » sur un écran, puis se retourne sans rien signaler.
+
+### La fiche a maigri, et le retrait porte sur ce que l'agent CHERCHE
+
+Maxime a retiré la catégorie INSEE (« l'effectif me suffit »), la rubrique groupe
+(« l'information est dure à trouver et je m'en fiche ») et l'effectif annoncé (« celui que
+tu as trouvé au-dessus me suffit, même s'il date »).
+
+⚠️ **Ces trois retraits ont quitté le prompt et le schéma de l'outil, pas seulement
+l'écran.** `groupe` et `effectif_annonce` n'existaient que sur le site de l'entreprise :
+les demander coûtait des tours d'exploration pour du texte que personne ne lirait.
+**Masquer sans cesser de chercher aurait payé le travail deux fois.** Le prompt perd
+280 caractères, le schéma passe de seize à treize champs.
+
+L'avertissement sur la catégorie calculée au niveau du groupe part avec elle, mais **la
+mesure qui le fondait reste dans `pipeline/registre.py`** — c'est le bon endroit : elle
+sert au raisonnement de l'agent, pas à l'affichage.
+
+### « Business » : tranché, documenté, NON construit
+
+Maxime a décrit une troisième section — modèle économique, clients, offre commerciale, ce
+que l'entreprise fait en IA — puis a lui-même refermé la porte : « on a dit que c'était en
+phase sept. Ce qu'on peut faire, c'est qu'on peut construire ça en phase sept, mais juste
+on met à jour la documentation sur ce qu'on vient de trancher ».
+
+**C'est exactement le bon geste, et il vaut d'être noté** : une idée mûre n'est pas une
+idée à construire tout de suite. La frontière 6/7 tient, et la phase 7 n'aura plus à
+redécider sa forme — elle est écrite dans `docs/PLAN.md`.
+
+⚠️ **Un piège de vocabulaire évité en écrivant** : la rubrique s'appellera
+`offre_commerciale` et **jamais `offre`**. Dans ce projet « offre » veut dire *offre
+d'emploi* — table `offres`, routes `/offres`, `offre_identifiant`. C'est la règle du
+vocabulaire figé prise à l'envers : un seul mot pour deux choses, au lieu de deux mots pour
+la même.
+
+⚠️ **« La technique attendue sur ce poste » (US-19) n'a pas été reprise** dans
+l'énumération : à trancher en début de phase 7, pas à supposer.
+
+---
+
 ## 30 août 2026 (nuit) — 6.3 : l'agent travaille pour de vrai
 
 La tranche 6.2 prouvait le tuyau avec des étapes de démonstration. Celle-ci met l'agent
