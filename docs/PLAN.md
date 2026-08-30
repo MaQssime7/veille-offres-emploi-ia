@@ -551,8 +551,10 @@ bouton** : `212JMCR` (BnF, Haiku), `6240618` (Atos derrière un intermédiaire, 
 - [x] L'enveloppe consommée se **calcule en sommant les traces du jour**, jamais depuis un compteur séparé qui divergerait à la première écriture ratée
 - [x] Au-delà de l'enveloppe, le bouton indique « plafond du jour atteint » et **aucun enrichissement ne part** — vérifiable en envoyant la requête sans passer par le navigateur.
       ✅ **Vérifié comme le critère l'exige** : requête d'action capturée, enveloppe remplie, requête rejouée hors de tout composant React → « Plafond du jour atteint », aucune ligne créée
-- [ ] Le compte **repart de zéro** le lendemain, à minuit heure de Paris — `debutDuJourParisien()` est écrite et éprouvée sur les deux nuits de bascule 2026, mais aucun minuit n'a encore été franchi en vrai
-- [ ] **La notation nocturne n'entre pas dans l'enveloppe** — vérifiable en constatant qu'une nuit à 400 offres notées ne consomme rien du plafond du lendemain
+- [x] Le compte **repart de zéro** le lendemain, à minuit heure de Paris.
+      ✅ **Franchi en vrai le 31 août 2026 à 00:07 heure de Paris** : la veille avait consommé 252 860 des 300 000 tokens et le bouton refusait de partir ; l'enrichissement suivant est passé sans obstacle et compte pour 76 244 sur un jour neuf. Constaté en base, pas déduit du code
+- [x] **La notation nocturne n'entre pas dans l'enveloppe**.
+      ✅ Garanti **par le schéma et non par un réglage** : la notation écrit dans `executions_veille`, `calculerConsommation()` ne somme que `enrichissements`. Deux tables séparées ne se mélangent pas par distraction. Constaté sur la nuit du 30 au 31 août — 6 offres notées, zéro token retiré du plafond
 - [x] **Aucune trace ne porte un déclenchement automatique** — critère de succès n° 3
 - [x] Les rubriques **acceptent plusieurs paragraphes** — une rubrique dimensionnée pour une ligne invite l'agent à répondre en une ligne.
       ✅ 4 000 caractères en base, tronqué côté code avant écriture pour qu'une rubrique bavarde ne fasse pas perdre toute la fiche. ⚠️ **L'affichage sur plusieurs paragraphes reste à éprouver en 6.4** : la plus longue rubrique produite fait 258 caractères

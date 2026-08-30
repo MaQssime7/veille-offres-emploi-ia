@@ -26,7 +26,7 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` |
 | **Comment le site est protégé** : cookie, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts`, abondamment commentés |
 | **Comment l'interface ÉCRIT en base** : garde-fous, idempotence | `ecrireDansBase()` dans `interface/lib/supabase.ts` |
-| Statuts, note personnelle, **accords et dates en français**, filtres et classement de la liste, thème, **quel nom d'employeur afficher**, **coup de cœur** : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`, `interface/lib/theme.ts`, `interface/lib/employeur.ts`, `interface/lib/coup-de-coeur.ts`, `interface/lib/enrichissement.ts` — ⚠️ **les neuf seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
+| Statuts, note personnelle, **accords et dates en français**, filtres et classement de la liste, thème, **quel nom d'employeur afficher**, **coup de cœur** : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`, `interface/lib/theme.ts`, `interface/lib/employeur.ts`, `interface/lib/coup-de-coeur.ts`, `interface/lib/enrichissement.ts`, `interface/lib/regroupement.ts` — ⚠️ **les DIX modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
 | **Ce que la liste montre et dans quel ordre** : les six filtres (dont « Nouveau » et « Coup de cœur »), les trois classements, et la table de chaînes SQL qu'aucune valeur d'adresse n'atteint | `interface/lib/filtres.ts` et `interface/lib/tri.ts` pour les constantes · `interface/lib/offres.ts` pour `CLASSEMENTS`, qui **ne descend jamais** dans les deux premiers |
 | **Pourquoi le coup de cœur n'est pas un statut**, et ce que cette forme protège | `interface/lib/coup-de-coeur.ts` · migration 9 · `docs/JOURNAL.md` § 30 août |
 | **Ce que l'écran du matin montre** : le seuil de 35, les six écrans vides et l'ORDRE qui les départage | `interface/lib/matin.ts` — lecture et calcul séparés, `choisirAffichage()` est une fonction pure, éprouvée par `matin.test.ts` |
@@ -108,161 +108,96 @@ fichier :**
 
 **Cadrage complet** : `docs/PRD.md` — 37 user stories, 13 critères de succès.
 
-## État au 30 août 2026 — ⚠️ PHASE 6 EN COURS, tranche 6.3 close
+## État au 31 août 2026 — ✅ PHASE 6 CLOSE, la phase 7 est le prochain chantier
 
-**Phases 1 à 5 CLOSES.** Le site est en ligne derrière son mot de passe, collecte et
+**Phases 1 à 6 CLOSES.** Le site est en ligne derrière son mot de passe, collecte et
 notation tournent sur le cron. `/` est le **compte rendu de la nuit**, `/offres` le
-**plan de travail**. L'interface écrit en base. **580 offres, 146 notées.**
+**plan de travail**. L'interface écrit en base, et l'agent d'enrichissement tourne au
+clic. **580 offres, 146 notées, 4 enrichies.**
 
-### ⚠️ PHASE 6 — l'enrichissement. 6.1, 6.2 et 6.3 CLOSES, **6.4 est le prochain chantier**
+### ✅ PHASE 6 CLOSE — l'enrichissement par agent, de bout en bout
 
-Découpage validé par Maxime : **6.1 les tables · 6.2 le tuyau · 6.3 l'agent réel ·
-6.4 la fiche et les finitions**.
+Les quatre tranches sont livrées et **tous les critères d'acceptation du plan sont
+cochés**. Récit complet dans `docs/JOURNAL.md` § 30 et 31 août ; ne restent ici que
+les faits qui commandent une tâche future.
 
-✅ **Ce que 6.1 à 6.3 ont livré, et qui tourne en production** : migration 10 (trois tables),
-le clic qui ouvre une demande, l'appel de l'API GitHub, le workflow `enrichissement.yml`, les
-étapes qui remontent par sondage toutes les 1,5 s, la péremption, l'enveloppe — et **l'agent
-réel** : Claude Agent SDK, l'outil `registre`, la lecture du site pour confirmer, les
-marqueurs. **Trois enrichissements réels mesurés, dont un en production par le vrai bouton.**
+⚠️ **Huit faits opposables, qui ne se déduisent d'aucun fichier :**
 
-⚠️ **Onze faits opposables, qui ne se déduisent d'aucun fichier :**
+1. ⚠️ **UN SEUL enrichissement PAR JOUR, uniquement en démo devant un recruteur** —
+   Maxime, 30 août. Ne jamais raisonner en débit : la bonne question n'est pas
+   « combien par jour » mais « est-ce qu'UN enrichissement, **plus sa relance si le
+   premier rate**, passe sans buter sur le plafond ». C'est ce scénario-là qui
+   re-réglera l'enveloppe en phase 7, pas un calcul de volume.
+2. ⚠️ **COÛT RÉEL MESURÉ : 0,1166 $ — 11,7 centimes**, 118 254 tokens, 13 tours en
+   Sonnet 5, sur un cas dégradé (site injoignable). **Dix fois moins que
+   l'estimation du PRD.** ⚠️ C'est UN point sur un cas défavorable : un haut de
+   fourchette, pas une moyenne.
+3. ⚠️ **L'enveloppe de 300 000 tokens tient pour l'usage réel, et deviendra juste
+   en phase 7**, qui ajoute de l'exploration. `COUT_PRESUME_TOKENS` (150 000) est du
+   bon ordre : ne pas le baisser sur une seule mesure, il réserve le coût d'un
+   enrichissement **en vol** et sous-réserver rouvrirait un trou déjà bouché.
+4. ⚠️ **LES ÉTAPES SONT DÉRIVÉES DU TRAVAIL, JAMAIS RACONTÉES PAR LE MODÈLE.** Nos
+   outils écrivent la leur avec leur résultat réel ; les outils intégrés sont
+   observés dans le flux. Une étape racontée pourrait mentir et coûterait un tour.
+   **Ne pas ajouter d'outil « écris une étape ».**
+5. ⚠️ **L'agent rend sa fiche par un OUTIL rappelable, dernière version gagnante.**
+   C'est ce qui donne un sens à « au-delà de la borne, il rend ce qu'il a trouvé ».
+   L'outil rend ses reproches **au modèle**, qui corrige — la base, elle, refuserait
+   la fiche entière, déjà payée, pour une année manquante.
+6. ⚠️ **La borne de durée est INTERNE (240 s) ; le `timeout` du workflow (8 min)
+   n'est qu'un filet.** Un job tué par GitHub ne conclut rien : ligne bloquée,
+   écran qui pulse jusqu'à la péremption, tokens perdus pour l'enveloppe. **Ne
+   jamais rapprocher les deux**, et garder le filet sous les 10 min de péremption.
+7. ⚠️ **Le workflow d'enrichissement détient une clé FACTURÉE** : qui peut le
+   lancer peut faire dépenser. D'où `JETON_GITHUB` à portée fine, ce seul dépôt,
+   « Actions : write ».
+8. ⚠️ **`pipeline/registre.py` est une FRONTIÈRE avant d'être un client HTTP** :
+   il décide ce que le modèle a le droit de voir. **Liste blanche, jamais noire** —
+   le registre rend les dirigeants nommés avec leur date de naissance, et l'adresse
+   de voie du siège, qui est le domicile du dirigeant pour une entreprise
+   individuelle. ⚠️ **Toutes les mesures du registre public vivent dans ce
+   fichier**, abondamment commenté : un seul exercice comptable rendu et c'est le
+   dernier DÉPOSÉ (OCTO : 2016) · la moitié de la fiche n'y est pas · « Orion » rend
+   4 382 entreprises · la catégorie INSEE est calculée au niveau du GROUPE ·
+   **30 requêtes/seconde par ASN, et les cloud publics y butent** — GitHub Actions
+   en est un. **Ne pas les redécouvrir, ne pas les contredire de mémoire.**
 
-1. ⚠️ **Le projet est une PIÈCE DE DÉMONSTRATION, pas un outil quotidien** — dit par
-   Maxime le 30 août. ⚠️ **Précisé le soir même, et c'est ce qui commande l'enveloppe :
-   il fera UN SEUL enrichissement PAR JOUR, uniquement en démo devant un recruteur.**
-   Ne jamais raisonner en débit ni en volume : la bonne question n'est pas « combien par
-   jour » mais « est-ce qu'UN enrichissement, plus sa relance si le premier rate, passe
-   sans buter sur le plafond ».
-2. ⚠️ **LE COÛT RÉEL EST MESURÉ : 0,1166 $ — 11,7 centimes**, pour 118 254 tokens et
-   13 tours en Sonnet 5, sur un cas dégradé (site officiel injoignable). Dix fois moins
-   que l'estimation du PRD (0,20 à 1 €), et pile dans la fourchette révisée. ⚠️ **C'est UN
-   point, sur un cas défavorable** — un haut de fourchette, pas une moyenne.
-3. ⚠️ **L'enveloppe de 300 000 tokens n'est PAS trop serrée — mais elle le deviendra en
-   phase 7.** Elle porte aujourd'hui deux enrichissements et demi. La phase 7 ajoute quatre
-   rubriques et donc de l'exploration ; si le coût double, un seul enrichissement mangera
-   250 000 tokens. ⚠️ **Le critère de re-réglage n'est pas le nombre par jour, c'est la
-   RELANCE APRÈS ÉCHEC EN PLEINE DÉMO** — le pire moment pour lire « plafond du jour
-   atteint ». **L'enveloppe doit permettre au moins DEUX enrichissements.**
-4. ⚠️ **`COUT_PRESUME_TOKENS` (150 000) est du bon ordre**, le réel étant 118 254. Ne pas
-   le baisser sur cette seule mesure : il réserve le coût d'un enrichissement EN VOL, et
-   sous-réserver rouvrirait le trou que la revue du 30 août avait bouché.
-5. ⚠️ **L'agent ne peut pas inventer son ancrage, et c'est VÉRIFIÉ** : sur trois
-   enrichissements, **dix-huit champs typés confrontés au registre, zéro divergence**.
-   Il recopie, il ne paraphrase pas. Il omet aussi plutôt que de deviner.
-6. ⚠️ **LES ÉTAPES SONT DÉRIVÉES DU TRAVAIL, JAMAIS RACONTÉES PAR LE MODÈLE.** Nos outils
-   écrivent la leur avec leur résultat réel ; les outils intégrés sont observés dans le
-   flux de messages. Une étape racontée pourrait mentir (« SIREN confirmé » sans rien
-   avoir confirmé) et coûterait un tour. **Ne pas ajouter d'outil « écris une étape ».**
-7. ⚠️ **L'agent rend sa fiche par un OUTIL rappelable, et la dernière version gagne.**
-   C'est ce qui donne un sens à « au-delà de la borne, il rend ce qu'il a trouvé » — sans
-   cela, une coupure ne rendrait rien. L'outil valide et rend ses reproches **au modèle**,
-   qui corrige : la base refuserait la fiche entière, déjà payée, pour une année manquante.
-8. ⚠️ **La borne de durée est INTERNE (240 s) ; le `timeout` du workflow (8 min) n'est
-   qu'un filet.** Un job tué par GitHub ne conclut rien : ligne bloquée `en_cours`, écran
-   qui pulse jusqu'à la péremption, tokens perdus pour l'enveloppe. **Ne jamais rapprocher
-   les deux valeurs** — et le filet doit rester sous les 10 min de `PEREMPTION_MINUTES`.
-9. ⚠️ **Le workflow d'enrichissement détient désormais une clé FACTURÉE.** Qui peut le
-   lancer peut faire dépenser. C'est ce qui rend `JETON_GITHUB` critique (portée fine, ce
-   seul dépôt, « Actions : write »). Le secret `ANTHROPIC_API_KEY` existait déjà au niveau
-   du dépôt pour la notation — rien à créer.
-10. ⚠️ **`registre.py` est une FRONTIÈRE avant d'être un client HTTP** : sa responsabilité
-    est de décider ce que le modèle a le droit de voir. Le registre rend les **dirigeants
-    nommés avec leur date de naissance**, et l'adresse de voie du siège — qui est le
-    domicile du dirigeant pour une entreprise individuelle. **Liste blanche, jamais
-    noire** : un champ personnel ajouté demain par l'API restera invisible.
-11. ⚠️ **Le registre limite à 30 requêtes/seconde PAR ASN, et sa documentation prévient
-    que « les cloud publics » y butent.** GitHub Actions en est un : on peut prendre un 429
-    à cause d'un autre runner. D'où un réessai, et un seul, réservé au 429. Un `User-Agent`
-    explicite est envoyé, comme la documentation le recommande.
+⚠️ **Ce que la fiche montre, et ce qu'elle NE cherche PLUS** (30-31 août) :
+identité (nom officiel, SIREN, création, site) · taille et santé (tranche
+millésimée, CA avec son exercice) · une rubrique rédigée, `modele_economique`.
+**Le groupe, l'effectif annoncé et la catégorie INSEE ont été retirés du prompt et
+du schéma, pas seulement de l'écran** — les demander coûtait des tours pour du
+texte que personne ne lit. Masquer sans cesser de chercher aurait payé deux fois.
 
-⚠️ **LA FICHE COMPTERA TROIS SECTIONS, et la troisième est TRANCHÉE mais NON
-CONSTRUITE — décision de Maxime le 31 août 2026.** Il a décrit « Business »
-pendant la 6.4 puis choisi de la laisser à la phase 7 : « on peut construire ça
-en phase sept, juste on met à jour la documentation ». **La frontière 6/7 ne
-bouge pas.**
+⚠️ **La fiche s'ouvre en FENÊTRE MODALE**, pas dans la page — ce qui clôt la
+question « deux colonnes ? » que le `DESIGN.md` laissait ouverte. Posée sur Radix
+parce que `pouf.css` portait déjà `.pouf-overlay` et `.pouf-dialog`, **écrits pour
+ses `data-state`** : le style attendait son composant. Radix apporte le focus
+piégé, `Échap`, et le reste de la page en `aria-hidden` — qu'une `<div>` ne donne
+pas.
 
-| Section | Contenu | État |
-|---|---|---|
-| **Identité** | nom officiel, SIREN, création, site | ✅ 6.4 |
-| **Taille et santé** | effectif millésimé, CA avec son exercice | ✅ 6.4 |
-| **Business** | modèle économique · clients · offre commerciale · ce qu'elle fait en IA | ⬜ phase 7 |
+⚠️ **L'affichage des étapes est UNE LIGNE, pas une liste** — l'étape en cours
+seule, remplacée par la suivante ; le chemin complet est dans la fenêtre. La
+version en liste défilante corrigeait un vrai défaut mais **répondait à côté** :
+le problème n'était pas la coupure, c'est qu'une liste n'était pas le bon objet.
+Trois conséquences à ne pas défaire : le **plancher de hauteur ne vaut que pendant
+l'exécution** · le **nombre d'étapes n'est écrit qu'une fois** · **`aria-live` est
+sur le conteneur, jamais sur la ligne qui change**, sinon rien n'est annoncé.
 
-⚠️ **`modele_economique` DÉMÉNAGERA dans « Business »**, et le titre « Ce que
-l'agent a compris » disparaîtra avec — les quatre bulles répondent à la même
-question, de quoi vit cette entreprise.
-⚠️ **`offre_commerciale`, JAMAIS `offre`** : dans ce projet « offre » veut dire
-*offre d'emploi*, partout — table `offres`, routes `/offres`,
-`offre_identifiant`. C'est le piège du vocabulaire figé pris à l'envers : un seul
-mot pour deux choses, au lieu de deux mots pour la même.
-⚠️ **Migration 11 nécessaire** (`rubrique_connue` n'autorise que trois noms), et
-la migration 10 l'annonçait déjà. `groupe` et `effectif_annonce` y restent : ils
-ne sont plus produits, et les retirer casserait les fiches qui les portent.
-⚠️ **« La technique attendue sur ce poste » (US-19) n'a pas été reprise** dans
-l'énumération du 31 août — **à trancher en début de phase 7**, pas à supposer.
-Détail complet dans `docs/PLAN.md` § Phase 7.
+⚠️ **LA SECTION « BUSINESS » EST TRANCHÉE MAIS NON CONSTRUITE — phase 7.** Maxime
+l'a décrite le 31 août puis a choisi de la laisser à sa phase. La fiche comptera
+trois sections : **Identité · Taille et santé · Business** (modèle économique —
+qui y déménage — clients, offre commerciale, ce qu'elle fait en IA), et le titre
+« Ce que l'agent a compris » disparaîtra.
+⚠️ **`offre_commerciale`, JAMAIS `offre`** : ici « offre » veut dire *offre
+d'emploi*, partout. C'est le vocabulaire figé pris à l'envers — un mot pour deux
+choses. ⚠️ **Migration 11 nécessaire**, annoncée par la migration 10.
+⚠️ **« La technique attendue sur ce poste » (US-19) n'a pas été reprise** — à
+trancher en début de phase 7, pas à supposer. Détail dans `docs/PLAN.md` § Phase 7.
 
-⚠️ **LE CONTENU DE LA FICHE A ÉTÉ RÉDUIT le 30 août 2026, et le retrait porte
-sur ce que l'agent CHERCHE — pas seulement sur ce que l'écran montre.** Décision
-de Maxime devant la fenêtre : l'appartenance à un **groupe** est « dure à
-trouver » et sans usage pour lui, l'**effectif annoncé** sur le site est inutile
-puisque celui du registre suffit « même s'il date de plusieurs années », et la
-**catégorie INSEE** ne lui apprend rien de plus que l'effectif.
-Reste donc : identité (nom officiel, SIREN, création, site) · taille et santé
-(tranche d'effectif millésimée, CA avec son exercice) · **une seule rubrique
-rédigée, `modele_economique`**.
-⚠️ **Ces trois points ont disparu du prompt et du schéma de l'outil**, pas
-seulement de la fiche : `groupe` et `effectif_annonce` n'existaient que sur le
-site de l'entreprise, et les demander coûtait des tours d'exploration pour du
-texte que personne ne lirait. **Masquer sans cesser de chercher aurait payé le
-travail deux fois.**
-⚠️ **Aucune migration** : `rubrique_connue` les autorise toujours, les trois
-fiches déjà produites gardent leurs lignes, et `entreprise_categorie` reste en
-base. Les remettre est une chaîne à rajouter de chaque côté.
-⚠️ **L'avertissement « catégorie INSEE calculée au niveau du groupe » a disparu
-avec elle** — l'écart qu'il expliquait n'est plus affiché. La mesure qui le
-fondait reste vraie et vit dans `pipeline/registre.py`, où elle sert encore à
-l'agent pour repérer une filiale pendant son raisonnement.
-
-⚠️ **L'affichage des étapes est UNE LIGNE, pas une liste — revirement du 30 août 2026,
-demandé par Maxime devant l'écran.** L'étape en cours s'affiche seule et la suivante prend
-sa place ; l'historique complet part dans un dépliant fermé, **et seulement une fois le
-travail fini**. La version précédente empilait les étapes dans un cadre défilant : elle
-corrigeait un vrai défaut, mais à côté — le problème n'était pas que la liste fût mal
-coupée, c'est qu'une liste n'était pas le bon objet. Trois conséquences à ne pas défaire :
-le **plancher de hauteur ne vaut que pendant l'exécution** (sinon vide inutile à la fin) ·
-le **nombre d'étapes n'est écrit qu'une fois**, dans l'en-tête de section · **`aria-live`
-est sur le conteneur, jamais sur la ligne qui change**, sinon rien n'est annoncé.
-
-⚠️ **Ce que 6.4 doit faire** : afficher la fiche produite (l'ancrage typé et les rubriques
-avec leurs marqueurs), rendre « non disponible » l'absence de ligne, et rouvrir la question
-de la colonne unique. ⚠️ **Contenu de test déjà EN BASE** : trois vraies fiches — `212JMCR`
-(BnF, `verifie`, 2 rubriques), `6240618` (Atos, `verifie`, 2 rubriques), `6323372`
-(Expertime, **`probable`**, 1 rubrique, sans site ni CA — la fiche qui déclare son doute).
-⚠️ **Reste à faire par Maxime** : poser `JETON_GITHUB` chez Vercel (il est en local
-seulement — voir `docs/HEBERGEMENT.md`). Sans lui, le bouton répond « jeton non
-configuré » **sur le site déployé uniquement**, et rien d'autre ne casse.
-
-### ⚠️ Le registre public des entreprises — mesuré le 30 août, ne pas redécouvrir
-
-`recherche-entreprises.api.gouv.fr` — gratuite, sans clé, sans quota gênant.
-
-1. ⚠️ **Il ne rend qu'UN exercice comptable, et c'est le dernier DÉPOSÉ, pas le dernier
-   écoulé** : Capgemini 2024, Wavestone 2023, Dataiku **2018**, OCTO **2016**, Mirakl
-   **rien**. Un CA sans son année est un mensonge — `chiffre_affaires_toujours_date` le
-   grave dans le moteur.
-2. ⚠️ **La moitié de la fiche n'y est PAS** : ni site web, ni appartenance à un groupe,
-   ni modèle économique. Le code NAF range Capgemini, Sopra Steria et OCTO dans la même
-   case `62.02A`. Ces rubriques sont **déduites** en lisant le site.
-3. ⚠️ **Le rapprochement par nom est un pari** : « Orion » rend **4 382** entreprises.
-4. ⚠️ **Il rend les DIRIGEANTS nommés, avec leur date de naissance** — même nature de
-   donnée que ce que la collecte écarte avant écriture. Aucune colonne ne les accueille,
-   délibérément : une donnée sans colonne ne s'écrit pas par distraction.
-5. ⚠️ **France Travail donne déjà l'effectif, mais sur 27 % des offres seulement** (NAF et
-   secteur : 36 %), **en toutes lettres** là où l'INSEE rend un code. **Deux sources à
-   arbitrer en 6.3** quand elles divergent.
-6. Piste **non validée** : l'INSEE calcule `categorie_entreprise` au niveau du GROUPE —
-   OCTO ressort « GE » avec 500-999 salariés, ce qui trahit une filiale. **Mesuré sur un
-   seul cas**, donc à confirmer avant d'en faire une règle.
+⚠️ **Reste à faire par Maxime** : poser `JETON_GITHUB` chez Vercel (il n'est qu'en
+local). Sans lui le bouton répond « jeton non configuré » **sur le site déployé
+uniquement** — voir `docs/HEBERGEMENT.md`.
 
 ### Ce que les phases closes ont légué, et qui vaut toujours
 
@@ -343,6 +278,7 @@ Travail est **absent sur 39 %** des offres, intermédiaire dans 36 % des cas, et
 | Sujet | État |
 |---|---|
 | ⚠️ **`muted-foreground` échoue le plancher d'accessibilité en mode SOMBRE** | **2,75:1** sur les cartes, **3,18:1** sur le fond de page, contre 4,5 exigés. Mesuré le 30 août sur des libellés qui existaient avant (« APPELLATION », « Pas encore notée »). **En clair ils passent à 5,9** — le défaut est propre au sombre. ⚠️ **Signalé, non corrigé** : éclaircir ce jeton touche tous les écrans, c'est une décision de système qui appartient à Maxime |
+| ⚠️ **Le coût de la fiche RÉDUITE n'est pas mesuré en Sonnet** | Les 11,7 centimes du 30 août portaient sur la fiche complète (groupe et effectif annoncé compris) et sur un cas dégradé. Depuis, le prompt a maigri et l'agent explore moins — le vrai chiffre de production est donc **inférieur et inconnu**. ⚠️ Le seul essai depuis la réduction a été fait **en Haiku**, qui ne mesure pas le coût de Sonnet. Le prochain enrichissement réel donnera le chiffre |
 | ⚠️ **Les notes d'apprentissage des phases 5 et 6 restent à écrire** | Obligation du `CLAUDE.md` global — une note par phase dans `~/Documents/Coffre Obsidian/Maxime M/Apprentissage/`. Matière de la 6 : la contrainte d'unicité partielle comme garde de concurrence, les deux horloges, la réservation d'enveloppe |
 | ⚠️ **La rustine `gh workflow run` EFFACE le compte rendu de la nuit** | La collecte écrit en `ignore-duplicates` : relancée le matin, elle réussit avec zéro offre nouvelle et devient « la dernière collecte réussie ». ⚠️ **Non corrigé délibérément** — préférer « la dernière non vide » empêcherait d'afficher une vraie nuit blanche. Disparaîtra avec le déclencheur externe, **qui existe désormais** (phase 6) |
 | ⚠️ **L'indicateur de veille ne vieillit pas dans un onglet resté ouvert** | Calculé au rendu serveur. Le corriger demanderait une horloge dans le navigateur pour une information qui change une fois par jour. **Signalé, non corrigé** |
@@ -353,7 +289,7 @@ Travail est **absent sur 39 %** des offres, intermédiaire dans 36 % des cas, et
 | Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver |
 | `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme trompeur : « base injoignable » alors que la base va bien |
 | ⚠️ **Deux onglets sur la même fiche** | Le dernier qui tape écrase la note de l'autre. Un seul utilisateur : signalé, non corrigé |
-| ⚠️ **Deux défauts de la fiche, MESURÉS et volontairement LAISSÉS** | Décision de Maxime, **ne pas les remesurer** : fiche muette sur les offres non notées (se résorbe seule) · les cinq titres de section ont le même poids |
+| ⚠️ **Un défaut de la fiche, MESURÉ et volontairement LAISSÉ** | Décision de Maxime, **ne pas le remesurer** : la fiche est muette sur les offres non notées, et ça se résorbe seul. ⚠️ Le second défaut — « les titres de section ont tous le même poids » — **a disparu le 31 août** : ils sont passés en Fredoka 16 px et se distinguent désormais des étiquettes de données, restées en mono |
 
 ⚠️ **Un défaut connu, laissé faute de correctif propre** : l'écriture des offres se fait
 par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de transaction. Si un
@@ -401,12 +337,15 @@ workflow finirait par mordre vers 4 ou 5 nuits.
 2. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le
    code, jamais les données : une branche qui migre ou supprime touche les vraies
    données.
-3. ⚠️ **`interface/lib/statuts.ts`, `interface/lib/notes.ts`,
-   `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`
-   `interface/lib/theme.ts`, `interface/lib/employeur.ts` et
-   `interface/lib/coup-de-coeur.ts` et `interface/lib/enrichissement.ts` sont
-   les neuf seuls modules de `lib/` sans
-   `import "server-only"`** — `utils.ts` mis à part, qui ne porte que le `cn()` de
+3. ⚠️ **DIX modules de `lib/` n'ont pas `import "server-only"`** — `statuts.ts`,
+   `notes.ts`, `francais.ts`, `filtres.ts`, `tri.ts`, `theme.ts`, `employeur.ts`,
+   `coup-de-coeur.ts`, `enrichissement.ts` et **`regroupement.ts`**.
+   ⚠️ **Ce fichier en annonçait NEUF jusqu'au 31 août 2026 et oubliait
+   `regroupement.ts`** — recompté un par un ce jour-là. L'erreur était sans danger
+   (ce module n'importe rien du tout, il ne peut tirer aucun secret) mais elle
+   était piégeuse dans l'autre sens : qui vérifiait la règle en comptant trouvait
+   dix et pouvait croire qu'un module avait perdu son `server-only`. **Recompter
+   plutôt que recopier.** — `utils.ts` mis à part, qui ne porte que le `cn()` de
    shadcn. C'est leur raison d'être : les composants clients ont besoin des mêmes
    constantes que le serveur (libellés de statut, borne de longueur de la note,
    accord du pluriel) ; s'ils allaient les chercher dans `lib/offres.ts`, ils
@@ -1002,10 +941,11 @@ parti pris. **Recalculer les contrastes à chaque changement de couleur.**
 **Mise en page figée le 26 août** : `--largeur-page: 1000px`. Le seuil n'est pas un
 arrondi : en dessous, les offres **qui affichent un salaire** cassent sur deux
 lignes.
-⚠️ **La fiche est en COLONNE UNIQUE, et la question se rouvre en phase 6.** Le
-`DESIGN.md` prévoyait deux colonnes, la droite portant l'enrichissement — qui
-n'existe pas avant la phase 6. Ne pas y repasser tant qu'il n'y a rien à mettre à
-droite.
+✅ **La fiche reste en COLONNE UNIQUE, et la question est CLOSE depuis le 31 août
+2026.** Le `DESIGN.md` prévoyait deux colonnes, la droite portant l'enrichissement.
+La réponse est venue autrement : **l'enrichissement s'ouvre en fenêtre modale**, ce
+qui laisse la fiche courte quoi que l'agent ait trouvé et donne à la fiche
+d'entreprise toute la surface plutôt qu'une demi-colonne. Ne pas rouvrir.
 
 ⚠️ **Le contenu de test est du contenu RÉEL, en base — à utiliser plutôt qu'à
 réinventer** : `docs/PLAN.md` § Contenu de test. **Un fait à ne pas redécouvrir** :
