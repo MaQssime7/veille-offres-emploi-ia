@@ -99,7 +99,11 @@ export function LigneOffre({
           // mode clair, sous le plancher opposable de 4,5:1 — et 36 % des
           // offres réelles ne nomment pas leur entreprise. C'est l'italique
           // qui met en retrait, pas une couleur affaiblie.
-          <p className="nom-entreprise italic text-muted-foreground">
+          // ⚠️ **Pas `nom-entreprise` : Fredoka n'a pas d'italique.** Le
+          // navigateur en synthétiserait une oblique mécanique, laide sur une
+          // géométrique ronde. Et ce n'est pas un nom d'entreprise, c'est un
+          // état — 39 % des offres ne nomment pas leur employeur.
+          <p className="font-sans text-[0.9375rem] leading-[1.3] font-bold text-muted-foreground italic">
             Entreprise non communiquée
           </p>
         )}

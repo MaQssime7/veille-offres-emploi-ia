@@ -66,7 +66,9 @@ export function EnTeteOffre({
       ) : (
         // Même traitement qu'en liste : l'italique met en retrait, jamais une
         // couleur affaiblie — mesurée à 3,32:1, sous le plancher de 4,5:1.
-        <p className="nom-entreprise mb-2 text-lg italic text-muted-foreground">
+        // ⚠️ Même raison qu'en liste : Fredoka n'a pas d'italique, et une
+        // absence n'est pas un nom.
+        <p className="mb-2 font-sans text-lg leading-[1.3] font-bold text-muted-foreground italic">
           Entreprise non communiquée
         </p>
       )}

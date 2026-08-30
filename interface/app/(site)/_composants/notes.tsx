@@ -239,7 +239,13 @@ function Note({
           // large, sa chasse fixe donnant au « I » la largeur du « M ».
           // Élargir aurait creusé un blanc et forcé à recaler le squelette de
           // la liste, pour rien.
-          className={`libelle-accent shrink-0 whitespace-nowrap font-semibold ${teinteLibelle} ${aere ? "" : "w-[6.75rem]"}`}
+          // ⚠️ **13 px sur la FICHE, 11 en liste** — demande de Maxime du
+          // 30 août 2026 : « ça fait un peu petit par rapport au reste ». Le pas
+          // est volontairement court (« pas trop »), et il ne vaut que sur la
+          // fiche : en liste ces étiquettes se répètent sur 200 lignes, où le
+          // même gain deviendrait du bruit. `aere` distingue déjà les deux
+          // contextes pour la largeur réservée — c'est le même partage.
+          className={`libelle-accent shrink-0 whitespace-nowrap font-semibold ${teinteLibelle} ${aere ? "text-[0.8125rem]" : "w-[6.75rem] text-[0.6875rem]"}`}
         >
           {libelle}
         </span>

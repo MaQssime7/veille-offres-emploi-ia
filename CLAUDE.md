@@ -825,9 +825,20 @@ volumétrique — surfaces blanches arrondies sur fond lavande, relief « coussi
 six accents pastel qui portent **toujours de l'encre foncée, jamais du blanc**.
 
 **Polices** : titrage **Fredoka 700** — les `h1`, **les titres de section de la
-FICHE** (`titre-section`) et **les étiquettes des deux notes** (`libelle-accent`,
-« Intérêt » / « Accessibilité », sur les trois écrans). Amendements du 30 août
-2026, demandés par Maxime devant l'écran.
+FICHE** (`titre-section`), **les étiquettes des deux notes** (`libelle-accent`,
+« Intérêt » / « Accessibilité », sur les trois écrans) et **le nom de
+l'employeur** (`nom-entreprise`, en liste comme sur la fiche). Amendements du
+30 août 2026, demandés par Maxime devant l'écran.
+⚠️ **`libelle-accent` ne déclare AUCUNE taille**, et c'est ce qui lui permet
+d'en avoir deux : **13 px sur la fiche, 11 en liste**, posées au point d'usage
+via la prop `aere`. Un utilitaire qui ne déclare pas une propriété ne peut pas
+se la disputer — c'est la parade au conflit à spécificité égale, payé trois fois
+sur ce projet (`nom-entreprise`, `accentue`, `libelle-mono`).
+⚠️ **FREDOKA N'A PAS D'ITALIQUE.** Le navigateur en synthétise une oblique
+mécanique, laide sur une géométrique ronde. Les deux emplacements
+« Entreprise non communiquée » — en liste et sur la fiche — restent donc en
+**Nunito**, classes écrites en clair : ce sont des états, pas des noms, et
+39 % des offres sont dans ce cas.
 ⚠️ **`titre-section` est passé de 11 à 16 px** — il était plus petit que le texte
 qu'il annonce, ce qui inversait le rapport. Un titre de section n'a pas à écraser
 son contenu, il ne peut pas lui être inférieur. **Toute hauteur de squelette qui

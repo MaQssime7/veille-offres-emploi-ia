@@ -508,8 +508,14 @@
  * aligner des colonnes de chiffres, ce qu'une grotesque ronde ne fait pas.
  */
 @utility libelle-accent {
+  /* ⚠️ **AUCUNE `font-size` ici, et c'est délibéré.** La fiche veut ces
+     étiquettes un cran plus grandes que la liste, et surcharger par
+     `text-[…]` remettrait en scène le conflit à spécificité égale que ce
+     projet a déjà payé trois fois — `nom-entreprise`, `accentue`, et
+     `libelle-mono`. Un utilitaire qui ne déclare pas une propriété ne peut
+     pas se la disputer : la taille est posée au point d'usage, où l'on sait
+     de quel écran il s'agit. */
   font-family: var(--font-fredoka);
-  font-size: 0.6875rem;
   line-height: 1.4;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -518,8 +524,21 @@
 /* Le nom de l'entreprise. Classe à part parce qu'il partage police ET taille
    avec l'intitulé qu'il surmonte : sans teinte propre, deux lignes superposées
    seraient indiscernables. */
+/**
+ * Le nom de l'employeur dans une carte de liste.
+ *
+ * ⚠️ **FREDOKA depuis le 30 août 2026** — demande de Maxime, pour aligner la
+ * liste sur ce qui avait été fait la veille sur la fiche. Taille et couleur
+ * inchangées : seule la police bouge.
+ *
+ * ⚠️ **NE PAS s'en servir pour « Entreprise non communiquée ».** C'est un état,
+ * pas un nom, et surtout : **Fredoka n'a pas d'italique**. Le navigateur en
+ * synthétiserait une oblique mécanique, particulièrement laide sur une
+ * géométrique ronde. Les deux emplacements d'absence — en liste et sur la fiche
+ * — portent donc leurs classes en clair, en Nunito.
+ */
 @utility nom-entreprise {
-  font-family: var(--font-sans);
+  font-family: var(--font-fredoka);
   font-size: 0.9375rem;
   font-weight: 700;
   line-height: 1.3;
