@@ -1,0 +1,83 @@
+# Enrichissement d'une offre, à la demande.
+#
+# Déclenché par l'INTERFACE, qui appelle l'API GitHub au clic sur « Enrichir »
+# (`interface/lib/github.ts`). Pas de `schedule` ici, et c'est le cœur du
+# dispositif : un cron ne descend pas sous cinq minutes et se déclenche avec dix
+# à quinze minutes de retard sur ce dépôt — trois nuits mesurées, retards de
+# 10 h 32 et 12 h 02. Montrer l'agent travailler en entretien est un objectif
+# produit explicite ; il n'y survivrait pas.
+#
+# ⚠️ LES JOURNAUX DE CE WORKFLOW SONT PUBLICS, le dépôt l'étant. Le module
+# `pipeline/enrichissement.py` ne journalise que des identifiants et des
+# compteurs — jamais le texte d'une annonce, un nom de contact, ni une étape
+# rédigée. Tout cela part en base. Toute trace ajoutée ici doit tenir la règle.
+#
+# ⚠️ ET LES ENTRÉES D'UN `workflow_dispatch` SONT VISIBLES elles aussi, dans
+# l'onglet Actions. C'est pourquoi le seul paramètre transmis est un NUMÉRO de
+# tentative : le script résout l'offre par la base. Rien d'identifiant, rien de
+# personnel, ne transite par ce canal.
+
+name: Enrichissement à la demande
+
+on:
+  workflow_dispatch:
+    inputs:
+      enrichissement_id:
+        description: "Identifiant de la tentative à servir (table enrichissements)."
+        required: true
+
+# Moindre privilège : ce job lit le code et écrit en base. Il n'a aucune raison
+# de pousser un commit, d'ouvrir une issue ou de publier un paquet.
+permissions:
+  contents: read
+
+# ⚠️ Le groupe porte l'identifiant de la TENTATIVE, pas un nom fixe. Deux
+# enrichissements sur deux offres différentes doivent pouvoir tourner ensemble —
+# les sérialiser ferait attendre le second derrière le premier, alors que rien
+# ne les lie. Deux exécutions pour la MÊME tentative, en revanche, écriraient les
+# mêmes étapes deux fois : la contrainte `un_seul_rang_par_enrichissement` les
+# refuserait, mais autant ne pas en arriver là.
+#
+# `cancel-in-progress: false` : annuler une exécution en vol laisserait la ligne
+# `en_cours` jusqu'à la péremption. On préfère faire la queue.
+concurrency:
+  group: enrichissement-${{ inputs.enrichissement_id }}
+  cancel-in-progress: false
+
+jobs:
+  enrichir:
+    name: Enrichir une offre
+    runs-on: ubuntu-latest
+
+    # ⚠️ CINQ minutes, et c'est la MOITIÉ du seuil de péremption de l'interface
+    # (`PEREMPTION_MINUTES` dans `interface/lib/enrichissement.ts`). Le rapport
+    # n'est pas décoratif : le seuil doit laisser passer le pire cas normal, y
+    # compris l'attente d'une machine chez GitHub. Les rapprocher ferait déclarer
+    # morts des enrichissements qui tournent encore ; les éloigner ferait pulser
+    # l'écran longtemps après la fin réelle.
+    timeout-minutes: 5
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7
+
+      - name: Installer Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Installer les dépendances
+        run: pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Enrichir
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          # ⚠️ L'entrée passe par l'ENVIRONNEMENT, jamais interpolée dans la
+          # ligne de commande. `run: python … --id ${{ inputs.… }}` ferait
+          # exécuter par le shell tout ce qu'un déclencheur y écrirait — le
+          # jeton GitHub n'autorise que le lancement, mais la parade ne coûte
+          # rien et ne dépend pas de la portée d'un jeton qui peut changer.
+          ENRICHISSEMENT_ID: ${{ inputs.enrichissement_id }}
+        run: python -m pipeline.enrichissement --id "$ENRICHISSEMENT_ID"

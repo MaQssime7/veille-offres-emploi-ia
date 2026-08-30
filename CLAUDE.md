@@ -22,7 +22,7 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` |
 | **Comment le site est protégé** : cookie, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts`, abondamment commentés |
 | **Comment l'interface ÉCRIT en base** : garde-fous, idempotence | `ecrireDansBase()` dans `interface/lib/supabase.ts` |
-| Statuts, note personnelle, **accords et dates en français**, filtres et classement de la liste, thème, **quel nom d'employeur afficher**, **coup de cœur** : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`, `interface/lib/theme.ts`, `interface/lib/employeur.ts`, `interface/lib/coup-de-coeur.ts` — ⚠️ **les huit seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
+| Statuts, note personnelle, **accords et dates en français**, filtres et classement de la liste, thème, **quel nom d'employeur afficher**, **coup de cœur** : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`, `interface/lib/theme.ts`, `interface/lib/employeur.ts`, `interface/lib/coup-de-coeur.ts`, `interface/lib/enrichissement.ts` — ⚠️ **les neuf seuls modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
 | **Ce que la liste montre et dans quel ordre** : les six filtres (dont « Nouveau » et « Coup de cœur »), les trois classements, et la table de chaînes SQL qu'aucune valeur d'adresse n'atteint | `interface/lib/filtres.ts` et `interface/lib/tri.ts` pour les constantes · `interface/lib/offres.ts` pour `CLASSEMENTS`, qui **ne descend jamais** dans les deux premiers |
 | **Pourquoi le coup de cœur n'est pas un statut**, et ce que cette forme protège | `interface/lib/coup-de-coeur.ts` · migration 9 · `docs/JOURNAL.md` § 30 août |
 | **Ce que l'écran du matin montre** : le seuil de 35, les six écrans vides et l'ORDRE qui les départage | `interface/lib/matin.ts` — lecture et calcul séparés, `choisirAffichage()` est une fonction pure, éprouvée par `matin.test.ts` |
@@ -382,7 +382,8 @@ Récit de l'enquête : `docs/JOURNAL.md` § 27 août.
 3. ⚠️ **`interface/lib/statuts.ts`, `interface/lib/notes.ts`,
    `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`
    `interface/lib/theme.ts`, `interface/lib/employeur.ts` et
-   `interface/lib/coup-de-coeur.ts` sont les huit seuls modules de `lib/` sans
+   `interface/lib/coup-de-coeur.ts` et `interface/lib/enrichissement.ts` sont
+   les neuf seuls modules de `lib/` sans
    `import "server-only"`** — `utils.ts` mis à part, qui ne porte que le `cn()` de
    shadcn. C'est leur raison d'être : les composants clients ont besoin des mêmes
    constantes que le serveur (libellés de statut, borne de longueur de la note,
@@ -741,10 +742,21 @@ Les clés de ce projet donnent accès à un compte facturé et à une base de do
    client, jamais commitée. **Le navigateur ne parle jamais directement à Supabase.**
 5. ⚠️ **Aucune variable `NEXT_PUBLIC_` sur ce projet** : ce préfixe publie la valeur
    dans le code source de la page sans le moindre message d'erreur.
-6. **Chez Vercel, exactement 4 variables** : `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
-   `MOT_DE_PASSE_SITE`, `SECRET_SESSION`. Ni la clé Anthropic ni les identifiants
-   France Travail — le pipeline tourne chez GitHub Actions, et les garder offrirait
-   une clé facturée à qui entrerait dans le compte.
+6. **Chez Vercel, exactement 5 variables** : `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
+   `MOT_DE_PASSE_SITE`, `SECRET_SESSION`, et **`JETON_GITHUB` depuis le 30 août
+   2026**. Ni la clé Anthropic ni les identifiants France Travail — le pipeline
+   tourne chez GitHub Actions, et les garder offrirait une clé facturée à qui
+   entrerait dans le compte.
+   ⚠️ **`JETON_GITHUB` sert à lancer le workflow d'enrichissement** au clic
+   (`interface/lib/github.ts`). Il doit être **à portée fine (*fine-grained*),
+   limité à ce seul dépôt, avec la seule permission « Actions : write »** — un
+   jeton classique donnerait le droit de pousser du code sur un dépôt public qui
+   sert de pièce à conviction en entretien. S'il fuitait, on pourrait lancer en
+   boucle le workflow qui détient la clé Anthropic.
+   ⚠️ **Son expiration est une panne parfaitement silencieuse** : le site
+   marche, la veille tourne, et seul le bouton « Enrichir » cesse d'agir. C'est
+   pourquoi l'échec est distingué par son code HTTP et remonté en clair à
+   l'écran — 401 dit « le jeton n'est plus valide », pas « réessayez ».
 7. **`interface/.env.local` détient l'unique copie des deux secrets du site**, non
    versionné, nulle part ailleurs. ⚠️ **Un agent de revue qui lance l'app écrit dans
    ce fichier** — c'est arrivé le 21 août, les secrets ont dû être régénérés.

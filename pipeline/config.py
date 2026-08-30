@@ -231,6 +231,33 @@ def charger_notation() -> ConfigNotation:
     )
 
 
+@dataclass(frozen=True)
+class ConfigEnrichissement:
+    """Ce dont l'enrichissement a besoin, et rien de plus."""
+
+    supabase_url: str
+    supabase_secret_key: str
+
+    def __repr__(self) -> str:  # pragma: no cover - garde-fou, pas de la logique
+        return f"ConfigEnrichissement(supabase_url={self.supabase_url!r}, secrets=***)"
+
+
+def charger_enrichissement() -> ConfigEnrichissement:
+    """Valide uniquement ce que l'enrichissement utilise.
+
+    ⚠️ **Ni France Travail, ni Anthropic pour l'instant.** Même raisonnement que
+    `charger_notation()` : chaque étape ne porte que ses propres secrets, pour
+    qu'un job n'expose jamais une clé dont il n'a pas l'usage. La clé Anthropic
+    s'ajoutera ici quand l'agent arrivera — la refuser tant qu'aucun appel n'est
+    fait évite de la poser dans un workflow qui n'en a pas besoin.
+    """
+    load_dotenv()
+    return ConfigEnrichissement(
+        supabase_url=_lire_variable("SUPABASE_URL").rstrip("/"),
+        supabase_secret_key=_lire_variable("SUPABASE_SECRET_KEY"),
+    )
+
+
 def _valider_type_contrat() -> None:
     """Refuse une valeur de `TYPE_CONTRAT` que France Travail rejetterait.
 

@@ -664,6 +664,161 @@ class Stockage:
         _journal.warning("Notation de %s en échec : %s", identifiant, motif)
 
 
+    # ---------------------------------------------------- enrichissements
+
+    def demarrer_enrichissement(self, enrichissement_id: int) -> bool:
+        """Passe la tentative en `en_cours` — mais SEULEMENT si elle est encore en vol.
+
+        Entre : l'identifiant de la tentative, reçu par l'entrée du workflow.
+        Sort : True si l'agent a le droit de travailler, False sinon.
+        Casse : lève ErreurStockage si la base est injoignable.
+
+        ⚠️ **Le filtre sur `issue` n'est pas décoratif, c'est ce qui empêche
+        d'écrire sur une tentative déjà refermée.** L'interface referme en
+        `echec` toute demande de plus de dix minutes, et un runner GitHub alloué
+        tardivement démarrerait sur une ligne morte : il écrirait alors des
+        étapes sous une conclusion d'échec, et l'écran afficherait un
+        enrichissement qui progresse *après* avoir annoncé qu'il avait renoncé.
+
+        ⚠️ **Le test et l'écriture sont la MÊME requête.** Lire l'issue puis
+        écrire laisserait entre les deux la fenêtre exacte pendant laquelle
+        l'interface referme. C'est PostgREST qui tranche, en une opération.
+        """
+        modifiees = self._requete(
+            "PATCH",
+            f"/enrichissements?id=eq.{enrichissement_id}"
+            "&issue=in.(demande,en_cours)&select=id",
+            operation=f"démarrage de l'enrichissement {enrichissement_id}",
+            headers={"Prefer": "return=representation"},
+            json={"issue": "en_cours", "demarre_a": _maintenant()},
+        ) or []
+        return bool(modifiees)
+
+    def ecrire_etape(self, enrichissement_id: int, rang: int, libelle: str) -> None:
+        """Ajoute une étape à afficher.
+
+        ⚠️ **Le libellé est BORNÉ ici, pas seulement par la contrainte.** La base
+        refuse au-delà de 200 caractères ; laisser l'erreur remonter ferait
+        échouer tout l'enrichissement parce qu'une phrase est trop longue. On
+        coupe, l'étape s'affiche, le travail continue.
+
+        ⚠️ **Rien de ce que l'agent produit ne va dans `print()`.** Les journaux
+        de ce dépôt public sont publics : une étape peut citer un nom
+        d'entreprise, demain davantage. Les étapes vont en base, à l'écran de
+        Maxime, et nulle part ailleurs.
+        """
+        self._requete(
+            "POST", "/etapes_enrichissement",
+            operation=f"écriture de l'étape {rang} de {enrichissement_id}",
+            headers={"Prefer": "return=minimal"},
+            json={
+                "enrichissement_id": enrichissement_id,
+                "rang": rang,
+                "libelle": (libelle or "…")[:200],
+            },
+        )
+
+    def conclure_enrichissement(
+        self, enrichissement_id: int, *, issue: str,
+        motif_echec: str | None = None, modele: str | None = None,
+        tours: int | None = None, tokens: ConsommationTokens | None = None,
+        fiche: dict[str, Any] | None = None,
+    ) -> bool:
+        """Ferme la tentative — réussite ou échec — avec sa trace complète.
+
+        Entre : l'issue, et tout ce qui n'était pas connu au démarrage.
+        Sort : True si la ligne a bien été fermée.
+        Casse : lève ErreurStockage si la base refuse ou ne répond pas.
+
+        ⚠️ **Même filtre `en vol` qu'au démarrage** : une tentative refermée par
+        péremption ne doit pas être ressuscitée en `reussite` par un agent qui
+        finit en retard. L'écran a déjà annoncé l'échec à Maxime.
+        """
+        valeurs: dict[str, Any] = {
+            "issue": issue,
+            "termine_a": _maintenant(),
+            "motif_echec": _tronquer(motif_echec, 2000),
+            "modele": modele,
+            "tours": tours,
+            # ⚠️ **NULL, jamais 0, quand la consommation est inconnue** — règle 3
+            # du projet, et ici elle protège de l'argent. Trouvé en revue le
+            # 30 août 2026 : écrire 0 sur le chemin d'échec faisait qu'un agent
+            # ayant brûlé 120 000 tokens avant de planter comptait pour RIEN
+            # dans l'enveloppe du jour. La seule borne de dépense du système
+            # perdait silencieusement ses échecs les plus coûteux.
+            # ⚠️ Corollaire pour 6.3 : l'agent doit transmettre ses compteurs
+            # PARTIELS au moment de l'échec. Sans cela, cette colonne reste
+            # honnêtement vide, et l'enveloppe honnêtement incomplète.
+            "tokens_entree": tokens.entree if tokens else None,
+            "tokens_sortie": tokens.sortie if tokens else None,
+            "tokens_cache_lu": tokens.cache_lecture if tokens else None,
+            "tokens_cache_ecrit": tokens.cache_ecriture if tokens else None,
+            **(fiche or {}),
+        }
+        # ⚠️ `appariement_motif` est rédigé par le modèle et borné à 1000 par la
+        # base. Il passe par `fiche`, donc il échappait à la troncature
+        # ci-dessus : une phrase trop longue faisait refuser toute la
+        # conclusion. Relevé en revue le 30 août 2026.
+        if valeurs.get("appariement_motif"):
+            valeurs["appariement_motif"] = _tronquer(valeurs["appariement_motif"], 1000)
+        modifiees = self._requete(
+            "PATCH",
+            f"/enrichissements?id=eq.{enrichissement_id}"
+            "&issue=in.(demande,en_cours)&select=id",
+            operation=f"conclusion de l'enrichissement {enrichissement_id}",
+            headers={"Prefer": "return=representation"},
+            json=valeurs,
+        ) or []
+        return bool(modifiees)
+
+    def offre_de_l_enrichissement(self, enrichissement_id: int) -> dict[str, Any] | None:
+        """L'offre visée par cette tentative, avec ce qu'il faut pour l'enrichir.
+
+        ⚠️ **L'identifiant d'offre est résolu PAR LA BASE, jamais par le canal
+        GitHub.** L'entrée du workflow ne porte que le numéro de tentative :
+        c'est ce qui garantit que l'agent travaille sur l'offre que l'interface a
+        désignée, et non sur celle qu'un déclenchement forgé aurait nommée.
+
+        ⚠️ **Liste de colonnes explicite** : `charge_brute` fait plusieurs
+        kilo-octets par offre et n'est jamais lue pour travailler.
+        """
+        lignes = self._requete(
+            "GET",
+            f"/enrichissements?id=eq.{enrichissement_id}"
+            "&select=id,issue,offre_identifiant,"
+            "offres(identifiant,intitule,entreprise_nom,description,lieu_libelle)",
+            operation=f"lecture de l'enrichissement {enrichissement_id}",
+        ) or []
+        return lignes[0] if lignes else None
+
+    def ajouter_tokens_a_l_offre(self, identifiant: str, total: int) -> None:
+        """Ajoute la consommation de cet enrichissement au cumul de l'offre.
+
+        ⚠️ **`tokens_cumules`, jamais `tokens_conversation`.** Le second est
+        réservé à la conversation par offre, dont la borne se compte séparément :
+        les mélanger ferait qu'un enrichissement coûteux fermerait d'avance la
+        conversation sur la même offre.
+
+        ⚠️ **C'est un INCRÉMENT, donc une lecture suivie d'une écriture** —
+        l'API REST ne sait pas faire `colonne = colonne + n`. Non idempotent :
+        rejoué, il compterait deux fois. Il n'est appelé qu'une fois, à la fin
+        d'un enrichissement, jamais dans une boucle de reprise.
+        """
+        if total <= 0:
+            return
+        lignes = self._requete(
+            "GET", f"/offres?identifiant=eq.{identifiant}&select=tokens_cumules",
+            operation=f"lecture du cumul de {identifiant}",
+        ) or []
+        avant = (lignes[0].get("tokens_cumules") if lignes else 0) or 0
+        self._requete(
+            "PATCH", f"/offres?identifiant=eq.{identifiant}",
+            operation=f"cumul de tokens de {identifiant}",
+            headers={"Prefer": "return=minimal"},
+            json={"tokens_cumules": avant + total},
+        )
+
+
 def _maintenant() -> str:
     """L'heure de FIN, prise par le serveur — jamais par la machine locale.
 
@@ -681,10 +836,27 @@ def _maintenant() -> str:
     return "now"
 
 
+SUFFIXE_TRONCATURE = " […]"
+
+
 def _tronquer(texte: str | None, limite: int = 500) -> str | None:
+    """Coupe à `limite` caractères AU TOTAL, suffixe compris.
+
+    ⚠️ **Corrigé le 30 août 2026, trouvé en revue.** La version précédente
+    écrivait `texte[:limite] + " […]"` et rendait donc jusqu'à `limite + 4`
+    caractères. Tant que rien ne bornait ces colonnes en base, personne ne
+    pouvait s'en apercevoir. La migration 10 pose `motif_echec_borne`
+    (≤ 2000) : un motif un peu long faisait alors refuser le PATCH de
+    conclusion par la base, et l'enrichissement se refermait sur un message
+    générique — ou pas du tout, laissant l'offre bloquée jusqu'à la péremption.
+    **Une fonction qui dépasse sa propre limite est un bug dormant : il se
+    réveille le jour où quelqu'un fait confiance à cette limite.**
+    """
     if texte is None:
         return None
-    return texte if len(texte) <= limite else texte[:limite] + " […]"
+    if len(texte) <= limite:
+        return texte
+    return texte[: limite - len(SUFFIXE_TRONCATURE)] + SUFFIXE_TRONCATURE
 
 
 def _erreur_assainie(reponse: requests.Response) -> str:

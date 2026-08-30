@@ -4,7 +4,7 @@ Tout ce qui concerne la mise en ligne et l'outillage d'infrastructure. Sorti du
 `CLAUDE.md` le 26 août 2026 : c'est de la **procédure**, pas une règle qui change
 mon comportement sur n'importe quelle tâche.
 
-**Ce qui reste dans le `CLAUDE.md`** : les règles opposables — les 4 variables et
+**Ce qui reste dans le `CLAUDE.md`** : les règles opposables — les 5 variables et
 pas une de plus, `interface/.env.local` détient l'unique copie, un aperçu parle à
 la vraie base. Le *comment faire* est ici.
 
@@ -16,15 +16,57 @@ Projet : https://veille-offres-emploi-ia.vercel.app · `Root Directory = interfa
 · fonctions en région Paris. Le CLI est lié depuis `interface/` (`.vercel/`, ignoré
 par git).
 
-### Les quatre variables, et pas une de plus
+### Les cinq variables, et pas une de plus
 
-`SUPABASE_URL` · `SUPABASE_SECRET_KEY` · `MOT_DE_PASSE_SITE` · `SECRET_SESSION`,
-toutes marquées *Sensitive*, sur **Production et Preview**.
+`SUPABASE_URL` · `SUPABASE_SECRET_KEY` · `MOT_DE_PASSE_SITE` · `SECRET_SESSION` ·
+**`JETON_GITHUB`**, toutes marquées *Sensitive*, sur **Production et Preview**.
 
 `ANTHROPIC_API_KEY`, `FT_CLIENT_ID` et `FT_CLIENT_SECRET` y avaient été posées le
 17 août et **retirées le 21** : le pipeline Python tourne chez GitHub Actions,
 aucune ligne du site ne les lit, et les garder offrait la clé Anthropic — qui est
 facturée — à qui entrerait dans le compte Vercel.
+
+#### ⚠️ `JETON_GITHUB` — ajoutée le 30 août 2026, phase 6
+
+C'est elle qui permet à l'interface de lancer le workflow `enrichissement.yml` au
+clic sur « Enrichir » (`interface/lib/github.ts`). **Sans elle, le bouton répond
+« Le jeton GitHub n'est pas configuré » et rien d'autre ne casse** — le reste du
+site fonctionne normalement, ce qui rend l'oubli d'autant plus facile.
+
+**Portée exigée, et elle n'est pas négociable :**
+
+| | |
+|---|---|
+| Type | **Fine-grained personal access token**, jamais un jeton classique |
+| Dépôt | **`MaQssime7/veille-offres-emploi-ia` uniquement** — « Only select repositories » |
+| Permission | **`Actions` : Read and write**, et rien d'autre |
+| Expiration | à choisir ; **la noter quelque part**, voir le piège ci-dessous |
+
+Un jeton classique donnerait, à qui le récupérerait, le droit de **pousser du
+code** sur un dépôt public qui sert de pièce à conviction en entretien. Et même
+restreint, s'il fuitait, il permettrait de lancer en boucle le workflow qui
+détient la clé Anthropic — donc de faire monter une facture.
+
+⚠️ **Son expiration est une panne parfaitement silencieuse.** Le site marche, la
+veille tourne, les écrans s'affichent : seul « Enrichir » cesse d'agir. C'est
+pourquoi `lib/github.ts` distingue le 401 du reste et affiche « GitHub a refusé
+le jeton : il est expiré, révoqué, ou n'a plus le droit de lancer ce workflow »
+plutôt qu'un « réessayez plus tard » qui ferait chercher au mauvais endroit.
+
+⚠️ **GitHub répond `404`, et non `403`, quand un jeton à portée fine n'a pas
+accès au dépôt** — exprès, pour ne pas révéler l'existence des dépôts privés. Un
+404 sur ce chemin ne veut donc pas dire « le workflow n'existe pas » mais, le
+plus souvent, « le jeton n'a pas ce dépôt dans sa portée ».
+
+```bash
+# Poser la variable sans jamais la faire passer par la conversation :
+# la copier dans le presse-papiers, puis la coller à l'invite du CLI.
+cd interface && npx vercel@59.3.0 env add JETON_GITHUB production
+cd interface && npx vercel@59.3.0 env add JETON_GITHUB preview
+```
+
+⚠️ **En local, elle vit dans `interface/.env.local`**, comme les deux secrets du
+site — jamais dans le `.env` de la racine, qui est celui du pipeline Python.
 
 ### ⚠️ Quatre pièges, tous rencontrés en vrai
 
