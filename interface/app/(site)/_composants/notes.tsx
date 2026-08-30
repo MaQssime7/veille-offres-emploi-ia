@@ -229,7 +229,17 @@ function Note({
             « ACCESSIBILITÉ » se couperait en deux lignes dès que la colonne se
             resserre, et la rangée doublerait de hauteur. */}
         <span
-          className={`libelle-mono shrink-0 whitespace-nowrap font-semibold ${teinteLibelle} ${aere ? "" : "w-[6.75rem]"}`}
+          // ⚠️ `libelle-accent` et non `libelle-mono` : même taille, même
+          // couleur, police de l'intitulé — demande de Maxime du 30 août 2026.
+          // ⚠️ **Le couloir de 6,75 rem est INCHANGÉ, et c'est une mesure qui
+          // l'a décidé CONTRE l'intuition.** Je l'avais d'abord élargi à
+          // 7,5 rem, en supposant qu'une grotesque ronde prendrait plus de place
+          // que du mono. Mesuré au DOM : « ACCESSIBILITÉ » fait **86,4 px** en
+          // Fredoka pour 108 px réservés — c'est le MONO qui était le plus
+          // large, sa chasse fixe donnant au « I » la largeur du « M ».
+          // Élargir aurait creusé un blanc et forcé à recaler le squelette de
+          // la liste, pour rien.
+          className={`libelle-accent shrink-0 whitespace-nowrap font-semibold ${teinteLibelle} ${aere ? "" : "w-[6.75rem]"}`}
         >
           {libelle}
         </span>

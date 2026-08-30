@@ -52,6 +52,15 @@ import { CadrePage } from "../../_composants/cadre-page";
  * | Candidater | 119,1 px | 115,5 – 150 |
  * | **Total** | **1 272 px** | 1 402 avant le retrait du classement |
  *
+ * ⚠️ **Les barres de titre sont passées de `h-4` à `h-[1.4rem]` le 30 août
+ * 2026**, quand `titre-section` a grandi de 11 à 16 px. Un titre fait désormais
+ * **22,4 px de haut, mesuré au DOM**, contre 16 px réservés : six titres, donc
+ * ~38 px de décalage cumulé, invisibles en développement où le serveur répond
+ * en 80 ms. C'est le piège de méthode n° 5 du projet, et il ne se signale
+ * jamais tout seul — une hauteur de squelette se remesure à CHAQUE changement
+ * de la section qu'elle double, y compris quand le changement est une taille de
+ * police et non une section ajoutée.
+ *
  * ⚠️ **L'évaluation a repris 4 px le 29 août** en fin de journée, quand son
  * chiffre est passé de 12 à 14 px. Une hauteur de squelette se remesure à
  * **chaque** changement de la section qu'elle double — c'est mécanique, et rien
@@ -166,12 +175,12 @@ export default function ChargementFiche() {
               de trois en fera 113. On se cale sur la médiane pour que l'écart
               soit centré autour de zéro plutôt que systématiquement négatif. */}
           <div>
-            <div className="mb-3 h-4 w-32 bg-muted" />
+            <div className="mb-3 h-[1.4rem] w-32 bg-muted" />
             <div className="h-[6.33rem] carte-produit" />
           </div>
 
           <div>
-            <div className="mb-3 h-4 w-24 bg-muted" />
+            <div className="mb-3 h-[1.4rem] w-24 bg-muted" />
             <div className="h-[12.025rem] carte-produit" />
           </div>
 
@@ -190,7 +199,7 @@ export default function ChargementFiche() {
               médian et non un compromis** : les 574 offres sont aujourd'hui
               sans note, et une note longue ne dépasse pas 60 vh. */}
           <div>
-            <div className="mb-3 h-4 w-20 bg-muted" />
+            <div className="mb-3 h-[1.4rem] w-20 bg-muted" />
             <div className="h-[13.03rem] carte-produit" />
           </div>
 
@@ -211,19 +220,19 @@ export default function ChargementFiche() {
               squelette trop court sur le cas rare que trop long sur le cas
               courant. */}
           <div>
-            <div className="mb-3 h-4 w-32 bg-muted" />
+            <div className="mb-3 h-[1.4rem] w-32 bg-muted" />
             <div className="h-[9.5rem] carte-produit" />
           </div>
 
           <div>
-            <div className="mb-3 h-4 w-20 bg-muted" />
+            <div className="mb-3 h-[1.4rem] w-20 bg-muted" />
             <div className="h-[3.25rem] carte-produit" />
           </div>
 
           {/* Le bloc de candidature : bouton, ligne de contact, avertissement
               sur la dépublication. C'est lui qui manquait le plus. */}
           <div>
-            <div className="mb-3 h-4 w-24 bg-muted" />
+            <div className="mb-3 h-[1.4rem] w-24 bg-muted" />
             <div className="h-[7.4425rem] carte-produit" />
           </div>
         </div>

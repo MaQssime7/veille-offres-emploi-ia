@@ -471,13 +471,48 @@
      plus larges que Geist Mono : à 0,12em et 11 px, les capitales se
      détachaient les unes des autres au point que le mot cessait d'en être un.
      Le mono a besoin d'air, une grotesque ronde beaucoup moins. */
+  /* ⚠️ **1 rem depuis le 30 août 2026, contre 0,6875 auparavant.** Constat de
+     Maxime : « la police des sections est encore plus petite que le texte à
+     l'intérieur, ça fait bizarre ». Il avait raison et le rapport était inversé
+     — 11 px de titre pour 16 px de texte, soit un titre qui pesait moins que ce
+     qu'il annonce. Un titre de section n'a pas besoin d'écraser son contenu,
+     mais il ne peut pas lui être inférieur.
+     ⚠️ **Toute hauteur de squelette qui double une de ces sections est à
+     remesurer** : `loading.tsx` réserve la place du titre en dur, et rien ne
+     relie mécaniquement les deux. */
   font-family: var(--font-fredoka);
-  font-size: 0.6875rem;
+  font-size: 1rem;
   line-height: 1.4;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 700;
   color: var(--foreground);
+}
+
+/**
+ * L'étiquette d'une note — « Intérêt », « Accessibilité ».
+ *
+ * ⚠️ **Un utilitaire à part, et NON `libelle-mono` surchargé par
+ * `font-display`.** Les deux déclarent `font-family` : à spécificité égale,
+ * c'est l'ordre dans la feuille compilée qui tranche, pas le code qu'on lit.
+ * Ce piège a déjà coûté une mesure sur `nom-entreprise` et sur `accentue` —
+ * quand deux classes se disputent une propriété, on en écrit une troisième.
+ *
+ * ⚠️ **Même taille et même couleur que `libelle-mono`, seule la police
+ * change** — demande de Maxime du 30 août 2026. La couleur ne vient pas d'ici :
+ * elle est posée au point d'usage par `--interet-texte` ou `--success-texte`,
+ * parce qu'elle dépend de la note qu'elle désigne.
+ *
+ * ⚠️ **`libelle-mono` reste en usage partout ailleurs** — cartouches, en-têtes
+ * de données, compteurs. Ne pas le convertir : la chasse fixe du mono y sert à
+ * aligner des colonnes de chiffres, ce qu'une grotesque ronde ne fait pas.
+ */
+@utility libelle-accent {
+  font-family: var(--font-fredoka);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 /* Le nom de l'entreprise. Classe à part parce qu'il partage police ET taille

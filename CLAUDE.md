@@ -824,14 +824,29 @@ tout de suite quoi lire en premier, et pourquoi. **Direction** : pastel
 volumétrique — surfaces blanches arrondies sur fond lavande, relief « coussin »,
 six accents pastel qui portent **toujours de l'encre foncée, jamais du blanc**.
 
-**Polices** : titrage **Fredoka 700** — les `h1` **et, depuis le 30 août 2026, les
-titres de section de la FICHE** (`titre-section`), amendement demandé par Maxime
-devant l'écran. ⚠️ **La portée s'arrête là et doit y rester** : `titre-section`
-ne sert que sous `offres/[identifiant]/`, et les étiquettes de données gardent le
-mono par `libelle-mono` — c'est ce qui empêche le changement de gagner la liste
-et l'écran du matin. ⚠️ L'interlettrage y descend à **0,08em** : Fredoka est bien
-plus large que Geist Mono, et les 0,12em du mono y détachaient les capitales au
-point de défaire le mot. · texte et interface
+**Polices** : titrage **Fredoka 700** — les `h1`, **les titres de section de la
+FICHE** (`titre-section`) et **les étiquettes des deux notes** (`libelle-accent`,
+« Intérêt » / « Accessibilité », sur les trois écrans). Amendements du 30 août
+2026, demandés par Maxime devant l'écran.
+⚠️ **`titre-section` est passé de 11 à 16 px** — il était plus petit que le texte
+qu'il annonce, ce qui inversait le rapport. Un titre de section n'a pas à écraser
+son contenu, il ne peut pas lui être inférieur. **Toute hauteur de squelette qui
+double une de ces sections se remesure alors** : un titre fait 22,4 px de haut au
+lieu de 15,4, et `loading.tsx` réservait 16 px — 38 px de décalage cumulé,
+invisibles en développement.
+⚠️ **`libelle-accent` est un utilitaire À PART, jamais `libelle-mono` surchargé
+par `font-display`** : les deux déclarent `font-family`, et à spécificité égale
+c'est l'ordre dans la feuille compilée qui tranche, pas le code qu'on lit. Quand
+deux classes se disputent une propriété, on en écrit une troisième.
+⚠️ **`libelle-mono` reste partout ailleurs** — cartouches, en-têtes de données,
+compteurs : sa chasse fixe y aligne des colonnes de chiffres, ce qu'une grotesque
+ronde ne fait pas.
+⚠️ **L'interlettrage de Fredoka est à 0,08em et non 0,12** : les 0,12em du mono
+détachaient les capitales au point de défaire le mot.
+⚠️ **Contre-intuition mesurée** : Fredoka est **plus ÉTROIT** que Geist Mono à
+taille égale — « ACCESSIBILITÉ » fait 86,4 px contre les 108 px réservés. Le
+couloir fixe des libellés de note n'a donc pas bougé. Ne pas « élargir pour faire
+de la place » sans mesurer. · texte et interface
 **Nunito** · données et étiquettes **Geist Mono**. Les trois par `next/font`.
 ⚠️ **Fredoka n'est PAS livrée par le registre** — sans chargement explicite les
 titres retombent sur Nunito, sans erreur. ⚠️ **Geist Mono survit à la refonte** :
