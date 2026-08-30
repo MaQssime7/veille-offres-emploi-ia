@@ -38,7 +38,7 @@ import { ecrireDansBase, insererDansBase, interrogerBase } from "@/lib/supabase"
 const COLONNES_ENRICHISSEMENT =
   "id,issue,demande_a,termine_a,motif_echec," +
   "appariement,appariement_motif,entreprise_siren,entreprise_nom_officiel," +
-  "entreprise_creee_le,entreprise_categorie,entreprise_tranche_effectif," +
+  "entreprise_creee_le,entreprise_tranche_effectif," +
   "entreprise_tranche_effectif_annee,chiffre_affaires,chiffre_affaires_annee," +
   "entreprise_site,entreprise_site_marqueur";
 const COLONNES_ETAPE = "rang,libelle,ecrite_a";
@@ -57,7 +57,6 @@ type LigneEnrichissement = {
   entreprise_siren: string | null;
   entreprise_nom_officiel: string | null;
   entreprise_creee_le: string | null;
-  entreprise_categorie: string | null;
   entreprise_tranche_effectif: string | null;
   entreprise_tranche_effectif_annee: number | null;
   chiffre_affaires: number | null;
@@ -139,7 +138,6 @@ function enFiche(
     siren: ligne.entreprise_siren,
     nomOfficiel: ligne.entreprise_nom_officiel,
     creeeLe: ligne.entreprise_creee_le,
-    categorie: ligne.entreprise_categorie,
     trancheEffectif: effectifDate ? ligne.entreprise_tranche_effectif : null,
     trancheEffectifAnnee: effectifDate
       ? ligne.entreprise_tranche_effectif_annee

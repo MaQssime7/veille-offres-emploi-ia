@@ -133,7 +133,21 @@ DUREE_MAX_SECONDES = 240
 # jamais bloquer sur une question que personne n'est là pour lire.
 OUTILS_INTEGRES = ["WebFetch"]
 
-RUBRIQUES_REDIGEES = ("groupe", "modele_economique", "effectif_annonce")
+# ⚠️ **`groupe` et `effectif_annonce` ont été RETIRÉS le 30 août 2026** —
+# décision de Maxime en regardant la fiche : l'appartenance à un groupe est
+# « dure à trouver » et sans usage pour lui, et l'effectif du registre suffit
+# « même s'il date de plusieurs années ».
+#
+# ⚠️ **Le retrait porte sur ce que l'agent CHERCHE, pas seulement sur ce que
+# l'écran montre** — c'est là qu'il vaut quelque chose. Ces deux rubriques
+# n'existaient que sur le site de l'entreprise : les demander coûtait des tours
+# d'exploration, donc des tokens et des secondes, pour du texte que personne ne
+# lirait. Masquer sans cesser de chercher aurait payé le travail deux fois.
+#
+# ⚠️ **La contrainte `rubrique_connue` de la migration 10 les autorise
+# toujours** : aucune migration n'est nécessaire, et les fiches déjà produites
+# gardent leurs lignes. La phase 7 étendra cette liste, elle ne la rouvrira pas.
+RUBRIQUES_REDIGEES = ("modele_economique",)
 APPARIEMENTS = ("verifie", "probable", "non_identifie", "intermediaire")
 MARQUEURS = ("verifie", "deduit")
 
@@ -171,8 +185,9 @@ fausse ne se voit pas et sera crue.
    milliers d'entreprises ne se tranche pas en en lisant cinq.
 3. Trouve le site officiel de l'entreprise et lis-le avec WebFetch. Il sert à
    DEUX choses, et à rien d'autre : confirmer que tu tiens la bonne entreprise,
-   et déduire ce que le registre ne porte pas (groupe, modèle économique,
-   effectif annoncé).
+   et comprendre son modèle économique. ⚠️ Ne cherche NI son appartenance à un
+   groupe, NI l'effectif qu'elle revendique : ces deux points ont été retirés de
+   la fiche, et les chercher coûterait du temps pour rien.
 4. Si le site donne un SIREN — les mentions légales en portent presque toujours
    un — vérifie-le avec `confirmer_par_siren`. C'est le seul chemin qui permet
    d'écrire « vérifié ».
@@ -208,19 +223,14 @@ fausse ne se voit pas et sera crue.
 conclusion en une ou deux phrases dans `appariement_motif` — surtout quand tu
 doutes, car c'est ce que le lecteur a besoin de savoir.
 
-## Les trois rubriques rédigées
+## La rubrique rédigée
 
-- `groupe` : appartenance à un groupe, actionnaire, maison mère. Indice utile :
-  une catégorie INSEE bien plus grande que la tranche d'effectif trahit souvent
-  une filiale — à confirmer sur le site, jamais à affirmer sur ce seul écart.
 - `modele_economique` : éditeur de logiciel, ESN, cabinet de conseil,
   laboratoire, industriel… ⚠️ Le code d'activité NAF ne le dit PAS : il range
-  dans la même case des entreprises aux métiers très différents.
-- `effectif_annonce` : l'effectif que l'entreprise revendique sur son site, avec
-  sa formulation. Il complète la tranche officielle sans la remplacer — l'une
-  est vérifiée et datée, l'autre est récente et déclarative.
+  dans la même case des entreprises aux métiers très différents. C'est pour cela
+  qu'elle se déduit en lisant le site, et non du registre.
 
-Chaque rubrique porte son marqueur : `verifie` si tu l'as lue sur une source qui
+Elle porte son marqueur : `verifie` si tu l'as lue sur une source qui
 fait foi, `deduit` si tu l'as inférée. Dans le doute, `deduit`.
 
 Écris en français, sobrement, sans superlatif commercial. Quelques phrases par
@@ -503,10 +513,6 @@ _SCHEMA_FICHE: dict[str, Any] = {
             "description": "Date de création au format AAAA-MM-JJ, telle que "
                            "rendue par le registre.",
         },
-        "entreprise_categorie": {
-            "type": "string",
-            "description": "Code de catégorie INSEE : PME, ETI ou GE.",
-        },
         "entreprise_tranche_effectif": {
             "type": "string",
             "description": "Le CODE INSEE de tranche (par exemple 32, 41), pas "
@@ -536,23 +542,12 @@ _SCHEMA_FICHE: dict[str, Any] = {
             "description": "vérifié si le site se rattache sans doute possible "
                            "à l'entreprise appariée, déduit sinon.",
         },
-        "groupe": {
-            "type": "string",
-            "description": "Appartenance à un groupe. Omets si tu ne sais pas.",
-        },
-        "groupe_marqueur": {"type": "string", "enum": list(MARQUEURS)},
         "modele_economique": {
             "type": "string",
             "description": "Éditeur, ESN, cabinet de conseil, laboratoire, "
                            "industriel… Omets si tu ne sais pas.",
         },
         "modele_economique_marqueur": {"type": "string", "enum": list(MARQUEURS)},
-        "effectif_annonce": {
-            "type": "string",
-            "description": "L'effectif revendiqué sur le site, avec sa "
-                           "formulation. Omets si tu ne sais pas.",
-        },
-        "effectif_annonce_marqueur": {"type": "string", "enum": list(MARQUEURS)},
     },
     "required": ["appariement", "appariement_motif"],
 }
@@ -621,6 +616,12 @@ def _valider_fiche(
     # puisse le comparer à l'effectif annoncé sur le site. C'est donc le
     # libellé qu'il a sous les yeux au moment de remplir la fiche — recopier le
     # mauvais des deux est l'erreur la plus naturelle du monde.
+    # ⚠️ **`entreprise_categorie` n'est plus DEMANDÉE (retirée du schéma le
+    # 30 août 2026) mais reste TOLÉRÉE, et ce n'est pas un oubli.** Un modèle
+    # peut poser un champ que le schéma ne réclame pas ; le refuser ferait
+    # échouer toute une fiche déjà payée pour une donnée qu'on ne lit même plus.
+    # Elle s'écrit alors en base sans être affichée — inoffensif — et le contrôle
+    # de code INSEE reste en place pour qu'un libellé n'y entre jamais.
     categorie = (args.get("entreprise_categorie") or "").strip().upper()
     if categorie:
         if categorie not in CATEGORIES:

@@ -1,10 +1,8 @@
 "use client";
 
-import { AlertTriangle, BadgeCheck, CircleHelp, ExternalLink } from "lucide-react";
+import { BadgeCheck, CircleHelp, ExternalLink } from "lucide-react";
 
 import {
-  CATEGORIES_INSEE,
-  categorieDepasseEffectif,
   DITS_APPARIEMENT,
   TITRES_RUBRIQUES,
   TRANCHES_EFFECTIF,
@@ -64,25 +62,12 @@ export function FicheEnrichissement({
           ? `${formaterEuros(fiche.chiffreAffaires)} (exercice ${fiche.chiffreAffairesAnnee})`
           : null,
     },
-    {
-      libelle: "Catégorie INSEE",
-      // ⚠️ **Jamais le code nu.** « GE » se lit « grande entreprise, 5 000
-      // salariés » — or l'INSEE calcule cette catégorie au niveau du GROUPE.
-      // Expertime ressort « GE » avec 100 à 199 salariés. Le code seul serait
-      // dit en entretien tel quel.
-      valeur: fiche.categorie
-        ? (CATEGORIES_INSEE[fiche.categorie]?.libelle ?? fiche.categorie)
-        : null,
-    },
   ];
 
-  // ⚠️ La contradiction entre la catégorie et l'effectif est une INFORMATION,
-  // pas une nuisance à masquer : elle suggère une filiale. Elle se formule au
-  // conditionnel — trois cas mesurés ne font pas une règle.
-  const contradiction = categorieDepasseEffectif(
-    fiche.categorie,
-    fiche.trancheEffectif,
-  );
+  // ⚠️ **La catégorie INSEE a été RETIRÉE de l'affichage le 30 août 2026**, avec
+  // l'avertissement de filiale qui l'accompagnait — décision de Maxime :
+  // « l'effectif me suffit ». La colonne reste en base, mais l'agent ne la rend
+  // plus : voir le préambule de `_valider_fiche()` côté Python.
 
   return (
     <div className="flex flex-col gap-6">
@@ -123,27 +108,7 @@ export function FicheEnrichissement({
         )}
       </Groupe>
 
-      <div className="flex flex-col gap-2">
-        <Groupe titre="Taille et santé" lignes={taille} />
-        {contradiction && (
-          // ⚠️ `AlertTriangle` et non un emoji : le système n'en emploie nulle
-          // part ailleurs, et un emoji est rendu par une police de secours dont
-          // ni la taille ni l'alignement ne suivent le texte. Le premier essai
-          // le montrait collé au mot suivant.
-          <p className="flex items-start gap-2 px-1 text-sm leading-relaxed text-foreground">
-            <AlertTriangle
-              className="mt-0.5 size-4 shrink-0 text-signal-fort"
-              aria-hidden="true"
-            />
-            <span>
-              La catégorie INSEE est calculée au niveau du{" "}
-              <strong>groupe</strong>, pas de cette société seule. Ici elle
-              suppose bien plus de monde que l’effectif constaté&nbsp;: c’est
-              souvent le signe d’une filiale.
-            </span>
-          </p>
-        )}
-      </div>
+      <Groupe titre="Taille et santé" lignes={taille} />
 
       <section>
         <h3 className="titre-section mb-3">Ce que l’agent a compris</h3>

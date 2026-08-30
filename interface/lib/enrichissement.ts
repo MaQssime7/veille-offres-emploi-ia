@@ -121,13 +121,18 @@ export type Rubrique = {
  * Un chiffre d'affaires sans son année laisse croire qu'il est récent, ce qui
  * n'est pas une imprécision mais un mensonge.
  */
+/*
+ * ⚠️ **`categorie` (le code INSEE) a été retiré de ce type le 30 août 2026**,
+ * avec son affichage. La colonne existe toujours en base et les trois fiches
+ * déjà produites la portent — c'est seulement la requête de l'écran qui ne la
+ * demande plus. La remettre est une chaîne à rajouter, sans migration.
+ */
 export type FicheEntreprise = {
   appariement: Appariement;
   appariementMotif: string | null;
   siren: string | null;
   nomOfficiel: string | null;
   creeeLe: string | null;
-  categorie: string | null;
   trancheEffectif: string | null;
   trancheEffectifAnnee: number | null;
   chiffreAffaires: number | null;
@@ -168,57 +173,22 @@ export const TRANCHES_EFFECTIF: Record<string, string> = {
 };
 
 /**
- * La catégorie INSEE en toutes lettres, et l'effectif MINIMAL qu'elle suppose.
+ * Le titre affiché de chaque rubrique rédigée, et **l'ordre d'affichage**.
  *
- * ⚠️ **Cette catégorie est calculée au niveau du GROUPE, pas de la société.**
- * Mesuré sur trois entreprises réelles le 30 août 2026 : OCTO Technology ressort
- * « GE » avec 500 à 999 salariés, et Expertime « GE » avec 100 à 199. Afficher
- * le code nu — ou même « grande entreprise » sans nuance — ferait lire
- * « 5 000 salariés » sur une société qui en compte cent cinquante. C'est
- * exactement la fiche fausse d'apparence rigoureuse que le PRD redoute, et elle
- * serait dite en entretien.
+ * ⚠️ **`groupe` et `effectif_annonce` ont été RETIRÉS le 30 août 2026** —
+ * décision de Maxime, en regardant la fiche : l'appartenance à un groupe est
+ * « dure à trouver » et sans usage pour lui, et l'effectif du registre lui
+ * suffit « même s'il date de plusieurs années ».
  *
- * `depuis` sert à détecter la contradiction avec la tranche d'effectif réelle :
- * quand la catégorie suppose beaucoup plus de monde que la tranche n'en compte,
- * c'est l'indice d'une filiale — piste utile, jamais une affirmation.
+ * ⚠️ **Le retrait ne s'arrête PAS à cet écran, et c'est là qu'il vaut quelque
+ * chose** : l'agent ne les cherche plus du tout (`pipeline/enrichissement.py`).
+ * Masquer sans arrêter de chercher aurait laissé payer des tours d'exploration
+ * pour du texte que personne ne lit. **La contrainte `rubrique_connue` de la
+ * migration 10 les autorise toujours** : rien ne casse si une fiche ancienne en
+ * porte, elles ne s'afficheront simplement plus.
  */
-export const CATEGORIES_INSEE: Record<string, { libelle: string; depuis: number }> =
-  {
-    PME: { libelle: "Petite ou moyenne entreprise", depuis: 0 },
-    ETI: { libelle: "Entreprise de taille intermédiaire", depuis: 250 },
-    GE: { libelle: "Grande entreprise", depuis: 5000 },
-  };
-
-/** Le HAUT de chaque tranche INSEE — sert à repérer la contradiction ci-dessus. */
-export const PLAFOND_TRANCHE: Record<string, number> = {
-  NN: 0, "00": 0, "01": 2, "02": 5, "03": 9, "11": 19, "12": 49, "21": 99,
-  "22": 199, "31": 249, "32": 499, "41": 999, "42": 1999, "51": 4999,
-  "52": 9999, "53": Number.POSITIVE_INFINITY,
-};
-
-/**
- * La catégorie déclarée dépasse-t-elle largement l'effectif constaté ?
- *
- * ⚠️ **Rend `false` dès qu'une des deux valeurs manque** — on ne conclut pas sur
- * une absence. Et la conclusion reste un INDICE : elle se formule « suggère »,
- * jamais « est une filiale ». Trois cas mesurés ne font pas une règle.
- */
-export function categorieDepasseEffectif(
-  categorie: string | null,
-  tranche: string | null,
-): boolean {
-  if (!categorie || !tranche) return false;
-  const seuil = CATEGORIES_INSEE[categorie]?.depuis;
-  const plafond = PLAFOND_TRANCHE[tranche];
-  if (seuil === undefined || plafond === undefined) return false;
-  return plafond < seuil;
-}
-
-/** Le titre affiché de chaque rubrique rédigée. */
 export const TITRES_RUBRIQUES: Record<string, string> = {
-  groupe: "Groupe",
   modele_economique: "Modèle économique",
-  effectif_annonce: "Effectif annoncé",
 };
 
 /**

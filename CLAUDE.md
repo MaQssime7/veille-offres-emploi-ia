@@ -175,6 +175,28 @@ marqueurs. **Trois enrichissements réels mesurés, dont un en production par le
     à cause d'un autre runner. D'où un réessai, et un seul, réservé au 429. Un `User-Agent`
     explicite est envoyé, comme la documentation le recommande.
 
+⚠️ **LE CONTENU DE LA FICHE A ÉTÉ RÉDUIT le 30 août 2026, et le retrait porte
+sur ce que l'agent CHERCHE — pas seulement sur ce que l'écran montre.** Décision
+de Maxime devant la fenêtre : l'appartenance à un **groupe** est « dure à
+trouver » et sans usage pour lui, l'**effectif annoncé** sur le site est inutile
+puisque celui du registre suffit « même s'il date de plusieurs années », et la
+**catégorie INSEE** ne lui apprend rien de plus que l'effectif.
+Reste donc : identité (nom officiel, SIREN, création, site) · taille et santé
+(tranche d'effectif millésimée, CA avec son exercice) · **une seule rubrique
+rédigée, `modele_economique`**.
+⚠️ **Ces trois points ont disparu du prompt et du schéma de l'outil**, pas
+seulement de la fiche : `groupe` et `effectif_annonce` n'existaient que sur le
+site de l'entreprise, et les demander coûtait des tours d'exploration pour du
+texte que personne ne lirait. **Masquer sans cesser de chercher aurait payé le
+travail deux fois.**
+⚠️ **Aucune migration** : `rubrique_connue` les autorise toujours, les trois
+fiches déjà produites gardent leurs lignes, et `entreprise_categorie` reste en
+base. Les remettre est une chaîne à rajouter de chaque côté.
+⚠️ **L'avertissement « catégorie INSEE calculée au niveau du groupe » a disparu
+avec elle** — l'écart qu'il expliquait n'est plus affiché. La mesure qui le
+fondait reste vraie et vit dans `pipeline/registre.py`, où elle sert encore à
+l'agent pour repérer une filiale pendant son raisonnement.
+
 ⚠️ **L'affichage des étapes est UNE LIGNE, pas une liste — revirement du 30 août 2026,
 demandé par Maxime devant l'écran.** L'étape en cours s'affiche seule et la suivante prend
 sa place ; l'historique complet part dans un dépliant fermé, **et seulement une fois le
