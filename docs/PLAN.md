@@ -515,32 +515,38 @@ dont le coût varie du simple au quintuple.
 
 ### Critères d'acceptation
 
-- [ ] Le bouton n'apparaît que sur une offre non encore enrichie, et se désactive dès le premier clic
-- [ ] **La garde qui compte est côté serveur** : deux requêtes envoyées simultanément ne produisent qu'un seul enrichissement — vérifiable sans passer par le navigateur
-- [ ] Une **première étape « Demande reçue »** est écrite par le serveur en moins d'une seconde — critère de succès n° 4
-- [ ] Le workflow GitHub est lancé par appel ; le jeton est **limité à ce dépôt et au seul droit de lancer un workflow**
+**⚠️ ÉTAT AU 30 AOÛT 2026 — tranches 6.1 (les tables) et 6.2 (le tuyau) CLOSES.** Ce qui
+est coché est vérifié à l'exécution, pas relu. Ce qui reste demande l'agent (6.3) ou la
+fiche à l'écran (6.4). Récit dans `docs/JOURNAL.md` § 30 août (soir).
+
+- [x] Le bouton n'apparaît que sur une offre non encore enrichie, et se désactive dès le premier clic
+- [x] **La garde qui compte est côté serveur** : deux requêtes envoyées simultanément ne produisent qu'un seul enrichissement — vérifiable sans passer par le navigateur.
+      ✅ `enrichissements_un_seul_en_vol`, un index unique PARTIEL : le moteur refuse la seconde avant qu'elle n'atteigne le code. ⚠️ **Éprouvé séquentiellement, pas à la milliseconde près** — l'index le garantit par construction, mais la course réelle n'a pas été jouée
+- [x] Une **première étape « Demande reçue »** est écrite par le serveur en moins d'une seconde — critère de succès n° 4
+- [x] Le workflow GitHub est lancé par appel ; le jeton est **limité à ce dépôt et au seul droit de lancer un workflow**
 - [ ] L'agent est **borné en nombre d'étapes et en durée** ; au-delà il s'arrête et rend ce qu'il a trouvé
-- [ ] Un enrichissement se conclut — fiche produite ou échec signalé — **en moins de cinq minutes**
-- [ ] Les étapes remontent par **sondage d'une route serveur toutes les 1,5 s** ; le navigateur ne parle jamais à Supabase
-- [ ] Le sondage **s'arrête** quand l'enrichissement se conclut — pas de requête en boucle sur un onglet oublié
-- [ ] Chaque étape apparaît en fondu-glissé décalé de 130 ms ; la pulsation « en cours » est **coupée sous `prefers-reduced-motion`**
+- [x] Un enrichissement se conclut — fiche produite ou échec signalé — **en moins de cinq minutes**
+- [x] Les étapes remontent par **sondage d'une route serveur toutes les 1,5 s** ; le navigateur ne parle jamais à Supabase
+- [x] Le sondage **s'arrête** quand l'enrichissement se conclut — pas de requête en boucle sur un onglet oublié
+- [x] Chaque étape apparaît en fondu-glissé décalé de 130 ms ; la pulsation « en cours » est **coupée sous `prefers-reduced-motion`**
 - [ ] La fiche remplit : nom officiel, date de création, site officiel, catégorie, tranche d'effectif, chiffre d'affaires
 - [ ] **Chaque rubrique porte son marqueur *vérifié* ou *déduit***, et une rubrique sans information affiche **« non disponible »** — jamais une supposition
 - [ ] Annonce émanant d'un intermédiaire sans employeur nommé : la fiche l'indique explicitement et **ne se rabat pas sur l'intermédiaire** — critère de succès n° 12
 - [ ] Entreprise non identifiable avec certitude : la fiche le **signale** au lieu de trancher
-- [ ] Un enrichissement échoué affiche **son motif** et un bouton « Relancer » ; la relance remplace la fiche précédente
-- [ ] Chaque enrichissement écrit sa trace : offre, déclenchement, horodatages, durée, étapes effectuées, issue, motif, **modèle**, compteurs bruts
-- [ ] La colonne `declenchement` existe et vaut « manuel ». ⚠️ **Elle ne prépare PAS un retour de l'automatique**, refusé sans condition le 30 août 2026 : elle sert à l'écran de suivi d'exploitation, qui doit pouvoir dire d'où vient chaque enrichissement
-- [ ] Les compteurs alimentent `tokens_cumules`, **sans toucher** à `tokens_conversation`
-- [ ] **L'enveloppe quotidienne vit dans le fichier de configuration versionné**, valeur de départ **300 000 tokens**, et elle est **vérifiée côté serveur** — pas seulement affichée
-- [ ] L'enveloppe consommée se **calcule en sommant les traces du jour**, jamais depuis un compteur séparé qui divergerait à la première écriture ratée
-- [ ] Au-delà de l'enveloppe, le bouton indique « plafond du jour atteint » et **aucun enrichissement ne part** — vérifiable en envoyant la requête sans passer par le navigateur
-- [ ] Le compte **repart de zéro** le lendemain, à minuit heure de Paris
+- [x] Un enrichissement échoué affiche **son motif** et un bouton « Relancer » ; la relance remplace la fiche précédente
+- [x] Chaque enrichissement écrit sa trace : offre, déclenchement, horodatages, durée, étapes effectuées, issue, motif, **modèle**, compteurs bruts
+- [x] La colonne `declenchement` existe et vaut « manuel ». ⚠️ **Elle ne prépare PAS un retour de l'automatique**, refusé sans condition le 30 août 2026 : elle sert à l'écran de suivi d'exploitation, qui doit pouvoir dire d'où vient chaque enrichissement
+- [ ] Les compteurs alimentent `tokens_cumules`, **sans toucher** à `tokens_conversation` — le chemin d'écriture existe (`ajouter_tokens_a_l_offre`), rien ne l'alimente avant 6.3
+- [x] **L'enveloppe quotidienne vit dans le fichier de configuration versionné**, valeur de départ **300 000 tokens**, et elle est **vérifiée côté serveur** — pas seulement affichée
+- [x] L'enveloppe consommée se **calcule en sommant les traces du jour**, jamais depuis un compteur séparé qui divergerait à la première écriture ratée
+- [x] Au-delà de l'enveloppe, le bouton indique « plafond du jour atteint » et **aucun enrichissement ne part** — vérifiable en envoyant la requête sans passer par le navigateur.
+      ✅ **Vérifié comme le critère l'exige** : requête d'action capturée, enveloppe remplie, requête rejouée hors de tout composant React → « Plafond du jour atteint », aucune ligne créée
+- [ ] Le compte **repart de zéro** le lendemain, à minuit heure de Paris — `debutDuJourParisien()` est écrite et éprouvée sur les deux nuits de bascule 2026, mais aucun minuit n'a encore été franchi en vrai
 - [ ] **La notation nocturne n'entre pas dans l'enveloppe** — vérifiable en constatant qu'une nuit à 400 offres notées ne consomme rien du plafond du lendemain
-- [ ] **Aucune trace ne porte un déclenchement automatique** — critère de succès n° 3
+- [x] **Aucune trace ne porte un déclenchement automatique** — critère de succès n° 3
 - [ ] Les rubriques **acceptent plusieurs paragraphes** — une rubrique dimensionnée pour une ligne invite l'agent à répondre en une ligne
-- [ ] **États du bloc d'enrichissement** — les quatre du `DESIGN.md`, plus le débordement : pas encore lancé *(vide)* · en cours *(chargement et action en cours)* · terminé · échoué *(erreur)* · **un enrichissement de 40 étapes qui défile sans faire déborder le panneau ni la page**
-- [ ] 375 px, mode sombre, focus clavier visible, console propre
+- [x] **États du bloc d'enrichissement** — les quatre du `DESIGN.md`, plus le débordement : pas encore lancé *(vide)* · en cours *(chargement et action en cours)* · terminé · échoué *(erreur)* · **un enrichissement de 40 étapes qui défile sans faire déborder le panneau ni la page**
+- [x] 375 px, mode sombre, focus clavier visible, console propre
 
 ### Bloquée par
 

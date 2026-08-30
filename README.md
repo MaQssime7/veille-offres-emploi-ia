@@ -197,10 +197,14 @@ détail n'apporte rien de plus · 44 % des offres ne nomment pas l'entreprise et
 ce qui évite de faire déduire l'expérience par le modèle. Tout est consigné dans
 [`docs/API_FRANCE_TRAVAIL.md`](docs/API_FRANCE_TRAVAIL.md).
 
-Deux tables sont créées — `executions_veille` et `offres` — en deux migrations
-versionnées. Les deux autres sont **délibérément reportées à la phase 6** : la
-forme d'une fiche d'enrichissement dépend de ce que l'agent produira, et rien ne
-l'alimente d'ici là.
+Deux tables d'abord — `executions_veille` et `offres` — les trois autres
+**délibérément reportées à la phase 6**, au motif que la forme d'une fiche
+d'enrichissement dépend de ce que l'agent produira. Le report a payé : quand elles
+sont arrivées, leur forme ne ressemblait pas à ce qu'on aurait deviné. Le registre
+public des entreprises, interrogé sur cinq sociétés réelles *avant* d'écrire une ligne
+de SQL, ne rend qu'**un seul exercice comptable — le dernier déposé**, parfois vieux de
+huit ans. Un chiffre d'affaires sans son année n'est donc pas une imprécision mais un
+mensonge, et une contrainte rend désormais le couple indissociable.
 
 Le schéma n'a pas été relu, il a été **attaqué** : 18 contrôles vérifient qu'une
 clé publique ne peut rien lire ni écrire (HTTP 401), qu'un échec sans motif est
@@ -495,5 +499,19 @@ Trois choses qui se défendent en entretien :
   fausses ont précédé la bonne : **un bloc de mesure se substitue à l'original, il
   ne se pose pas à côté** — sinon il lui vole sa largeur et se replie différemment.
 
-**Prochaine étape** : la phase 6, l'enrichissement à la demande — le Claude Agent
-SDK, déclenché au clic, borné par une enveloppe quotidienne de tokens.
+**Où en est la phase 6** : le mécanisme complet est en place et tourne en production —
+un clic ouvre une demande, l'interface appelle l'API GitHub, le workflow part, et les
+étapes remontent à l'écran par sondage. Mesuré sur un vrai clic : **agent démarré en
+16 secondes, conclu en 24**, là où le plan en alloue 300. Le tout a été construit et
+prouvé **sans appeler le modèle une seule fois** : la tranche suivante branche l'agent
+réel.
+
+Deux choses valent d'être retenues de cette tranche. La garde contre le double clic est
+un **index unique partiel**, pas du code : deux requêtes simultanées, et la seconde est
+refusée par Postgres avant d'atteindre la moindre ligne de TypeScript — une vérification
+en code laisserait une fenêtre entre la lecture et l'écriture, et cette fenêtre-là coûte
+une facture. Et l'enveloppe de dépense a failli avoir un trou béant : les compteurs de
+tokens restent vides tant qu'un enrichissement tourne, si bien que dix lancés dans la
+même minute lisaient tous « zéro consommé ». Un enrichissement en vol **réserve**
+désormais son coût présumé, et ce calcul — le seul code qui protège d'une facture
+emballée — est une fonction pure couverte par huit tests.

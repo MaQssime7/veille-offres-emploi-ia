@@ -19,6 +19,8 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | Ce qui s'est passé et pourquoi, dans l'ordre | `docs/JOURNAL.md` |
 | **Comment le modèle note** : profil, postes visés, barèmes | `pipeline/criteres_pertinence.txt` — **c'est une donnée, pas du code**. ⚠️ `//` = commentaire retiré avant l'envoi, `##` = titre envoyé au modèle |
 | **Ce que vaut chaque critère de collecte**, mesuré terme par terme | `pipeline/mots_cles.txt` et `pipeline/codes_rome.txt` (vide, et porte la mesure qui l'a vidé) — voir § Collecte |
+| **L'enrichissement — constantes, états, et le calcul qui borne la dépense** | `interface/lib/enrichissement.ts` (pur, **neuvième module sans `server-only`**) · `interface/lib/enrichissement-base.ts` (lit et écrit) · `interface/lib/github.ts` (lance le workflow) · `pipeline/enrichissement.py` (le sert) · `.github/workflows/enrichissement.yml` |
+| **Pourquoi la fiche d'enrichissement a DEUX formes de stockage**, et ce que chaque contrainte interdit | le préambule de `supabase/migrations/…_ajoute_les_tables_d_enrichissement.sql` — il porte les mesures du registre public qui l'ont dictée |
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` |
 | **Comment le site est protégé** : cookie, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts`, abondamment commentés |
 | **Comment l'interface ÉCRIT en base** : garde-fous, idempotence | `ecrireDansBase()` dans `interface/lib/supabase.ts` |
@@ -104,267 +106,214 @@ fichier :**
 
 **Cadrage complet** : `docs/PRD.md` — 37 user stories, 13 critères de succès.
 
-## État au 30 août 2026
+## État au 30 août 2026 — ⚠️ PHASE 6 EN COURS, tranche 6.2 close
 
-**Phases 1 à 5 CLOSES.** ⚠️ **La PHASE 6 — l'enrichissement à la demande — est le
-prochain chantier.**
-Le site est en ligne derrière son mot de passe, collecte et notation tournent sur
-le cron. `/` est le **compte rendu de la nuit**, `/offres` le **plan de travail**.
-**L'interface écrit en base** — statuts et note personnelle. **580 offres,
-146 notées, 576 à traiter / 0 candidaté / 4 écarté.**
+**Phases 1 à 5 CLOSES.** Le site est en ligne derrière son mot de passe, collecte et
+notation tournent sur le cron. `/` est le **compte rendu de la nuit**, `/offres` le
+**plan de travail**. L'interface écrit en base. **580 offres, 146 notées.**
 
-### ⚠️ Ce que la phase 5 a livré — huit faits opposables
+### ⚠️ PHASE 6 — l'enrichissement. 6.1 et 6.2 CLOSES, **6.3 est le prochain chantier**
 
-`/` affiche les offres de la **dernière collecte réussie** encore à traiter qui
-dépassent le seuil d'intérêt, sous la même manchette que `/offres`, plus une carte
-de passage vers le plan de travail. Récit dans `docs/JOURNAL.md`, barèmes et
-mesures dans `interface/lib/matin.ts` et `regroupement.ts`.
+Découpage validé par Maxime : **6.1 les tables · 6.2 le tuyau · 6.3 l'agent réel ·
+6.4 la fiche et les finitions**.
 
-1. ⚠️ **`/` REGROUPE les annonces d'un même poste, `/offres` NON.** France Travail
-   publie le même poste en « f/h » et en « (H/F) » — deux identifiants, donc deux
-   lignes que la déduplication du pipeline ne voit pas : **29 en trop sur 574**.
-   ⚠️ **Ne PAS étendre le regroupement à `/offres`** : c'est l'archive, plafonnée à
-   200 sur 576, et deux jumelles peuvent être l'une dedans et l'autre dehors.
-2. ⚠️ **L'employeur SÉPARE, il ne rapproche jamais.** La clé est l'intitulé
-   normalisé + le lieu ; un groupe n'éclate que s'il réunit deux employeurs
-   différents — `entreprise_nom` **ou** `entreprise_identifiee`, voir
-   `nomSeparateur()`. Mettre l'entreprise dans la clé a été essayé et **ne
-   regroupait rien** : 39 % des offres n'ont pas d'employeur nommé, dont les quatre
-   annonces MBDA qui ont motivé le module.
-3. ⚠️ **Le clic de statut traite le POSTE ENTIER** (décision de Maxime) :
-   `definirStatut` prend une **liste** d'identifiants, bornée à 8. Sans ça, écarter
-   l'annonce affichée laisserait sa jumelle « à traiter ».
-4. ⚠️ **LE SEUIL EST À 35 — décision de Maxime, pas la valeur du plan** (qui
-   écrivait 50, et laissait l'écran vide quatre matins sur six). Descendre à 25
-   n'ajouterait que 7 offres et rapprocherait `/` d'un second plan de travail.
-5. ⚠️ **SIX écrans vides, pas trois**, dont « la notation n'a pas tourné » qui
-   n'était pas au plan. ⚠️ **L'ORDRE des tests de `choisirAffichage()` EST la
-   logique** — « aucune n'atteint le seuil » n'est vrai que si la collecte a ramené
-   quelque chose *et* que ce quelque chose a été noté.
-6. ⚠️ **Deux annonces du même poste sont parfois notées TRÈS différemment** : 68 et
-   45 sur la paire mesurée le 30 août. **Les doublons sont un banc d'essai gratuit
-   de la notation.** Constat noté, non traité.
-7. ⚠️ **`(site)/_composants/` est le dossier des briques PARTAGÉES**, `actions.ts`
-   compris : `definirStatut` n'appartient plus à `/offres`. Il **revalide `/` EN
-   PLUS de `/offres`**, sans quoi le bouton retour ramène une offre déjà classée.
-8. ⚠️ **La date de collecte n'est PAS répétée sous le salut** (la manchette
-   l'affiche 90 px plus haut), et **le squelette de `/` imite UNE ligne** : un
-   squelette s'aligne sur ce que SA page affiche le plus souvent.
+✅ **Ce que 6.1 + 6.2 ont livré, et qui tourne en production** : migration 10 (trois
+tables), le clic qui ouvre une demande, l'appel de l'API GitHub, le workflow
+`enrichissement.yml`, les étapes qui remontent par sondage toutes les 1,5 s, la
+péremption, l'enveloppe. **Mesuré sur un vrai clic : agent démarré en 16 s, conclu en
+24 s** — le plan alloue 300 s. ⚠️ `pipeline/enrichissement.py` écrit des étapes de
+**DÉMONSTRATION** : aucun appel au modèle avant 6.3.
 
-### ⚠️ Refonte du système de design — 29 août 2026, branche `refonte-design-pouf`
+⚠️ **Sept faits opposables, qui ne se déduisent d'aucun fichier :**
 
-**Le système est passé de l'éditorial technique (beige, Fraunces, aucune ombre) à
-[1st-Pouf](https://1st-pouf.worksonmy.dev)** — pastel, arrondi, volumétrique.
-Décision de Maxime, validée devant l'écran. Voir § Design et `docs/DESIGN.md`.
+1. ⚠️ **Le projet est une PIÈCE DE DÉMONSTRATION, pas un outil quotidien** — dit par
+   Maxime le 30 août. L'enrichissement sert à montrer en entretien qu'il a branché un
+   agent ; il ne l'utilisera pas pour lui. **Conséquence sur 6.3 : les libellés d'étapes
+   doivent raconter le raisonnement** (« 4 candidats pour Orion », « SIREN confirmé »),
+   et une fiche qui déclare honnêtement son doute vaut mieux qu'une fiche complète
+   obtenue en devinant — c'est le point technique qu'il expliquera.
+2. ⚠️ **Le coût est ~10 fois PLUS BAS que l'estimation du PRD** : 7 à 20 centimes par
+   enrichissement contre « 0,20 à 1 € », calculé aux tarifs Sonnet 5.
+   ⚠️ **Toujours une estimation, jamais mesurée.** Le premier enrichissement réel donnera
+   le chiffre, et re-règlera **deux valeurs posées à l'aveugle** : l'enveloppe de 300 000
+   tokens/jour et `COUT_PRESUME_TOKENS` (150 000, probablement 3× trop haut).
+3. ⚠️ **L'enveloppe RÉSERVE le coût présumé de chaque enrichissement EN VOL.** Sans ça
+   elle avait un trou béant, trouvé en revue : les compteurs sont `NULL` tant qu'un
+   enrichissement tourne, et l'index unique ne sérialise que **par offre** — dix lancés
+   dans la même minute lisaient tous « 0 consommé ». `calculerConsommation()` est pure
+   et éprouvée par 8 tests.
+4. ⚠️ **Un workflow n'existe pour l'API GitHub que s'il est POUSSÉ sur la branche visée**
+   — y compris depuis un aperçu Vercel, qui isole le code mais lance les workflows de
+   `main`.
+5. ⚠️ **Deux horodatages comparés par une contrainte doivent venir de la MÊME horloge.**
+   Supabase est en avance de **184 ms** sur le Mac : `demande_a` posé par la base et
+   `termine_a` par Next faisait tomber la fin avant le début, la clôture était refusée,
+   et l'offre restait bloquée 10 minutes. Les deux viennent désormais du serveur Next.
+6. ⚠️ **PostgREST rend 409 pour DEUX violations opposées** — `23505` unicité, `23503`
+   clé étrangère absente. Le code HTTP seul faisait répondre « un enrichissement est déjà
+   en cours » à une offre inexistante. C'est le **code Postgres** qui tranche.
+7. ⚠️ **Le sondage passe par une ACTION serveur et ne re-rend PAS la page** : 323 octets
+   par tour contre 89 112 pour le document. La raison est précise — `suivreEnrichissement`
+   n'appelle pas `revalidatePath`. **Y en ajouter un ferait basculer le sondage en rendu
+   complet toutes les 1,5 seconde**, sans le moindre signal.
 
-⚠️ **Ce que la refonte a légué, et qui vaut toujours :**
+**Ce que 6.3 doit faire** : Claude Agent SDK (il **embarque son binaire**, pas de Node à
+installer ; `max_turns` et `max_budget_usd` existent nativement), un outil registre, la
+lecture du site officiel pour **confirmer** l'appariement, les marqueurs vérifié/déduit.
+⚠️ **L'agent doit transmettre ses compteurs de tokens MÊME quand il échoue**, sinon
+l'enveloppe perd ses échecs les plus coûteux.
+⚠️ **Le contenu de la fiche est TRANCHÉ** : identité (nom, site, année de création,
+groupe, modèle économique) + santé/taille (tranche INSEE vérifiée, effectif annoncé
+déduit, CA avec son année). **Business — clients, offre — reste en phase 7.**
+⚠️ **Reste à faire par Maxime** : poser `JETON_GITHUB` chez Vercel (il est en local
+seulement — voir `docs/HEBERGEMENT.md`). Sans lui, le bouton répond « jeton non
+configuré » **sur le site déployé uniquement**, et rien d'autre ne casse.
 
-- **La donnée n'a pas bougé**, c'était la contrainte : un relevé des champs
-  affichés a été figé avant la refonte et vérifié après.
-- **`globals.css` est un dictionnaire shadcn → pouf.** On continue d'écrire
-  `bg-card`, `text-muted-foreground` : un écran neuf n'a aucun vocabulaire à
-  apprendre.
-- ⚠️ **Le compte « M notées » a été RETIRÉ de `/offres`** — à terme toute offre
-  arrive notée. Ne pas le réintroduire sans rouvrir la question.
-- ⚠️ **Le focus clavier passe par `outline` et jamais par `ring`** sur tout
-  élément portant un `cushion-*`. C'est un défaut d'accessibilité réel, trouvé en
-  mesurant : l'anneau était dans la classe et absent du style calculé.
-  ✅ Revérifié le 30 août sur la carte de passage de `/` : `outline` de 2 px
-  présent malgré le coussin, contraste 10,32:1.
+### ⚠️ Le registre public des entreprises — mesuré le 30 août, ne pas redécouvrir
 
-### ⚠️ Le coup de cœur — 30 août 2026, et ce N'EST PAS un statut
+`recherche-entreprises.api.gouv.fr` — gratuite, sans clé, sans quota gênant.
 
-Demandé par Maxime. Colonne `coup_de_coeur_a` (migration 9), sixième filtre.
-Récit et mesures dans `docs/JOURNAL.md`, forme dans `docs/DESIGN.md`.
+1. ⚠️ **Il ne rend qu'UN exercice comptable, et c'est le dernier DÉPOSÉ, pas le dernier
+   écoulé** : Capgemini 2024, Wavestone 2023, Dataiku **2018**, OCTO **2016**, Mirakl
+   **rien**. Un CA sans son année est un mensonge — `chiffre_affaires_toujours_date` le
+   grave dans le moteur.
+2. ⚠️ **La moitié de la fiche n'y est PAS** : ni site web, ni appartenance à un groupe,
+   ni modèle économique. Le code NAF range Capgemini, Sopra Steria et OCTO dans la même
+   case `62.02A`. Ces rubriques sont **déduites** en lisant le site.
+3. ⚠️ **Le rapprochement par nom est un pari** : « Orion » rend **4 382** entreprises.
+4. ⚠️ **Il rend les DIRIGEANTS nommés, avec leur date de naissance** — même nature de
+   donnée que ce que la collecte écarte avant écriture. Aucune colonne ne les accueille,
+   délibérément : une donnée sans colonne ne s'écrit pas par distraction.
+5. ⚠️ **France Travail donne déjà l'effectif, mais sur 27 % des offres seulement** (NAF et
+   secteur : 36 %), **en toutes lettres** là où l'INSEE rend un code. **Deux sources à
+   arbitrer en 6.3** quand elles divergent.
+6. Piste **non validée** : l'INSEE calcule `categorie_entreprise` au niveau du GROUPE —
+   OCTO ressort « GE » avec 500-999 salariés, ce qui trahit une filiale. **Mesuré sur un
+   seul cas**, donc à confirmer avant d'en faire une règle.
 
-1. ⚠️ **MARQUEUR TRANSVERSE, jamais une quatrième valeur de `statut`** — décision
-   de Maxime, prise après lui avoir montré les deux formes. Un statut est
-   exclusif : une offre likée aurait quitté l'écran du matin, et **candidater
-   aurait effacé le cœur**. Ne pas l'ajouter à `STATUTS` : `coup-de-coeur.test.ts`
-   échouera, et c'est fait pour.
-2. ⚠️ **Son compte NE S'ADDITIONNE PAS** avec ceux des trois statuts, comme
-   « Nouveau » : chaque offre likée porte aussi un statut.
-3. ⚠️ **Le filtre SQL ne passe PAS par `options.egal`**, qui ne sait produire que
-   `=eq.` : la condition est une **constante** du code, collée ou non par un
-   **booléen** — jamais par une chaîne reçue.
-4. ⚠️ **Le cœur PREND le verrou de tri conditionnellement, et le RESPECTE
-   toujours** — les deux ne vont pas ensemble. Il ne le prend que dans l'onglet
-   « Coup de cœur », seul endroit où délier fait sortir la ligne ; le prendre
-   partout gelait les 200 lignes pour rien pendant ~900 ms.
-   ⚠️ **Et le clic ne touche QU'UNE annonce**, contrairement au statut : propager
-   aux jumelles ne protégeait de rien et mettait quatre lignes pour un poste dans
-   un onglet qui ne regroupe pas. Les deux corrigés en revue le 30 août.
-5. ⚠️ **Le pêche est le SIXIÈME et DERNIER accent**, à **1,05:1 du rose
-   d'« Écarté »**, son voisin dans la ligne : c'est la **forme** qui les sépare.
-   ⚠️ **Pas d'icône de cœur sur la pilule de filtre** — ici, *le chiffre contre
-   l'icône* est ce qui distingue une pilule d'un bouton qui écrit en base.
+### Ce que les phases closes ont légué, et qui vaut toujours
 
-### ✅ Filtres colorés, classement et thème — 29 août 2026
+Récits complets dans `docs/JOURNAL.md`, décisions visuelles dans `docs/DESIGN.md`. Ne
+restent ici que les règles qui changent le comportement sur une tâche future.
 
-Demandé par Maxime devant l'écran. Récit complet
-dans `docs/JOURNAL.md`, décisions visuelles dans `docs/DESIGN.md`.
+**Écran du matin (phase 5)**
+- ⚠️ **`/` REGROUPE les annonces d'un même poste, `/offres` NON** — France Travail publie
+  le même poste en « f/h » et « (H/F) » : 29 en trop sur 574. **Ne PAS étendre le
+  regroupement à `/offres`**, l'archive plafonnée à 200 où deux jumelles peuvent être
+  l'une dedans et l'autre dehors.
+- ⚠️ **L'employeur SÉPARE, il ne rapproche jamais** — la clé est intitulé + lieu ; mettre
+  l'entreprise dans la clé ne regroupait **rien** (39 % des offres sans employeur nommé).
+- ⚠️ **Le clic de statut traite le POSTE ENTIER** (`definirStatut` prend une liste bornée
+  à 8) ; sinon écarter une annonce laisse sa jumelle « à traiter ».
+- ⚠️ **LE SEUIL EST À 35** — décision de Maxime, pas les 50 du plan, qui laissaient
+  l'écran vide quatre matins sur six.
+- ⚠️ **SIX écrans vides, et l'ORDRE des tests de `choisirAffichage()` EST la logique** :
+  « aucune n'atteint le seuil » n'est vrai que si la collecte a ramené quelque chose *et*
+  que ce quelque chose a été noté.
+- ⚠️ **`(site)/_composants/` est le dossier des briques PARTAGÉES**, `actions.ts` compris.
+  Une écriture y **revalide `/` EN PLUS de `/offres`**.
+- Constat noté, non traité : **deux annonces du même poste sont parfois notées très
+  différemment** (68 et 45 sur la paire mesurée). Banc d'essai gratuit de la notation.
 
-- **Cinq pilules de filtre**, chacune à la teinte de ce qu'elle montre : à traiter
-  (violet) · **Nouveau** (jaune) · candidaté (menthe) · écarté (rose) · toutes
-  (sans teinte). ⚠️ **Six depuis le 30 août** — « Coup de cœur » (pêche) s'est
-  glissé en troisième position.
-  ⚠️ **C'est un REVIREMENT** : la règle précédente interdisait de
-  teinter un onglet avec une couleur de signal, parce qu'une pilule menthe
-  ressemble au bouton « Candidaté », qui lui **écrit en base**. Ce qui les sépare
-  désormais est **le chiffre contre l'icône** — ne retirer ni l'un ni l'autre.
-- ⚠️ **« Nouveau » n'est PAS un statut** : il montre les offres de la dernière
-  collecte réussie, **tous statuts confondus**, et son compte ne s'additionne donc
-  pas avec les trois autres. Il voyage quand même dans `?statut=`, comme « toutes »,
-  pour ne pas casser les favoris existants.
-- **Menu « Trier »** à droite : intérêt (défaut) · accessibilité · plus récentes.
-  ⚠️ **Le classement change ce que l'écran MONTRE, pas seulement l'ordre** : avec le
-  plafond de 200 lignes, trier par date fait remonter des offres non notées et sort
-  de l'écran des offres mieux notées mais plus anciennes.
-- **Bouton de thème à trois états** — système → clair → sombre. Le choix vit dans
-  le navigateur, relu avant la peinture par le script du `<head>`, qui est la
+**Design (refonte 1st-Pouf du 29 août)**
+- ⚠️ **`globals.css` est un DICTIONNAIRE shadcn → pouf** : on écrit toujours `bg-card`,
+  `text-muted-foreground`. Un jeton nomme un **rôle**, jamais une couleur.
+- ⚠️ **Le focus passe par `outline`, JAMAIS par `ring`**, sur tout élément à `cushion-*` :
+  le coussin pose un `box-shadow` brut qui écrase l'anneau. `focus-produit` le fait.
+- ⚠️ **Le compte « M notées » a été RETIRÉ de `/offres`** — ne pas le réintroduire.
+- ⚠️ **Une opacité se remesure sur la surface qui est VRAIMENT derrière**, et un contrôle
+  de contraste qui lit du `rgb()` là où Tailwind rend de l'`oklab()` donne des chiffres
+  faux. **Peindre la couleur sur son vrai fond dans un canvas** est la seule mesure sûre.
+
+**Coup de cœur (30 août)**
+- ⚠️ **MARQUEUR TRANSVERSE, jamais une quatrième valeur de `statut`** — un statut est
+  exclusif : une offre likée aurait quitté l'écran du matin, et candidater aurait effacé
+  le cœur. Ne pas l'ajouter à `STATUTS` : `coup-de-coeur.test.ts` échouera, et c'est fait
+  pour. **Son compte ne s'additionne pas** avec ceux des trois statuts, comme « Nouveau ».
+- ⚠️ **Le clic ne touche QU'UNE annonce**, contrairement au statut : propager aux jumelles
+  ne protégeait de rien et mettait quatre lignes pour un poste.
+- ⚠️ **Le pêche est le SIXIÈME et DERNIER accent** — il ne reste aucune teinte libre.
+
+**Liste, filtres et thème (29-30 août)**
+- **Six pilules**, chacune à la teinte de ce qu'elle montre. ⚠️ **C'est un REVIREMENT** :
+  ce qui sépare une pilule menthe du bouton « Candidaté » (qui écrit en base) est **le
+  chiffre contre l'icône** — ne retirer ni l'un ni l'autre.
+- ⚠️ **« Nouveau » n'est PAS un statut** : dernière collecte réussie, tous statuts
+  confondus. Il voyage quand même dans `?statut=` pour ne pas casser les favoris.
+- ⚠️ **Le classement change ce que l'écran MONTRE, pas seulement l'ordre** : avec le
+  plafond de 200, trier par date fait remonter des offres non notées.
+- **Thème à trois états** — système → clair → sombre. Le script du `<head>` est la
   **seule** copie de la règle « quel choix donne quel mode ».
-- ⚠️ **Une opacité se remesure sur la surface qui est VRAIMENT derrière**, et un
-  contrôle de contraste qui lit du `rgb()` là où Tailwind rend de l'`oklab()`
-  produit des chiffres faux. Les deux pièges ont mordu le 29 août ; **mesures et
-  méthode dans `docs/DESIGN.md` § Contrastes.**
 
-### ✅ La manchette d'état — partagée par les deux écrans depuis le 30 août 2026
+**Manchette d'état** — `app/(site)/_composants/etat-veille.tsx`, importée par les deux
+écrans, jamais recopiée. ⚠️ **Cinq états et un `switch` exhaustif** ; « aucune veille » et
+« état indisponible » sont distincts à dessein. ⚠️ **Une collecte TUÉE compte comme un
+ratage, et c'est un seuil de TEMPS qui la démasque** — au-delà de 60 min, un `en_cours`
+est un échec. ⚠️ **Les deux `h1` disent « Bonjour Maxime »**, les titres d'onglet diffèrent,
+et **le salut ne varie pas avec l'heure** (le rendu est serveur).
 
-Composant unique, `app/(site)/_composants/etat-veille.tsx`, importé par `/` et
-`/offres` et jamais recopié. Détail des seuils dans `interface/lib/veille.ts`.
-
-- ⚠️ **Cinq états, et le `switch` est exhaustif** : à jour · en retard (> 36 h) ·
-  dernier passage raté · aucune veille · état indisponible. Les deux derniers sont
-  distincts à dessein — « aucune veille » est une base neuve, « indisponible » une
-  lecture ratée ; les confondre annoncerait une panne un jour où seule la base est
-  injoignable.
-- ⚠️ **Une collecte TUÉE en plein vol compte comme un ratage, et c'est un seuil de
-  TEMPS qui la démasque.** Une exécution tuée laisse `issue = 'en_cours'` que le
-  pipeline ne referme qu'à son démarrage suivant : sans seuil, le bandeau affichait
-  « à jour » pendant 24 h sur une nuit morte. Au-delà de **60 minutes** — le double
-  du `timeout-minutes` du workflow — un `en_cours` est un ratage. Le libellé
-  distingue « en échec » (un motif existe) d'« interrompue » (aucun motif à
-  chercher).
-- ⚠️ **Les deux `h1` disent « Bonjour Maxime », les titres d'ONGLET diffèrent**
-  (« Ce matin », « Plan de travail ») — décision de Maxime. La règle qui liait `h1`
-  et onglet valait tant que les deux *nommaient* l'écran ; un salut ne nomme rien.
-  ⚠️ **Le salut ne varie PAS avec l'heure** : le rendu est serveur, et deviner le
-  fuseau du visiteur est la classe de bug que `verifie` traque en rejouant en UTC.
-- ⚠️ **`EnTetePage` prend quatre propriétés NOMMÉES** (`manchette`, `sousTitre`,
-  `filtres`, `tri`) au lieu d'un `children` fourre-tout : c'est ce qui rend
-  l'égalité de hauteur avec les `loading.tsx` vérifiable dans le code.
-
-| Brique | État |
-|---|---|
-| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte, **`/` le compte rendu de la nuit**, `/offres` (six filtres, trois classements, statuts, **coup de cœur**), la fiche `/offres/[identifiant]` (statuts, note personnelle, coup de cœur), **bouton de thème à trois états** (système / clair / sombre) |
-| Supabase | Région Paris. `executions_veille` et `offres`. RLS activé, droits vérifiés |
-| Migrations | **9**, toutes appliquées. La 6ᵉ ajoute les statuts et la note personnelle ; la 7ᵉ corrige une contrainte de la 6ᵉ prise en défaut par son propre test ; la 8ᵉ ajoute `entreprise_identifiee` et `entreprise_intermediaire` ; la 9ᵉ ajoute `coup_de_coeur_a` |
-| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris |
-| `pipeline/` | Collecte **et** notation sur le cron GitHub Actions à 02:23 UTC. ⚠️ **Seul le CDI est collecté** (`TYPE_CONTRAT` dans `config.py`) |
-| Modules | `collecte.py` · `notation.py` · `salaire.py` · `employeur.py` · `criteres_pertinence.txt` |
-| `.venv/` | À la racine, `requirements.txt` versionné |
-
-### ✅ L'employeur réel, lu dans le texte de l'annonce — 30 août 2026
-
-**`entreprise_nom` de France Travail ne vaut pas ce qu'on croit**, mesuré sur les
-580 offres : **absent sur 39 %** (47 % des notées), intermédiaire dans **36 %**
-des cas, et **parfois faux** — `6426819` l'annonce à « NEW NET 3D » quand sa
-description dit « L'entreprise Wavestone recherche des profils ». Le modèle
-extrait donc l'employeur **dans l'appel de notation qui existe déjà**. Migration 8 :
-`entreprise_identifiee`, `entreprise_intermediaire`. Détail et mesures dans
-`pipeline/employeur.py`, `interface/lib/employeur.ts` et `docs/JOURNAL.md`.
-
-⚠️ **Cinq faits qui ne se déduisent d'aucun fichier :**
-
-1. **`entreprise_nom` n'est JAMAIS écrasé** — la déduction vient à côté. Un nom
-   absent se voit, un nom faux se croit.
-2. **Le garde-fou est DÉTERMINISTE** : `verifier()` cherche le nom rendu dans le
-   texte envoyé, sinon le jette. Une consigne se contourne, pas une comparaison de
-   chaînes. **Ce qui se vérifie ne se croit pas.**
-3. **ESN ≠ cabinet de recrutement.** Le cabinet recrute *pour* un tiers → rendre le
-   tiers ; l'ESN embauche *elle-même* → rendre l'ESN, jamais son client. La
-   première consigne confondait les deux et rendait `null` sur les ESN.
-4. **Le rattrapage se filtre sur le DRAPEAU, jamais sur le nom** — le modèle répond
-   `null` sur ~1 offre sur 6, et filtrer sur le nom les refacturait à chaque
-   relance.
-5. **Le nom identifié SÉPARE au regroupement, sans jamais rapprocher.** Sans ça, un
-   clic de statut écrivait sur une offre jamais vue.
-
-⚠️ **`entreprise_intermediaire` VARIE d'un appel à l'autre sur la même offre** —
-observé sur `6426819`. Ne rien bâtir de structurant dessus.
-
-**Premier rattrapage (18 offres ≥ 35)** : 15 identifiées, 0 échec — 4 comblées,
-3 corrigées, 6 confirmées, 2 abrégées (rattrapées à l'affichage). ~16 centimes.
+**Employeur réel, lu dans le texte de l'annonce (30 août)** — `entreprise_nom` de France
+Travail est **absent sur 39 %** des offres, intermédiaire dans 36 % des cas, et parfois
+**faux**. Le modèle l'extrait dans l'appel de notation qui existe déjà.
+1. ⚠️ **`entreprise_nom` n'est JAMAIS écrasé** — un nom absent se voit, un nom faux se croit.
+2. ⚠️ **Le garde-fou est DÉTERMINISTE** : `verifier()` cherche le nom rendu dans le texte
+   envoyé, sinon le jette. **Ce qui se vérifie ne se croit pas.**
+3. ⚠️ **ESN ≠ cabinet de recrutement** : le cabinet recrute *pour* un tiers, l'ESN embauche
+   elle-même.
+4. ⚠️ **Le rattrapage se filtre sur le DRAPEAU, jamais sur le nom** — le modèle répond
+   `null` sur ~1 offre sur 6, et filtrer sur le nom les refacturait à chaque relance.
+5. ⚠️ **`entreprise_intermediaire` VARIE d'un appel à l'autre** sur la même offre. Ne rien
+   bâtir de structurant dessus.
 
 ### Ce qui reste ouvert
 
 | Sujet | État |
 |---|---|
-| ⚠️ **La note d'apprentissage de la phase 5 reste à écrire** | Obligation du `CLAUDE.md` global — une note de diagnostic par phase dans `~/Documents/Coffre Obsidian/Maxime M/Apprentissage/`, dans le sous-dossier du sujet. Matière disponible : le regroupement en fonction pure, l'action serveur qui écrit plusieurs lignes et dit son échec partiel, et la leçon du calage de squelette (mesurer le bas du contenu, pas la hauteur d'un conteneur `flex-1`) |
-| ⚠️ **La rustine `gh workflow run` EFFACE le compte rendu de la nuit** | Trouvé en revue le 30 août. La collecte écrit en `ignore-duplicates` : une offre déjà connue reste rattachée à l'exécution qui l'a vue **en premier**. Donc la collecte relancée à la main le matin réussit avec **zéro offre nouvelle**, devient « la dernière collecte réussie », et `/` remplace les offres de la nuit par « la collecte n'a rien rapporté ». ⚠️ **Non corrigé délibérément** : le plan dit « c'est la dernière réussie qui fait foi », et préférer « la dernière non vide » empêcherait d'afficher une vraie nuit blanche. Le **texte** a été corrigé pour ne plus mentir, et les offres restent atteignables par la carte de passage. **La question appartient à Maxime**, et elle disparaîtra d'elle-même avec le déclencheur externe de la phase 6 |
-| ⚠️ **L'indicateur de veille ne vieillit pas dans un onglet resté ouvert** | Il est calculé au rendu serveur : un onglet laissé ouvert toute la journée affiche encore « Aujourd'hui, 11:11 » le lendemain matin, et ne passera jamais en alerte tout seul. Le corriger demanderait une horloge dans le navigateur, donc un composant client, pour une information qui change une fois par jour. **Signalé, non corrigé** — écrit dans `etat-veille.tsx` pour ne pas passer pour un oubli |
-| ⚠️ **Le plafond de 200 lignes — desserré, pas résolu** | La liste montre les 200 meilleures de tous les temps : le jour où plus de 200 offres portent une note, celles de la nuit disparaissent. Le filtre de la phase 4 desserre (une offre triée libère sa place) mais ne résout pas : tant que rien n'est trié, les 576 restent « à traiter ». **L'échéance est un compte, pas une date.** Aggravé par le refus d'effacer : les annonces dépubliées mais bien notées squattent le haut. ⚠️ **Ne pas forcer en payant** (~40 centimes pour noter 60 offres de plus) : c'est un raisonnement, pas une économie — 200 est aussi le seuil où l'écran casse. Simulation dans `docs/PLAN.md` § Phase 2 |
-| ⚠️ **`intelligence artificielle` : le seul critère non arbitré** | 127 offres nettes/mois pour une moyenne de 8/100 et un maximum de 15 sur 27 notées — le profil exact qui a fait tomber les codes ROME. Et on ne perdrait rien : les 9 offres ≥ 25 sont toutes rattrapées par `IA` ou `AI`, vérifié une par une. Maxime l'a **gardé** le 28 août. ⚠️ **Ne pas le retirer seul** |
-| Qualité d'`automatisation` | 11 offres nettes/mois, **aucune notée** : sa qualité est **inconnue**, ce qui n'est pas la même chose que « bonne » |
-| Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | Inatteignable depuis le 26 août — le bug ne se déclenche que sur une offre déjà notée. L'analyse et le correctif vivent en commentaire dans `pipeline/notation.py` au-dessus de `apercevoir()`, **au point d'usage** : celui qui ressortira `--renoter` tombera dessus |
-| Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver (`docs/HEBERGEMENT.md`) |
+| ⚠️ **`muted-foreground` échoue le plancher d'accessibilité en mode SOMBRE** | **2,75:1** sur les cartes, **3,18:1** sur le fond de page, contre 4,5 exigés. Mesuré le 30 août sur des libellés qui existaient avant (« APPELLATION », « Pas encore notée »). **En clair ils passent à 5,9** — le défaut est propre au sombre. ⚠️ **Signalé, non corrigé** : éclaircir ce jeton touche tous les écrans, c'est une décision de système qui appartient à Maxime |
+| ⚠️ **Les notes d'apprentissage des phases 5 et 6 restent à écrire** | Obligation du `CLAUDE.md` global — une note par phase dans `~/Documents/Coffre Obsidian/Maxime M/Apprentissage/`. Matière de la 6 : la contrainte d'unicité partielle comme garde de concurrence, les deux horloges, la réservation d'enveloppe |
+| ⚠️ **La rustine `gh workflow run` EFFACE le compte rendu de la nuit** | La collecte écrit en `ignore-duplicates` : relancée le matin, elle réussit avec zéro offre nouvelle et devient « la dernière collecte réussie ». ⚠️ **Non corrigé délibérément** — préférer « la dernière non vide » empêcherait d'afficher une vraie nuit blanche. Disparaîtra avec le déclencheur externe, **qui existe désormais** (phase 6) |
+| ⚠️ **L'indicateur de veille ne vieillit pas dans un onglet resté ouvert** | Calculé au rendu serveur. Le corriger demanderait une horloge dans le navigateur pour une information qui change une fois par jour. **Signalé, non corrigé** |
+| ⚠️ **Le plafond de 200 lignes — desserré, pas résolu** | Le jour où plus de 200 offres portent une note, celles de la nuit disparaissent. **L'échéance est un compte, pas une date.** ⚠️ **Ne pas forcer en payant** : 200 est aussi le seuil où l'écran casse |
+| ⚠️ **`intelligence artificielle` : le seul critère non arbitré** | 127 offres nettes/mois pour une moyenne de 8/100. Maxime l'a **gardé** le 28 août. ⚠️ **Ne pas le retirer seul** |
+| Qualité d'`automatisation` | 11 offres nettes/mois, **aucune notée** : qualité **inconnue**, ce qui n'est pas « bonne » |
+| Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | Inatteignable depuis le 26 août. Analyse et correctif en commentaire dans `pipeline/notation.py`, **au point d'usage** |
+| Clés Supabase *legacy* | `anon` / `service_role` toujours actives en parallèle des nouvelles — à désactiver |
 | `PGRST303` | « JWT issued at future » au premier appel après recompilation, **en développement seulement**. Symptôme trompeur : « base injoignable » alors que la base va bien |
-| ⚠️ **Deux onglets sur la même fiche** | Le dernier qui tape écrase la note de l'autre, sans avertissement. Un seul utilisateur : signalé, non corrigé. Le corriger demanderait un horodatage de version comparé avant écriture |
+| ⚠️ **Deux onglets sur la même fiche** | Le dernier qui tape écrase la note de l'autre. Un seul utilisateur : signalé, non corrigé |
+| ⚠️ **Deux défauts de la fiche, MESURÉS et volontairement LAISSÉS** | Décision de Maxime, **ne pas les remesurer** : fiche muette sur les offres non notées (se résorbe seule) · les cinq titres de section ont le même poids |
 
-⚠️ **DEUX défauts de la fiche d'offre, MESURÉS le 29 août et volontairement
-LAISSÉS.** Décision de Maxime. **Ne pas les remesurer.** Fiche muette sur les 434
-offres non notées (**se résorbe seul** à mesure que la base se note) · les cinq
-titres de section ont le même poids.
-✅ **Le troisième — les barres de notes restées à la largeur de la liste — a été
-CORRIGÉ le soir même**, Maxime l'ayant rouvert : sur la fiche la jauge est
-désormais élargie (208 px, contre 88) et son chiffre passe à 14 px. ⚠️ **En liste elle
-garde ses 88 px fixes, et ce n'est pas négociable** : c'est cette largeur qui
-aligne les barres d'une ligne à l'autre, donc qui permet de comparer 200 offres
-sans lire les chiffres. ⚠️ **La refonte du design ne les a PAS corrigés** — elle a changé les
-formes et les couleurs, pas la hiérarchie de l'information.
-✅ **Deux AUTRES ont été corrigés le 29 août.** (1) La fiche était trop dense :
-marge des cartes portée de 16 à **24 px** (le rayon en fait 32), écarts internes
-desserrés. (2) Elle portait **quatre tailles de texte suivi** (16/15/14/13 px)
-pour des paragraphes qui se lisent tous pareil — ramenées à **16 px en encre**,
-résumé et justifications compris, parce que les deux disent ce que le modèle a
-compris de l'offre. (3) Toute l'échelle de la fiche a suivi, sinon le reste
-paraissait rapetissé. ⚠️ **Une taille ne se juge jamais seule** — l'intitulé
-revient à la valeur jugée « écrasante » la veille, parce que ce qui l'entoure a
-grandi. **Échelle complète dans `docs/DESIGN.md` § L'échelle des textes.** ⚠️ **La liste n'a PAS suivi, et ne doit pas suivre** :
-`ContenuNotes` porte une propriété `aere` — on balaye une liste, on lit une fiche.
-Détail et mesures dans `docs/DESIGN.md` §§ Échelle des textes et Densité.
-⚠️ **Une leçon de méthode en est sortie, qui vaut au-delà** : pour caler un
-squelette, **une médiane ne s'additionne pas** — la somme des médianes des six
-sections se trompait de 55 px sur le total. La moyenne, si.
-
-⚠️ **Un défaut connu, laissé faute de correctif propre** : l'écriture des offres
-se fait par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de
-transaction. Si un lot échoue, les précédents sont écrits et rattachés à une
-exécution `echec` ; `recoller_offres_orphelines` les récupère la nuit suivante.
+⚠️ **Un défaut connu, laissé faute de correctif propre** : l'écriture des offres se fait
+par lots de 50 et **n'est pas atomique** — l'API REST n'expose pas de transaction. Si un
+lot échoue, les précédents sont écrits et rattachés à une exécution `echec` ;
+`recoller_offres_orphelines` les récupère la nuit suivante.
 
 ### ⚠️ Le cron ne part jamais à l'heure — comportement établi, pas incident
 
-Trois nuits observées, deux déclenchements planifiés, **aucun à l'heure** :
-+10 h 32, puis +12 h 02. C'est un comportement **documenté** de GitHub Actions,
-plus fréquent sur dépôt public gratuit. La minute non ronde (23) était déjà une
-parade ; elle n'a pas suffi.
+Trois nuits observées, **aucun déclenchement à l'heure** : +10 h 32, puis +12 h 02.
+Comportement documenté de GitHub Actions, plus fréquent sur dépôt public gratuit. La
+minute non ronde (23) était déjà une parade ; elle n'a pas suffi.
 
-✅ **Les données sont robustes à ça, par conception** : la fenêtre de collecte part
-de la **dernière collecte réussie**, jamais de « hier ». Une nuit sautée est
-rattrapée par la suivante, qui collecte 48 h d'un coup. ⚠️ **Ce que ça coûte,
-c'est l'usage** : un cron qui tourne l'après-midi livre un écran vide le matin.
+✅ **Les données sont robustes à ça** : la fenêtre de collecte part de la **dernière
+collecte réussie**, jamais de « hier ». ⚠️ **Ce que ça coûte, c'est l'usage** : un cron qui
+tourne l'après-midi livre un écran vide le matin. ⚠️ **La parade n'est PAS un second
+cron** — il serait retardé pareil. C'est un déclencheur externe appelant l'API GitHub,
+**construit en phase 6** : le rebrancher sur la collecte est désormais un petit travail.
+⚠️ À surveiller : plusieurs nuits sautées font grossir le volume, et la **limite de 60** du
+workflow finirait par mordre vers 4 ou 5 nuits.
 
-⚠️ **À surveiller** : plusieurs nuits sautées d'affilée font grossir le volume, et
-la **limite de 60** du workflow finirait par mordre — vers 4 ou 5 nuits. Quand
-elle mord, `notation.py` avertit, et **les offres laissées ne repassent pas** en
-mode `--derniere-collecte`.
+### Les briques, en un coup d'œil
 
-⚠️ **La parade n'est PAS un second cron** : il serait retardé pareil, c'est la
-file d'attente qui décale. C'est un **déclencheur externe appelant l'API GitHub**
-avec un jeton restreint au seul droit de lancer un workflow — soit exactement le
-mécanisme prévu en **phase 6** pour le bouton « Enrichir ». Le construire avant,
-c'est le construire deux fois. ✅ **Rustine** : `gh workflow run` le matin.
-Récit de l'enquête : `docs/JOURNAL.md` § 27 août.
+| Brique | État |
+|---|---|
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte · `/` le compte rendu de la nuit · `/offres` (six filtres, trois classements, statuts, coup de cœur) · la fiche `/offres/[identifiant]` (statuts, note, coup de cœur, **bloc d'enrichissement**) · thème à trois états |
+| Supabase | Région Paris. **Cinq tables.** RLS activé sans politique **et** droits retirés à `anon`/`authenticated` — deux verrous indépendants |
+| Migrations | **10**, toutes appliquées. La 10ᵉ ajoute les trois tables d'enrichissement |
+| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris · **5 variables** (`JETON_GITHUB` reste à y poser) |
+| GitHub Actions | `collecte-nocturne.yml` (cron 02:23 UTC, collecte **et** notation) · **`enrichissement.yml`** (lancé par l'interface au clic) |
+| `pipeline/` | ⚠️ **Seul le CDI est collecté** (`TYPE_CONTRAT` dans `config.py`) |
+| Modules | `collecte.py` · `notation.py` · `salaire.py` · `employeur.py` · **`enrichissement.py`** · `criteres_pertinence.txt` |
+| `.venv/` | À la racine, `requirements.txt` versionné |
+| Tests | `npm run verifie` depuis `interface/` — lint, typecheck, **116 tests dans les deux fuseaux** |
 
 ## ⚠️ Neuf règles opposables, qui ne se déduisent d'aucun fichier
 
@@ -573,10 +522,15 @@ irréprochable a créé deux tables que le serveur ne pouvait pas lire. **Après
 migration : tenter de lire, d'écrire, et de violer chaque contrainte.** Procédure
 complète dans `docs/HEBERGEMENT.md`.
 
-**Deux tables sur quatre existent** : `executions_veille`, `offres`.
-`enrichissements` et `etapes_enrichissement` sont **reportées à la phase 6** —
-entorse assumée, validée en séance : leur forme dépend de ce que l'agent produira,
-et rien ne les alimente d'ici là.
+**Cinq tables** : `executions_veille`, `offres`, et depuis la migration 10
+`enrichissements`, `rubriques_enrichissement`, `etapes_enrichissement`.
+⚠️ **Le report de ces trois-là jusqu'en phase 6 a payé** : leur forme ne ressemble pas à
+ce qu'on aurait deviné en août — voir le préambule de la migration, qui porte les mesures
+du registre public qui l'ont dictée.
+⚠️ **Deux formes de stockage, délibérément** : l'ancrage vérifiable en colonnes TYPÉES
+(une date est une `date`, un CA un `bigint`, que le moteur peut refuser), les rubriques
+rédigées dans leur propre table avec leur marqueur. **L'absence de ligne veut dire
+« non disponible »** — cette chaîne ne s'écrit jamais en base.
 
 **Huit règles opposables, toutes déjà appliquées :**
 

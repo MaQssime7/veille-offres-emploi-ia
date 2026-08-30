@@ -6,6 +6,138 @@ tout l'historique est ici.
 
 ---
 
+## 30 août 2026 (soir) — La phase 6 s'ouvre : les tables, puis le tuyau
+
+Maxime demande à entamer la phase 6. Avant de proposer quoi que ce soit, deux
+vérifications, parce que le plan reposait sur des estimations de cadrage jamais
+confrontées au réel.
+
+**Le registre public rend plus que prévu, et moins que promis.** Interrogé sur cinq
+sociétés réelles, `recherche-entreprises.api.gouv.fr` donne bien le nom officiel, la date
+de création, la catégorie, la tranche d'effectif — et le chiffre d'affaires, que le PRD
+donnait pour largement absent. Mais il ne rend qu'**un seul exercice, le dernier
+déposé** : Capgemini 2024, Wavestone 2023, Dataiku 2018, OCTO 2016, Mirakl rien. Un CA
+sans son année n'est pas une imprécision, c'est un mensonge. Et la moitié de la fiche que
+Maxime décrit — site officiel, appartenance à un groupe, modèle économique — n'y figure
+pas du tout : le code NAF range Capgemini, Sopra Steria et OCTO dans la même case
+`62.02A`. Le rapprochement par nom, lui, est un pari : « Orion » rend 4 382 entreprises.
+
+Ces trois mesures ont commandé le schéma. L'ancrage vérifiable part en **colonnes
+typées** — une date est une `date`, un CA un `bigint`, et `chiffre_affaires_toujours_date`
+rend le couple montant/année indissociable. Les rubriques rédigées partent dans **leur
+propre table**, chacune avec son marqueur *vérifié* / *déduit*. Les deux formes coexistent
+parce que ce sont deux natures de données ; les mélanger aurait transformé une date en
+texte, ou un paragraphe en colonne.
+
+**Maxime a tranché deux choses que la mesure ne pouvait pas trancher.** L'évolution de
+l'effectif sur deux-trois ans n'existe nulle part gratuitement : elle sera approchée par
+deux points, la tranche INSEE vérifiée contre l'effectif annoncé sur le site, marqué
+déduit. Et la section « business » qu'il décrivait — clients, offre — reste en phase 7 :
+la coupure du plan tient.
+
+### La garde qui compte est un index, pas du code
+
+`enrichissements_un_seul_en_vol` interdit physiquement deux lignes `demande` ou
+`en_cours` sur la même offre. Deux requêtes à la même milliseconde : la seconde est
+refusée par Postgres avant d'atteindre la moindre ligne de TypeScript. Une vérification
+en code laisse toujours une fenêtre entre la lecture et l'écriture — et ici cette fenêtre
+coûte une facture, pas un doublon d'affichage. L'index est **partiel** : une fois
+l'enrichissement conclu, la ligne en sort et relancer redevient possible.
+
+Migration appliquée puis **éprouvée : 36 contrôles**, en passant par l'API REST avec la
+clé secrète — le chemin réel, pas psql en superutilisateur. Seize refus attendus, tous
+prononcés par le moteur, et les trois tables fermées à la clé publiable.
+
+### Le tuyau, prouvé pour zéro centime
+
+La tranche 6.2 livre tout le mécanisme sans appeler le modèle une seule fois : le clic
+ouvre une demande, l'interface appelle l'API GitHub, le workflow part, le script écrit des
+étapes de démonstration, et l'écran les voit arriver par sondage. Mesuré sur un vrai
+clic après déploiement : **agent démarré en 16 secondes, enrichissement conclu en 24**,
+là où le plan en alloue 300.
+
+Le sondage passe par une **action serveur** et non une route `/api`, pour une raison de
+sécurité : le proxy répond 401 à un POST d'action, là où il redirigerait un GET vers
+`/connexion` — le navigateur suivrait, recevrait du HTML, et le sondage échouerait sur une
+erreur de syntaxe JSON incompréhensible.
+
+### Trois défauts trouvés en regardant, pas en relisant
+
+**Une offre pouvait se bloquer pour toujours.** Le premier clic sans jeton GitHub
+affichait bien son message d'erreur, mais la ligne restait ouverte et l'index refusait
+toute nouvelle demande. La cause n'était pas celle qu'on devine : **Supabase est en avance
+de 184 ms sur la machine de développement**. `demande_a` venait de l'horloge de la base,
+`termine_a` de celle du serveur Next, et comme l'échec de lancement survient en quelques
+millisecondes, la fin tombait avant le début — la contrainte refusait la clôture, à juste
+titre. La leçon dépasse le cas : **deux horodatages comparés par une contrainte doivent
+venir de la même horloge.**
+
+**La liste d'étapes se lisait comme un texte tronqué.** À 375 px avec 40 étapes, la
+neuvième était tranchée à mi-hauteur sans rien pour dire qu'il y en avait trente et une
+autres — et pendant qu'un enrichissement tourne, on regardait le début d'une liste dont
+l'intérêt est la fin. Corrigé par un compte d'étapes et un suivi de la dernière arrivée.
+
+**Le lint a refusé une ref lue pendant le rendu**, à juste titre : la valeur peut changer
+sans déclencher de rendu, et l'affichage se met alors à dépendre d'une donnée que React ne
+suit pas. Un `useState` à initialiseur paresseux fait le même travail sans le défaut.
+
+### La revue a trouvé le trou qui comptait
+
+`/code-review` a rendu neuf points. Le plus grave : **l'enveloppe quotidienne, seule borne
+de dépense du système, avait un trou béant.** Les compteurs de tokens sont `NULL` tant
+qu'un enrichissement n'a pas conclu, donc la somme du jour comptait **zéro pour tout ce
+qui tournait** — et l'index unique ne sérialise que *par offre*. Rien n'empêchait de
+lancer dix enrichissements sur dix offres dans la même minute, tous lisant « 0 consommé ».
+À l'estimation du PRD : 1 à 1,5 million de tokens contre une enveloppe de 300 000.
+
+La correction : un enrichissement en vol **réserve** son coût présumé. Le calcul est sorti
+en fonction pure et couvert par huit tests, dont celui du trou — c'était le seul code qui
+protège d'une facture emballée, et il n'était éprouvé par rien. Vérifié ensuite comme le
+plan l'exige : requête d'action capturée, enveloppe remplie, requête **rejouée hors de
+tout composant React**. Réponse du serveur : « Plafond du jour atteint », aucune ligne
+créée.
+
+Les autres : `_tronquer` rendait 2006 caractères pour une limite de 2000 (bug dormant tant
+que rien ne bornait ces colonnes) · les tokens écrits `0` au lieu de `NULL` sur le chemin
+d'échec, ce qui faisait disparaître de l'enveloppe les échecs les plus coûteux · la
+clôture non conditionnelle, qui pouvait écraser une réussite par un « interrompu » ·
+l'enveloppe illisible affichée comme « plafond atteint », explication catégorique et
+inventée sur un aléa réseau de 20 ms · `text-accessibilite-barre`, un jeton qui n'existe
+dans aucun fichier de style, si bien que la coche de l'état « terminé » n'avait aucune
+couleur, sans erreur de compilation · et **PostgREST qui rend 409 pour deux violations
+opposées**, ce qui faisait répondre « déjà en cours » à une offre inexistante.
+
+Un point de la revue a été **infirmé par la mesure** : elle soupçonnait le sondage de
+rejouer tout le rendu de la fiche à chaque tour. Mesuré à 323 octets par tour contre
+89 112 pour le document — l'action de suivi n'appelle pas `revalidatePath`, donc Next n'a
+aucune route à réémettre.
+
+### Un défaut d'accessibilité signalé, pas corrigé
+
+En mode sombre, `text-muted-foreground` tombe à **2,75:1** sur les cartes et **3,18:1**
+sur le fond de page, contre 4,5 exigés par le plancher que le projet déclare opposable.
+Ce n'est pas le nouveau composant : « APPELLATION », « Pas encore notée » et « Entreprise
+non communiquée » sont dans le même cas et existaient avant. En clair, les mêmes textes
+sont à 5,9 — le défaut est propre au sombre. Non corrigé : éclaircir ce jeton touche tous
+les écrans, et corriger un seul élément aurait fabriqué une incohérence.
+
+### Ce que la conversation a appris sur le produit
+
+Maxime, voyant passer « 0,20 € à 1 € par enrichissement », a dit ce qui n'était écrit
+nulle part : **le projet est une pièce de démonstration, pas un outil qu'il utilisera.**
+L'enrichissement sert à montrer en entretien qu'il a branché un agent. Deux conséquences
+pour la suite : les libellés d'étapes doivent raconter le raisonnement plutôt que
+numéroter des phases, et une fiche qui déclare honnêtement son doute vaut mieux qu'une
+fiche complète obtenue en devinant — c'est précisément le point technique qu'il expliquera.
+
+Le chiffre, lui, était faux : une estimation de cadrage jamais vérifiée. Aux tarifs réels,
+un enrichissement coûte **7 à 20 centimes**, pas un euro. Il reste une estimation — le
+premier enrichissement réel donnera le chiffre, et re-réglera deux valeurs posées à
+l'aveugle : l'enveloppe de 300 000 tokens et la réservation de 150 000, probablement trois
+fois trop haute.
+
+---
+
 ## 30 août 2026 — Le coup de cœur, un marqueur et non un quatrième statut
 
 Maxime demande « un bouton à côté de à traiter et écarté, qui serait liké », pour
