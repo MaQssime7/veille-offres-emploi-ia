@@ -718,6 +718,78 @@ class Stockage:
             },
         )
 
+    def ecrire_rubriques(
+        self, enrichissement_id: int, rubriques: list[dict[str, Any]],
+    ) -> int:
+        """Écrit les rubriques RÉDIGÉES de la fiche, une ligne chacune.
+
+        Entre : la liste rendue par l'agent, déjà validée par l'outil.
+        Sort : le nombre de rubriques écrites.
+        Casse : lève ErreurStockage si la base refuse.
+
+        ⚠️ **Une rubrique vide ne s'écrit PAS, elle s'omet.** C'est la règle du
+        schéma, et elle a une conséquence qu'on perd de vue : « non disponible »
+        ne s'écrit jamais en base. Écrire cette chaîne rendrait impossible de
+        distinguer une information manquante d'une information dont le contenu
+        est « non disponible » — et de compter ce que l'agent trouve vraiment.
+        C'est l'affichage qui rend l'absence en toutes lettres.
+
+        ⚠️ **La troncature est ici, pas seulement dans la contrainte.** La base
+        refuse au-delà de 4 000 caractères ; laisser l'erreur remonter ferait
+        perdre TOUTE la fiche parce qu'une rubrique est bavarde. Même
+        raisonnement que pour les libellés d'étape : on coupe, la fiche
+        s'affiche, le reste survit.
+
+        ⚠️ **Un seul appel pour toutes les rubriques**, et c'est délibéré : elles
+        partent alors dans la même requête, donc la même transaction. Une boucle
+        d'appels laisserait une fiche à moitié écrite si le réseau tombait au
+        milieu — la moitié d'une fiche est pire que pas de fiche, parce qu'elle
+        ressemble à une fiche complète dont l'entreprise n'aurait rien à dire.
+        """
+        lignes = []
+        for rang, rubrique in enumerate(rubriques):
+            valeur = (rubrique.get("valeur") or "").strip()
+            if not valeur:
+                continue
+            lignes.append({
+                "enrichissement_id": enrichissement_id,
+                "rubrique": rubrique["rubrique"],
+                "valeur": valeur[:4000],
+                "marqueur": rubrique.get("marqueur") or "deduit",
+                "rang": rubrique.get("rang", rang),
+            })
+        if not lignes:
+            return 0
+        self._requete(
+            "POST", "/rubriques_enrichissement",
+            operation=f"écriture des rubriques de {enrichissement_id}",
+            headers={"Prefer": "return=minimal"},
+            json=lignes,
+        )
+        return len(lignes)
+
+    def supprimer_rubriques(self, enrichissement_id: int) -> None:
+        """Retire les rubriques d'une tentative dont la conclusion n'a pas pris.
+
+        ⚠️ **Elle répare une course, pas une faute de frappe.** Les rubriques
+        s'écrivent AVANT la conclusion, pour qu'aucun sondage ne puisse voir une
+        fiche annoncée terminée et vide. Mais entre les deux, l'interface peut
+        avoir refermé la tentative pour péremption : le `PATCH` de conclusion ne
+        touche alors aucune ligne, et les rubriques restent accrochées à un
+        enrichissement en échec dont l'ancrage est vide. Elles ne s'afficheraient
+        pas — l'écran ne lit que les tentatives réussies — mais elles
+        fausseraient tout décompte de ce que l'agent produit vraiment.
+
+        ⚠️ **Le filtre est obligatoire, comme pour tout `PATCH`.** Un `DELETE`
+        sans filtre viderait la table entière sans que PostgREST bronche.
+        """
+        self._requete(
+            "DELETE",
+            f"/rubriques_enrichissement?enrichissement_id=eq.{enrichissement_id}",
+            operation=f"retrait des rubriques de {enrichissement_id}",
+            headers={"Prefer": "return=minimal"},
+        )
+
     def conclure_enrichissement(
         self, enrichissement_id: int, *, issue: str,
         motif_echec: str | None = None, modele: str | None = None,
@@ -781,12 +853,27 @@ class Stockage:
 
         ⚠️ **Liste de colonnes explicite** : `charge_brute` fait plusieurs
         kilo-octets par offre et n'est jamais lue pour travailler.
+
+        ⚠️ **`entreprise_identifiee` compte plus que `entreprise_nom`**, et les
+        deux sont lues parce qu'elles ne disent pas la même chose. La seconde
+        vient de France Travail : absente sur 39 % des offres, intermédiaire
+        dans 36 % des cas, parfois fausse. La première a été extraite du TEXTE
+        par le modèle de notation puis vérifiée mécaniquement contre ce texte.
+        `entreprise_intermediaire` dit laquelle des deux on regarde — c'est ce
+        qui permet à l'agent de ne pas se rabattre sur le cabinet de
+        recrutement, l'erreur la plus trompeuse qu'il puisse commettre.
+
+        ⚠️ **`contact_nom` n'est PAS lu, et son absence est une décision.** Il
+        est en base pour que Maxime puisse candidater, pas pour entrer dans le
+        contexte d'un modèle : c'est une personne physique nommée, et rien dans
+        l'identification d'une entreprise n'en a besoin.
         """
         lignes = self._requete(
             "GET",
             f"/enrichissements?id=eq.{enrichissement_id}"
             "&select=id,issue,offre_identifiant,"
-            "offres(identifiant,intitule,entreprise_nom,description,lieu_libelle)",
+            "offres(identifiant,intitule,entreprise_nom,entreprise_identifiee,"
+            "entreprise_intermediaire,description,lieu_libelle)",
             operation=f"lecture de l'enrichissement {enrichissement_id}",
         ) or []
         return lignes[0] if lignes else None

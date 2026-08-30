@@ -49,13 +49,25 @@ jobs:
     name: Enrichir une offre
     runs-on: ubuntu-latest
 
-    # ⚠️ CINQ minutes, et c'est la MOITIÉ du seuil de péremption de l'interface
-    # (`PEREMPTION_MINUTES` dans `interface/lib/enrichissement.ts`). Le rapport
-    # n'est pas décoratif : le seuil doit laisser passer le pire cas normal, y
-    # compris l'attente d'une machine chez GitHub. Les rapprocher ferait déclarer
-    # morts des enrichissements qui tournent encore ; les éloigner ferait pulser
-    # l'écran longtemps après la fin réelle.
-    timeout-minutes: 5
+    # ⚠️ HUIT minutes, et ce timeout n'est QU'UN FILET — c'est le changement le
+    # plus important de la tranche 6.3, et il se lit à l'envers de l'intuition.
+    #
+    # La borne qui compte est désormais `DUREE_MAX_SECONDES` dans
+    # `pipeline/enrichissement.py` (240 s) : à son expiration, l'agent s'arrête
+    # et le script ÉCRIT ce qu'il avait trouvé. Un job tué par GitHub, lui, ne
+    # conclut rien — la ligne reste `en_cours`, l'écran pulse jusqu'à la
+    # péremption, et les tokens déjà brûlés sont perdus pour l'enveloppe du
+    # jour. Le filet doit donc rester NETTEMENT au-dessus de la borne interne,
+    # sans quoi c'est lui qui mord et on perd la conclusion propre.
+    #
+    # Pourquoi 8 et non 5 : l'installation des dépendances pèse maintenant
+    # ~190 Mo (le SDK embarque son binaire Claude Code), ce qui mange une part
+    # du budget avant que l'agent démarre. 240 s d'agent + installation + marge
+    # tiennent dans 8 min, et restent sous les 10 min de `PEREMPTION_MINUTES`
+    # (`interface/lib/enrichissement.ts`) — le seuil au-delà duquel l'interface
+    # déclare la tentative morte. Dépasser 10 ferait conclure un enrichissement
+    # que l'écran a déjà annoncé perdu.
+    timeout-minutes: 8
 
     steps:
       - name: Récupérer le code
@@ -74,6 +86,17 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          # ⚠️ ENTRÉE LE 30 AOÛT 2026 AVEC L'AGENT RÉEL (tranche 6.3). Ce
+          # workflow détient désormais une clé FACTURÉE : qui peut le lancer
+          # peut faire dépenser. Deux conséquences opposables :
+          #   · `JETON_GITHUB`, côté interface, doit rester à portée fine, sur
+          #     ce seul dépôt, avec la seule permission « Actions : write ».
+          #     Un jeton large offrirait cette clé à qui le trouverait.
+          #   · L'agent est borné trois fois (tours, dollars, durée) dans
+          #     `pipeline/enrichissement.py`, et l'enveloppe quotidienne borne
+          #     l'ensemble côté interface. Aucune de ces bornes n'est
+          #     décorative.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           # ⚠️ L'entrée passe par l'ENVIRONNEMENT, jamais interpolée dans la
           # ligne de commande. `run: python … --id ${{ inputs.… }}` ferait
           # exécuter par le shell tout ce qu'un déclencheur y écrirait — le

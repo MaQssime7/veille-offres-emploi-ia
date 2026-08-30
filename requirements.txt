@@ -4,3 +4,9 @@ requests==2.34.2       # appels HTTP : France Travail et l'API REST de Supabase
 python-dotenv==1.2.3   # lecture du .env en local (en CI, les secrets sont déjà dans l'environnement)
 pglast==8.4            # validation des migrations SQL avec l'analyseur officiel de PostgreSQL
 anthropic==1.0.0       # notation des offres : API Messages, cache de prompt, Batches
+
+# Enrichissement : la boucle d'agent, ses outils, ses permissions.
+# ⚠️ Il EMBARQUE son propre binaire Claude Code (197 Mo) : aucun Node à
+# installer sur le runner, mais l'installation pèse ~190 Mo — c'est ce qui a
+# fait passer le timeout du workflow d'enrichissement de 5 à 8 minutes.
+claude-agent-sdk==0.2.148

@@ -245,13 +245,38 @@ class ConfigEnrichissement:
 def charger_enrichissement() -> ConfigEnrichissement:
     """Valide uniquement ce que l'enrichissement utilise.
 
-    ⚠️ **Ni France Travail, ni Anthropic pour l'instant.** Même raisonnement que
-    `charger_notation()` : chaque étape ne porte que ses propres secrets, pour
-    qu'un job n'expose jamais une clé dont il n'a pas l'usage. La clé Anthropic
-    s'ajoutera ici quand l'agent arrivera — la refuser tant qu'aucun appel n'est
-    fait évite de la poser dans un workflow qui n'en a pas besoin.
+    ⚠️ **La clé Anthropic est entrée ici le 30 août 2026, avec l'agent réel
+    (tranche 6.3).** Jusque-là ce job ne portait que Supabase, et la phrase qui
+    tenait cette place disait « la refuser tant qu'aucun appel n'est fait évite
+    de la poser dans un workflow qui n'en a pas besoin ». Le besoin existe
+    désormais, et la contrepartie doit être dite : **le workflow
+    d'enrichissement détient maintenant une clé facturée.** Qui peut le lancer
+    peut faire dépenser. C'est ce qui rend `JETON_GITHUB` critique — portée
+    fine, ce seul dépôt, « Actions : write » et rien d'autre — et c'est la
+    raison d'être de l'enveloppe quotidienne.
+
+    ⚠️ Toujours pas France Travail : l'agent ne parle jamais à cette API. Il lit
+    l'annonce **en base**, où la collecte l'a déjà écartée de ses données
+    personnelles. Ajouter ces identifiants ici exposerait deux clés de plus pour
+    un besoin qui n'existe pas.
+
+    La clé n'est pas rendue dans l'objet : le SDK lit `ANTHROPIC_API_KEY` dans
+    l'environnement tout seul. On vérifie seulement qu'elle est là, **au
+    démarrage**, plutôt que de laisser le premier appel échouer une fois la
+    tentative réclamée et les premières étapes écrites.
+
+    ⚠️ **Ce contrôle n'évite PAS la péremption, et la version précédente de
+    cette phrase le prétendait — relevé en revue le 30 août 2026.** Quand cette
+    fonction lève, rien n'a encore été construit : on n'a pas les identifiants
+    Supabase, donc aucun moyen de refermer la ligne, qui reste en `demande` et
+    fait pulser l'écran les mêmes dix minutes qu'un échec tardif. Ce qu'on
+    économise est réel mais plus modeste : un enrichissement à moitié écrit, des
+    étapes qui s'arrêtent net sans conclusion, et un appel au modèle payé pour
+    rien. La péremption, elle, reste le seul filet — et c'est bien pour ça
+    qu'elle existe.
     """
     load_dotenv()
+    _lire_variable("ANTHROPIC_API_KEY")
     return ConfigEnrichissement(
         supabase_url=_lire_variable("SUPABASE_URL").rstrip("/"),
         supabase_secret_key=_lire_variable("SUPABASE_SECRET_KEY"),
