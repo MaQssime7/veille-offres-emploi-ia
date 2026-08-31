@@ -35,7 +35,12 @@ const buttonVariants = cva(
         // focus est traité ici alors qu'il l'est plus haut.
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30",
-        link: "text-primary underline-offset-4 hover:underline",
+        // ⚠️ ADAPTÉ (projet) — `text-primary-texte` et non `text-primary`.
+        // Le lavande `--primary` pèse 1,99:1 sur une carte blanche : c'est un
+        // fond, pas une couleur de texte. Ce variant n'est utilisé nulle part
+        // aujourd'hui, donc le défaut y était DORMANT — il se serait réveillé
+        // au premier `variant="link"` posé, sans que rien ne le signale.
+        link: "text-primary-texte underline-offset-4 hover:underline",
       },
       size: {
         default:

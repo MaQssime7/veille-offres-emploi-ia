@@ -97,6 +97,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-texte: var(--primary-texte);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -171,6 +172,22 @@
   /* Le violet est l'action principale du système. Texte foncé dessus : 6,10:1. */
   --primary: var(--color-purple);
   --primary-foreground: var(--on-accent);
+
+  /* ⚠️ **`--primary` ne peut PAS servir de couleur de texte, et le défaut
+     était DORMANT depuis la tranche 6.4.** Mesuré au canvas le 31 août
+     2026 : le lavande `#c9a8ff` pèse **1,99:1 sur une carte blanche**,
+     contre 4,5 exigés — le lien « Site officiel » de la fiche
+     d'enrichissement était illisible depuis sa création, et personne ne
+     l'avait mesuré parce qu'un lien ne ressemble pas à un cas limite.
+     C'est le piège central du système repris à l'envers : **les pastels
+     de 1st-Pouf sont faits pour porter de l'encre foncée, jamais pour en
+     être une.**
+
+     Même patron que `--interet-texte` et `--success-texte` : une famille,
+     deux jetons — le pastel pour les fonds, la variante assombrie pour le
+     mot. ⚠️ **`--primary` n'est PAS modifié** : il reste le fond de bouton
+     qu'il a toujours été, et aucun autre écran ne bouge. */
+  --primary-texte: #7c3aed; /* 5,70:1 sur la carte blanche — mesuré */
 
   /* Surfaces secondaires : le fond de page sur une carte blanche. */
   --secondary: var(--color-bg);
@@ -408,6 +425,12 @@
   --signal-fort: var(--color-yellow); /* 15,01:1 */
   --interet-barre: var(--color-blue); /* 10,85:1 */
   --interet-texte: var(--color-blue);
+  /* ⚠️ En sombre le violet passe NU, comme le bleu et la menthe : le
+     problème des pastels illisibles est propre au mode CLAIR, où
+     assombrir est la seule direction libre. Y mettre le `#7c3aed` du
+     mode clair ferait tomber le lien à moins de 2:1 sur la carte sombre —
+     l'erreur exactement symétrique. */
+  --primary-texte: var(--color-purple);
   --success-barre: var(--color-mint); /* 14,31:1 */
   --success-texte: var(--color-mint);
   /* ⚠️ En sombre le pastel passe NU — 9,31:1 sur la carte, 10,77:1 sur le fond
