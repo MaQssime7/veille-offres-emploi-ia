@@ -4,8 +4,6 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { LogOut } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-
 /**
  * Le formulaire de déconnexion, côté navigateur.
  *
@@ -58,16 +56,30 @@ export function FormulaireDeconnexion({
 
   return (
     <form action={envoyer}>
-      <Button
+      {/* ⚠️ **Une ICÔNE SEULE, à toutes les largeurs** — décision de Maxime,
+          31 août 2026, après avoir vu la barre : « SE DÉCONNECTER » en mono
+          majuscules pesait plus lourd que les deux onglets réunis et donnait à
+          la sortie le poids visuel d'une destination.
+
+          ⚠️ **Le libellé n'est pas perdu, il change de canal** : `aria-label` le
+          dit aux lecteurs d'écran, `title` l'affiche au survol. Une icône seule
+          sans l'un des deux serait une commande muette — et celle-ci fait sortir
+          du site.
+
+          ⚠️ **Même habit rond que le bouton de thème**, et ce n'est pas
+          cosmétique : deux boutons voisins de formes différentes se lisent comme
+          deux natures différentes. `<Button>` de shadcn est abandonné ici pour
+          cette raison — sa variante `ghost` est rectangulaire et son `size="sm"`
+          impose une hauteur qui ne cadre pas avec le rond de 36 px d'à côté. */}
+      <button
         type="submit"
-        variant="ghost"
-        size="sm"
         disabled={enCours}
-        className="libelle-mono"
+        aria-label={enCours ? "Déconnexion en cours" : "Se déconnecter"}
+        title="Se déconnecter"
+        className="cushion-control inline-flex shrink-0 items-center justify-center rounded-full border border-transparent bg-card p-2 text-foreground transition-colors hover:bg-accent focus-produit disabled:opacity-60"
       >
-        <LogOut className="size-3.5" aria-hidden="true" />
-        {enCours ? "Déconnexion…" : "Se déconnecter"}
-      </Button>
+        <LogOut className="size-4" aria-hidden="true" />
+      </button>
     </form>
   );
 }
