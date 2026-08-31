@@ -845,7 +845,7 @@ régressions tant qu'il n'y a pas de tests automatisés.
 - [x] **Vérifier que le secret est masqué dans les journaux PUBLICS** — `ANTHROPIC_API_KEY: ***` dans la sortie du runner
 - [x] **Vérifier que `--derniere-collecte` désigne la collecte qui vient de tourner** — journal : « Notation restreinte à la collecte **#48** », et non #43 qui portait 146 offres non notées. ⚠️ C'est le parcours qui attrape le risque à 90 centimes
 - [x] **Vérifier qu'une notation sans rien à faire n'écrit AUCUNE ligne d'exécution** — `offres_a_noter()` rend une liste vide et le module sort *avant* `ouvrir_execution()`. Une table d'exécutions polluée de lignes vides fausserait l'écran de suivi d'exploitation
-- [ ] ⚠️ **NON VÉRIFIÉ : l'appel payant depuis le runner.** La collecte de 22 h 42 a ramené **0 offre nouvelle** (la précédente datait de 20 h 32), donc la notation n'avait rien à noter. Le chemin réseau vers `api.anthropic.com` depuis GitHub Actions n'a jamais été exercé.
+- [ ] ⚠️ **PARTIELLEMENT VÉRIFIÉ : l'appel payant depuis le runner — et le trou a RÉTRÉCI sans qu'on le note.** ✅ Le chemin réseau vers `api.anthropic.com` depuis GitHub Actions **est désormais prouvé**, par les enrichissements de la phase 6 qui tournent sur le runner et appellent l'API. Le secret `ANTHROPIC_API_KEY` y est donc lisible et le réseau ouvert. ⚠️ **Ce qui reste non exercé est le code de NOTATION lui-même** en conditions de runner — API Messages et Batches, pas le SDK Agent. Vérifié le 31 août : le cron de 08 h 44 a bien lancé l'étape « Noter », qui s'est arrêtée sur « aucune offre en attente ». **Le seul déclencheur est une nuit de collecte non vide** — rien à construire, seulement à attendre.
       ⚠️ **Et il ne peut pas être forcé** : la collecte ne rattache à son exécution que les offres **nouvelles**, donc un rattrapage manuel sur 30 jours ne ramène que des offres déjà en base, dédupliquées, non rattachées — toujours zéro à noter. Ce parcours se fermera de lui-même au premier cron qui trouve des offres.
       ✅ Ce qui est établi malgré tout : `configuration.charger_notation()` **vérifie explicitement** la présence de `ANTHROPIC_API_KEY` avant toute lecture de base. Le job étant vert, la clé est lisible depuis le runner — ce n'est pas une supposition
 
@@ -922,7 +922,7 @@ régressions tant qu'il n'y a pas de tests automatisés.
 **Après la phase 7**
 
 - [ ] Lire une fiche complète et **distinguer d'un coup d'œil ce qui est vérifié de ce qui est déduit**
-- [ ] Ouvrir une source citée et vérifier qu'elle dit bien ce que la fiche affirme
+- [x] **Ouvrir une source citée et vérifier qu'elle dit bien ce que la fiche affirme** — 31 août 2026 sur la fiche Wavestone : la page citée porte « conseil » ×24, « Copilot » ×5, « IA générative » ×2, « bourse » ×1. ⚠️ **Et ce qu'elle ne portait PAS — `CTO.ai`, `CAC 40`, `MLOps` — a été retrouvé dans le texte de l'annonce**, donc rien n'est halluciné
 
 **À chaque mise en ligne**
 
