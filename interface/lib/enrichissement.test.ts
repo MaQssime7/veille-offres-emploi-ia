@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   calculerConsommation,
+  detaillerConsommation,
   calculerEtatEnrichissement,
   COUT_PRESUME_TOKENS,
   ENVELOPPE_QUOTIDIENNE_TOKENS,
@@ -94,7 +95,11 @@ describe("calculerEtatEnrichissement", () => {
   });
 
   it("garde les étapes déjà franchies sur un échec — elles disent où ça s'est arrêté", () => {
-    const etapes = [{ rang: 0, libelle: "Demande reçue", ecriteA: REFERENCE.toISOString() }];
+    const etapes = [
+      // ⚠️ `url: null` et non un oubli : « Demande reçue » est écrite par
+      // l'interface au clic, avant qu'aucune page n'ait été ouverte.
+      { rang: 0, libelle: "Demande reçue", ecriteA: REFERENCE.toISOString(), url: null },
+    ];
     const etat = calculerEtatEnrichissement(
       tentative({ issue: "echec", termineA: REFERENCE.toISOString(), motifEchec: "Panne." }),
       etapes,
@@ -212,5 +217,90 @@ describe("calculerConsommation — la seule borne de dépense du système", () =
       REFERENCE,
     );
     assert.equal(total, 42);
+  });
+});
+
+
+describe("detaillerConsommation — ce que la jauge montre, et pourquoi en deux parts", () => {
+  /**
+   * ⚠️ **Ces tests gardent une propriété plus importante que chaque cas pris
+   * séparément : le total de `detaillerConsommation` est EXACTEMENT celui que
+   * la garde compare au plafond.** La jauge et la garde lisent la même règle ;
+   * le jour où quelqu'un les séparerait en deux sommes indépendantes, l'écran
+   * pourrait afficher 40 % pendant que le bouton refuse de partir.
+   */
+  const ligne = (partiel: Partial<LigneConsommation> = {}): LigneConsommation => ({
+    issue: "reussite",
+    demande_a: REFERENCE.toISOString(),
+    tokens_entree: null,
+    tokens_sortie: null,
+    tokens_cache_lu: null,
+    tokens_cache_ecrit: null,
+    ...partiel,
+  });
+
+  it("rend trois zéros sur une journée vide", () => {
+    assert.deepEqual(detaillerConsommation([], REFERENCE), {
+      reels: 0,
+      reserves: 0,
+      total: 0,
+    });
+  });
+
+  it("range une tentative conclue dans « réels », jamais dans « réservés »", () => {
+    const detail = detaillerConsommation(
+      [ligne({ tokens_entree: 1000, tokens_sortie: 200, tokens_cache_lu: 5000, tokens_cache_ecrit: 300 })],
+      REFERENCE,
+    );
+    assert.deepEqual(detail, { reels: 6500, reserves: 0, total: 6500 });
+  });
+
+  it("range un enrichissement EN VOL dans « réservés », jamais dans « réels »", () => {
+    // C'est le cœur du problème d'affichage : au clic, rien n'est encore
+    // dépensé. Une jauge qui compterait cette réserve en dépense réelle
+    // bondirait à 50 % sans qu'un seul token ait été facturé.
+    const detail = detaillerConsommation([ligne({ issue: "demande" })], REFERENCE);
+    assert.deepEqual(detail, {
+      reels: 0,
+      reserves: COUT_PRESUME_TOKENS,
+      total: COUT_PRESUME_TOKENS,
+    });
+  });
+
+  it("sépare les deux parts quand la journée mélange conclus et en vol", () => {
+    const detail = detaillerConsommation(
+      [
+        ligne({ tokens_entree: 12_000, tokens_sortie: 3_000 }),
+        ligne({ issue: "en_cours" }),
+      ],
+      REFERENCE,
+    );
+    assert.deepEqual(detail, {
+      reels: 15_000,
+      reserves: COUT_PRESUME_TOKENS,
+      total: 15_000 + COUT_PRESUME_TOKENS,
+    });
+  });
+
+  it("ne réserve rien pour un en-vol PÉRIMÉ — il est mort, pas lent", () => {
+    const trop = new Date(REFERENCE.getTime() + (PEREMPTION_MINUTES + 1) * 60_000);
+    const detail = detaillerConsommation([ligne({ issue: "demande" })], trop);
+    assert.deepEqual(detail, { reels: 0, reserves: 0, total: 0 });
+  });
+
+  it("rend le MÊME total que calculerConsommation, sur les mêmes lignes", () => {
+    // ⚠️ **La propriété qui compte, et la seule qui ne se voit pas à l'écran.**
+    // Si ces deux nombres divergeaient, la jauge et la garde raconteraient deux
+    // histoires différentes sans qu'aucune erreur ne soit levée.
+    const lignes = [
+      ligne({ tokens_entree: 8_000, tokens_cache_lu: 40_000 }),
+      ligne({ issue: "en_cours" }),
+      ligne({ issue: "echec", tokens_sortie: 120 }),
+      ligne({ issue: "peut_etre", tokens_entree: 7 }),
+    ];
+    assert.equal(
+      detaillerConsommation(lignes, REFERENCE).total,
+      calculerConsommation(lignes, REFERENCE),
+    );
   });
 });

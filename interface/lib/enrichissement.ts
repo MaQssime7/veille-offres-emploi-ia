@@ -1,10 +1,15 @@
 /**
  * L'enrichissement : constantes et calculs, purs.
  *
- * ⚠️ **Pas d'`import "server-only"` ici, et c'est délibéré** — c'est le neuvième
- * module de `lib/` dans ce cas. Le bloc d'enrichissement est un composant
- * client : il sonde une route toutes les 1,5 s et redécide à chaque réponse ce
- * qu'il affiche. Il lui faut donc les mêmes constantes et le même calcul d'état
+ * ⚠️ **Pas d'`import "server-only"` ici, et c'est délibéré** — c'est l'un des
+ * modules de `lib/` dans ce cas. **Les compter ici serait une erreur** : ce
+ * fichier a annoncé « le neuvième » jusqu'au 31 août 2026 alors qu'ils étaient
+ * dix, et un chiffre faux dans les DEUX sens est piégeux — qui vérifie la règle
+ * en comptant croit qu'un module a perdu son `server-only`. La liste vit dans
+ * le `CLAUDE.md`, et elle se recompte, elle ne se recopie pas.
+ *
+ * Le bloc d'enrichissement est un composant client : il sonde une route toutes
+ * les 1,5 s et redécide à chaque réponse ce qu'il affiche. Il lui faut donc les mêmes constantes et le même calcul d'état
  * que le serveur. S'il allait les chercher dans le module qui lit la base, il
  * tirerait la clé secrète de Supabase dans le graphe du navigateur.
  *
@@ -189,6 +194,9 @@ export const TRANCHES_EFFECTIF: Record<string, string> = {
  */
 export const TITRES_RUBRIQUES: Record<string, string> = {
   modele_economique: "Modèle économique",
+  clients: "Clients",
+  offre_commerciale: "Offre commerciale",
+  activite_ia: "Ce qu’elle fait en IA",
 };
 
 /**
@@ -206,11 +214,24 @@ export const DITS_APPARIEMENT: Record<Appariement, string> = {
   intermediaire: "Annonce d’un intermédiaire",
 };
 
-/** Une étape franchie. */
+/**
+ * Une étape franchie, et l'adresse lue s'il y en a une.
+ *
+ * ⚠️ **`url` à `null` ne veut pas dire « adresse inconnue »**, mais « cette
+ * étape n'a consulté aucune page » — un appel au registre, le dépôt de la
+ * fiche. C'est ce qui permet de composer la liste des sources d'US-21 sans la
+ * stocker à part : les sources sont les étapes dont l'`url` n'est pas nulle.
+ *
+ * ⚠️ **`libelle` n'est PAS `url` mis en forme, et l'inverse est faux aussi.**
+ * Le libellé perd le protocole, le `www.` et tout chemin au-delà de
+ * 60 caractères, pour tenir sur une ligne. Les deux se lisent, aucun ne se
+ * recalcule à partir de l'autre.
+ */
 export type Etape = {
   rang: number;
   libelle: string;
   ecriteA: string;
+  url: string | null;
 };
 
 /**
@@ -368,27 +389,58 @@ export function calculerConsommation(
   lignes: LigneConsommation[],
   maintenant: Date,
 ): number {
-  return lignes.reduce((total, ligne) => {
+  return detaillerConsommation(lignes, maintenant).total;
+}
+
+/**
+ * La même consommation, mais SÉPARÉE en dépensé et réservé.
+ *
+ * Entre : les lignes du jour, l'heure de référence.
+ * Sort : `reels` (ce qui est facturé et conclu), `reserves` (ce que les
+ * enrichissements en vol immobilisent), et leur `total` — celui que la garde
+ * compare au plafond.
+ * Casse : ne lève pas, exactement comme `calculerConsommation`.
+ *
+ * ⚠️ **C'EST LA MÊME RÈGLE, VUE DE DEUX FAÇONS — jamais deux règles.**
+ * `calculerConsommation` appelle celle-ci et n'en garde que le total : il ne
+ * peut donc pas exister de désaccord entre ce que la garde refuse et ce que la
+ * jauge montre. Deux fonctions qui somment chacune de leur côté auraient
+ * divergé au premier cas limite ajouté d'un seul côté.
+ *
+ * ⚠️ **Le partage existe parce qu'un seul nombre MENTIRAIT à l'écran.** La
+ * réservation de `COUT_PRESUME_TOKENS` bouche un trou de concurrence réel — dix
+ * enrichissements lancés dans la même minute lisaient tous « 0 consommé » — mais
+ * elle fait bondir le total de 150 000 au clic, avant que le premier token soit
+ * dépensé. Une jauge nourrie du seul total sauterait à 50 % puis redescendrait :
+ * ça se lit comme un défaut, alors que le chiffre est vrai. Montrer les deux
+ * parts est la seule façon d'être à la fois exact et lisible.
+ */
+export function detaillerConsommation(
+  lignes: LigneConsommation[],
+  maintenant: Date,
+): { reels: number; reserves: number; total: number } {
+  let reels = 0;
+  let reserves = 0;
+
+  for (const ligne of lignes) {
     if (estIssue(ligne.issue) && estEnVol(ligne.issue)) {
       // Un en-vol PÉRIMÉ ne réserve rien : il est mort, l'écran l'affiche déjà
       // comme un échec, et le compter empêcherait de relancer toute la journée.
-      return (
-        total +
-        (estPerime({ issue: ligne.issue, demandeA: ligne.demande_a }, maintenant)
-          ? 0
-          : COUT_PRESUME_TOKENS)
-      );
+      if (!estPerime({ issue: ligne.issue, demandeA: ligne.demande_a }, maintenant)) {
+        reserves += COUT_PRESUME_TOKENS;
+      }
+      continue;
     }
     // ⚠️ `?? 0` sur chaque colonne : les compteurs sont `NULL` tant qu'un
     // enrichissement n'a pas conclu. `undefined + 3` vaut `NaN`, et un `NaN`
     // comparé à un plafond est toujours faux — l'enveloppe s'ouvrirait en grand
     // sans le moindre message.
-    return (
-      total +
+    reels +=
       (ligne.tokens_entree ?? 0) +
       (ligne.tokens_sortie ?? 0) +
       (ligne.tokens_cache_lu ?? 0) +
-      (ligne.tokens_cache_ecrit ?? 0)
-    );
-  }, 0);
+      (ligne.tokens_cache_ecrit ?? 0);
+  }
+
+  return { reels, reserves, total: reels + reserves };
 }

@@ -13,7 +13,7 @@ import "server-only";
  */
 
 import {
-  calculerConsommation,
+  detaillerConsommation,
   ENVELOPPE_QUOTIDIENNE_TOKENS,
   MOTIF_INTERROMPU,
   estAppariement,
@@ -41,7 +41,7 @@ const COLONNES_ENRICHISSEMENT =
   "entreprise_creee_le,entreprise_tranche_effectif," +
   "entreprise_tranche_effectif_annee,chiffre_affaires,chiffre_affaires_annee," +
   "entreprise_site,entreprise_site_marqueur";
-const COLONNES_ETAPE = "rang,libelle,ecrite_a";
+const COLONNES_ETAPE = "rang,libelle,ecrite_a,url";
 const COLONNES_RUBRIQUE = "rubrique,valeur,marqueur,rang";
 const COLONNES_TOKENS =
   "tokens_entree,tokens_sortie,tokens_cache_lu,tokens_cache_ecrit";
@@ -65,7 +65,13 @@ type LigneEnrichissement = {
   entreprise_site_marqueur: string | null;
 };
 
-type LigneEtape = { rang: number; libelle: string; ecrite_a: string };
+type LigneEtape = {
+  rang: number;
+  libelle: string;
+  ecrite_a: string;
+  /** `null` = cette étape n'a lu aucune page. Voir le type `Etape`. */
+  url: string | null;
+};
 
 type LigneRubrique = {
   rubrique: string;
@@ -231,12 +237,39 @@ export async function lireDernierEnrichissement(
       rang: e.rang,
       libelle: e.libelle,
       ecriteA: e.ecrite_a,
+      // ⚠️ `?? null` et non `e.url` tout court — mais **pas pour la raison que
+      // ce commentaire donnait avant la revue du 31 août 2026.** Il invoquait
+      // les étapes antérieures à la migration 11, en affirmant que PostgREST
+      // rendrait `undefined` pour elles : c'est faux, et le raisonnement était
+      // même impossible. Soit la colonne existe, et les anciennes lignes valent
+      // `null` comme n'importe quelle colonne ajoutée sans défaut ; soit elle
+      // n'existe pas, et c'est la requête ENTIÈRE qui échoue en 400 — il n'y a
+      // pas d'état intermédiaire où une ligne arriverait sans son champ.
+      //
+      // La vraie raison est plus modeste et suffit : `LigneEtape` décrit ce
+      // qu'on ESPÈRE recevoir, pas ce qui arrive. Le type promet
+      // `string | null` au reste de l'application, et cette normalisation est
+      // le seul endroit qui le garantisse.
+      url: e.url ?? null,
     })),
   };
 }
 
 export type EtatEnveloppe = {
   consommes: number;
+  /**
+   * La part de `consommes` qui a été RÉELLEMENT facturée.
+   *
+   * ⚠️ **`consommes` n'est pas une dépense, c'est une dépense plus une
+   * réservation.** Un enrichissement en vol immobilise `COUT_PRESUME_TOKENS`
+   * avant d'avoir dépensé quoi que ce soit — sans quoi dix lancés dans la même
+   * minute liraient tous « 0 consommé ». La garde doit regarder `consommes` ;
+   * la jauge, elle, montre les deux parts, sinon elle bondit de 50 % au clic
+   * pour redescendre à la conclusion.
+   */
+  reels: number;
+  /** Ce que les enrichissements en vol immobilisent, non encore dépensé. */
+  reserves: number;
   plafond: number;
   reste: number;
   depassee: boolean;
@@ -291,6 +324,8 @@ export async function lireEnveloppeDuJour(maintenant: Date): Promise<EtatEnvelop
     // d'affirmer que le plafond est atteint.
     return {
       consommes: 0,
+      reels: 0,
+      reserves: 0,
       plafond: ENVELOPPE_QUOTIDIENNE_TOKENS,
       reste: 0,
       depassee: true,
@@ -306,13 +341,22 @@ export async function lireEnveloppeDuJour(maintenant: Date): Promise<EtatEnvelop
   // donc éprouvé par `enrichissement.test.ts` — y compris le cas qu'aucune
   // manipulation à la main ne reproduit facilement : dix enrichissements
   // lancés en vol dans la même minute.
-  const consommes = calculerConsommation(resultat.lignes, maintenant);
+  // ⚠️ **`detaillerConsommation` et non `calculerConsommation`** : la garde a
+  // besoin du total, la jauge des deux parts, et les deux doivent venir du
+  // MÊME parcours des lignes. Sommer deux fois séparément, c'est accepter que
+  // ce que l'écran montre et ce que la garde refuse divergent un jour.
+  const { reels, reserves, total } = detaillerConsommation(
+    resultat.lignes,
+    maintenant,
+  );
 
   return {
-    consommes,
+    consommes: total,
+    reels,
+    reserves,
     plafond: ENVELOPPE_QUOTIDIENNE_TOKENS,
-    reste: Math.max(0, ENVELOPPE_QUOTIDIENNE_TOKENS - consommes),
-    depassee: consommes >= ENVELOPPE_QUOTIDIENNE_TOKENS,
+    reste: Math.max(0, ENVELOPPE_QUOTIDIENNE_TOKENS - total),
+    depassee: total >= ENVELOPPE_QUOTIDIENNE_TOKENS,
     connue: true,
   };
 }
