@@ -33,7 +33,23 @@ export default function ChargementOffres() {
            que la ligne réelle, pour que les deux se modifient ensemble. */
         manchette={<SqueletteEtatVeille />}
         sousTitre={
-          /* Annonce vocale : un lecteur d'écran ne voit pas une pulsation. */
+          /* Annonce vocale : un lecteur d'écran ne voit pas une pulsation.
+             ⚠️ **UNE ligne, et c'est mesuré, pas supposé** — piège n° 5 du
+             `CLAUDE.md`, soulevé en revue le 31 août 2026 quand le sous-titre a
+             gagné le segment « sur N » puis « intérêt ≥ 40/100 ». Mesures au DOM
+             à 375 px, en Geist Mono 12 px, contre **343 px** de largeur utile :
+             « 12 offres retenues sur 574 · intérêt ≥ 40/100 » = **326 px** ·
+             le pire cas à deux segments, « 200 offres retenues sur 580 ·
+             intérêt ≥ 40/100 » = **333 px**. Les deux tiennent sur une ligne.
+             ⚠️ **Le cas à TROIS segments déborde** : en ajoutant « · 200
+             affichées », on atteint **449 px**, donc deux lignes et un saut de
+             16 px au moment où la liste arrive. Il exige plus de 200 offres
+             au-dessus du seuil — 12 aujourd'hui — donc il est **hors d'atteinte
+             et le restera longtemps**. Un squelette s'aligne sur ce que sa page
+             affiche le plus souvent : réserver deux lignes créerait le saut
+             inverse à chaque chargement d'aujourd'hui pour un cas qui n'arrive
+             pas. **À reprendre le jour où le plafond de 200 mordra** — c'est la
+             même échéance, et elle se compte en offres, pas en jours. */
           <p className="font-mono text-xs text-muted-foreground">
             Chargement des offres…
           </p>

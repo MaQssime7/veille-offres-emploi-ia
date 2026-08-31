@@ -7,7 +7,13 @@ import {
   interrogerBase,
 } from "@/lib/supabase";
 import { normaliserNote } from "./notes";
-import { FILTRE_PAR_DEFAUT, type FiltreListe } from "./filtres";
+import {
+  FILTRE_PAR_DEFAUT,
+  type FiltreListe,
+  SEUIL_INTERET,
+  leSeuilRetireQuelqueChose,
+  regimeDuSeuil,
+} from "./filtres";
 import { STATUTS, type Statut } from "./statuts";
 import { TRI_PAR_DEFAUT, type Tri } from "./tri";
 
@@ -233,16 +239,62 @@ export type ResultatListe =
       ok: true;
       offres: OffreEnListe[];
       /**
-       * Le nombre d'offres en base, qui peut dépasser celles affichées.
+       * Le nombre d'offres du filtre, qui peut dépasser celles affichées.
        * `null` si PostgREST n'a pas renvoyé son en-tête de comptage : l'écran
        * dit alors ce qu'il montre, plutôt que d'annoncer un total inventé.
+       *
+       * ⚠️ **Il est SOUS SEUIL depuis le 31 août 2026** — il compte ce que le
+       * filtre retient *et* qui atteint `SEUIL_INTERET`. C'est `totalCollecte`
+       * qui porte le nombre brut.
        */
       total: number | null;
+      /**
+       * Combien d'offres atteignent le seuil, **tous statuts confondus** — le
+       * chiffre de la pilule « Toutes ».
+       *
+       * ⚠️ **Il ne s'obtient PAS en additionnant `comptes`.** « Candidaté »
+       * échappe au seuil : la somme compterait les candidatures sous 40, que la
+       * liste « Toutes » ne montre pas.
+       */
+      totalAuSeuil: number | null;
+      /**
+       * Combien d'offres la base contient en tout, **seuil et filtre ignorés**.
+       *
+       * ⚠️ **Il n'existe que pour rendre un écran vide explicable.** Zéro ligne
+       * peut vouloir dire deux choses très différentes — « la base est vide,
+       * la collecte n'a jamais tourné » et « 580 offres sont là, aucune
+       * n'atteint 40/100 ». Le premier message envoie chercher une panne ; le
+       * second dit qu'il n'y a rien à faire ce matin. Sans ce compte, l'écran
+       * ne peut pas les distinguer.
+       *
+       * `null` si le comptage a échoué : la page se rabat alors sur une phrase
+       * qui n'affirme aucun nombre.
+       */
+      totalCollecte: number | null;
+      /**
+       * Combien d'offres ce filtre contiendrait **sans le seuil**. `null`
+       * seulement quand le seuil ne retire rien (« Coup de cœur », « Candidaté »)
+       * ou quand le comptage a échoué : il est demandé à chaque rendu, puisque le
+       * sous-titre affiche l'écart en permanence.
+       *
+       * ⚠️ **Il tranche la question que l'écran vide se posait à tort.** Sur
+       * « Nouveau », zéro ligne a deux causes : la nuit n'a rien ramené, ou elle
+       * a ramené des offres toutes sous le seuil. Sans ce compte, l'écran
+       * accusait le seuil dans les deux cas — y compris quand il n'avait rien
+       * caché du tout, ce qui arrive à chaque nuit blanche.
+       */
+      totalFiltreSansSeuil: number | null;
       /** Pour le marqueur « Nouveau ». `null` si on n'a pas pu le savoir. */
       derniereExecution: number | null;
       /**
        * Combien d'offres dans chaque statut, **toute la base et pas seulement
        * les 200 affichées**.
+       *
+       * ⚠️ **Ils comptent ce que leur onglet MONTRE, pas la base** — depuis le
+       * seuil du 31 août 2026, `a_traiter` et `ecarte` sont bornés à ce qui
+       * l'atteint. Les additionner ne redonne donc ni le total de la base
+       * (c'est `totalCollecte`) ni celui des offres visibles (`totalAuSeuil`,
+       * qui interroge la base au lieu de sommer).
        *
        * ⚠️ **Ces compteurs ne sont pas décoratifs : sans eux, les filtres non
        * choisis sont des portes aveugles.** Cliquer « Candidaté » pour découvrir
@@ -259,10 +311,10 @@ export type ResultatListe =
        * l'onglet « Nouveau ».
        *
        * ⚠️ **Il vit à côté de `comptes` et surtout PAS dedans**, et ce n'est pas
-       * du rangement. `totalBase()` (dans `page.tsx`) reconstitue le total de la
-       * base en additionnant les valeurs de `comptes` : l'addition n'est exacte
-       * que parce que chaque offre y est comptée une fois et une seule. Une
-       * offre nouvelle porte *aussi* un statut ; glissée dans le même objet,
+       * du rangement. Les valeurs de `comptes` se répartissent les offres une
+       * fois et une seule — c'est ce qui rend l'objet lisible comme une
+       * partition. Une offre nouvelle porte *aussi* un statut ; glissée dans le
+       * même objet,
        * elle serait comptée deux fois et le total afficherait plus d'offres que
        * la base n'en contient.
        *
@@ -278,7 +330,7 @@ export type ResultatListe =
        * ⚠️ **Il vit à côté de `comptes` et surtout PAS dedans, pour la même
        * raison que `nouvelles`** : une offre likée porte *aussi* un statut.
        * Glissée dans le même objet, elle serait comptée deux fois par
-       * `totalBase()` et l'écran annoncerait une base plus grosse qu'elle n'est.
+       * la partition, et l'écran annoncerait une base plus grosse qu'elle n'est.
        *
        * `null` si le comptage a échoué : l'onglet se tait plutôt que d'afficher
        * zéro, qui voudrait dire « tu n'as aucun coup de cœur ».
@@ -357,7 +409,98 @@ async function lireDerniereExecution(): Promise<LectureExecution> {
  */
 
 /**
- * Combien d'offres portent ce statut, dans toute la base.
+ * La condition SQL qui écarte les offres sous le seuil d'intérêt.
+ *
+ * ⚠️ **Même forme que `CONDITION_COUP_DE_COEUR`, et pour la même raison.**
+ * `options.egal` ne sait produire que `eq.` ; un « supérieur ou égal » doit
+ * donc vivre dans le `chemin`, où la règle 5 du `CLAUDE.md` n'autorise que des
+ * constantes. `SEUIL_INTERET` en est une — écrite dans `filtres.ts`, qu'aucune
+ * adresse ni aucun formulaire ne peut atteindre. Un **booléen** décide de
+ * coller ou non cette chaîne figée, jamais un fragment reçu de l'appelant : un
+ * booléen ne peut rien encoder, une chaîne si.
+ *
+ * ⚠️ **Elle est EXPORTÉE pour que `matin.ts` la réutilise**, et c'est un
+ * correctif du 31 août 2026. Le fragment était écrit trois fois — ici et deux
+ * fois dans `matin.ts` — au motif qu'« aucun des deux modules ne doit dépendre
+ * de l'autre pour une constante ». L'argument était faux : `matin.ts` importe
+ * déjà `CLASSEMENTS` et `COLONNES_LISTE` d'ici. Il n'y avait donc rien à
+ * protéger, seulement trois endroits où changer l'opérateur — et un `gt.` posé
+ * dans un seul aurait montré deux populations différentes sur les deux écrans.
+ *
+ * ⚠️ **Elle écarte AUSSI les offres non notées, gratuitement** : en SQL,
+ * `NULL >= 40` ne vaut pas `false` mais `NULL`, que le `where` traite comme
+ * non satisfait. C'est ce qui fait disparaître les 434 offres de l'arriéré
+ * sans une ligne de plus — et ce qui rend le vide possible un matin où la
+ * notation a raté, cas que `page.tsx` explique au lieu de le taire.
+ */
+export const CONDITION_SEUIL_INTERET = `&note_interet=gte.${SEUIL_INTERET}`;
+
+/**
+ * La condition SQL qui écarte les offres mises à la corbeille.
+ *
+ * ⚠️ **Elle s'ajoute à TOUTES les lectures d'affichage, sans exception de
+ * filtre** — c'est ce qui distingue la corbeille du seuil. Le seuil épargne
+ * « Coup de cœur » et « Candidaté » parce qu'il filtre ce que le modèle
+ * propose ; la corbeille, elle, est un geste de Maxime qui dit « nulle part ».
+ * Une offre supprimée quitte donc aussi ses coups de cœur, et son compteur.
+ *
+ * ⚠️ **La seule lecture qui NE l'applique PAS est celle de la fiche**
+ * (`lireOffre`), et c'est indispensable : sans ça, une offre supprimée
+ * deviendrait injoignable, donc **irrécupérable** une fois la barre
+ * d'annulation disparue. La fiche est le seul chemin de retour.
+ *
+ * ⚠️ **`is.null` et non `not.is.null`** : on garde ce qui n'a PAS de date de
+ * suppression. L'inverse viderait l'écran de tout sauf la corbeille — une
+ * faute de frappe sans message d'erreur, seulement une application vide.
+ */
+export const CONDITION_NON_SUPPRIMEE = "&supprime_a=is.null";
+
+/**
+ * La condition SQL de l'onglet « Toutes » : au-dessus du seuil **ou** marqué.
+ *
+ * ⚠️ **Elle existe pour que « Toutes » reste un SUR-ENSEMBLE des autres
+ * onglets** — voir `regimeDuSeuil` dans `filtres.ts`. Avec le seuil sec, une
+ * offre likée sous 40 s'affichait dans « Coup de cœur » et disparaissait dans
+ * « Toutes ».
+ *
+ * ⚠️ **Les trois membres sont écrits en dur, et c'est obligatoire** : un `or=`
+ * de PostgREST est un endroit du chemin, jamais une valeur qu'`options.egal`
+ * pourrait encoder. Seul `SEUIL_INTERET`, constante du code, y est interpolé.
+ *
+ * ⚠️ **`statut.eq.candidate` recopie une valeur de `STATUTS`**, faute de pouvoir
+ * l'interpoler proprement dans un `or=` : le jour où ce statut serait renommé,
+ * c'est ici que ça se verrait — d'où le test `filtres.test.ts` qui gèle la
+ * partition des régimes.
+ */
+const CONDITION_VISIBLE =
+  `&or=(note_interet.gte.${SEUIL_INTERET}` +
+  ",coup_de_coeur_a.not.is.null" +
+  ",statut.eq.candidate)";
+
+/**
+ * Le fragment de requête qu'impose le régime de seuil d'un filtre.
+ *
+ * ⚠️ **Un `switch` exhaustif plutôt qu'un booléen**, pour que le jour où un
+ * quatrième régime apparaîtrait, le compilateur oblige à décider ici aussi.
+ */
+function conditionDuRegime(filtre: FiltreListe): string {
+  switch (regimeDuSeuil(filtre)) {
+    case "seuil":
+      return CONDITION_SEUIL_INTERET;
+    case "visible":
+      return CONDITION_VISIBLE;
+    case "aucun":
+      return "";
+  }
+}
+
+/**
+ * Combien d'offres portent ce statut **et sont visibles dans leur onglet**.
+ *
+ * ⚠️ **Ce n'est plus « toute la base » depuis le seuil du 31 août 2026** — la
+ * docstring le disait encore, relevé en revue. `a_traiter` vaut 12 et non 574 :
+ * le régime du statut est appliqué ci-dessous, précisément pour que le chiffre
+ * de la pilule décrive la liste qu'elle ouvre.
  *
  * ⚠️ **Le statut passe par `options.egal`, jamais par le chemin.** Il vient de
  * la barre d'adresse : `estStatut()` l'a déjà validé chez l'appelant, mais la
@@ -374,8 +517,80 @@ async function lireDerniereExecution(): Promise<LectureExecution> {
  */
 async function compterParStatut(statut: Statut): Promise<number | null> {
   const resultat = await interrogerBase<{ identifiant: string }>(
-    "offres?select=identifiant&limit=1",
+    // ⚠️ **Le régime est décidé par `regimeDuSeuil`, jamais recopié ici.** Le
+    // chiffre de la pilule et la liste qu'elle ouvre doivent répondre au MÊME
+    // critère : une pilule annonçant 562 en face de trois lignes ferait douter
+    // des deux. Les deux appels traversent la même fonction — c'est elle, et
+    // non une discipline, qui empêche la divergence. Concrètement :
+    // « Candidaté » compte tout, « À traiter » et « Écarté » comptent au-dessus
+    // du seuil.
+    `offres?select=identifiant&limit=1${CONDITION_NON_SUPPRIMEE}${conditionDuRegime(statut)}`,
     { compter: true, egal: { statut } },
+  );
+
+  return resultat.ok ? resultat.total : null;
+}
+
+/**
+ * Le compte de la pilule « Toutes » : ce que le produit montre, tous statuts.
+ *
+ * ⚠️ **Il REMPLACE une addition, et ce n'est pas un raffinement.** La page
+ * additionnait `comptes` — « à traiter » + « candidaté » + « écarté ». Depuis
+ * que « Candidaté » échappe au seuil, cette somme compte des candidatures que
+ * la liste ne montre pas. Elle serait restée juste jusqu'au jour où Maxime
+ * candidate à une offre notée 30 : un compteur qui se dérègle sur le geste
+ * normal du produit.
+ *
+ * ⚠️ **Il ne dépend de rien**, donc il part dans le lot parallèle et n'ajoute
+ * pas de profondeur au chemin critique — au contraire de `compterNouvelles`,
+ * qui doit attendre l'identifiant de la dernière collecte.
+ *
+ * ⚠️ **Sur l'onglet « Toutes » lui-même, ce compte fait DOUBLON avec le total
+ * que la requête de liste renvoie déjà** (même prédicat, même `count=exact`) —
+ * relevé en revue le 31 août 2026. Il est conservé tel quel : l'éviter
+ * demanderait un cas particulier dans `listerOffres` pour un aller-retour
+ * parallèle sur une table de 580 lignes, et ce cas particulier serait
+ * exactement le genre d'exception qui finit par diverger. À rouvrir si la
+ * table grossit de deux ordres de grandeur.
+ */
+async function compterVisibles(): Promise<number | null> {
+  const resultat = await interrogerBase<{ identifiant: string }>(
+    `offres?select=identifiant&limit=1${CONDITION_NON_SUPPRIMEE}${conditionDuRegime("toutes")}`,
+    { compter: true },
+  );
+
+  return resultat.ok ? resultat.total : null;
+}
+
+/**
+ * Combien d'offres la base contient, **seuil et filtre ignorés**.
+ *
+ * ⚠️ **Il n'existe que pour rendre un écran vide explicable**, et il n'est donc
+ * demandé **que** lorsque la liste est vide — corrigé le 31 août 2026 après
+ * revue. Dans sa première version il partait à chaque rendu et sa valeur était
+ * jetée dès qu'il y avait des offres : un `count(*)` complet sur le chemin
+ * chaud pour un message qui ne s'affichait pas.
+ *
+ * ⚠️ **Le décalage de latence est acceptable ICI et nulle part ailleurs** : on
+ * ne le demande qu'après avoir constaté zéro ligne, donc sur un écran qui n'a
+ * aucun contenu à faire attendre.
+ *
+ * ⚠️ **Il ne réintroduit PAS le compte « M notées » retiré le 29 août 2026.**
+ * Celui-là était transitoire par construction — la notation rattrape la
+ * collecte, il aurait fini par afficher deux nombres égaux. Celui-ci mesure
+ * l'effet permanent d'une décision produit.
+ */
+async function compterCollectees(): Promise<number | null> {
+  const resultat = await interrogerBase<{ identifiant: string }>(
+    // ⚠️ **Ce compteur-ci N'EXCLUT PAS la corbeille, et c'est le seul.**
+    // Correctif de revue du 31 août 2026 : il l'excluait, ce qui contredisait à
+    // la fois son nom et son unique usage. Il sert à décider si l'écran doit
+    // dire « la base est vide, la collecte n'a jamais rien ramené » — un filtre
+    // où tout aurait été mis à la corbeille l'aurait fait affirmer ça d'une base
+    // de 580 lignes, c'est-à-dire le message même que ce compteur existe pour
+    // éviter.
+    "offres?select=identifiant&limit=1",
+    { compter: true },
   );
 
   return resultat.ok ? resultat.total : null;
@@ -413,7 +628,16 @@ async function compterParStatut(statut: Statut): Promise<number | null> {
  */
 async function compterNouvelles(idExecution: number): Promise<number | null> {
   const resultat = await interrogerBase<{ identifiant: string }>(
-    "offres?select=identifiant&limit=1",
+    // ⚠️ **Le seuil s'applique ici aussi**, sans quoi l'onglet annoncerait les
+    // 30 offres de la nuit et n'en montrerait que deux.
+    // ⚠️ **Il passe par `conditionDuRegime("nouvelles")` et surtout PAS par la
+    // condition écrite en dur** — relevé en revue le 31 août 2026. Le filtre est
+    // constant ici, donc coller `CONDITION_SEUIL_INTERET` directement marchait ;
+    // mais c'était le seul des trois compteurs à ne pas traverser la fonction de
+    // décision, et le jour où « Nouveau » changerait de régime — une ligne, qui
+    // compile — la pilule aurait affiché 2 en face de 30 lignes. L'exception
+    // bien argumentée est exactement ce par quoi la divergence revient.
+    `offres?select=identifiant&limit=1${CONDITION_NON_SUPPRIMEE}${conditionDuRegime("nouvelles")}`,
     // ⚠️ Converti en chaîne parce que `egal` n'accepte que des chaînes — elle
     // les encode avant de les concaténer. Un nombre passerait par `String()`
     // implicitement, l'écrire rend la conversion visible.
@@ -444,8 +668,7 @@ const CONDITION_COUP_DE_COEUR = "&coup_de_coeur_a=not.is.null";
  *
  * ⚠️ **Ce compte NE S'ADDITIONNE PAS avec ceux des statuts**, exactement comme
  * celui des nouveautés : une offre likée porte *aussi* un statut, elle est donc
- * déjà comptée dans l'un des trois. `totalBase()` (dans `offres/page.tsx`)
- * additionne `comptes` et rien d'autre ; y glisser celui-ci annoncerait plus
+ * déjà comptée dans l'un des trois. Le glisser dans `comptes` annoncerait plus
  * d'offres que la base n'en contient.
  *
  * ⚠️ **Il part avec les autres, sans dépendre de rien**, au contraire de
@@ -455,11 +678,73 @@ const CONDITION_COUP_DE_COEUR = "&coup_de_coeur_a=not.is.null";
  */
 async function compterCoupsDeCoeur(): Promise<number | null> {
   const resultat = await interrogerBase<{ identifiant: string }>(
-    `offres?select=identifiant&limit=1${CONDITION_COUP_DE_COEUR}`,
+    `offres?select=identifiant&limit=1${CONDITION_NON_SUPPRIMEE}${CONDITION_COUP_DE_COEUR}`,
     { compter: true },
   );
 
   return resultat.ok ? resultat.total : null;
+}
+
+/**
+ * Ce qu'un filtre d'écran impose à la requête, hors seuil.
+ *
+ * ⚠️ **Ce type ne porte que des BOOLÉENS et des valeurs à encoder, jamais un
+ * fragment SQL.** C'est ce qui garantit qu'aucune valeur venue de l'adresse ne
+ * peut atteindre le chemin de la requête : `egal` part dans `options.egal` qui
+ * encode, `coupsDeCoeurSeulement` choisit entre coller ou non une chaîne figée.
+ * Un booléen ne peut rien encoder ; une chaîne, si.
+ */
+type ConditionsFiltre = {
+  egal?: Record<string, string>;
+  coupsDeCoeurSeulement: boolean;
+};
+
+/**
+ * Traduit un filtre d'écran en conditions de requête.
+ *
+ * Entre : le filtre validé, et l'identifiant de la dernière collecte réussie
+ * (`null` si on n'a pas pu le lire).
+ * Sort : les conditions, ou **`null` quand la question n'a pas de sens** — le
+ * filtre « Nouveau » sans dernière collecte connue.
+ *
+ * ⚠️ **`null` veut dire « je ne sais pas », pas « aucune offre ».** Filtrer sur
+ * une valeur inventée rendrait une liste vide qui se lirait comme « la nuit n'a
+ * rien ramené ». L'écran distingue les deux.
+ *
+ * ⚠️ **Cette fonction existe pour que la liste et le comptage de diagnostic
+ * partagent EXACTEMENT le même filtre.** Deux branchements jumeaux — un pour
+ * lire, un pour compter — auraient fini par diverger, et le message d'écran
+ * vide aurait décrit une population que la liste n'interrogeait pas.
+ */
+function conditionsDuFiltre(
+  filtre: FiltreListe,
+  idDerniereCollecte: number | null,
+): ConditionsFiltre | null {
+  if (filtre === "nouvelles") {
+    return idDerniereCollecte === null
+      ? null
+      : {
+          // ⚠️ Converti en chaîne parce que `egal` n'accepte que des chaînes —
+          // elle les encode avant de les concaténer. Un nombre passerait par
+          // `String()` implicitement, l'écrire rend la conversion visible.
+          egal: { execution_id: String(idDerniereCollecte) },
+          coupsDeCoeurSeulement: false,
+        };
+  }
+
+  // ⚠️ **« Coup de cœur » ne filtre AUCUN statut**, et c'est tout le propos : la
+  // liste montre les offres likées, qu'elles soient encore à traiter, déjà
+  // candidatées ou même écartées. Lui ajouter `statut=eq.a_traiter` ferait
+  // disparaître un coup de cœur au moment exact où Maxime candidate — le défaut
+  // que la forme « pas un statut » existe pour éviter.
+  if (filtre === "coup_de_coeur") return { coupsDeCoeurSeulement: true };
+
+  // ⚠️ **« Toutes » n'est pas un statut** : lui chercher un `statut=eq.toutes`
+  // rendrait zéro ligne, et la page afficherait « aucune offre » sur une base
+  // pleine.
+  if (filtre === "toutes") return { coupsDeCoeurSeulement: false };
+
+  return { egal: { statut: filtre }, coupsDeCoeurSeulement: false };
 }
 
 /**
@@ -468,25 +753,55 @@ async function compterCoupsDeCoeur(): Promise<number | null> {
  * ⚠️ **Le classement est choisi ICI par une clé, jamais reçu comme chaîne.**
  * `CLASSEMENTS[tri]` ne peut rendre que l'une des trois valeurs écrites dans ce
  * fichier ; c'est ce qui empêche `?tri=` de l'adresse d'atteindre le `&order=`.
+ *
+ * ⚠️ **Le régime de seuil est dérivé du filtre, pas reçu en paramètre.** Une
+ * première version prenait un booléen `avecSeuil` que l'appelant calculait :
+ * c'était une occasion de plus de se tromper, pour zéro gain.
  */
 function lireListe(
   tri: Tri,
-  filtre?: Record<string, string>,
-  /**
-   * Ne garder que les offres portant un coup de cœur.
-   *
-   * ⚠️ **Un booléen, et surtout pas la condition SQL elle-même.** Voir
-   * `CONDITION_COUP_DE_COEUR` : c'est ce qui garantit qu'aucune valeur venue de
-   * l'adresse ne peut atteindre le chemin de la requête.
-   */
-  coupsDeCoeurSeulement = false,
+  filtre: FiltreListe,
+  conditions: ConditionsFiltre,
 ) {
   return interrogerBase<OffreEnListe>(
     `offres?select=${COLONNES_LISTE}` +
       `&order=${CLASSEMENTS[tri]}&limit=${PLAFOND_AFFICHAGE}` +
-      (coupsDeCoeurSeulement ? CONDITION_COUP_DE_COEUR : ""),
-    { compter: true, ...(filtre ? { egal: filtre } : {}) },
+      CONDITION_NON_SUPPRIMEE +
+      (conditions.coupsDeCoeurSeulement ? CONDITION_COUP_DE_COEUR : "") +
+      conditionDuRegime(filtre),
+    { compter: true, ...(conditions.egal ? { egal: conditions.egal } : {}) },
   );
+}
+
+/**
+ * Combien d'offres ce filtre contiendrait **si le seuil n'existait pas**.
+ *
+ * Sort : le compte, ou `null` si le comptage a échoué.
+ *
+ * ⚠️ **Il répond à une question que l'écran vide ne pouvait pas trancher, et
+ * dont il se trompait** — relevé en revue le 31 août 2026. Une liste vide sur
+ * « Nouveau » avait deux causes indiscernables : la nuit n'a rien ramené, ou
+ * elle a ramené des offres toutes sous le seuil. L'écran accusait le seuil dans
+ * les deux cas, y compris quand il n'avait strictement rien caché — ce qui
+ * arrive à **chaque** nuit blanche, donc souvent.
+ *
+ * ⚠️ **Il part à CHAQUE rendu**, contrairement à `compterCollectees`. Une
+ * première version ne le demandait que sur écran vide ; le sous-titre affiche
+ * désormais « N retenues **sur M** » en permanence, donc sa valeur est lue à
+ * tous les coups. Revirement assumé — sans cet écart affiché, une notation
+ * tombée fait disparaître trente offres sans un mot.
+ */
+function compterFiltreSansSeuil(conditions: ConditionsFiltre) {
+  return interrogerBase<{ identifiant: string }>(
+    // ⚠️ **`coupsDeCoeurSeulement` n'est PAS testé ici, et c'est délibéré** —
+    // relevé en revue le 31 août 2026 comme branche morte dans une première
+    // version. Le seul appelant est gardé par `leSeuilRetireQuelqueChose`, qui
+    // est faux exactement pour « Coup de cœur » et « Candidaté » ; or « Coup de
+    // cœur » est le seul filtre qui pose ce booléen. Le tester aurait donné à
+    // lire un cas que ce compteur ne rencontre jamais.
+    `offres?select=identifiant&limit=1${CONDITION_NON_SUPPRIMEE}`,
+    { compter: true, ...(conditions.egal ? { egal: conditions.egal } : {}) },
+  ).then((resultat) => (resultat.ok ? resultat.total : null));
 }
 
 /**
@@ -530,42 +845,78 @@ export async function listerOffres(
       : null,
   );
 
-  // ⚠️ **`null` ici veut dire « je ne sais pas », pas « aucune offre ».** Si on
-  // n'a pas pu lire quelle est la dernière collecte, on ne peut pas dire quelles
-  // offres en viennent : filtrer sur une valeur inventée rendrait une liste vide
-  // qui se lirait comme « la nuit n'a rien ramené ». L'écran distingue les deux.
-  const requeteOffres =
+  // ⚠️ **Le branchement du filtre vit dans `conditionsDuFiltre`, pas ici.** Il
+  // sert à deux endroits — la liste et le comptage sans seuil — et deux
+  // branchements jumeaux auraient fini par diverger.
+  //
+  // ⚠️ **SEUL « Nouveau » attend la dernière collecte, et c'est un correctif de
+  // revue du 31 août 2026.** Une version intermédiaire chaînait
+  // `conditionsDuFiltre` derrière `promesseDerniere` pour les six filtres :
+  // la requête de liste ne pouvait alors plus partir avant le retour de
+  // `executions_veille`, ce qui **doublait le chemin critique** de tous les
+  // autres onglets — dont celui par défaut. Le commentaire dix lignes plus haut
+  // l'interdisait déjà en toutes lettres ; c'est exactement le piège qu'il
+  // décrit, réintroduit par une restructuration qui n'y touchait pas
+  // volontairement. `conditionsDuFiltre` n'a besoin de l'identifiant que pour
+  // « Nouveau », donc la dépendance ne se paie que là.
+  const promesseConditions: Promise<ConditionsFiltre | null> =
     filtre === "nouvelles"
       ? promesseDerniere.then((lecture) =>
-          lecture.ok && lecture.identifiant !== null
-            ? lireListe(tri, { execution_id: String(lecture.identifiant) })
-            : null,
+          conditionsDuFiltre(filtre, lecture.ok ? lecture.identifiant : null),
         )
-      : // ⚠️ **« Coup de cœur » ne filtre AUCUN statut**, et c'est tout le
-        // propos : la liste montre les offres likées, qu'elles soient encore à
-        // traiter, déjà candidatées ou même écartées. Lui ajouter
-        // `statut=eq.a_traiter` ferait disparaître un coup de cœur au moment
-        // exact où Maxime candidate — le défaut que la forme « pas un statut »
-        // existe pour éviter.
-        filtre === "coup_de_coeur"
-        ? lireListe(tri, undefined, true)
-        : // ⚠️ **Le filtre n'est ajouté que s'il en est un.** « Toutes » n'est pas
-          // un statut : lui chercher un `statut=eq.toutes` rendrait zéro ligne, et
-          // la page afficherait « aucune offre » sur une base pleine.
-          lireListe(tri, filtre === "toutes" ? undefined : { statut: filtre });
+      : Promise.resolve(conditionsDuFiltre(filtre, null));
+
+  const requeteOffres = promesseConditions.then((conditions) =>
+    conditions === null ? null : lireListe(tri, filtre, conditions),
+  );
+
+  // ⚠️ **Le compte sans seuil est demandé à CHAQUE rendu, et c'est un revirement
+  // assumé du 31 août 2026.** Il n'était d'abord calculé que sur écran vide,
+  // pour ne pas charger le chemin courant. Une seconde revue a montré le trou :
+  // quand l'onglet contient encore des offres au-dessus du seuil, **rien** ne
+  // signale celles qu'il a masquées. Cas concret et non théorique : la collecte
+  // ramène trente offres, la notation échoue, l'onglet « À traiter » continue
+  // d'afficher les douze offres notées d'avant — les trente nouvelles sont
+  // invisibles, la pilule « Nouveau » dit 0, et la manchette de veille ne
+  // regarde que la collecte, donc elle dit « à jour ».
+  //
+  // Le sous-titre affiche donc « 12 offres retenues sur 42 » en permanence :
+  // l'écart EST l'information. Ça coûte un aller-retour parallèle de plus, sur
+  // une table de 580 lignes et hors chemin critique.
+  const promesseSansSeuil: Promise<number | null> = leSeuilRetireQuelqueChose(
+    filtre,
+  )
+    ? promesseConditions.then((conditions) =>
+        conditions === null ? null : compterFiltreSansSeuil(conditions),
+      )
+    : Promise.resolve(null);
 
   // Tout ce qui peut partir ensemble part ensemble : enchaînées, ces requêtes
   // multiplieraient l'attente avant le premier pixel.
-  const [offres, lectureExecution, nouvelles, coupsDeCoeur, ...parStatut] =
-    await Promise.all([
-      requeteOffres,
-      promesseDerniere,
-      promesseNouvelles,
-      // ⚠️ Lancé ici et pas dans une promesse préparée plus haut : il ne dépend
-      // de rien, donc rien ne gagne à le déclencher plus tôt.
-      compterCoupsDeCoeur(),
-      ...STATUTS.map(compterParStatut),
-    ]);
+  const [
+    offres,
+    lectureExecution,
+    nouvelles,
+    totalFiltreSansSeuil,
+    coupsDeCoeur,
+    totalAuSeuil,
+    ...parStatut
+  ] = await Promise.all([
+    requeteOffres,
+    promesseDerniere,
+    promesseNouvelles,
+    promesseSansSeuil,
+    // ⚠️ Lancés ici et pas dans une promesse préparée plus haut : ils ne
+    // dépendent de rien, donc rien ne gagne à les déclencher plus tôt.
+    compterCoupsDeCoeur(),
+    // ⚠️ **Sauté sur l'onglet « Toutes », où il ferait doublon** — correctif de
+    // revue du 31 août 2026. Là, la requête de liste compte déjà exactement le
+    // même prédicat, et son total est repris au retour. Une première version le
+    // lançait quand même en documentant le doublon comme accepté : deux lignes
+    // coûtent moins cher que le paragraphe qui l'excusait.
+    filtre === "toutes" ? Promise.resolve(null) : compterVisibles(),
+    ...STATUTS.map(compterParStatut),
+  ]);
 
   // Le marqueur des lignes : `null` si on n'a pas pu savoir, ce qui ne marque
   // aucune offre plutôt que d'en marquer au hasard.
@@ -596,6 +947,12 @@ export async function listerOffres(
       ok: true,
       offres: [],
       total: null,
+      totalAuSeuil,
+      // Sans dernière collecte connue, l'écran affiche `NouveautesInconnues` :
+      // il ne parle ni de la base ni du seuil, donc le diagnostic ne sert à rien
+      // et ne se paie pas.
+      totalCollecte: null,
+      totalFiltreSansSeuil: null,
       comptes,
       nouvelles,
       coupsDeCoeur,
@@ -606,6 +963,15 @@ export async function listerOffres(
   if (!offres.ok) {
     return offres;
   }
+
+  // ⚠️ **Le compte BRUT de la base ne part que si l'écran est vide**, lui.
+  // Contrairement au compte sans seuil ci-dessus, il n'alimente aucun affichage
+  // permanent : il sert uniquement à départager « la base est vide » de « ce
+  // filtre ne contient rien ». Le décalage de latence est sans conséquence —
+  // on ne le demande qu'après avoir constaté zéro ligne, donc sur un écran qui
+  // n'a aucun contenu à faire attendre.
+  const totalCollecte =
+    offres.lignes.length === 0 ? await compterCollectees() : null;
 
   return {
     ok: true,
@@ -618,6 +984,11 @@ export async function listerOffres(
     // comme si c'était toute la base. `null` remonte l'ignorance jusqu'à
     // l'écran, qui sait alors ne parler que de ce qu'il affiche.
     total: offres.total,
+    // ⚠️ Sur « Toutes », le total de la liste EST le compte des visibles : même
+    // prédicat, même `count=exact`. On le reprend au lieu de le redemander.
+    totalAuSeuil: filtre === "toutes" ? offres.total : totalAuSeuil,
+    totalCollecte,
+    totalFiltreSansSeuil,
     derniereExecution,
   };
 }
@@ -739,6 +1110,13 @@ export type OffreEnFiche = {
    */
   coup_de_coeur_a: string | null;
   /**
+   * Quand l'offre a été retirée de l'affichage. `null` = visible.
+   *
+   * ⚠️ **Seule la fiche le lit** : toutes les listes excluent ces offres, donc
+   * la valeur y serait toujours `null` et n'apprendrait rien.
+   */
+  supprime_a: string | null;
+  /**
    * La note libre de Maxime. `null` tant qu'il n'a rien écrit.
    *
    * ⚠️ **DONNÉE PERSONNELLE au sens du projet, et la seule qu'il produise
@@ -803,6 +1181,11 @@ const COLONNES_FICHE = [
   "note_personnelle",
   "note_modifiee_a",
   "coup_de_coeur_a",
+  // ⚠️ **La fiche est le SEUL écran qui lit cette colonne, et le seul qui
+  // montre une offre supprimée.** Toutes les listes les excluent ; sans ce
+  // chemin, une offre retirée après la disparition de la barre d'annulation
+  // serait définitivement irrécupérable.
+  "supprime_a",
 ].join(",");
 
 /**
@@ -1012,6 +1395,53 @@ export async function changerCoupDeCoeur(
   return ecrireDansBase("offres", {
     valeurs: {
       coup_de_coeur_a: actif ? new Date().toISOString() : null,
+    },
+    egal: { identifiant: identifiant.toUpperCase() },
+  });
+}
+
+/**
+ * Retirer une offre de l'affichage, ou l'y remettre.
+ *
+ * Entre : un identifiant venu de l'extérieur, et le sens du geste.
+ * Sort : `{ ok: true }`, ou un motif que l'action traduira à l'écran.
+ * Casse : ne lève jamais — mêmes garanties que `changerCoupDeCoeur`.
+ *
+ * ⚠️ **RIEN N'EST EFFACÉ. On pose une date, on la retire.** Le préambule de la
+ * migration `…_ajoute_la_suppression_d_affichage.sql` porte les trois raisons —
+ * dont celle-ci, qui suffit : France Travail dépublie, et une ligne effacée ne
+ * revient jamais. Un `DELETE` échouerait de toute façon sur les offres
+ * enrichies, que `enrichissements.offre_identifiant` référence.
+ *
+ * ⚠️ **Le statut n'est PAS touché, et c'est toute la forme.** Une offre
+ * candidatée puis supprimée reste candidatée : elle retrouve son statut intact
+ * si elle est restaurée. Vérifié contre la base réelle le 31 août 2026 — après
+ * écriture de `supprime_a`, `statut` valait toujours `a_traiter`.
+ *
+ * ⚠️ **L'écriture est IDEMPOTENTE**, comme toutes celles qui partent de
+ * l'interface : on pose une valeur absolue, jamais un incrément. Deux envois du
+ * même clic — reprise réseau, double clic — laissent la base dans le même état.
+ *
+ * ⚠️ **Le geste inverse passe par la MÊME fonction**, avec `supprime = false`.
+ * Deux fonctions jumelles auraient fini par diverger sur la validation de
+ * l'identifiant, qui est la seule chose qui protège la requête.
+ */
+export async function changerSuppression(
+  identifiant: string,
+  supprime: boolean,
+): Promise<ResultatEcriture> {
+  // ⚠️ `typeof` avant l'expression régulière — voir `lireOffre`.
+  if (typeof identifiant !== "string" || !FORMAT_IDENTIFIANT.test(identifiant)) {
+    return {
+      ok: false,
+      motif: "introuvable",
+      explication: "Cet identifiant ne ressemble à aucune offre.",
+    };
+  }
+
+  return ecrireDansBase("offres", {
+    valeurs: {
+      supprime_a: supprime ? new Date().toISOString() : null,
     },
     egal: { identifiant: identifiant.toUpperCase() },
   });

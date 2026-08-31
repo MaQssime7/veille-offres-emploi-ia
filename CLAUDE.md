@@ -24,12 +24,13 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | **Ce que le modèle a le DROIT de voir du registre public**, et les trois pièges de l'API | `pipeline/registre.py` — `_assainir()` est une liste blanche, jamais noire |
 | **Pourquoi la fiche d'enrichissement a DEUX formes de stockage**, et ce que chaque contrainte interdit | le préambule de `supabase/migrations/…_ajoute_les_tables_d_enrichissement.sql` — il porte les mesures du registre public qui l'ont dictée |
 | Conventions Next.js 16 : fichiers, frontières RSC, données, métadonnées | skill `next-best-practices` |
+| **La corbeille** : ce que « supprimer » veut dire, et pourquoi ce n'est ni un statut ni « Écarté » | `interface/lib/suppression.ts` · `supabase/migrations/…_ajoute_la_suppression_d_affichage.sql` · `interface/app/(site)/_composants/corbeille.tsx` |
 | **Comment le site est protégé** : cookie, mot de passe, adresses libres | `interface/lib/session.ts` et `interface/lib/acces.ts`, abondamment commentés |
 | **Comment l'interface ÉCRIT en base** : garde-fous, idempotence | `ecrireDansBase()` dans `interface/lib/supabase.ts` |
-| Statuts, note personnelle, **accords et dates en français**, filtres et classement de la liste, thème, **quel nom d'employeur afficher**, **coup de cœur** : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`, `interface/lib/theme.ts`, `interface/lib/employeur.ts`, `interface/lib/coup-de-coeur.ts`, `interface/lib/enrichissement.ts`, `interface/lib/regroupement.ts` — ⚠️ **les DIX modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
+| Statuts, note personnelle, **accords et dates en français**, filtres et classement de la liste, thème, **quel nom d'employeur afficher**, **coup de cœur** : constantes et fonctions pures partagées serveur/navigateur | `interface/lib/statuts.ts`, `interface/lib/notes.ts`, `interface/lib/francais.ts`, `interface/lib/filtres.ts`, `interface/lib/tri.ts`, `interface/lib/theme.ts`, `interface/lib/employeur.ts`, `interface/lib/coup-de-coeur.ts`, `interface/lib/enrichissement.ts`, `interface/lib/regroupement.ts`, `interface/lib/suppression.ts` — ⚠️ **les ONZE modules de `lib/` sans `server-only`**, et c'est délibéré (§ règle 3) |
 | **Ce que la liste montre et dans quel ordre** : les six filtres (dont « Nouveau » et « Coup de cœur »), les trois classements, et la table de chaînes SQL qu'aucune valeur d'adresse n'atteint | `interface/lib/filtres.ts` et `interface/lib/tri.ts` pour les constantes · `interface/lib/offres.ts` pour `CLASSEMENTS`, qui **ne descend jamais** dans les deux premiers |
 | **Pourquoi le coup de cœur n'est pas un statut**, et ce que cette forme protège | `interface/lib/coup-de-coeur.ts` · migration 9 · `docs/JOURNAL.md` § 30 août |
-| **Ce que l'écran du matin montre** : le seuil de 35, les six écrans vides et l'ORDRE qui les départage | `interface/lib/matin.ts` — lecture et calcul séparés, `choisirAffichage()` est une fonction pure, éprouvée par `matin.test.ts` |
+| **Ce que l'écran du matin montre** : les six écrans vides et l'ORDRE qui les départage | `interface/lib/matin.ts` — lecture et calcul séparés, `choisirAffichage()` est une fonction pure, éprouvée par `matin.test.ts` |
 | **L'état de santé de la veille** : les cinq états, le seuil d'alerte de 36 h, celui des 60 min qui démasque une collecte tuée | `interface/lib/veille.ts` — lecture et calcul séparés, `calculerEtat()` est une fonction pure. ⚠️ Les **dateurs** sont dans `francais.ts`, pas ici : purs, ils ne doivent pas être enfermés derrière `server-only` |
 
 **Règle de tenue de ce fichier.** Il ne contient que ce qui change mon
@@ -113,7 +114,8 @@ fichier :**
 **Phases 1 à 7 CLOSES.** Le site est en ligne derrière son mot de passe, collecte et
 notation tournent sur le cron. `/` est le **compte rendu de la nuit**, `/offres` le
 **plan de travail**. L'interface écrit en base, et l'agent d'enrichissement tourne au
-clic. **580 offres, 146 notées, 6 enrichies.** La fiche d'entreprise est complète :
+clic. **580 offres collectées, 146 notées, 6 enrichies — et 16 seulement sont
+VISIBLES**, depuis le seuil d'intérêt du 31 août 2026. La fiche d'entreprise est complète :
 identité, taille et santé, business en quatre rubriques, et les sources consultées.
 
 ### ✅ PHASE 6 CLOSE — l'enrichissement par agent, de bout en bout
@@ -245,6 +247,97 @@ avec l'ancien prompt.
 local). Sans lui le bouton répond « jeton non configuré » **sur le site déployé
 uniquement** — voir `docs/HEBERGEMENT.md`.
 
+### ⚠️ LE SEUIL D'INTÉRÊT — hors phase, construit le 31 août 2026
+
+`SEUIL_INTERET = 40` (`interface/lib/filtres.ts`) cache tout ce qui est en dessous, sur
+les **deux** écrans. Mesures, distribution des notes et récit des défauts trouvés en
+revue : `docs/JOURNAL.md` § 31 août (nuit).
+
+⚠️ **Cinq faits opposables :**
+
+1. ⚠️ **CACHER, JAMAIS SUPPRIMER**, et c'est ce qui rend le seuil réversible : baisser
+   le nombre rend les offres **sans recollecte et sans repayer de notation**. Supprimer
+   aurait été définitif — France Travail dépublie.
+2. ⚠️ **TROIS RÉGIMES, pas un booléen** (`regimeDuSeuil`) : `"seuil"` (À traiter ·
+   Écarté · Nouveau) · `"aucun"` (**Coup de cœur · Candidaté** — le seuil filtre ce que
+   le MODÈLE propose, jamais ce que Maxime a désigné d'un clic) · `"visible"`
+   (**Toutes** = au-dessus du seuil **ou** marqué). ⚠️ **Le troisième n'est pas du
+   raffinement** : avec un booléen, « Toutes » montrait moins que « Candidaté » juste à
+   côté. ⚠️ **« Écarté » est en `"seuil"`** — c'est la corbeille, l'exempter y mettrait
+   tout le bruit.
+3. ⚠️ **`NULL >= 40` est faux en SQL, donc une offre NON NOTÉE est cachée aussi.** C'est
+   ce qui écarte les 434 gratuitement — et ce qui fait qu'**un ratage de la notation
+   vide l'écran sans rien casser**, ni exception ni job rouge. D'où « N retenues **sur
+   M** » affiché en permanence : l'écart est la seule chose qui trahisse ce cas quand
+   l'onglet contient encore d'anciennes offres. ⚠️ **La manchette de veille ne le
+   rattrape pas** : elle ne lit que l'`etape = 'collecte'`.
+4. ⚠️ **Un compteur doit répondre au MÊME critère que la liste qu'il ouvre.** Deux s'en
+   étaient écartés : « Toutes » était une somme des statuts (fausse dès qu'une
+   candidature passe sous le seuil), et la carte de `/` annonçait **574** offres en
+   menant à un écran qui en montrait **12**. Aucun des deux ne lève d'erreur.
+5. ⚠️ **Le pipeline suit** : `--note-minimale` (défaut **40**) borne le rattrapage
+   d'employeur à ce qui est visible. Payer l'identification d'une offre invisible est
+   une dépense pure. Python et TypeScript ne partagent pas la constante — c'est un
+   commentaire qui porte le lien.
+
+⚠️ **Constat MESURÉ et NON TRAITÉ, qui appartient à la NOTATION** : **5 des 16 offres
+retenues sont des ALTERNANCES**, dont Maxime en a déjà écarté 3 à la main. Le drapeau
+`alternance` et `nature_contrat` sont fiables et inexploités. **Ne pas corriger ça en
+durcissant le seuil.**
+
+### ⚠️ LA CORBEILLE ET L'EN-TÊTE — hors phase, construites le 31 août 2026
+
+Deux demandes de Maxime, le même soir. Récit dans `docs/JOURNAL.md` § 31 août (nuit).
+
+⚠️ **Cinq faits opposables sur la CORBEILLE :**
+
+1. ⚠️ **« Supprimer » veut dire RETIRER DE L'AFFICHAGE. Rien n'est effacé.**
+   `offres.supprime_a` (migration 12) est une date qu'on pose et qu'on retire. Trois
+   raisons rendent l'effacement réel indéfendable, détaillées dans le préambule de la
+   migration — dont celle-ci qui suffit : **France Travail dépublie**, et
+   `enrichissements.offre_identifiant` référence l'offre, donc un `DELETE` échouerait
+   sur toute offre enrichie.
+2. ⚠️ **Ce n'est PAS un statut** — même raisonnement que le coup de cœur : un statut
+   est exclusif, donc supprimer une offre candidatée effacerait la trace de la
+   candidature. **Marqueur transverse**, vérifié contre la base réelle : après écriture
+   de `supprime_a`, `statut` valait toujours `a_traiter`.
+3. ⚠️ **Ce n'est PAS un doublon d'« Écarté », et la distinction est de Maxime** :
+   « Écarté » dit *regardé, pas pour moi* et l'offre **reste** dans son onglet ; la
+   corbeille dit *ne me la remontre jamais* et l'offre quitte **tous** les écrans, y
+   compris « Coup de cœur » et « Candidaté » — contrairement au seuil, qui les épargne.
+4. ⚠️ **La FICHE est le seul écran qui montre une offre retirée, et c'est vital.**
+   `lireOffre` est la seule lecture qui n'applique pas `CONDITION_NON_SUPPRIMEE` :
+   sans ce chemin, une offre retirée après l'expiration de la barre d'annulation
+   (8 s) serait **définitivement irrécupérable**. Ne pas « harmoniser » cette exception.
+5. ⚠️ **La corbeille ne propage PAS aux jumelles**, contrairement au statut : elle ne
+   retire que la ligne cliquée. Supprimer est le geste où l'on pardonne le moins d'en
+   avoir fait plus que demandé.
+   ⚠️ **Le bouton porte `relative z-10`, et sans lui il ne se clique pas** : la ligne
+   est un lien-carte (`after:absolute after:inset-0`) qui avale le clic. À la souris,
+   on ouvrirait la fiche en croyant avoir supprimé — trouvé par Playwright, pas à l'œil.
+
+⚠️ **Trois faits sur l'EN-TÊTE :**
+
+- ⚠️ **Les DEUX actions sont des icônes rondes de 34 px** — thème et déconnexion, sans
+  libellé dessiné, mot porté par `aria-label` + `title`. Décision de Maxime : « SE
+  DÉCONNECTER » en mono majuscules pesait plus lourd que les deux onglets réunis.
+  **Ne pas y remettre `<Button>` de shadcn** : sa variante `ghost` est rectangulaire et
+  casserait l'appairage avec le rond voisin.
+- **Barre blanche arrondie FLOTTANTE** sur le fond lavande, `w-fit` puis centrée —
+  décisions de Maxime prises devant l'écran. Étendue sur toute la largeur, elle ouvrait
+  un vide que le gabarit d'origine remplissait avec un mot-symbole et quatre liens que
+  ce produit n'a pas. ⚠️ **Aucun logo, aucun nom** : le produit n'en a pas.
+- ⚠️ **L'onglet actif n'a PAS de contour**, contrairement aux pilules de `/offres` —
+  Maxime, après l'avoir vu : deux onglets ne se comparent pas comme six pilules.
+  **Ce que ça coûte, mesuré** : la pastille pèse **2,62:1** contre la barre, sous les
+  3:1 attendus d'un élément d'interface. Le texte, lui, passe (4,64 clair / 7,51 sombre)
+  et `aria-current="page"` porte l'information. **Signalé, assumé.**
+- ⚠️ **`npx shadcn add …/landing.json` tire `@tabler/icons-react` et
+  `@fontsource-variable/nunito`** — le premier est **interdit** (le projet est en lucide,
+  jamais deux jeux), le second double `next/font`. **Il propose aussi d'écraser
+  `pouf.css`, qui porte cinq adaptations : répondre NON.** Les douze fichiers installés
+  ont été retirés, seule la navbar a servi de référence.
+
 ### Ce que les phases closes ont légué, et qui vaut toujours
 
 Récits complets dans `docs/JOURNAL.md`, décisions visuelles dans `docs/DESIGN.md`. Ne
@@ -259,8 +352,12 @@ restent ici que les règles qui changent le comportement sur une tâche future.
   l'entreprise dans la clé ne regroupait **rien** (39 % des offres sans employeur nommé).
 - ⚠️ **Le clic de statut traite le POSTE ENTIER** (`definirStatut` prend une liste bornée
   à 8) ; sinon écarter une annonce laisse sa jumelle « à traiter ».
-- ⚠️ **LE SEUIL EST À 35** — décision de Maxime, pas les 50 du plan, qui laissaient
-  l'écran vide quatre matins sur six.
+- ⚠️ **LE SEUIL N'APPARTIENT PLUS À CET ÉCRAN depuis le 31 août 2026** : il vaut **40**,
+  il vit dans `interface/lib/filtres.ts` sous le nom `SEUIL_INTERET`, et **`/offres`
+  l'applique aussi**. Il valait 50 (plan), puis 35 (30 août, l'écran était vide quatre
+  matins sur six à 50). ⚠️ **Ne pas redéclarer de valeur dans `matin.ts`** — deux seuils,
+  c'était deux populations : une offre à 37 s'affichait le matin puis restait introuvable
+  dans le plan de travail.
 - ⚠️ **SIX écrans vides, et l'ORDRE des tests de `choisirAffichage()` EST la logique** :
   « aucune n'atteint le seuil » n'est vrai que si la collecte a ramené quelque chose *et*
   que ce quelque chose a été noté.
@@ -275,6 +372,11 @@ restent ici que les règles qui changent le comportement sur une tâche future.
 - ⚠️ **Le focus passe par `outline`, JAMAIS par `ring`**, sur tout élément à `cushion-*` :
   le coussin pose un `box-shadow` brut qui écrase l'anneau. `focus-produit` le fait.
 - ⚠️ **Le compte « M notées » a été RETIRÉ de `/offres`** — ne pas le réintroduire.
+  ⚠️ **« N offres retenues · intérêt ≥ 40/100 » (31 août 2026) n'est PAS son retour** :
+  « M notées » était transitoire par construction — la notation rattrape la collecte, et
+  il aurait fini par afficher deux nombres égaux. Celui-ci mesure l'effet **permanent**
+  d'une décision produit, et sans lui une page qui montre 16 lignes sur 580 collectées
+  n'explique rien.
 - ⚠️ **Une opacité se remesure sur la surface qui est VRAIMENT derrière**, et un contrôle
   de contraste qui lit du `rgb()` là où Tailwind rend de l'`oklab()` donne des chiffres
   faux. **Peindre la couleur sur son vrai fond dans un canvas** est la seule mesure sûre.
@@ -328,7 +430,7 @@ Travail est **absent sur 39 %** des offres, intermédiaire dans 36 % des cas, et
 | ⚠️ **La NOTATION n'a jamais tourné depuis le runner** | ✅ Le chemin réseau vers `api.anthropic.com` depuis GitHub Actions est **prouvé** — les enrichissements de la phase 6 y tournent et appellent l'API. ⚠️ Mais le code de **notation** (API Messages, Batches) n'a jamais été exercé sur un runner : vérifié le 31 août, le cron lance bien l'étape « Noter », qui s'arrête sur « aucune offre en attente ». **Le seul déclencheur est une nuit de collecte non vide.** Rien à construire, seulement à attendre |
 | ⚠️ **La rustine `gh workflow run` EFFACE le compte rendu de la nuit** | La collecte écrit en `ignore-duplicates` : relancée le matin, elle réussit avec zéro offre nouvelle et devient « la dernière collecte réussie ». ⚠️ **Non corrigé délibérément** — préférer « la dernière non vide » empêcherait d'afficher une vraie nuit blanche. Disparaîtra avec le déclencheur externe, **qui existe désormais** (phase 6) |
 | ⚠️ **L'indicateur de veille ne vieillit pas dans un onglet resté ouvert** | Calculé au rendu serveur. Le corriger demanderait une horloge dans le navigateur pour une information qui change une fois par jour. **Signalé, non corrigé** |
-| ⚠️ **Le plafond de 200 lignes — desserré, pas résolu** | Le jour où plus de 200 offres portent une note, celles de la nuit disparaissent. **L'échéance est un compte, pas une date.** ⚠️ **Ne pas forcer en payant** : 200 est aussi le seuil où l'écran casse |
+| ⚠️ **Le plafond de 200 lignes — desserré DEUX fois, toujours pas résolu** | Le jour où plus de 200 offres **atteignent le seuil**, celles de la nuit disparaissent. ✅ **Le seuil du 31 août 2026 a repoussé l'échéance très loin** — 16 offres passent le filtre sur 580 collectées — mais **il ne l'a pas supprimée** : le compteur repart avec chaque nuit. **L'échéance est un compte, pas une date.** ⚠️ **Ne pas forcer en payant** : 200 est aussi le seuil où l'écran casse |
 | ⚠️ **`intelligence artificielle` : le seul critère non arbitré** | 127 offres nettes/mois pour une moyenne de 8/100. Maxime l'a **gardé** le 28 août. ⚠️ **Ne pas le retirer seul** |
 | Qualité d'`automatisation` | 11 offres nettes/mois, **aucune notée** : qualité **inconnue**, ce qui n'est pas « bonne » |
 | Bug pipeline **dormant** : `--renoter` perd la trace d'un échec | Inatteignable depuis le 26 août. Analyse et correctif en commentaire dans `pipeline/notation.py`, **au point d'usage** |
@@ -360,15 +462,15 @@ workflow finirait par mordre vers 4 ou 5 nuits.
 
 | Brique | État |
 |---|---|
-| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte · `/` le compte rendu de la nuit · `/offres` (six filtres, trois classements, statuts, coup de cœur) · la fiche `/offres/[identifiant]` (statuts, note, coup de cœur, **bloc d'enrichissement**) · thème à trois états |
+| `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte · `/` le compte rendu de la nuit · `/offres` (six filtres, trois classements, statuts, coup de cœur, **seuil d'intérêt à 40**) · la fiche `/offres/[identifiant]` (statuts, note, coup de cœur, **bloc d'enrichissement**) · thème à trois états |
 | Supabase | Région Paris. **Cinq tables.** RLS activé sans politique **et** droits retirés à `anon`/`authenticated` — deux verrous indépendants |
-| Migrations | **11**, toutes appliquées. La 10ᵉ ajoute les trois tables d'enrichissement, la 11ᵉ ouvre « Business » (trois rubriques) et trace les sources (colonne `url` sur l'étape) |
+| Migrations | **12**, toutes appliquées. La 10ᵉ ajoute les trois tables d'enrichissement, la 11ᵉ ouvre « Business » (trois rubriques) et trace les sources (colonne `url` sur l'étape), la 12ᵉ ajoute `offres.supprime_a` — la corbeille |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris · **5 variables** (`JETON_GITHUB` reste à y poser) |
 | GitHub Actions | `collecte-nocturne.yml` (cron 02:23 UTC, collecte **et** notation) · **`enrichissement.yml`** (lancé par l'interface au clic) |
 | `pipeline/` | ⚠️ **Seul le CDI est collecté** (`TYPE_CONTRAT` dans `config.py`) |
 | Modules | `collecte.py` · `notation.py` · `salaire.py` · `employeur.py` · **`enrichissement.py`** (l'agent) · **`registre.py`** (la frontière vers le registre public) · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
-| Tests | `npm run verifie` depuis `interface/` — lint, typecheck, **122 tests dans les deux fuseaux** |
+| Tests | `npm run verifie` depuis `interface/` — lint, typecheck, **127 tests dans les deux fuseaux** |
 
 ## ⚠️ Neuf règles opposables, qui ne se déduisent d'aucun fichier
 
@@ -383,19 +485,24 @@ workflow finirait par mordre vers 4 ou 5 nuits.
 2. **Un aperçu Vercel parle à la *même* base que la production.** Vercel isole le
    code, jamais les données : une branche qui migre ou supprime touche les vraies
    données.
-3. ⚠️ **DIX modules de `lib/` n'ont pas `import "server-only"`** — `statuts.ts`,
+3. ⚠️ **ONZE modules de `lib/` n'ont pas `import "server-only"`** — `statuts.ts`,
    `notes.ts`, `francais.ts`, `filtres.ts`, `tri.ts`, `theme.ts`, `employeur.ts`,
-   `coup-de-coeur.ts`, `enrichissement.ts` et **`regroupement.ts`**.
-   ⚠️ **Ce fichier en annonçait NEUF jusqu'au 31 août 2026 et oubliait
-   `regroupement.ts`** — recompté un par un ce jour-là. L'erreur était sans danger
+   `coup-de-coeur.ts`, `enrichissement.ts`, `regroupement.ts` et
+   **`suppression.ts`** (31 août 2026).
+   ⚠️ **Ce fichier a annoncé NEUF, puis DIX, et les deux étaient faux au moment
+   où on les lisait** — recompté un par un le 31 août 2026, deux fois dans la
+   même journée. C'est la démonstration de la règle qui suit : **recompter,
+   jamais recopier.** L'erreur était sans danger
    (ce module n'importe rien du tout, il ne peut tirer aucun secret) mais elle
    était piégeuse dans l'autre sens : qui vérifiait la règle en comptant trouvait
    dix et pouvait croire qu'un module avait perdu son `server-only`. **Recompter
    plutôt que recopier.** ⚠️ **Et recompter JUSTE** : un `grep server-only` compte
    à l'envers, parce que six de ces dix modules *mentionnent* la chaîne dans leur
    en-tête pour expliquer pourquoi ils ne l'ont pas. Le seul critère est une ligne
-   qui COMMENCE par `import "server-only";` — mesuré ainsi le 31 août 2026 : huit
-   modules protégés, onze sans, soit dix hors `utils.ts`. — `utils.ts` mis à part, qui ne porte que le `cn()` de
+   qui COMMENCE par `import "server-only";` — remesuré ainsi le 31 août 2026 au
+   soir : **huit modules protégés** (`acces`, `github`, `offres`,
+   `enrichissement-base`, `matin`, `veille`, `session`, `supabase`), **douze
+   sans**, soit **onze hors `utils.ts`**. — `utils.ts` mis à part, qui ne porte que le `cn()` de
    shadcn. C'est leur raison d'être : les composants clients ont besoin des mêmes
    constantes que le serveur (libellés de statut, borne de longueur de la note,
    accord du pluriel) ; s'ils allaient les chercher dans `lib/offres.ts`, ils

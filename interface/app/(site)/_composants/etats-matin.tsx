@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { SEUIL_INTERET } from "@/lib/filtres";
 import { accorder, daterPassage } from "@/lib/francais";
-import { SEUIL_INTERET_MATIN } from "@/lib/matin";
 
 import { Panneau } from "./etats";
 
@@ -204,6 +204,16 @@ export function PasEncoreNotees({
  * notation à moitié tombée laisse un mélange : affirmer « rien d'intéressant »
  * sur un lot dont un tiers n'a pas été jugé serait faux. La phrase s'ajoute au
  * lieu de remplacer, pour que le constat principal reste lisible.
+ *
+ * ⚠️ **« tout est en base et reste consultable » a été RETIRÉ le 31 août 2026,
+ * et la phrase était devenue fausse le jour même** — relevé en revue. Elle était
+ * exacte tant que `/offres` montrait tout : les offres sous le seuil étaient
+ * cachées de cet écran-ci et retrouvables ailleurs. Depuis que `SEUIL_INTERET`
+ * borne les deux écrans, une nuit entière passée sous le seuil n'est affichée
+ * par **aucune** page du produit — la phrase envoyait donc chercher une liste
+ * qui n'existe pas. Ce qui reste vrai, et que le message dit maintenant, c'est
+ * que **rien n'est supprimé** : la base garde tout, et baisser le seuil rend
+ * les offres sans recollecte ni nouvelle notation.
  */
 export function SousLeSeuil({
   total,
@@ -225,9 +235,10 @@ export function SousLeSeuil({
     >
       <p>
         La dernière collecte a rapporté {total}{" "}
-        {accorder(total, "offre")}, et aucune n’atteint {SEUIL_INTERET_MATIN}/100
-        en intérêt. Rien à lire ce matin, et ce n’est pas une panne&nbsp;: tout
-        est en base et reste consultable.
+        {accorder(total, "offre")}, et aucune n’atteint {SEUIL_INTERET}/100
+        en intérêt. Rien à lire ce matin, et ce n’est pas une panne&nbsp;: le
+        seuil masque, il n’efface pas. Tout est conservé en base, et baisser le
+        seuil suffirait à les faire revenir.
       </p>
       {nonNotees > 0 && (
         <p className="mt-3">

@@ -7,8 +7,19 @@
  * Casse : rien à l'exécution.
  *
  * ⚠️ **Pas de `server-only` ici, comme `statuts.ts`, `notes.ts`, `francais.ts`,
- * `tri.ts`, `theme.ts`, `employeur.ts` et `coup-de-coeur.ts`** (règle 3 du
- * `CLAUDE.md`).
+ * `tri.ts`, `theme.ts`, `employeur.ts`, `coup-de-coeur.ts`, `enrichissement.ts`
+ * et `regroupement.ts`** (règle 3 du `CLAUDE.md`).
+ *
+ * ⚠️ **Ce fichier a porté une JUSTIFICATION FAUSSE pendant une heure, le 31 août
+ * 2026, et elle mérite d'être racontée.** Elle disait que `SEUIL_INTERET`
+ * « s'écrit dans un écran vide, donc côté navigateur », faisant de l'absence de
+ * `server-only` une nécessité. Vérifié en revue : les trois consommateurs —
+ * `etats.tsx`, `etats-matin.tsx`, `offres/page.tsx` — n'ont pas de
+ * `"use client"`, ils rendent sur le serveur. La constante n'atteint jamais le
+ * navigateur. **Le danger d'un tel commentaire est qu'il annonce une garantie
+ * acquise** : le jour où un vrai composant client voudrait ce nombre, on
+ * croirait la question déjà réglée. Ce qui reste vrai, et qui suffit, c'est la
+ * règle 3 — un module de constantes pures est importable des deux côtés.
  *
  * ⚠️ **Ce fichier est né d'une revue, le 29 août 2026, et le défaut qu'il
  * répare était dormant.** `FiltreListe` et `FILTRE_PAR_DEFAUT` vivaient dans
@@ -70,6 +81,125 @@ export type FiltreListe = Statut | "toutes" | "nouvelles" | "coup_de_coeur";
  * traiter » et la troncature mord pareil.
  */
 export const FILTRE_PAR_DEFAUT: FiltreListe = "a_traiter";
+
+/**
+ * Le seuil d'intérêt en dessous duquel une offre ne s'affiche nulle part.
+ *
+ * Entre : rien. Sort : une note sur 100.
+ *
+ * ⚠️ **C'est le seul endroit du produit qui CACHE une offre, et il vaut
+ * désormais pour les DEUX écrans.** Il vivait dans `lib/matin.ts` sous le nom
+ * `SEUIL_INTERET_MATIN` et ne bornait que le compte rendu du matin ; `/offres`
+ * montrait tout. Décision de Maxime, 31 août 2026, après mesure : la liste
+ * affichait 580 offres dont **434 jamais notées** — l'arriéré d'avant la mise
+ * en place du cron, que la notation ne reprendra jamais puisqu'elle ne tourne
+ * que sur la dernière collecte. Les quelques annonces à lire s'y noyaient.
+ *
+ * ⚠️ **Il déménage ICI et pas ailleurs pour une raison mécanique** : `matin.ts`
+ * importe déjà `offres.ts`, donc y laisser la constante que les deux partagent
+ * aurait fait un cycle d'import. Ce fichier n'a pas `server-only` (règle 3 du
+ * `CLAUDE.md`), il est donc lisible du serveur comme du navigateur — et c'est
+ * nécessaire : les écrans vides écrivent ce nombre en toutes lettres.
+ *
+ * ⚠️ **Rien n'est supprimé en base, et c'est cette propriété qui rend le seuil
+ * réversible.** Le pipeline continue de tout collecter et de tout noter :
+ * baisser ce nombre rend les offres immédiatement, sans recollecte et sans
+ * repayer une notation. Supprimer aurait été définitif — France Travail
+ * dépublie ses annonces, et une ligne effacée ne se récupère jamais.
+ *
+ * ⚠️ **40 et non 50 — décision de Maxime, prise sur mesure le 31 août 2026.**
+ * Les 146 offres notées se répartissent en deux paquets séparés par un vide :
+ *
+ * | Intérêt | Offres | | Seuil | Reste à l'écran |
+ * |---|---|---|---|---|
+ * | 0-19 | **115** | | ≥ 30 | 26 |
+ * | 20-29 | 5 | | ≥ 35 | 22 |
+ * | 30-34 | 4 | | **≥ 40** | **16** |
+ * | 35-39 | 6 | | ≥ 50 | 12 |
+ * | 40-100 | **16** | | ≥ 60 | 11 |
+ *
+ * La coupure naturelle est le trou entre 20 et 40 : à 40 on coupe juste après
+ * le vide. Passer à 50 ne retire que **4** annonces, toutes dans la bande
+ * 40-49 — on couperait alors dans ce qui reste, plus dans le bruit.
+ *
+ * ⚠️ **`NULL >= 40` est FAUX en SQL, et c'est ce qui écarte les 434 offres
+ * jamais notées sans une ligne de code de plus.** Conséquence à connaître : une
+ * offre collectée cette nuit mais **pas encore notée** est invisible elle
+ * aussi. C'est voulu — une offre sans note ne peut pas être jugée — mais ça
+ * veut dire qu'un ratage de la notation vide l'écran sans rien casser.
+ * `AucuneOffreAuSeuil` (`_composants/etats.tsx`) existe pour que ce vide-là
+ * s'explique au lieu de passer pour une panne de collecte.
+ *
+ * ⚠️ **Le changer reste une décision produit, pas un réglage.** C'est ce seuil
+ * qui sépare un instrument de décision d'une archive.
+ */
+export const SEUIL_INTERET = 40;
+
+/**
+ * Comment le seuil s'applique à un filtre — **trois régimes, pas deux**.
+ *
+ * Entre : un filtre déjà validé par `estFiltre`.
+ * Sort : le régime qui gouverne à la fois la requête, le compteur de la pilule
+ * et le message d'écran vide.
+ * Casse : rien — le `switch` est exhaustif à la compilation, un septième filtre
+ * ajouté sans passer ici ne compilerait pas.
+ *
+ * | Régime | Filtres | Ce que la liste montre |
+ * |---|---|---|
+ * | `"seuil"` | À traiter · Écarté · Nouveau | uniquement au-dessus du seuil |
+ * | `"aucun"` | Coup de cœur · Candidaté | tout, le seuil n'y filtre rien |
+ * | `"visible"` | Toutes | au-dessus du seuil **ou** marqué par Maxime |
+ *
+ * ⚠️ **Le seuil filtre ce que le MODÈLE propose, jamais ce que Maxime a
+ * lui-même désigné** — décision du 31 août 2026. « Coup de cœur » et
+ * « Candidaté » sont les deux seules listes dont le contenu vient d'un clic :
+ * une offre notée 30 qu'il a likée doit y rester, sinon le filtre annule son
+ * propre geste — et sans le moindre message, puisqu'une offre cachée ne laisse
+ * aucune trace à l'écran.
+ *
+ * ⚠️ **`"visible"` existe parce que « Toutes » doit rester un SUR-ENSEMBLE des
+ * autres onglets, et une première version l'avait cassé** — relevé en revue le
+ * 31 août 2026. Avec un simple booléen, « Toutes » appliquait le seuil sec :
+ * l'offre likée à 30 apparaissait sous « Coup de cœur » puis **disparaissait**
+ * en cliquant « Toutes », et la pilule « Toutes » pouvait afficher un chiffre
+ * **inférieur** à la pilule « Candidaté » juste à côté. Un onglet nommé
+ * « Toutes » qui montre moins que son voisin est un défaut, pas un arbitrage.
+ *
+ * ⚠️ **« Écarté » est en régime `"seuil"`, et c'est le cas qui se discute** :
+ * écarter est aussi un clic. Mais c'est la corbeille — l'exempter ferait de la
+ * seule liste qu'on n'ouvre jamais celle qui contient tout le bruit.
+ *
+ * ⚠️ **La liste ET les compteurs traversent cette fonction**, et ça n'est pas
+ * optionnel : une pilule annonçant 562 en face de trois lignes ferait douter
+ * des deux. C'est elle, et non une discipline, qui empêche la divergence.
+ */
+export type RegimeSeuil = "seuil" | "aucun" | "visible";
+
+export function regimeDuSeuil(filtre: FiltreListe): RegimeSeuil {
+  switch (filtre) {
+    case "candidate":
+    case "coup_de_coeur":
+      return "aucun";
+    case "toutes":
+      return "visible";
+    case "a_traiter":
+    case "ecarte":
+    case "nouvelles":
+      return "seuil";
+  }
+}
+
+/**
+ * Le seuil retire-t-il quelque chose de cette liste ?
+ *
+ * ⚠️ **Vrai pour `"seuil"` ET pour `"visible"`** : dans les deux cas une offre
+ * peut manquer à cause de sa note. C'est la question que se posent le sous-titre
+ * (« faut-il annoncer le seuil ? ») et l'écran vide (« faut-il l'incriminer ? »),
+ * et elle ne se confond pas avec le régime lui-même.
+ */
+export function leSeuilRetireQuelqueChose(filtre: FiltreListe): boolean {
+  return regimeDuSeuil(filtre) !== "aucun";
+}
 
 /**
  * L'ordre d'affichage des onglets, et la seule liste qui en fasse foi.

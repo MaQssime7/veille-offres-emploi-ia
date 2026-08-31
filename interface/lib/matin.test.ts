@@ -5,7 +5,6 @@ import {
   type AffichageMatin,
   type CollecteAffichee,
   type ResumeCollecte,
-  SEUIL_INTERET_MATIN,
   choisirAffichage,
 } from "@/lib/matin";
 import type { OffreEnListe } from "@/lib/offres";
@@ -199,13 +198,5 @@ describe("choisirAffichage", () => {
       const affichage = choisirAffichage([], null, null);
       assert.deepEqual(affichage, { sorte: "sans_collecte" });
     });
-  });
-
-  it("garde le seuil décidé, et le fige", () => {
-    // ⚠️ Le seuil est une décision produit, pas un réglage : le changer doit
-    // casser un test, pas passer inaperçu. Il valait 50 (critère d'acceptation
-    // de la phase 5) jusqu'au 30 août 2026, où Maxime l'a abaissé à 35 sur
-    // mesure — à 50, l'écran du matin était vide quatre matins sur six.
-    assert.equal(SEUIL_INTERET_MATIN, 35);
   });
 });

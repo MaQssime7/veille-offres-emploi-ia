@@ -16,6 +16,8 @@
 
 import type { Metadata } from "next";
 
+import { definirSuppression } from "./actions";
+import { FournisseurCorbeille } from "./_composants/corbeille";
 import { EnTete } from "./_coquille/en-tete";
 
 /**
@@ -34,7 +36,19 @@ export default function CoquilleSite({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-svh flex-col">
       <EnTete />
-      {children}
+      {/* ⚠️ **Le fournisseur est ICI et pas dans chaque page**, parce que la
+          barre d'annulation doit survivre à la ligne qui la déclenche : cliquer
+          la corbeille fait disparaître l'offre, donc son bouton. Rendue par le
+          bouton, la barre serait démontée à l'instant où elle devient utile.
+          ⚠️ **Il enveloppe des enfants SERVEUR sans les faire basculer côté
+          client** — motif déjà employé par `VerrouTri` sur `/offres` : les
+          pages arrivent en `children` déjà fabriquées.
+          ⚠️ **L'action serveur est passée en propriété**, seule chose qu'un
+          composant serveur a le droit de confier à un composant client : la
+          décision d'accès (`exigerSession`) reste du côté serveur. */}
+      <FournisseurCorbeille definirSuppression={definirSuppression}>
+        {children}
+      </FournisseurCorbeille>
     </div>
   );
 }

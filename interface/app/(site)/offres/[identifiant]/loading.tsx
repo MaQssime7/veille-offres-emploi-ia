@@ -106,7 +106,8 @@ export default function ChargementFiche() {
               X » sous le nom, mais **seulement quand le modèle a identifié un
               employeur** : aucune des 580 offres en base au moment de l'écriture
               de ce fichier, et une minorité longtemps après, le rattrapage étant
-              borné aux 18 offres à traiter au-dessus de 35.
+              borné aux offres à traiter au-dessus du seuil d'intérêt — 18 au
+              30 août 2026 quand il valait 35, 12 depuis qu'il vaut 40.
               **Un squelette s'aligne sur ce que SA page affiche le plus
               souvent** — leçon du calage de `/` le 30 août. La doubler ferait
               sauter le contenu de ~24 px vers le haut sur l'immense majorité des

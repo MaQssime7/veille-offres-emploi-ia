@@ -9,6 +9,7 @@ import {
   formaterSalaireAnnuel,
 } from "../../../_composants/formats";
 import { BoutonCoupDeCoeur } from "../../../_composants/bouton-coup-de-coeur";
+import { BoutonCorbeille } from "../../../_composants/corbeille";
 import { BoutonsStatut } from "../../../_composants/boutons-statut";
 import { CartoucheEnAttente, etatNotation } from "../../../_composants/notes";
 
@@ -179,6 +180,22 @@ export function EnTeteOffre({
           statut={offre.statut}
           aere
         />
+        {/* ⚠️ **En dernier, et sans libellé même ici.** Les deux boutons
+            au-dessus portent leur mot en toutes lettres parce qu'on lit une
+            fiche ; celui-ci reste une icône seule, avec son `aria-label`, pour
+            une raison de sens : dessiné au même poids que « Candidaté », il se
+            lirait comme une décision de tri de plus, alors qu'il fait sortir
+            l'offre de tous les écrans.
+            ⚠️ **Absent quand l'offre est DÉJÀ retirée** — le panneau de retour
+            prend alors sa place, plus haut dans la page. Deux commandes
+            contraires dans la même rangée ne s'expliqueraient pas. */}
+        {offre.supprime_a === null && (
+          <BoutonCorbeille
+            identifiant={offre.identifiant}
+            intitule={offre.intitule}
+            className="size-10"
+          />
+        )}
       </div>
     </header>
   );

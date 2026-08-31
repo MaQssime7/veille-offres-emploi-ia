@@ -41,7 +41,9 @@ import {
 } from "@/lib/enrichissement-base";
 import { lireOffre } from "@/lib/offres";
 
+import { definirSuppression } from "../../actions";
 import { CadrePage } from "../../_composants/cadre-page";
+import { BoutonRestaurer } from "../../_composants/corbeille";
 import { BaseInjoignable } from "../../_composants/etats";
 import { ContenuNotes, etatNotation } from "../../_composants/notes";
 import { BlocEnrichissement } from "./_composants/bloc-enrichissement";
@@ -158,6 +160,31 @@ export default async function PageOffre({
   return (
     <CadrePage>
       <RetourListe />
+
+      {/* ⚠️ **Le panneau de retour passe AVANT l'en-tête, et sa place est le
+          correctif.** Une offre retirée de l'affichage n'existe plus sur aucune
+          liste : cette fiche, atteinte par son adresse, est le seul chemin qui
+          reste pour la faire revenir. Placé en bas de page, il faudrait savoir
+          qu'il est là pour aller le chercher.
+          ⚠️ **Il ne s'affiche QUE dans ce cas** — `supprime_a` est la seule
+          colonne de la fiche que les listes ne lisent jamais, précisément parce
+          qu'elles excluent ces offres. */}
+      {offre.supprime_a !== null && (
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-border bg-muted px-5 py-4">
+          <p className="text-sm text-foreground">
+            <strong className="font-semibold">
+              Cette offre est retirée de l’affichage.
+            </strong>{" "}
+            Elle n’apparaît plus dans la liste ni sur l’écran du matin. Rien n’a
+            été effacé&nbsp;: ses notes et son enrichissement sont intacts.
+          </p>
+          <BoutonRestaurer
+            identifiant={offre.identifiant}
+            definirSuppression={definirSuppression}
+          />
+        </div>
+      )}
+
       <EnTeteOffre offre={offre} maintenant={maintenant} />
 
       {/* Colonne unique, et c'est une décision — pas un provisoire.

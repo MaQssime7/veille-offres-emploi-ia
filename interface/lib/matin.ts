@@ -1,6 +1,13 @@
 import "server-only";
 
-import { CLASSEMENTS, COLONNES_LISTE, type OffreEnListe } from "./offres";
+import { SEUIL_INTERET } from "./filtres";
+import {
+  CLASSEMENTS,
+  COLONNES_LISTE,
+  CONDITION_NON_SUPPRIMEE,
+  CONDITION_SEUIL_INTERET,
+  type OffreEnListe,
+} from "./offres";
 import {
   type GroupeOffres,
   annoncesRepresentees,
@@ -36,41 +43,18 @@ import { type MotifEchec, interrogerBase } from "./supabase";
  * porte sur une table de 55 lignes servie par un index partiel.
  */
 
-/**
- * Le seuil d'intérêt en dessous duquel une offre ne s'affiche pas le matin.
+/*
+ * ⚠️ **Le seuil d'intérêt N'EST PLUS DÉFINI ICI depuis le 31 août 2026, et ce
+ * n'est pas un rangement.** Cet écran portait `SEUIL_INTERET_MATIN = 35` et
+ * était le seul du produit à cacher une offre ; `/offres` montrait tout, y
+ * compris les 434 jamais notées. Deux seuils, c'était deux populations : une
+ * offre à 37 s'affichait le matin puis restait introuvable dans le plan de
+ * travail où on serait allé la rechercher l'après-midi.
  *
- * ⚠️ **C'est le seul endroit du produit qui CACHE une offre**, et c'est pour ça
- * qu'il est borné à cet écran : `/offres` continue de tout montrer. Le pari est
- * qu'un compte rendu du matin qui liste trente annonces à 12/100 ne se lit plus
- * — mais rien n'est perdu, la carte de passage renvoie vers le plan de travail
- * et **compte ce qu'elle n'affiche pas**.
- *
- * ⚠️ **35 et non 50 — décision de Maxime le 30 août 2026, prise sur mesure.**
- * `docs/PLAN.md` écrivait 50 dans ses critères d'acceptation ; la donnée qui
- * permet de juger ce chiffre n'existait pas quand il a été écrit. Mesuré sur les
- * six dernières collectes réelles, offres « à traiter » uniquement :
- *
- * | Collecte | Offres | à lire à 50 | **à 35** | à 25 |
- * |---|---|---|---|---|
- * | 29 août | 7 | 1 | **4** | 4 |
- * | 28 août | 7 | 0 | **2** | 2 |
- * | 27 août | 25 | 5 | **6** | 9 |
- * | 26 août 20:42 | 0 | 0 | **0** | 0 |
- * | 26 août 18:32 | 162 | 0 | **1** | 2 |
- * | 26 août 12:14 | 2 | 0 | **0** | 0 |
- *
- * À 50, l'écran était vide **quatre matins sur six** ; à 35 il l'est deux fois,
- * et les deux sont des collectes qui n'ont réellement rien rapporté. Sur toute
- * la base, on passe de 10 offres à 20.
- *
- * ⚠️ **Descendre à 25 n'ajouterait que 7 offres sur toute la base** — le gain
- * s'aplatit, et chaque cran perdu rapproche l'écran du matin d'un second plan de
- * travail. C'est ce qui a fait s'arrêter à 35 plutôt que plus bas.
- *
- * ⚠️ **Le changer reste une décision produit, pas un réglage.** C'est ce seuil
- * qui fait la différence entre un compte rendu et une seconde liste.
+ * `SEUIL_INTERET` (`lib/filtres.ts`) vaut désormais pour les deux écrans, et
+ * c'est là que vit la mesure qui l'a fixé à 40. **Ne pas redéclarer de valeur
+ * ici** : une seconde définition rouvrirait exactement le défaut qu'on ferme.
  */
-export const SEUIL_INTERET_MATIN = 35;
 
 /**
  * Le plafond de lignes rendues par l'écran du matin.
@@ -226,8 +210,8 @@ async function lireDerniereCollecte(): Promise<LectureCollecte> {
  *
  * ⚠️ **Le seuil part dans le CHEMIN, pas dans `options.egal`, et c'est autorisé
  * ici pour une raison précise.** La règle du projet est que le chemin ne porte
- * que des constantes du code — `SEUIL_INTERET_MATIN` en est une, écrite dans ce
- * fichier, qu'aucune adresse ni aucun formulaire ne peut atteindre. `egal`
+ * que des constantes du code — `SEUIL_INTERET` en est une, importée de
+ * `filtres.ts`, qu'aucune adresse ni aucun formulaire ne peut atteindre. `egal`
  * n'aurait de toute façon pas pu servir : elle ne sait produire que `eq.`, et
  * il faut ici un `gte.`. Le jour où ce seuil deviendrait réglable depuis
  * l'interface, cette ligne devrait changer de mécanisme — pas seulement de
@@ -246,7 +230,11 @@ async function lireDerniereCollecte(): Promise<LectureCollecte> {
 function lireOffresDuMatin(idCollecte: number) {
   return interrogerBase<OffreEnListe>(
     `offres?select=${COLONNES_LISTE}` +
-      `&note_interet=gte.${SEUIL_INTERET_MATIN}` +
+      CONDITION_SEUIL_INTERET +
+      // ⚠️ **La corbeille vaut ici aussi**, sinon une offre retirée depuis
+      // `/offres` réapparaîtrait le lendemain matin — le geste ne tiendrait
+      // qu'un écran sur deux, ce qui est pire que pas de geste du tout.
+      CONDITION_NON_SUPPRIMEE +
       `&order=${CLASSEMENTS.interet}&limit=${PLAFOND_MATIN}`,
     { egal: { execution_id: String(idCollecte), statut: A_TRAITER } },
   );
@@ -271,6 +259,14 @@ function lireOffresDuMatin(idCollecte: number) {
  */
 async function lireResume(idCollecte: number): Promise<ResumeCollecte | null> {
   const resultat = await interrogerBase<LigneResume>(
+    // ⚠️ **La corbeille n'est PAS exclue du résumé, et c'est un correctif de
+    // revue du 31 août 2026.** Une première version l'excluait, au motif que le
+    // résumé alimente des phrases affichées. Le raisonnement était inversé : ce
+    // résumé est un **verdict sur la NUIT**, c'est-à-dire sur un fait passé, et
+    // un filtre d'affichage postérieur le fait mentir. Cas concret : la nuit
+    // ramène 7 offres dont 2 au-dessus du seuil, Maxime les retire, et l'écran
+    // affirme « la collecte a rapporté 5 offres, aucune n'atteint 40/100 » —
+    // deux affirmations fausses sur ce qui s'est réellement passé.
     `offres?select=note_interet,statut,notation_tentatives&limit=${PLAFOND_RESUME}`,
     { compter: true, egal: { execution_id: String(idCollecte) } },
   );
@@ -282,7 +278,7 @@ async function lireResume(idCollecte: number): Promise<ResumeCollecte | null> {
   return {
     total: lignes.length,
     auSeuil: lignes.filter(
-      (l) => l.note_interet !== null && l.note_interet >= SEUIL_INTERET_MATIN,
+      (l) => l.note_interet !== null && l.note_interet >= SEUIL_INTERET,
     ).length,
     nonNotees: lignes.filter((l) => l.note_interet === null).length,
     dejaTentees: lignes.filter(
@@ -295,10 +291,28 @@ async function lireResume(idCollecte: number): Promise<ResumeCollecte | null> {
   };
 }
 
-/** Combien d'offres attendent en tout, tous temps confondus. */
+/**
+ * Combien d'offres attendent en tout, tous temps confondus.
+ *
+ * ⚠️ **Le seuil s'applique ici, et l'oublier a produit un défaut vu à l'écran
+ * le 31 août 2026.** Ce compte alimente la carte de passage — « N autres offres
+ * attendent dans le plan de travail » — donc il doit compter ce que ce plan de
+ * travail **montre vraiment**. Sans le seuil, la carte annonçait **574** offres
+ * et menait à un écran qui en affichait **12** : un lien qui ment sur sa
+ * destination, sans la moindre erreur pour le signaler.
+ *
+ * ⚠️ **La condition est IMPORTÉE de `offres.ts`, plus recopiée** — correctif du
+ * 31 août 2026, en deux temps. Une première rédaction la réécrivait ici en
+ * annonçant « la seule duplication de cette chaîne dans le projet » : c'était
+ * faux dès l'intérieur de ce fichier, qui l'écrivait déjà deux fois. Le motif
+ * invoqué — « aucun des deux modules ne doit dépendre de l'autre » — était faux
+ * lui aussi : ce fichier importe `CLASSEMENTS` et `COLONNES_LISTE` d'`offres.ts`
+ * depuis toujours. Il n'y avait rien à protéger, seulement trois endroits où
+ * changer l'opérateur.
+ */
 async function compterATraiter(): Promise<number | null> {
   const resultat = await interrogerBase<{ identifiant: string }>(
-    "offres?select=identifiant&limit=1",
+    `offres?select=identifiant&limit=1${CONDITION_SEUIL_INTERET}${CONDITION_NON_SUPPRIMEE}`,
     { compter: true, egal: { statut: A_TRAITER } },
   );
 
@@ -331,8 +345,20 @@ export async function lireCompteRenduDuMatin(): Promise<ResultatMatin> {
   // offres se fait par lots de 50 et **n'est pas atomique** (l'API REST n'expose
   // pas de transaction), donc une collecte qui échoue à mi-parcours laisse
   // derrière elle des offres rattachées à une exécution `echec`. Sans ce
-  // comptage, l'écran annoncerait « aucune collecte n'a abouti » **et
-  // n'offrirait aucune sortie** vers des offres qui existent pourtant.
+  // comptage, l'écran annoncerait « aucune collecte n'a abouti » sans jamais
+  // mentionner des offres qui existent pourtant.
+  //
+  // ⚠️ **Depuis le seuil du 31 août 2026, ce compte peut tomber à zéro alors
+  // que des offres existent** — elles sont toutes sous le seuil. La carte
+  // disparaît alors, et c'est voulu : elle mène au plan de travail, qui ne
+  // montrerait rien non plus. Une carte annonçant « 574 autres offres »
+  // au-dessus d'un écran qui en affiche douze serait pire que son absence, et
+  // c'est très exactement le défaut qu'a produit la première version.
+  // ⚠️ **La page n'est pas pour autant sans issue** : le lien « Offres » du
+  // bandeau ne dépend d'aucun compteur. La formulation précédente disait
+  // « n'offrirait AUCUNE sortie » — c'était déjà inexact, et ça le serait
+  // devenu dangereusement, en faisant passer la disparition de la carte pour
+  // une régression à corriger.
   if (lecture.collecte === null) {
     const totalATraiter = await compterATraiter();
     return {
@@ -395,6 +421,16 @@ export async function lireCompteRenduDuMatin(): Promise<ResultatMatin> {
  * une nuit ramène trente offres toutes sous 50 et l'arriéré est vide — le compteur
  * tombait à zéro, la carte disparaissait, et « Journée calme » ne laissait **aucun
  * chemin** vers les trente offres jamais lues.
+ *
+ * ⚠️ **Ce raisonnement A CHANGÉ DE SENS le 31 août 2026, et le garder tel quel
+ * ferait mal raisonner.** Il valait quand `/offres` montrait tout : les offres
+ * sous le seuil étaient cachées du matin mais **consultables ailleurs**, donc le
+ * compteur devait les mentionner. Depuis que `SEUIL_INTERET` borne les deux
+ * écrans, elles ne sont consultables nulle part et `compterATraiter()` les
+ * exclut à son tour : le compteur retombe donc à zéro dans ce scénario, **et
+ * c'est correct** — il n'y a plus de « chemin » à préserver vers des offres que
+ * le produit a décidé de ne pas montrer. Ce qu'il garantit désormais est plus
+ * simple : **la carte annonce exactement ce que le plan de travail affichera.**
  *
  * Les offres affichées sont toutes « à traiter » par construction du filtre : la
  * soustraction est donc exacte, et elle n'a plus besoin du résumé.

@@ -28,10 +28,12 @@ import {
   FILTRE_PAR_DEFAUT,
   LIBELLES_FILTRE,
   type FiltreListe,
+  SEUIL_INTERET,
   estFiltre,
+  leSeuilRetireQuelqueChose,
+  regimeDuSeuil,
 } from "@/lib/filtres";
 import { listerOffres } from "@/lib/offres";
-import { type Statut } from "@/lib/statuts";
 import { TRIS, TRI_PAR_DEFAUT, type Tri, estTri } from "@/lib/tri";
 import { lireEtatVeille } from "@/lib/veille";
 
@@ -41,6 +43,7 @@ import { CadrePage } from "../_composants/cadre-page";
 import { EnTetePage } from "../_composants/en-tete-page";
 import {
   AucuneOffre,
+  AucuneOffreAuSeuil,
   AucuneOffreDansCeFiltre,
   BaseInjoignable,
   NouveautesInconnues,
@@ -185,6 +188,7 @@ export default async function PageOffres({
               <CompteAffiche
                 affichees={resultat.offres.length}
                 total={resultat.total}
+                sansSeuil={resultat.totalFiltreSansSeuil}
                 filtre={filtre}
               />
             </p>
@@ -200,19 +204,25 @@ export default async function PageOffres({
             <FiltresStatut
               actif={filtre}
               tri={tri}
-              // ⚠️ **Les six comptes sont réunis ICI, et `totalBase` ne voit
-              // toujours que les trois statuts.** L'addition qui reconstitue le
-              // total de la base n'est exacte que parce que chaque offre y est
-              // comptée une fois : « nouvelles », « coup de cœur » et
-              // « toutes » comptent les mêmes offres sous un autre angle, les
-              // additionner donnerait un total supérieur à la base. Le type de
-              // `totalBase` — `Record<Statut, …>` et non `Record<string, …>` —
-              // est ce qui empêche mécaniquement de lui passer cet objet-ci.
+              // ⚠️ **Les six comptes sont réunis ICI, et aucun ne s'obtient en
+              // additionnant les autres.** « Nouveau », « Coup de cœur » et
+              // « Toutes » comptent les mêmes offres sous un autre angle : les
+              // additionner donnerait un total supérieur à la base.
+              //
+              // ⚠️ **« Toutes » était une SOMME jusqu'au 31 août 2026, et le
+              // seuil l'a rendue fausse.** Elle valait « à traiter » +
+              // « candidaté » + « écarté » ; depuis que « Candidaté » échappe
+              // au seuil (`regimeDuSeuil`), cette addition compte les
+              // candidatures sous 40 que la liste « Toutes » ne montre pas.
+              // Elle serait restée juste jusqu'au jour où Maxime candidate à
+              // une offre notée 30 — c'est-à-dire un usage normal du produit,
+              // pas un cas limite. `totalAuSeuil` interroge la base au lieu de
+              // déduire.
               comptes={{
                 ...resultat.comptes,
                 nouvelles: resultat.nouvelles,
                 coup_de_coeur: resultat.coupsDeCoeur,
-                toutes: totalBase(resultat.comptes),
+                toutes: resultat.totalAuSeuil,
               }}
             />
           )
@@ -236,20 +246,46 @@ export default async function PageOffres({
         // une affirmation sur la nuit passée alors qu'on n'a rien pu lire.
         <NouveautesInconnues />
       ) : resultat.offres.length === 0 ? (
-        // ⚠️ **Deux états vides, jamais un seul.** « La base est vide » est
-        // l'écran du tout premier matin ; « ce filtre est vide » est celui d'un
-        // matin où tout a été trié. Les confondre ferait croire à une panne de
-        // collecte un jour où le travail est simplement fini.
-        totalBase(resultat.comptes) === 0 ? (
+        // ⚠️ **TROIS états vides, jamais un seul, et l'ORDRE des tests EST la
+        // logique** — même construction que `choisirAffichage()` sur `/`.
+        //
+        // 1. La base est vide : l'écran du tout premier matin.
+        // 2. Le seuil a tout écarté : la base est pleine, rien n'atteint 40.
+        // 3. Le filtre est vide : des offres passent le seuil, aucune ici.
+        //
+        // Les confondre ferait croire à une panne de collecte un matin où le
+        // produit fonctionne. Le deuxième cas est arrivé avec le seuil du
+        // 31 août 2026 : sans lui, une base de 580 offres dont aucune n'atteint
+        // le seuil affichait « la collecte tourne chaque nuit, les premières
+        // annonces apparaîtront au prochain passage ».
+        resultat.totalCollecte === 0 ? (
           <AucuneOffre />
+        ) : resultat.totalFiltreSansSeuil !== null &&
+          resultat.totalFiltreSansSeuil > 0 ? (
+          // ⚠️ **Le test porte sur ce que le seuil a RÉELLEMENT caché, pas sur
+          // le fait qu'il s'applique** — correctif de revue du 31 août 2026. La
+          // première version incriminait le seuil dès qu'il était actif : sur
+          // « Nouveau », une nuit qui n'a rien ramené affichait « aucune offre
+          // "Nouveau" au-dessus de 40/100 » alors que le seuil n'avait rien
+          // caché du tout. Ça arrive à **chaque** nuit blanche, donc souvent —
+          // et c'était visible à l'écran le jour même. On ne l'accuse
+          // maintenant que si des offres existent bel et bien sous lui.
+          <AucuneOffreAuSeuil
+            libelle={LIBELLES_FILTRE[filtre]}
+            ecartees={resultat.totalFiltreSansSeuil}
+          />
         ) : (
           <AucuneOffreDansCeFiltre
             libelle={LIBELLES_FILTRE[filtre]}
-            totalBase={totalBase(resultat.comptes)}
+            totalBase={resultat.totalCollecte}
             // ⚠️ **Ni « Nouveau » ni « Coup de cœur » ne sont des statuts** :
             // la phrase par défaut affirmerait qu'une colonne `statut` les
             // porte en base, alors que le premier se lit sur `execution_id` et
             // le second sur `coup_de_coeur_a`.
+            //
+            // ⚠️ **« Nouveau » repasse bien ici**, et c'est le sens du
+            // correctif ci-dessus : quand la nuit n'a rien ramené, le seuil n'y
+            // est pour rien et c'est cette phrase-ci qui est vraie.
             raison={
               filtre === "nouvelles"
                 ? "mais aucune ne vient de la dernière collecte"
@@ -286,9 +322,22 @@ export default async function PageOffres({
                 offre={offre}
                 // `derniereExecution` vaut `null` si on n'a pas pu la lire : on
                 // marque alors zéro offre plutôt que de marquer au hasard.
+                // ⚠️ **Le badge répond au MÊME critère que la pilule
+                // « Nouveau », seuil compris** — correctif de revue du 31 août
+                // 2026. Le compteur de la pilule passe par
+                // `conditionDuRegime("nouvelles")`, donc par le seuil ; le badge
+                // ne regardait que l'exécution. Sur « Candidaté » ou « Coup de
+                // cœur », qui n'appliquent aucun seuil, une offre de cette nuit
+                // notée 25 portait donc sa pastille « Nouveau » pendant que la
+                // pilule juste au-dessus annonçait 0 et menait à un écran vide :
+                // trois informations contradictoires sur le même fait, aucune
+                // erreur nulle part. C'est la règle que les compteurs ont reçue
+                // le même jour, appliquée au marqueur qu'on avait oublié.
                 nouvelle={
                   resultat.derniereExecution !== null &&
-                  offre.execution_id === resultat.derniereExecution
+                  offre.execution_id === resultat.derniereExecution &&
+                  offre.note_interet !== null &&
+                  offre.note_interet >= SEUIL_INTERET
                 }
                 // ⚠️ **Le SEUL onglet où retirer un cœur fait sortir la ligne**,
                 // donc le seul où le cœur doit prendre le verrou de tri. Partout
@@ -306,34 +355,6 @@ export default async function PageOffres({
   );
 }
 
-/**
- * Le total de la base, reconstitué en additionnant les trois statuts.
- *
- * ⚠️ **Additionner est exact ici, et ne le serait pas ailleurs.** `statut` est
- * `not null` et sa contrainte n'admet que trois valeurs : toute offre est
- * comptée une fois et une seule. Le jour où un quatrième statut apparaîtrait
- * sans être ajouté à `STATUTS`, cette somme deviendrait fausse en silence —
- * c'est pourquoi la liste est unique et partagée, et que la base la refuserait
- * de toute façon.
- *
- * ⚠️ **Un seul comptage à `null` rend le total inconnu**, pas partiel : annoncer
- * « 400 offres » quand on n'a pas pu en compter une catégorie serait pire que
- * de se taire.
- *
- * ⚠️ **Le paramètre est typé `Record<Statut, …>` et surtout PAS
- * `Record<string, …>` — correctif de revue du 29 août 2026.** Avec `string`,
- * l'objet à six clés passé aux onglets
- * (`{...comptes, nouvelles, coup_de_coeur, toutes}`) était parfaitement
- * assignable : quelqu'un l'extrayant dans une constante pour
- * le réutiliser aurait obtenu 574 + 7 + 574 = **1 155 offres** dans l'onglet
- * « Toutes » et dans le message d'état vide, sans que TypeScript ne bronche.
- * Le type dit maintenant ce que le commentaire ci-dessus exigeait déjà.
- */
-function totalBase(comptes: Record<Statut, number | null>): number | null {
-  const valeurs = Object.values(comptes);
-  if (valeurs.some((v) => v === null)) return null;
-  return valeurs.reduce((somme: number, v) => somme + (v as number), 0);
-}
 
 /**
  * La ligne de compte, sous le titre : ce qui existe, ce qui est jugé, ce qui
@@ -369,33 +390,62 @@ function totalBase(comptes: Record<Statut, number | null>): number | null {
 function CompteAffiche({
   affichees,
   total,
+  sansSeuil,
   filtre,
 }: {
   affichees: number;
   total: number | null;
+  /**
+   * Combien d'offres ce filtre contiendrait sans le seuil. `null` quand le
+   * seuil ne retire rien, ou quand le comptage a échoué.
+   */
+  sansSeuil: number | null;
   filtre: FiltreListe;
 }) {
   const segments: string[] = [];
+  const avecSeuil = leSeuilRetireQuelqueChose(filtre);
 
   if (total === null) {
     // On ne connaît pas le total : on ne parle que de ce qu'on montre.
     segments.push(`${affichees} ${accorder(affichees, "offre")} ${accorder(affichees, "affichée")}`);
   } else {
-    // ⚠️ **« collectées » ne vaut plus que sans filtre.** Ce total est celui du
-    // filtre depuis la phase 4 : écrire « 42 offres collectées » sur l'onglet
-    // « Candidaté » affirmerait que la collecte n'a ramené que 42 offres. Le
-    // mot change avec ce qu'il compte réellement.
+    // ⚠️ **« collectées » a été RETIRÉ le 31 août 2026, et le mot était devenu
+    // faux.** L'onglet « Toutes » affichait « 580 offres collectées » ; depuis
+    // le seuil, il ne montre que celles qui l'atteignent — écrire « 16 offres
+    // collectées » affirmerait que la collecte n'en a ramené que seize.
+    // « Retenues » dit ce qui s'est réellement passé : une sélection.
+    // ⚠️ **« sur N » est ce qui rend le masquage VISIBLE quand la liste n'est
+    // pas vide**, et c'est un correctif de revue du 31 août 2026. Sans lui,
+    // l'écart ne se voyait que sur un écran entièrement vide : le jour où la
+    // notation échoue mais où l'onglet contient encore les offres notées
+    // d'hier, les trente nouvelles disparaissaient **sans un mot** — la pilule
+    // « Nouveau » à 0, et la manchette de veille « à jour » puisqu'elle ne
+    // regarde que la collecte. « 12 offres retenues sur 42 » le dit.
+    const ecartExiste = sansSeuil !== null && sansSeuil > total;
     segments.push(
-      filtre === "toutes"
-        ? `${total} ${accorder(total, "offre")} ${accorder(total, "collectée")}`
+      avecSeuil
+        ? `${total} ${accorder(total, "offre")} ${accorder(total, "retenue")}` +
+            (ecartExiste ? ` sur ${sansSeuil}` : "")
         : `${total} ${accorder(total, "offre")}`,
     );
   }
 
   // Le second segment ne s'écrit que si la liste est vraiment tronquée :
-  // « 97 offres collectées · 97 affichées » n'apprendrait rien à personne.
+  // « 97 offres retenues · 97 affichées » n'apprendrait rien à personne.
   if (total !== null && total > affichees) {
     segments.push(`${affichees} ${accorder(affichees, "affichée")}`);
+  }
+
+  // ⚠️ **Le seuil s'écrit en toutes lettres, et c'est le SEUL endroit de la
+  // liste où il se voit** tant qu'elle n'est pas vide. Sans lui, une page qui
+  // montre 16 lignes sur une base de 580 n'explique rien : on cherche la panne.
+  // ⚠️ **« intérêt » est dit** — le produit porte deux notes, et « ≥ 40/100 »
+  // seul laisserait croire que l'accessibilité filtre elle aussi.
+  // ⚠️ **Seulement en régime `"seuil"`, jamais sur « Toutes ».** Cet onglet-là
+  // montre aussi les offres marquées restées sous le seuil : y annoncer
+  // « intérêt ≥ 40/100 » décrirait une liste plus étroite que celle affichée.
+  if (regimeDuSeuil(filtre) === "seuil") {
+    segments.push(`intérêt ≥ ${SEUIL_INTERET}/100`);
   }
 
   return <>{segments.join(" · ")}</>;

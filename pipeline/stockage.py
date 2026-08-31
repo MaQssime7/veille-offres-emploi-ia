@@ -445,6 +445,21 @@ class Stockage:
         la source : renoter en boucle coûterait à chaque passage sans rien
         apprendre.
 
+        ⚠️ **La corbeille N'EST PAS exclue ici, et c'est un choix contraire à
+        celui de `offres_sans_employeur` — relevé en revue le 31 août 2026.**
+        L'argument d'économie vaut dans les deux cas ; ce qui les sépare est
+        l'irréversibilité. La notation est incrémentale : une offre non notée
+        qu'on saute *maintenant* ne sera **jamais** reprise, donc si Maxime la
+        restaure un jour, elle restera muette à l'écran pour toujours. Le
+        rattrapage d'employeur, lui, se relance à volonté.
+
+        Ce qu'on paie pour ce choix est borné et mesurable : il faudrait qu'une
+        offre soit retirée de l'affichage **entre la collecte et la notation**,
+        deux étapes qui s'enchaînent en quelques minutes au milieu de la nuit.
+        Et une offre non notée n'est visible que dans « Coup de cœur » et
+        « Candidaté », les deux seuls filtres sans seuil — donc sur des offres
+        que Maxime a déjà désignées à la main.
+
         `renoter=True` inverse ce filtre — c'est le mode d'étalonnage, et il ne
         s'active jamais tout seul. Il sert à mesurer l'effet d'une correction
         des critères sur les mêmes offres : sans lui, un réglage ne peut se
@@ -559,10 +574,17 @@ class Stockage:
         fiche afficherait indéfiniment le nom brut de France Travail — absent 4
         fois sur 10, et parfois faux.
 
-        ⚠️ **Trois filtres, et chacun borne la dépense.** `note_interet` au-delà
+        ⚠️ **QUATRE filtres, et chacun borne la dépense.** `note_interet` au-delà
         du seuil et `statut='a_traiter'` restreignent aux offres que Maxime voit
         réellement à l'écran — 18 offres au 30 août, contre 146 notées et 580 en
         base.
+        ⚠️ **« Ce que Maxime voit à l'écran » a CHANGÉ le 31 août 2026**, et
+        c'est ce qui donne son sens au seuil passé ici : `SEUIL_INTERET` vaut
+        désormais 40 et borne les deux écrans de l'interface, pas seulement le
+        compte rendu du matin. `--note-minimale` a suivi ; **12 offres** à
+        traiter passent le filtre. Ne pas descendre sous le seuil de l'interface
+        sans raison : en dessous, on paie l'identification d'un employeur que la
+        fiche n'affichera jamais.
 
         ⚠️ **Le troisième filtre porte sur `entreprise_intermediaire`, PAS sur
         `entreprise_identifiee`, et c'est ce qui rend la commande réellement
@@ -584,6 +606,14 @@ class Stockage:
             f"/offres?entreprise_intermediaire=is.null"
             f"&note_interet=gte.{int(note_minimale)}"
             f"&statut=eq.a_traiter"
+            # ⚠️ **Les offres mises à la corbeille sont exclues, et c'est de
+            # l'ARGENT** — correctif de revue du 31 août 2026. Sans ce filtre,
+            # ce rattrapage émettait un appel facturé pour identifier
+            # l'employeur d'une offre qui n'apparaît sur aucun écran. Le trou
+            # était d'autant plus piégeux que la docstring ci-dessus promet
+            # l'inverse en toutes lettres — « en dessous, on paie
+            # l'identification d'un employeur que la fiche n'affichera jamais ».
+            f"&supprime_a=is.null"
             f"&select={self.CHAMPS_A_NOTER}"
             f"&order=note_interet.desc"
         )

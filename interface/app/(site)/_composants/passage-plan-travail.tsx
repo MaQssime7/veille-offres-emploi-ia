@@ -46,10 +46,14 @@ export function PassagePlanTravail({ enAttente }: { enAttente: number }) {
       <span className="text-sm leading-snug text-foreground">
         {/* ⚠️ **« autres » et non « plus anciennes » — correctif de revue du
             30 août 2026.** Le compteur retranche les offres AFFICHÉES, pas
-            celles de la collecte : il inclut donc les offres de la nuit restées
-            sous le seuil, qui ne sont pas plus anciennes du tout. Le mot
-            précédent aurait fait mentir le chiffre le jour où une nuit entière
-            passe sous 50. */}
+            celles de la collecte.
+            ⚠️ **Sa justification d'origine a changé le 31 août 2026** : elle
+            disait « il inclut donc les offres de la nuit restées sous le
+            seuil », ce qui n'est plus vrai depuis que `compterATraiter()`
+            applique le seuil à son tour. Le mot reste pourtant le bon, pour une
+            raison qui tient toujours : la nuit peut dépasser `PLAFOND_MATIN`,
+            et les offres de la collecte qu'il a coupées sont alors comptées ici
+            sans être plus anciennes du tout. */}
         <strong className="font-semibold">{enAttente}</strong>{" "}
         {accorder(enAttente, "autre")} {accorder(enAttente, "offre")}{" "}
         {/* ⚠️ Le verbe s'accorde à la main : `accorder()` ne sait ajouter qu'un

@@ -6,6 +6,320 @@ tout l'historique est ici.
 
 ---
 
+## 31 août 2026 (nuit, suite) — L'en-tête flottante et la corbeille
+
+Deux demandes de Maxime dans le même message : reprendre l'en-tête sur le gabarit
+1st-Pouf, et pouvoir retirer une offre de l'affichage.
+
+### L'installation du gabarit a failli coûter cher
+
+`npx shadcn add …/landing.json` fait trois choses qu'il ne fallait pas laisser passer :
+
+1. **Il propose d'écraser `components/pouf/pouf.css`**, qui porte **cinq adaptations**
+   marquées « ADAPTÉ (projet) ». Le `CLAUDE.md` l'annonçait ; répondu **non**, fichier
+   vérifié intact après coup.
+2. **Il installe `@tabler/icons-react`** — que le `CLAUDE.md` interdit en toutes
+   lettres : le projet est en **lucide**, et « ne jamais mélanger un second jeu ».
+3. **Il installe `@fontsource-variable/nunito`**, doublon de `next/font`.
+
+Les douze fichiers installés ont été retirés et les deux dépendances désinstallées ;
+seule `navbar.tsx` a servi de **référence de style**, recopiée dans le langage du
+projet — jetons shadcn (`bg-card`, `text-foreground`) plutôt que jetons pouf bruts,
+`next/link` plutôt que `<a href>`, lucide plutôt que tabler.
+
+### L'en-tête, en trois passes devant l'écran
+
+Barre blanche arrondie flottant sur le lavande, sans logo — le produit n'a pas de nom,
+et le gabarit d'origine mettait là un mot-symbole. « Veille offres emploi IA » devient
+**« Accueil »**, un onglet comme un autre : au passage, on voit enfin où l'on est, ce
+que le titre cliquable ne disait pas.
+
+Trois corrections après l'avoir regardée :
+
+- **« Se déconnecter » débordait du coussin à 375 px**, texte coupé net par l'arrondi.
+  Le libellé est d'abord passé en `hidden sm:inline`. ⚠️ **Puis Maxime l'a fait retirer
+  partout, y compris en bureau** : en mono majuscules, il pesait plus lourd que les deux
+  onglets réunis et donnait à la sortie le poids visuel d'une destination. Le bouton
+  devient une **icône ronde jumelle de celle du thème** — mesuré, les deux font
+  exactement 34 × 34 px — et le mot passe dans `aria-label` + `title`. La barre tombe de
+  ~410 px à **278 px**.
+  ⚠️ **`<Button>` de shadcn a été abandonné ici** : sa variante `ghost` est
+  rectangulaire et son `size="sm"` impose une hauteur qui ne cadre pas avec le rond
+  voisin. Deux boutons de formes différentes côte à côte se lisent comme deux natures
+  différentes.
+  ⚠️ **Le cycle complet a été rejoué après ce changement de balise** — déconnexion,
+  arrivée sur `/connexion`, reconnexion : un `<button type="submit">` natif soumet bien
+  le `<form action={…}>`, et la propriété « ça marche sans JavaScript » est préservée.
+- **L'onglet actif a d'abord reçu un contour**, sur le patron des pilules de `/offres`,
+  parce que le lavande nu pèse **1,99:1** contre la barre blanche. ⚠️ **Maxime l'a fait
+  retirer après l'avoir vu** : deux onglets ne se comparent pas comme six pilules. Ce
+  que ça coûte est mesuré et assumé — **2,62:1** pour la pastille, sous les 3:1 d'un
+  élément d'interface ; le texte passe (4,64 clair, 7,51 sombre) et `aria-current`
+  porte l'information.
+- **La barre était trop large** : `w-fit` puis `mx-auto`. Elle épouse son contenu et se
+  centre.
+
+### La corbeille : ce que « supprimer » veut dire
+
+⚠️ **La question à poser avant de coder n'était pas « comment », c'était « en quoi
+est-ce différent d'Écarté ? »** Le bouton croix existait déjà et retire l'offre du plan
+de travail. Maxime a tranché : « Écarté » = *regardé, pas pour moi*, l'offre reste dans
+son onglet ; la corbeille = *ne me la remontre jamais*, l'offre quitte **tous** les
+écrans — y compris « Coup de cœur » et « Candidaté », que le seuil épargne pourtant.
+
+**Marqueur transverse, jamais un statut** (migration 12, `offres.supprime_a`), pour la
+raison déjà gravée dans la migration du coup de cœur : un statut est exclusif, donc
+supprimer une offre candidatée effacerait la trace de la candidature. **Vérifié contre
+la base réelle** — après écriture de `supprime_a`, `statut` valait toujours `a_traiter`.
+
+⚠️ **Rien n'est effacé, et pas seulement par prudence** : France Travail dépublie, et
+`enrichissements.offre_identifiant` référence l'offre — un `DELETE` échouerait sur
+toute offre enrichie, soit une sur six aujourd'hui.
+
+**Annulation immédiate** (8 s), choisie par Maxime contre un onglet « Corbeille » : la
+rangée de pilules est pleine à six et il ne reste aucune teinte d'accent libre.
+⚠️ **La barre vit dans le LAYOUT, pas dans le bouton** — cliquer la corbeille fait
+disparaître la ligne, donc son bouton : une barre rendue par lui serait démontée à
+l'instant où elle devient utile.
+⚠️ **Et la fiche reste le chemin de secours** : c'est la seule lecture qui n'applique
+pas `CONDITION_NON_SUPPRIMEE`. Sans elle, une offre retirée après l'expiration de la
+barre serait **irrécupérable**.
+
+### Le défaut que seul l'essai réel pouvait montrer
+
+⚠️ **Le bouton ne se cliquait pas.** La ligne de `/offres` est un *lien-carte* : un
+`<a>` étendu par `after:absolute after:inset-0` couvre toute la surface, et il avalait
+le clic. Playwright l'a dit en toutes lettres — « subtree intercepts pointer events » ;
+à la souris, on aurait **ouvert la fiche en croyant avoir supprimé**, sans la moindre
+erreur. `relative z-10` corrige, exactement comme le bouton du coup de cœur, qui portait
+déjà la parade.
+
+### ⚠️ Une suppression que je n'avais pas demandée — et ce qu'elle prouve
+
+Pendant les essais, une **seconde** offre s'est retrouvée à la corbeille sans que je
+l'aie visée : `6348733`, « Tech Lead Python/IA F/H », notée 40. Trouvée en relisant la
+base après un test qui portait sur une autre offre.
+
+Le journal du serveur de développement porte la trace, sans ambiguïté :
+`ƒ definirSuppression("6348733", true)` — l'action a bien été appelée, avec une session
+valide, depuis `/offres`. Aucune annulation derrière.
+
+**Hypothèse écartée par la mesure** : un rejeu d'action au rechargement à chaud. Testé
+en forçant une recompilation, `/offres` ouverte, trente requêtes derrière — **aucun
+`POST`, aucune action serveur, base inchangée**.
+
+**Ce qui reste, et qui est la bonne explication** : c'est le défaut n° 3 de la revue,
+observé en vrai avant d'être corrigé. Le `CLAUDE.md` porte les deux mesures qui
+l'expliquent — « la fin d'une action serveur n'est PAS la fin du re-rendu : réponse à
++80 ms, réorganisation de la liste à **+900 ms** », et « un test qui re-résout son
+sélecteur à chaque clic ne teste pas une cible mouvante ». Pendant ces 900 ms, la liste
+se réorganise sous le curseur et **le bouton corbeille restait actif sur la ligne qui
+prenait la place**. Une seule barre d'annulation existait : la seconde suppression a
+écrasé la première sans un mot.
+
+⚠️ **Le correctif est celui que la revue demandait** : `BoutonCorbeille` est désormais
+désactivé tant qu'une écriture est en vol (`corbeille.enCours`), et la barre ne se ferme
+plus qu'après un succès. **L'incident vaut plus que le correctif** : il montre que ce
+défaut n'était pas théorique — il s'est produit dès la première demi-heure d'usage, sur
+un geste qui, lui, n'est pas réversible passé huit secondes.
+
+⚠️ **L'offre a été restaurée**, base revérifiée à zéro offre en corbeille.
+
+### Ce qui a été vérifié, et ce qui ne l'a pas été
+
+- **Migration éprouvée en six temps** contre la vraie base : lire · écrire · vérifier
+  que le statut ne bouge pas · compter (579 visibles / 1 retirée) · restaurer · base
+  rendue à l'identique.
+- **Le geste complet à l'écran** : clic → l'offre quitte la liste, « À traiter » passe
+  de 12 à 11, « Toutes » de 16 à 15, le sous-titre de 574 à 573, la barre d'annulation
+  s'affiche → retour par la fiche → **base rendue à l'identique**, `supprime_a` à `NULL`
+  et statut intact.
+- **375 px et bureau, clair et sombre**, console propre, aucun débordement.
+- **Mesure de non-fuite des colonnes REFAITE** (règle 4 du `CLAUDE.md`, exigée après
+  chaque nouveau composant client — et deux sont apparus). Vingt noms de colonnes
+  cherchés dans le HTML **réellement servi** de `/`, `/offres`, « Toutes » et « Coup de
+  cœur » : **aucune fuite**. `charge_brute`, `contact_url_postulation`, la description
+  d'annonce, `note_personnelle`, `tokens_cumules`, `supprime_a` — tous absents des
+  écrans qui ne doivent pas les porter. ⚠️ **Avec témoin positif** : la même mesure
+  trouve bien l'intitulé dans la liste et la description sur SA fiche, donc elle
+  détecte quand il y a quelque chose à détecter.
+- ⚠️ **NON VÉRIFIÉ À L'ŒIL : le bouton sur l'écran du matin.** `/` rend le même
+  composant `LigneOffre` — c'est mécanique et lisible dans le code — mais la collecte
+  du jour n'a rapporté aucune offre, donc l'écran est en état « collecte vide » et
+  n'affiche aucune ligne. **Le dire plutôt que de laisser croire que je l'ai vu.**
+
+---
+
+## 31 août 2026 (nuit) — Le seuil d'intérêt passe à 40 et devient global
+
+Demande de Maxime : « nettoyer l'affichage, il y a beaucoup trop d'offres ». Le
+diagnostic était juste, la cause à mesurer avant de coder.
+
+### Ce que la base disait
+
+580 offres, **146 notées, 434 jamais notées** — l'arriéré d'avant la mise en place
+du cron, que la notation ne reprendra jamais puisqu'elle ne tourne que sur la
+dernière collecte. Les 146 notées se répartissent en **deux paquets séparés par un
+vide** :
+
+| Intérêt | Offres | | Seuil | Reste à l'écran |
+|---|---|---|---|---|
+| 0-19 | **115** | | ≥ 30 | 26 |
+| 20-29 | 5 | | ≥ 35 | 22 |
+| 30-34 | 4 | | **≥ 40** | **16** |
+| 35-39 | 6 | | ≥ 50 | 12 |
+| 40-100 | **16** | | ≥ 60 | 11 |
+
+Maxime hésitait entre 40 et 50. Les chiffres ont tranché : la coupure naturelle est
+le trou entre 20 et 40, et passer à 50 ne retire que **4** annonces, toutes dans la
+bande 40-49 — on couperait dans ce qui reste, plus dans le bruit. **40 retenu.**
+
+### Trois décisions, prises avant d'écrire
+
+1. **Cacher, jamais supprimer.** France Travail dépublie : une ligne effacée ne
+   revient pas. Baisser le seuil rend les offres immédiatement, sans recollecte et
+   sans repayer une notation.
+2. **Un seul seuil pour les deux écrans.** `SEUIL_INTERET_MATIN = 35` ne bornait que
+   `/`. Deux seuils, c'était deux populations : une offre à 37 s'affichait le matin
+   puis restait introuvable dans le plan de travail où on serait allé la rechercher
+   l'après-midi.
+3. **Le seuil filtre ce que le MODÈLE propose, jamais ce que Maxime a désigné.**
+   « Coup de cœur » et « Candidaté » y échappent — sinon une offre notée 30 qu'il a
+   likée quitterait ses coups de cœur, et sans le moindre message, puisqu'une offre
+   cachée ne laisse aucune trace à l'écran. Mesuré avant de décider : aujourd'hui
+   **0 coup de cœur et 0 candidature** passent sous 40, donc l'exception ne change
+   rien — elle protège un geste futur.
+
+⚠️ **« Écarté » est soumis au seuil, et c'est le cas qui se discute** : écarter est
+aussi un clic. Mais c'est la corbeille — l'exempter ferait de la seule liste qu'on
+n'ouvre jamais celle qui contient tout le bruit.
+
+### Où le seuil vit
+
+Dans `lib/filtres.ts`, pas dans `matin.ts`. La raison est **mécanique** :
+`matin.ts` importe déjà `offres.ts`, donc y laisser la constante partagée aurait
+fait un cycle d'import.
+
+⚠️ **Une seconde raison a été avancée, puis retirée le 31 août 2026 parce
+qu'elle était fausse** : « le nombre s'écrit dans un écran vide, donc côté
+navigateur ». Vérifié en revue — les trois consommateurs (`etats.tsx`,
+`etats-matin.tsx`, `offres/page.tsx`) sont des composants **serveur**, sans
+`"use client"`. La constante n'entre donc jamais dans le graphe du navigateur, et
+`server-only` ne l'aurait pas gênée. Le garder aurait fait croire à une garantie
+déjà acquise le jour où un vrai composant client voudrait ce nombre.
+
+`regimeDuSeuil(filtre)` décide, et **la liste comme les compteurs traversent la
+même fonction** — c'est elle, et non une discipline, qui empêche une pilule
+d'annoncer 562 en face de trois lignes.
+
+### Deux défauts trouvés en chemin, dont un vu à l'écran
+
+⚠️ **La pilule « Toutes » était une SOMME, et le seuil l'a rendue fausse.** Elle
+valait « à traiter » + « candidaté » + « écarté ». Depuis que « Candidaté » échappe
+au seuil, cette addition compte les candidatures sous 40 que la liste ne montre pas.
+Elle serait restée juste jusqu'au jour où Maxime candidate à une offre notée 30 —
+c'est-à-dire un usage normal du produit, pas un cas limite. Remplacée par un vrai
+comptage (`compterVisibles()`).
+
+⚠️ **La carte de passage de `/` annonçait 574 offres et menait à un écran qui en
+montrait 12** — vu à l'écran pendant la passe visuelle, pas trouvé en relisant le
+code. `compterATraiter()` ignorait le seuil. Un lien qui ment sur sa destination,
+sans la moindre erreur pour le signaler.
+
+### Un troisième état vide, parce que zéro ligne veut dire trois choses
+
+« La base est vide », « rien n'atteint 40/100 » et « ce filtre est vide » montrent
+tous les trois une page sans offres. Le premier message envoie chercher une panne de
+collecte un matin où la collecte a parfaitement fonctionné. D'où
+`AucuneOffreAuSeuil`, qui dit **les deux causes** — note basse **ou pas de note du
+tout**, puisque `NULL >= 40` n'est pas satisfait — et qui rappelle que rien n'est
+supprimé. L'ordre des tests est la logique, comme dans `choisirAffichage()`.
+
+⚠️ **Le test a d'abord porté sur « le seuil s'applique-t-il ? », et c'était le
+défaut** — voir la section suivante : la revue l'a fait passer sur « a-t-il
+réellement caché quelque chose ? », c'est-à-dire sur un comptage.
+
+### Ce qui a été vérifié, et comment
+
+- **127 tests** au vert dans les deux fuseaux (`npm run verifie`), dont 6 nouveaux
+  sur le seuil — dont un qui parcourt le `FILTRES` réel et exige que **chaque**
+  filtre dise s'il est soumis, et un qui exige qu'il reste au moins un filtre de
+  chaque côté.
+- **L'échappatoire éprouvée pour de vrai** : coup de cœur posé sur une offre notée
+  **38** depuis sa fiche → elle apparaît bien dans « Coup de cœur » (2 offres, sans
+  le segment de seuil dans le sous-titre) → cœur retiré, **base rendue à l'identique**
+  (un seul coup de cœur, `6426819`, date d'origine intacte).
+- **Contrastes mesurés au canvas** sur le nouveau panneau : clair 12,17 / 5,9 / 5,9 ·
+  sombre 14,83 / 7,74 / 7,74 (titre / paragraphe / icône). Le segment « intérêt ≥
+  40/100 » du sous-titre mesure **8,95:1 en sombre**.
+- **375 px et bureau**, clair et sombre, aucun débordement horizontal, **console
+  propre** (0 erreur, 0 avertissement).
+
+### Ce que `/code-review` a trouvé, et qui a changé la forme du travail
+
+La revue a rendu quatorze points. **Quatre touchaient ce que l'écran AFFIRME**, et
+ce sont les plus coûteux — aucun ne lève d'erreur, aucun ne fait rougir un job.
+
+1. ⚠️ **L'écran vide accusait le seuil d'un vide dont il n'était pas
+   responsable.** Sur « Nouveau », une nuit qui n'a rien ramené affichait
+   « Aucune offre "Nouveau" au-dessus de 40/100 » — alors que le seuil n'avait
+   rien caché du tout. Ça arrive à **chaque nuit blanche**, donc souvent : c'était
+   même l'écran que j'avais sous les yeux pendant la passe visuelle sans le
+   remettre en question. Le test portait sur « le seuil s'applique-t-il ? » au
+   lieu de « a-t-il réellement caché quelque chose ? ». Correctif :
+   `compterFiltreSansSeuil()`, demandé **uniquement** quand la liste est vide.
+2. ⚠️ **« Toutes » n'était plus un sur-ensemble des autres onglets.** Une offre
+   likée sous 40 s'affiche dans « Coup de cœur » puis disparaissait en cliquant
+   « Toutes », et la pilule « Toutes » pouvait afficher **moins** que la pilule
+   « Candidaté » juste à côté. C'est ce qui a fait passer le booléen
+   `leSeuilSApplique` (devenu `regimeDuSeuil`) à **trois régimes** — `"seuil"`, `"aucun"`, `"visible"`.
+   Vérifié à l'écran en montant le seuil à 999 : « À traiter 0 · Candidaté 0 ·
+   Coup de cœur 1 · **Toutes 1** », et la liste « Toutes » montre bien l'offre.
+3. ⚠️ **Le message renvoyait vers un indicateur incapable de répondre.** Il
+   disait « l'état de la veille en haut de page dit où en est la notation » — or
+   `lib/veille.ts` ne lit que les exécutions d'`etape = 'collecte'` : une notation
+   tombée y laisse la veille « à jour ». Renvoyer vers un indicateur muet est pire
+   que se taire, on en conclut que tout va bien.
+4. ⚠️ **« Journée calme » promettait « tout est en base et reste
+   consultable ».** Vrai tant que `/offres` montrait tout ; faux le jour même où
+   le seuil a été étendu. Une nuit entière sous le seuil n'est affichée par
+   **aucune** page — la phrase envoyait chercher une liste inexistante.
+
+**Deux requêtes inutiles sur le chemin chaud**, aussi : `compterCollectees()`
+partait à chaque rendu pour un message qui ne s'affiche que sur écran vide. Les
+deux comptages de diagnostic ne sont plus demandés qu'après avoir constaté zéro
+ligne — un écran vide n'a aucun contenu à faire attendre.
+
+**Trois commentaires devenus faux**, redressés : le docstring de `compterAilleurs`
+décrivait comme un bug corrigé un comportement que le seuil rétablit
+légitimement · la justification du mot « autres » sur la carte de passage ·
+et un commentaire de ma main qui annonçait « la seule duplication de cette
+chaîne » alors qu'elle est écrite **trois** fois, dont deux dans le fichier même
+où je l'écrivais.
+
+⚠️ **Un test que j'avais écrit ne pouvait pas échouer.** « Chaque filtre répond
+quelque chose » : le `switch` est exhaustif sans `default`, donc `tsc` le prouvait
+déjà avant que le test ne tourne. Remplacé par un gel de la **partition** des
+trois régimes, construite depuis `FILTRES` réel — ce qu'aucun type ne protège,
+c'est le *contenu* de la décision.
+
+⚠️ **Le pipeline a suivi** : `--note-minimale` valait 35 « le seuil de l'écran du
+matin ». Payer l'identification d'un employeur sur une offre devenue invisible est
+une dépense pure. Passé à 40, avec le commentaire qui porte le lien — Python et
+TypeScript ne peuvent pas partager la constante.
+
+### Effet de bord, et ce qui reste
+
+✅ **Le plafond de 200 lignes ne mord plus** : 16 offres passent le filtre. Le sujet
+reste ouvert sur le principe, mais son échéance recule d'autant.
+
+⚠️ **Constat non traité, remonté à Maxime** : **5 des 16 offres retenues sont des
+alternances**. Il est jeune diplômé et cherche un CDI — le modèle les note haut
+alors qu'elles sont hors cible. C'est un défaut de **notation**, pas de filtre, et
+la base porte déjà une colonne `alternance`.
+
+---
+
 ## 31 août 2026 (soir) — L'agent tourne pour de vrai, et dit ce qu'on ne lui demandait pas
 
 Tranche 7.2. Un seul enrichissement facturé, sur Wavestone. Il devait servir deux fois —

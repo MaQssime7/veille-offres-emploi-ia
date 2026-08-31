@@ -39,7 +39,12 @@ import {
   refermerTentative,
 } from "@/lib/enrichissement-base";
 import { lancerEnrichissement } from "@/lib/github";
-import { changerCoupDeCoeur, changerStatut, enregistrerNote } from "@/lib/offres";
+import {
+  changerCoupDeCoeur,
+  changerStatut,
+  changerSuppression,
+  enregistrerNote,
+} from "@/lib/offres";
 import { LONGUEUR_MAX_NOTE, normaliserNote } from "@/lib/notes";
 import { estStatut } from "@/lib/statuts";
 
@@ -175,6 +180,79 @@ export async function definirStatut(
   //
   // `"page"` suffit : `/` est une feuille, aucune route enfant n'affiche ces
   // offres. `"layout"` sur `/` invaliderait tout le site à chaque clic.
+  revalidatePath("/", "page");
+
+  return { ok: true };
+}
+
+
+/**
+ * Retirer une offre de l'affichage, ou l'y remettre.
+ *
+ * Entre : un identifiant et le sens du geste, tous deux venus du navigateur.
+ * Sort : `{ ok: true }`, ou un message affichable.
+ * Casse : ne lève jamais pour une panne de base — `exigerSession()` peut lever
+ * un renvoi vers la porte, ce qui est le comportement voulu.
+ *
+ * ⚠️ **« Supprimer » veut dire RETIRER DE L'AFFICHAGE.** Aucune ligne n'est
+ * effacée : `changerSuppression` pose une date, ou la retire. Le mot est celui
+ * de Maxime, la mécanique est un marqueur — voir `lib/suppression.ts`.
+ *
+ * ⚠️ **Le geste inverse passe par la MÊME action**, avec `supprime = false`.
+ * C'est ce que fait le bouton « Annuler » de la barre, et c'est ce que fait la
+ * fiche d'une offre déjà retirée. Deux actions jumelles auraient fini par
+ * diverger sur la validation, qui est la seule chose qui protège la requête.
+ *
+ * ⚠️ **Une seule offre à la fois, contrairement à `definirStatut`** qui prend
+ * une liste bornée pour traiter un poste entier et ses jumelles. Ici c'est
+ * délibéré et ça se voit à l'écran : la corbeille ne retire QUE la ligne
+ * cliquée, comme le coup de cœur. Le motif est le même — propager à des
+ * annonces que Maxime n'a pas visées ferait disparaître d'un clic plus que ce
+ * qu'il a désigné, et une suppression est le geste où ça se pardonne le moins.
+ */
+export async function definirSuppression(
+  identifiant: string,
+  supprime: boolean,
+): Promise<ResultatAction> {
+  // ⚠️ Première ligne, sans exception. Hors de tout try/catch : `redirect()`
+  // lève une exception que Next intercepte, l'attraper annulerait le renvoi.
+  await exigerSession();
+
+  // ⚠️ **`typeof` et non une conversion en booléen** — même raison que pour le
+  // coup de cœur : `Boolean(valeur)` accepterait `"non"`, `{}` ou `[]` en les
+  // rendant tous `true`. Ici la conséquence serait de retirer une offre de
+  // l'affichage sur un appel forgé qui ne veut rien dire.
+  if (typeof supprime !== "boolean") {
+    console.error("[corbeille] valeur refusée — ce n'est pas un booléen");
+    return { ok: false, message: "Demande invalide." };
+  }
+
+  if (typeof identifiant !== "string") {
+    console.error("[corbeille] identifiant refusé — ce n'est pas une chaîne");
+    return { ok: false, message: "Demande invalide." };
+  }
+
+  const resultat = await changerSuppression(identifiant, supprime);
+
+  if (!resultat.ok) {
+    const message =
+      resultat.motif === "introuvable"
+        ? "Cette offre n’existe plus."
+        : resultat.motif === "refusee"
+          ? "La base a refusé ce changement."
+          : resultat.motif === "configuration"
+            ? "Le site n’est pas correctement configuré."
+            : "Enregistrement impossible : la base n’a pas répondu.";
+    return { ok: false, message };
+  }
+
+  // ⚠️ **Les DEUX écrans, et pour une fois ce n'est pas une précaution.** Une
+  // offre retirée doit quitter la liste, la fiche et le compte rendu du matin
+  // dans le même geste : c'est le seul marqueur du produit qui agisse sur tous
+  // les écrans à la fois. `"layout"` couvre `/offres` et `/offres/[identifiant]`,
+  // dont la fiche de l'offre retirée elle-même — qui doit se redessiner pour
+  // proposer le retour.
+  revalidatePath("/offres", "layout");
   revalidatePath("/", "page");
 
   return { ok: true };

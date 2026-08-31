@@ -1,8 +1,10 @@
-import { CalendarOff, DatabaseZap, Inbox } from "lucide-react";
+import { CalendarOff, DatabaseZap, Inbox, ListFilter } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { cn } from "@/lib/utils";
+import { SEUIL_INTERET } from "@/lib/filtres";
+import { accorder } from "@/lib/francais";
 import type { MotifEchec } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 
 /**
  * L'ossature commune aux écrans qui n'ont pas d'offres à montrer.
@@ -128,8 +130,94 @@ export function AucuneOffreDansCeFiltre({
     >
       <p>
         La base répond et contient
-        {totalBase !== null ? ` ${totalBase} offre${totalBase >= 2 ? "s" : ""}` : " des offres"}
+        {/* ⚠️ `accorder()` et non un `>= 2 ? "s" : ""` recopié — corrigé le
+            31 août 2026 : le panneau voisin importait déjà l'aide dans ce
+            fichier tout en qualifiant cette forme-ci de faute à ne pas
+            commettre. Une règle que son propre fichier enfreint ne tient pas. */}
+        {totalBase !== null
+          ? ` ${totalBase} ${accorder(totalBase, "offre")}`
+          : " des offres"}
         , {raison}. Les autres filtres ci-dessus restent accessibles.
+      </p>
+    </Panneau>
+  );
+}
+
+/**
+ * Des offres existent dans ce filtre, mais **aucune n'atteint le seuil**.
+ *
+ * ⚠️ **SIXIÈME état vide, et il n'est ni « la base est vide » ni « ce filtre est
+ * vide ».** Depuis le 31 août 2026, `/offres` cache les offres sous
+ * `SEUIL_INTERET` : un matin calme, la page ne montre plus rien alors que la
+ * base contient des centaines de lignes. Servir « la collecte tourne chaque
+ * nuit, les premières annonces apparaîtront au prochain passage » ferait
+ * chercher une panne là où le produit fonctionne comme prévu.
+ *
+ * ⚠️ **Il ne s'affiche QUE si le seuil a réellement caché quelque chose**, et
+ * c'est un correctif de revue du 31 août 2026. La première version se
+ * déclenchait dès que le seuil était actif : sur « Nouveau », une nuit qui n'a
+ * rien ramené affichait « aucune offre au-dessus de 40/100 » alors que le seuil
+ * n'avait rien caché du tout. C'est pour ça que le compte reçu ici est
+ * `ecartees` — combien d'offres de **ce filtre** sont sous le seuil — et non un
+ * total de base : un nombre qui vaut zéro rend ce panneau inutile, donc
+ * l'appelant ne le choisit pas.
+ *
+ * ⚠️ **Le message dit les DEUX causes de l'absence, et la seconde est la moins
+ * évidente.** Une offre disparaît si sa note est basse, mais aussi si elle n'a
+ * **pas de note du tout** : `note_interet >= 40` n'est pas satisfait par `NULL`.
+ * Un matin où la collecte a réussi et la notation raté, l'écran est donc vide
+ * sans qu'aucun job ne soit rouge.
+ *
+ * ⚠️ **Il n'envoie PAS vers la manchette d'état pour ça** — corrigé le 31 août
+ * 2026, la première rédaction le faisait. `lib/veille.ts` ne lit que les
+ * exécutions dont l'`etape` vaut `collecte` : une notation tombée y laisse la
+ * veille « à jour ». Renvoyer vers un indicateur qui ne peut pas répondre à la
+ * question posée est pire que de se taire — on en conclut que tout va bien.
+ *
+ * ⚠️ **Il dit aussi que rien n'est perdu**, parce que c'est la première question
+ * qu'on se pose devant une liste qui vient de fondre de 580 à 16.
+ */
+export function AucuneOffreAuSeuil({
+  libelle,
+  ecartees,
+}: {
+  /** Le libellé du filtre actif, tel qu'il s'écrit sur son onglet. */
+  libelle: string;
+  /**
+   * Combien d'offres de ce filtre sont sous le seuil. **Toujours ≥ 1** — sinon
+   * c'est un autre écran vide qu'il faut afficher.
+   */
+  ecartees: number;
+}) {
+  return (
+    <Panneau
+      // ⚠️ **PAS `Inbox`, qui est l'icône des deux autres écrans vides.** Ici
+      // rien ne manque : quelque chose a été mis de côté. Un entonnoir le dit,
+      // une boîte vide raconterait le contraire de ce que la page explique.
+      icone={<ListFilter className="size-6" aria-hidden="true" />}
+      titre={`Aucune offre « ${libelle} » au-dessus de ${SEUIL_INTERET}/100`}
+    >
+      <p>
+        {/* ⚠️ **L'accord passe par `accorder()`**, jamais par un
+            `>= 2 ? "s" : ""` recopié : c'est la faute que `lib/francais.ts`
+            existe pour empêcher, et ce panneau en aurait été la troisième copie.
+            ⚠️ **La seconde phrase est volontairement INVARIABLE** — « ce qui est
+            sous lui » plutôt que « elles ». Une première rédaction enchaînait
+            six ternaires pour accorder trois participes et deux verbes ;
+            `accorder()` ne sait pas conjuguer (elle donnerait « ests »), et une
+            tournure qui n'a pas à s'accorder ne peut pas se tromper. */}
+        Ce filtre contient <strong>{ecartees}</strong>{" "}
+        {accorder(ecartees, "offre")} {accorder(ecartees, "restée")} sous le
+        seuil d’intérêt de {SEUIL_INTERET}/100. Rien n’est supprimé — le seuil
+        masque, il n’efface pas&nbsp;: ce qui est sous lui reste en base, et
+        reviendrait à l’écran si le seuil baissait.
+      </p>
+      <p className="mt-3">
+        Une offre <strong>pas encore notée</strong> est masquée elle aussi, parce
+        qu’une note absente ne peut pas atteindre le seuil. Si la collecte de
+        cette nuit vient d’arriver, sa notation n’a peut-être pas encore
+        tourné&nbsp;— et l’indicateur de veille en haut de page ne le dirait
+        pas, il ne suit que la collecte.
       </p>
     </Panneau>
   );

@@ -814,10 +814,20 @@ def main() -> int:
                            help="RATTRAPAGE : identifier l'employeur d'offres DÉJÀ notées, "
                                 "sans toucher à leurs notes. N'existe que parce que la "
                                 "notation est incrémentale et ne les reprendra jamais")
-    analyseur.add_argument("--note-minimale", type=int, default=35,
+    # ⚠️ **40 depuis le 31 août 2026, et le nombre doit SUIVRE l'interface.** Son
+    # sens n'est pas « une note passable » mais « une offre que Maxime voit
+    # réellement à l'écran » : payer l'identification d'un employeur sur une
+    # offre invisible est une dépense pure. Il valait 35 tant que c'était le
+    # seuil de l'écran du matin ; depuis que `SEUIL_INTERET`
+    # (`interface/lib/filtres.ts`) vaut 40 et borne les DEUX écrans, c'est lui
+    # qu'il faut recopier. ⚠️ Les deux nombres ne peuvent pas être partagés —
+    # Python d'un côté, TypeScript de l'autre — donc c'est ce commentaire qui
+    # porte le lien. **Un seuil d'interface abaissé sans toucher ici ne casse
+    # rien : il laisse seulement des fiches au nom brut de France Travail.**
+    analyseur.add_argument("--note-minimale", type=int, default=40,
                            help="avec --completer-entreprise : seuil d'intérêt en dessous "
-                                "duquel on ne paie pas l'identification (défaut : 35, le "
-                                "seuil de l'écran du matin)")
+                                "duquel on ne paie pas l'identification (défaut : 40, le "
+                                "seuil d'affichage de l'interface)")
     arguments = analyseur.parse_args()
 
     logging.basicConfig(

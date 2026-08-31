@@ -5,6 +5,7 @@ import { lireEmployeur } from "@/lib/employeur";
 import type { OffreEnListe } from "@/lib/offres";
 
 import { BoutonCoupDeCoeur } from "./bouton-coup-de-coeur";
+import { BoutonCorbeille } from "./corbeille";
 import { BoutonsStatut } from "./boutons-statut";
 import { Cartouche, CartoucheAbsent } from "./cartouche";
 import { BlocNotes, CartoucheEnAttente, etatNotation } from "./notes";
@@ -158,6 +159,21 @@ export function LigneOffre({
             jumelles={jumelles}
             statut={offre.statut}
             compact
+          />
+          {/* ⚠️ **En DERNIER de la rangée, et séparé du reste.** C'est le seul
+              geste de la ligne qui la fasse disparaître de tous les écrans à la
+              fois : le poser entre le cœur et les statuts l'aurait mis sur le
+              chemin de gestes anodins qu'on enchaîne vite.
+              ⚠️ **Il ne reçoit que deux CHAÎNES** — règle 4 du `CLAUDE.md` :
+              `offre={offre}` compilerait et enverrait `contact_nom`, la note
+              personnelle et la charge brute dans le navigateur.
+              ⚠️ **Il ne propage PAS aux jumelles**, contrairement au statut :
+              voir `definirSuppression`. Supprimer est le geste où l'on pardonne
+              le moins d'en avoir fait plus que demandé. */}
+          <BoutonCorbeille
+            identifiant={offre.identifiant}
+            intitule={offre.intitule}
+            className="ml-0.5"
           />
         </div>
       </div>

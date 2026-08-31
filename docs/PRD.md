@@ -240,6 +240,33 @@ illisibles les renvois des commits et du journal.*
     liste dédiée **quel que soit leur statut**, afin de savoir où j'en suis sur
     celles qui comptent — y compris celles auxquelles j'ai déjà candidaté.
 
+### Seuil d'intérêt et corbeille
+
+*Ajoutées le 31 août 2026, à la demande de Maxime. ⚠️ **Numérotées 42 à 44** :
+les numéros d'US ne se réutilisent jamais dans ce document.*
+
+42. **US-42** — En tant que Maxime, je veux que l'application ne me montre que
+    les offres dont la note d'intérêt atteint un seuil, afin de ne pas avoir à
+    balayer des centaines d'annonces qui ne me correspondent pas — quitte à en
+    voir peu chaque jour.
+    ⚠️ **Le seuil MASQUE, il n'efface jamais.** Les offres en dessous restent en
+    base et reviennent si le seuil baisse, sans recollecte ni nouvelle notation.
+    ⚠️ **Il ne s'applique pas à ce que Maxime a lui-même désigné** : « Coup de
+    cœur » et « Candidaté » y échappent, sinon le filtre annulerait son propre
+    geste. Voir `interface/lib/filtres.ts` pour la valeur et sa mesure.
+43. **US-43** — En tant que Maxime, je veux retirer une offre de l'affichage d'un
+    clic, depuis la liste, la fiche ou l'écran du matin, afin de ne plus jamais
+    revoir une annonce dont je sais qu'elle ne m'intéressera pas.
+    ⚠️ **Distinct d'« Écarté » (US-11), et les deux coexistent** : « Écarté » dit
+    *regardé, pas pour moi* et l'offre reste consultable dans son onglet ; la
+    corbeille dit *ne me la remontre jamais* et l'offre quitte tous les écrans.
+    ⚠️ **RETRAIT D'AFFICHAGE, JAMAIS EFFACEMENT** — hors périmètre ci-dessous.
+44. **US-44** — En tant que Maxime, je veux pouvoir annuler un retrait juste après
+    l'avoir fait, afin qu'un clic malheureux sur un bouton voisin des autres ne
+    soit pas sans recours.
+    ⚠️ **Passé le délai, la fiche de l'offre reste le chemin de retour** : elle
+    est le seul écran qui affiche une offre retirée.
+
 ## Critères de succès
 
 1. Le site affiche, chaque jour avant 8 h, les offres collectées dans la nuit,
@@ -286,6 +313,13 @@ illisibles les renvois des commits et du journal.*
 Refusé explicitement. Ce qui figure ici ne se construit pas, même si l'idée
 paraît bonne sur le moment.
 
+- ⚠️ **Suppression RÉELLE d'une offre en base.** La corbeille (US-43) retire de
+  l'affichage et rien d'autre. Trois raisons, et la première suffit : France
+  Travail dépublie ses annonces, donc une ligne effacée ne se récupère jamais ·
+  l'écran de suivi prévu se nourrit de ces compteurs, et un historique ne se
+  reconstitue pas · `enrichissements.offre_identifiant` référence l'offre, donc
+  un effacement échouerait sur toute offre enrichie. **Ne pas construire de
+  « vider la corbeille ».**
 - **Envoi de mail, notification push, alerte téléphone.** Le site est le seul
   point d'entrée.
 - **Génération de lettre de motivation ou d'argumentaire de candidature.** C'est
@@ -456,12 +490,24 @@ cet entête. Il porte une ligne de passage chiffrée vers la vue d'ensemble —
 *« 566 autres offres attendent dans le plan de travail »* — sans laquelle une
 offre non tranchée sortirait silencieusement du champ de vision.
 
-⚠️ **Le seuil vaut 35 depuis le 30 août 2026, et non 50.** Décision de Maxime,
+⚠️ **Le seuil vaut 40 depuis le 31 août 2026, il vit dans
+`interface/lib/filtres.ts` (`SEUIL_INTERET`), et il borne DÉSORMAIS LES DEUX
+ÉCRANS** — `/` comme `/offres`. Décision de Maxime : la liste montrait 580
+offres dont 434 jamais notées, l'arriéré d'avant le cron. Les 146 notées font
+deux paquets séparés par un vide — 115 sous 20, 15 entre 20 et 39, 16 au-dessus
+de 40 — et le seuil coupe juste après ce vide ; passer à 50 n'aurait retiré que
+4 annonces, toutes dans la bande 40-49. ⚠️ **Rien n'est supprimé** : baisser le
+nombre rend les offres sans recollecte ni nouvelle notation. ⚠️ **« Coup de
+cœur » et « Candidaté » y échappent** — le seuil filtre ce que le modèle
+propose, jamais ce que Maxime a désigné d'un clic. Historique du nombre
+ci-dessous.
+
+⚠️ **Le seuil a valu 35 du 30 au 31 août 2026, et non 50.** Décision de Maxime,
 prise sur mesure : à 50, l'écran du matin était vide **quatre matins sur six** sur
 les six dernières collectes réelles, et 10 offres seulement sur 574 dépassaient ce
 score. À 35 : deux matins vides, et 20 offres. Descendre à 25 n'en ajouterait que
 7 de plus — le gain s'aplatit, et chaque cran rapproche l'accueil d'un second
-poste de travail. Barème complet dans `interface/lib/matin.ts`.
+poste de travail. Barème complet dans `interface/lib/filtres.ts`.
 
 ⚠️ **L'écran d'accueil regroupe les annonces d'un même poste, depuis le 30 août
 2026.** France Travail publie le même poste plusieurs fois — une version « f/h »,
