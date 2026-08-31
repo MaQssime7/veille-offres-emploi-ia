@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import random
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -29,6 +30,26 @@ from pipeline.config import (
 )
 
 _journal = logging.getLogger(__name__)
+
+# ⚠️ **Le jumeau EXACT de la contrainte `url_est_une_adresse_web` (migration
+# 11), et le doublon est délibéré.** Les deux n'ont pas le même rôle : la
+# contrainte garantit qu'une adresse dangereuse n'entre jamais en base, celle-ci
+# évite qu'une étape entière soit perdue parce que son adresse était douteuse.
+# Si les deux divergent un jour, c'est la base qui a raison — et le symptôme
+# sera une étape manquante à l'écran, jamais un lien exécutable.
+#
+# ⚠️ **NI `re.IGNORECASE`, NI `match` — et les deux écarts étaient de VRAIS
+# défauts, trouvés en revue le 31 août 2026.** Ce filtre doit être plus strict
+# ou identique à la contrainte, jamais plus permissif : ce qu'il laisse passer
+# et que Postgres refuse fait échouer l'écriture de la ligne ENTIÈRE, donc
+# **le libellé est perdu avec l'adresse** — exactement l'inverse de ce que ce
+# code promet.
+#   · `IGNORECASE` acceptait `HTTPS://…`, que l'opérateur `~` de Postgres
+#     refuse (il est sensible à la casse).
+#   · `match` + `$` acceptait `"https://x.fr/a\n"`, le `$` de Python tolérant
+#     un saut de ligne final — que `$` en POSIX ne tolère pas.
+# `fullmatch` sans indicateur ferme les deux.
+_URL_AFFICHABLE = re.compile(r"https?://[^\s<>\"']+")
 
 # Assez petit pour que la charge utile reste raisonnable (une archive
 # `charge_brute` pèse plusieurs kilo-octets), assez grand pour ne pas multiplier
@@ -694,29 +715,77 @@ class Stockage:
         ) or []
         return bool(modifiees)
 
-    def ecrire_etape(self, enrichissement_id: int, rang: int, libelle: str) -> None:
-        """Ajoute une étape à afficher.
+    def ecrire_etape(
+        self, enrichissement_id: int, rang: int, libelle: str,
+        url: str | None = None,
+    ) -> None:
+        """Ajoute une étape à afficher, avec l'adresse lue s'il y en a une.
 
         ⚠️ **Le libellé est BORNÉ ici, pas seulement par la contrainte.** La base
         refuse au-delà de 200 caractères ; laisser l'erreur remonter ferait
         échouer tout l'enrichissement parce qu'une phrase est trop longue. On
         coupe, l'étape s'affiche, le travail continue.
 
+        ⚠️ **`url` est le MÊME raisonnement, poussé plus loin : une adresse
+        douteuse est ÉCARTÉE plutôt que corrigée.** La contrainte
+        `url_est_une_adresse_web` refuse tout ce qui ne commence pas par
+        `http://` ou `https://` — donc `javascript:`, qui deviendrait du code
+        exécutable dans la session de Maxime une fois rendu en `<a href>`.
+        Laisser partir une telle valeur ferait échouer l'écriture de l'étape et
+        priverait l'écran d'une ligne, pour une adresse qu'on ne veut de toute
+        façon pas afficher. On garde le libellé, on jette l'adresse.
+
         ⚠️ **Rien de ce que l'agent produit ne va dans `print()`.** Les journaux
         de ce dépôt public sont publics : une étape peut citer un nom
         d'entreprise, demain davantage. Les étapes vont en base, à l'écran de
         Maxime, et nulle part ailleurs.
         """
+        ligne: dict[str, Any] = {
+            "enrichissement_id": enrichissement_id,
+            "rang": rang,
+            "libelle": (libelle or "…")[:200],
+        }
+        if url and _URL_AFFICHABLE.fullmatch(url) and len(url) <= 2000:
+            ligne["url"] = url
         self._requete(
             "POST", "/etapes_enrichissement",
             operation=f"écriture de l'étape {rang} de {enrichissement_id}",
             headers={"Prefer": "return=minimal"},
-            json={
-                "enrichissement_id": enrichissement_id,
-                "rang": rang,
-                "libelle": (libelle or "…")[:200],
-            },
+            json=ligne,
         )
+
+    def effacer_url_etape(self, enrichissement_id: int, rang: int) -> None:
+        """Retire l'adresse d'une étape dont la lecture a ÉCHOUÉ.
+
+        ⚠️ **Ce qui rend cette méthode nécessaire : l'étape est écrite au moment
+        où l'agent DEMANDE une page, pas quand il la reçoit.** C'est délibéré —
+        l'écran doit avancer pendant que le réseau travaille, et attendre le
+        résultat ferait une interface muette pendant des secondes. Mais une
+        demande n'est pas une lecture : un 403, un délai dépassé ou un blocage
+        laisseraient une adresse sous « Sources consultées » que l'agent n'a
+        jamais lue — et US-21 promet exactement le contraire.
+
+        On efface donc l'adresse, **et on garde le libellé** : « Lecture de
+        octo.com/x » reste au chemin suivi, parce que la tentative a bien eu
+        lieu et qu'elle explique le temps passé. Seule la promesse de source
+        vérifiable disparaît.
+
+        Ne lève jamais : perdre cet effacement laisse une source de trop, ce qui
+        est un défaut d'affichage — faire échouer l'enrichissement pour ça en
+        serait un bien pire.
+        """
+        try:
+            self._requete(
+                "PATCH",
+                f"/etapes_enrichissement?enrichissement_id=eq.{enrichissement_id}"
+                f"&rang=eq.{rang}",
+                operation=f"effacement de l'url de l'étape {rang}",
+                headers={"Prefer": "return=minimal"},
+                json={"url": None},
+            )
+        except ErreurStockage as echec:
+            _journal.warning("url de l'étape %s non effacée : %s",
+                             rang, type(echec).__name__)
 
     def ecrire_rubriques(
         self, enrichissement_id: int, rubriques: list[dict[str, Any]],

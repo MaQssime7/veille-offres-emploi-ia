@@ -92,7 +92,9 @@ from claude_agent_sdk import (
     AssistantMessage,
     ClaudeAgentOptions,
     ResultMessage,
+    ToolResultBlock,
     ToolUseBlock,
+    UserMessage,
     create_sdk_mcp_server,
     query,
     tool,
@@ -129,9 +131,27 @@ MODELE_PAR_DEFAUT = "claude-sonnet-5"
 # que par les tours ; un seul appel sur une page énorme n'est arrêté que par le
 # budget ; une API qui répond en trente secondes n'est arrêtée que par la durée.
 # En retirer une laisse un chemin ouvert.
-MAX_TOURS = 30
+#
+# ⚠️ **DESSERRÉES le 31 août 2026 pour la phase 7** — 30 tours et 240 s
+# bornaient un agent qui cherchait UNE rubrique rédigée ; il en cherche
+# maintenant quatre, dont trois exigent de lire plusieurs pages du site. Le
+# premier enrichissement réel avait consommé 13 tours sur un cas dégradé, site
+# injoignable : la marge qui restait ne couvrait pas l'exploration ajoutée.
+#
+# ⚠️ **`DUREE_MAX_SECONDES` ne peut pas monter beaucoup plus haut, et la raison
+# n'est pas ici.** Elle doit conclure AVANT le `timeout` du workflow (8 min) et
+# avant la péremption de l'interface (10 min) : dépassée, la ligne reste
+# bloquée, l'écran pulse jusqu'à la péremption, et les tokens sont perdus sans
+# qu'aucune fiche soit écrite. 300 s laisse 180 s d'écart avec le filet — c'est
+# la marge, pas le confort, qui fixe cette valeur.
+#
+# ⚠️ **`BUDGET_USD` n'a PAS bougé, et c'est délibéré.** Le seul coût mesuré est
+# 0,1166 $ sur un cas dégradé ; le relever avant la mesure de la 7.2
+# reviendrait à desserrer la seule borne exprimée dans la monnaie qui est
+# facturée, sur un chiffre qu'on n'a pas encore.
+MAX_TOURS = 45
 BUDGET_USD = 0.50
-DUREE_MAX_SECONDES = 240
+DUREE_MAX_SECONDES = 300
 
 # ⚠️ Le seul outil intégré autorisé. `tools=` restreint ce qui EXISTE (pas de
 # Bash, pas de lecture ni d'écriture de fichiers, donc aucun accès au dépôt) et
@@ -153,7 +173,31 @@ OUTILS_INTEGRES = ["WebFetch"]
 # ⚠️ **La contrainte `rubrique_connue` de la migration 10 les autorise
 # toujours** : aucune migration n'est nécessaire, et les fiches déjà produites
 # gardent leurs lignes. La phase 7 étendra cette liste, elle ne la rouvrira pas.
-RUBRIQUES_REDIGEES = ("modele_economique",)
+# ⚠️ **L'ordre de ce tuple ne commande PAS l'affichage — corrigé après la revue
+# du 31 août 2026, où ce commentaire affirmait le contraire.** Il devient le
+# `rang` stocké de chaque rubrique (`enumerate` dans `_valider_fiche`), mais
+# l'écran ne lit jamais ce rang : `FicheEnrichissement` parcourt
+# `TITRES_RUBRIQUES` (`interface/lib/enrichissement.ts`) et retrouve chaque
+# rubrique par son NOM.
+#
+# **C'est donc là-bas qu'on réordonne une section, pas ici.** L'erreur était
+# piégeuse dans le sens le plus coûteux : quelqu'un voulant déplacer « clients »
+# aurait édité ce fichier, relancé un enrichissement FACTURÉ, et constaté que
+# rien n'a bougé à l'écran.
+#
+# Le `rang` reste utile — il donne un ordre stable en base pour un futur export
+# ou pour l'écran de suivi — mais il est aujourd'hui *écrit et jamais lu*.
+#
+# ⚠️ **`offre_commerciale`, et JAMAIS `offre`.** Dans ce projet « offre » veut
+# dire *offre d'emploi*, partout : la table `offres`, la route `/offres`, la
+# colonne `offre_identifiant`. Un mot pour deux choses, c'est la collision que
+# le projet a déjà refusée en figeant « enrichissement, jamais enquête ».
+RUBRIQUES_REDIGEES = (
+    "modele_economique",
+    "clients",
+    "offre_commerciale",
+    "activite_ia",
+)
 APPARIEMENTS = ("verifie", "probable", "non_identifie", "intermediaire")
 MARQUEURS = ("verifie", "deduit")
 
@@ -190,8 +234,13 @@ fausse ne se voit pas et sera crue.
    nombre total de résultats autant que les candidats : un nom qui rend des
    milliers d'entreprises ne se tranche pas en en lisant cinq.
 3. Trouve le site officiel de l'entreprise et lis-le avec WebFetch. Il sert à
-   DEUX choses, et à rien d'autre : confirmer que tu tiens la bonne entreprise,
-   et comprendre son modèle économique. ⚠️ Ne cherche NI son appartenance à un
+   confirmer que tu tiens la bonne entreprise, et à remplir les quatre
+   rubriques rédigées décrites plus bas. Commence par l'accueil, puis va droit
+   aux pages qui répondent à une rubrique précise — « à propos », « nos
+   clients », « références », « nos offres », « nos expertises », un blog
+   technique. ⚠️ **Trois à cinq pages suffisent** : au-delà tu paies de
+   l'exploration sans rien apprendre de plus, et tu risques de manquer de temps
+   avant d'avoir déposé ta fiche. ⚠️ Ne cherche NI son appartenance à un
    groupe, NI l'effectif qu'elle revendique : ces deux points ont été retirés de
    la fiche, et les chercher coûterait du temps pour rien.
 4. Si le site donne un SIREN — les mentions légales en portent presque toujours
@@ -229,15 +278,43 @@ fausse ne se voit pas et sera crue.
 conclusion en une ou deux phrases dans `appariement_motif` — surtout quand tu
 doutes, car c'est ce que le lecteur a besoin de savoir.
 
-## La rubrique rédigée
+## Les quatre rubriques rédigées
+
+Elles répondent toutes à la même question — **de quoi cette entreprise vit-elle,
+et qu'y ferait le candidat** — et c'est le site qui les porte, pas le registre.
 
 - `modele_economique` : éditeur de logiciel, ESN, cabinet de conseil,
   laboratoire, industriel… ⚠️ Le code d'activité NAF ne le dit PAS : il range
   dans la même case des entreprises aux métiers très différents. C'est pour cela
   qu'elle se déduit en lisant le site, et non du registre.
+- `clients` : à QUI elle vend. Des grands comptes, des PME, le secteur public,
+  des particuliers, d'autres éditeurs ? Nomme les clients cités quand ils le
+  sont explicitement.
+- `offre_commerciale` : ce qu'elle vend concrètement — un logiciel en
+  abonnement, des jours de conseil, de l'intégration, de la formation, du
+  matériel. Décris la prestation, pas le discours.
+- `activite_ia` : ce qu'elle fait RÉELLEMENT en intelligence artificielle. C'est
+  la rubrique la plus utile et la plus facile à rater. ⚠️ Distingue trois
+  choses, et dis laquelle tu as trouvée : elle CONSTRUIT de l'IA (modèles,
+  produits, recherche) · elle INTÈGRE l'IA d'autres chez ses clients · elle
+  emploie le mot en vitrine sans qu'aucune page ne le soutienne. Le troisième
+  cas est une réponse honnête et utile — écris-le tel quel, ne le maquille pas
+  en second.
 
-Elle porte son marqueur : `verifie` si tu l'as lue sur une source qui
-fait foi, `deduit` si tu l'as inférée. Dans le doute, `deduit`.
+⚠️ **LE PIÈGE DES CLIENTS, à connaître avant de lire une page de références.**
+Une grille de logos ne dit pas ce qu'elle a l'air de dire. On y trouve
+indistinctement des clients, des partenaires, des investisseurs, des
+certifications, et les technologies que l'entreprise emploie — un logo AWS ou
+NVIDIA sur une page « nos références » désigne presque toujours un fournisseur,
+jamais un client. **Ne convertis jamais une liste de logos en liste de
+clients.** S'il n'est pas écrit en toutes lettres qu'il s'agit de clients, dis
+ce que tu as vu (« la page de références cite surtout des partenaires
+technologiques ») et garde le marqueur `deduit`.
+
+Chaque rubrique porte son marqueur : `verifie` si tu l'as lue en toutes lettres
+sur une source qui fait foi, `deduit` si tu l'as inférée. Dans le doute,
+`deduit`. ⚠️ En pratique ces quatre rubriques sont presque toujours `deduit` :
+elles résument, et un résumé est une inférence même quand la page est claire.
 
 Écris en français, sobrement, sans superlatif commercial. Quelques phrases par
 rubrique suffisent. Ne fais aucun commentaire sur la qualité de l'offre ni sur
@@ -336,6 +413,14 @@ class _Contexte:
     fiche: dict[str, Any] | None = None
     rubriques: list[dict[str, Any]] = field(default_factory=list)
 
+    # ⚠️ **Le lien entre une demande d'outil et l'étape qu'elle a écrite.**
+    # Nécessaire parce que l'étape s'écrit quand l'agent DEMANDE une page,
+    # plusieurs secondes avant qu'on sache si elle a répondu. Sans cette table,
+    # le résultat qui arrive ne peut plus retrouver la ligne à corriger.
+    # ⚠️ N'y entrent que les étapes qui portent une `url` : les autres n'ont
+    # rien à défaire.
+    rang_par_outil: dict[str, int] = field(default_factory=dict)
+
     def prochain_rang(self) -> int:
         """Réserve un rang SANS attendre — l'écriture, elle, peut attendre.
 
@@ -351,20 +436,50 @@ class _Contexte:
         self.rang += 1
         return rang
 
-    async def etape(self, libelle: str) -> None:
+    async def etape(
+        self, libelle: str, url: str | None = None, cle_outil: str | None = None,
+    ) -> None:
         """Écrit une étape à l'écran. Ne fait JAMAIS échouer l'enrichissement.
 
         ⚠️ Une étape est un confort d'affichage ; le travail, lui, continue. Si
         la base refuse cette ligne, on le note dans le journal et on poursuit —
         perdre une fiche entière parce qu'un libellé n'a pas pu s'écrire serait
         une panne fabriquée par le garde-fou lui-même.
+
+        ⚠️ **`url` n'est renseignée que par les étapes qui ont VRAIMENT lu une
+        page**, et c'est ce qui fait la liste des sources d'US-21 : elle se
+        calcule, elle ne se stocke pas à part. Une étape de registre ou de dépôt
+        de fiche laisse `None`, ce qui veut dire « cette étape n'a consulté
+        aucune page » — pas « on a oublié l'adresse ».
         """
         rang = self.prochain_rang()
+        if url and cle_outil:
+            self.rang_par_outil[cle_outil] = rang
         try:
             await asyncio.to_thread(
-                self.stockage.ecrire_etape, self.enrichissement_id, rang, libelle)
+                self.stockage.ecrire_etape, self.enrichissement_id, rang,
+                libelle, url)
         except ErreurStockage as echec:
             _journal.warning("étape %s non écrite : %s", rang, type(echec).__name__)
+
+    async def lecture_ratee(self, cle_outil: str) -> None:
+        """La page demandée n'a pas répondu : on retire son adresse.
+
+        ⚠️ **Une DEMANDE n'est pas une LECTURE, et c'est toute la valeur
+        d'US-21.** Un `WebFetch` qui rend 403, expire ou se fait bloquer laisse
+        une étape déjà écrite ; sans ce rattrapage, son adresse figurerait sous
+        « Sources consultées » comme une page que l'agent aurait lue. Le cas
+        n'est pas théorique : le premier enrichissement réel du projet, le
+        30 août 2026, s'est fait sur un site injoignable.
+
+        Le libellé, lui, RESTE au chemin suivi : la tentative a eu lieu, elle
+        explique le temps passé. Seule la promesse de source vérifiable tombe.
+        """
+        rang = self.rang_par_outil.pop(cle_outil, None)
+        if rang is None:
+            return
+        await asyncio.to_thread(
+            self.stockage.effacer_url_etape, self.enrichissement_id, rang)
 
 
 def _construire_outils(contexte: _Contexte) -> Any:
@@ -554,6 +669,36 @@ _SCHEMA_FICHE: dict[str, Any] = {
                            "industriel… Omets si tu ne sais pas.",
         },
         "modele_economique_marqueur": {"type": "string", "enum": list(MARQUEURS)},
+        # ⚠️ Les trois rubriques de la section « Business », ajoutées en phase 7.
+        # Leur nom doit correspondre EXACTEMENT à `RUBRIQUES_REDIGEES` et à la
+        # contrainte `rubrique_connue` : la validation boucle sur le tuple, et
+        # un champ ici qui n'y figure pas serait silencieusement ignoré.
+        "clients": {
+            "type": "string",
+            "description": "À qui elle vend : grands comptes, PME, secteur "
+                           "public, particuliers, autres éditeurs. Nomme les "
+                           "clients cités explicitement. Omets si tu ne sais "
+                           "pas — une grille de logos n'est pas une liste de "
+                           "clients.",
+        },
+        "clients_marqueur": {"type": "string", "enum": list(MARQUEURS)},
+        "offre_commerciale": {
+            "type": "string",
+            "description": "Ce qu'elle vend concrètement : abonnement "
+                           "logiciel, jours de conseil, intégration, "
+                           "formation, matériel. La prestation, pas le "
+                           "discours. Omets si tu ne sais pas.",
+        },
+        "offre_commerciale_marqueur": {"type": "string", "enum": list(MARQUEURS)},
+        "activite_ia": {
+            "type": "string",
+            "description": "Ce qu'elle fait réellement en IA. Dis laquelle des "
+                           "trois : elle en construit, elle intègre celle "
+                           "d'autres, ou le mot est en vitrine sans qu'aucune "
+                           "page ne le soutienne. Le troisième cas est une "
+                           "réponse valable. Omets si tu ne sais pas.",
+        },
+        "activite_ia_marqueur": {"type": "string", "enum": list(MARQUEURS)},
     },
     "required": ["appariement", "appariement_motif"],
 }
@@ -793,13 +938,23 @@ def _reponse(texte: str) -> dict[str, Any]:
     return {"content": [{"type": "text", "text": texte}]}
 
 
-def _libelle_outil_integre(bloc: ToolUseBlock) -> str | None:
-    """Le libellé d'étape d'un outil que nous n'avons pas écrit.
+def _libelle_outil_integre(bloc: ToolUseBlock) -> tuple[str, str | None] | None:
+    """Le libellé d'étape d'un outil que nous n'avons pas écrit, et l'adresse lue.
+
+    Sort : `(libellé, adresse)` — l'adresse vaut `None` pour toute étape qui n'a
+    consulté aucune page. Ou `None` tout court si l'outil écrit déjà son étape.
 
     ⚠️ Rend `None` pour nos propres outils : ils écrivent DÉJÀ leur étape, avec
     leur résultat réel, qui est plus informatif que « recherche lancée ». Deux
     étapes par appel donneraient une liste deux fois plus longue pour deux fois
     moins d'information.
+
+    ⚠️ **L'adresse rendue ici est BRUTE, le libellé est mis en forme, et les
+    deux ne se déduisent pas l'un de l'autre.** Le libellé perd le protocole, le
+    `www.` et tout chemin au-delà de 60 caractères — de quoi tenir sur une ligne
+    d'écran. Reconstruire un lien à partir de lui donnerait une adresse fausse,
+    et un lien faux vers une source est pire que pas de lien : il fait croire
+    qu'on peut vérifier. C'est toute la raison de la colonne `url`.
     """
     if bloc.name.startswith("mcp__"):
         return None
@@ -820,14 +975,15 @@ def _libelle_outil_integre(bloc: ToolUseBlock) -> str | None:
         # étape tronquée par la base se lit comme une phrase coupée.
         nu = re.sub(r"^https?://(www\.)?", "", url).split("?")[0].rstrip("/")
         if not nu:
-            return "Lecture d’une page web"
+            return "Lecture d’une page web", url or None
         domaine, _, chemin = nu.partition("/")
         if not chemin:
-            return f"Lecture du site {domaine}"
+            return f"Lecture du site {domaine}", url
         if len(chemin) > 60:
             chemin = chemin[:57] + "…"
-        return f"Lecture de {domaine}/{chemin}"
-    return f"Outil {bloc.name}"
+        return f"Lecture de {domaine}/{chemin}", url
+    # Un outil intégré autre que WebFetch n'a lu aucune page : pas d'adresse.
+    return f"Outil {bloc.name}", None
 
 
 async def _faire_travailler(
@@ -876,9 +1032,26 @@ async def _faire_travailler(
                     compteurs.noter_message(message)
                     for bloc in message.content:
                         if isinstance(bloc, ToolUseBlock):
-                            libelle = _libelle_outil_integre(bloc)
-                            if libelle:
-                                await contexte.etape(libelle)
+                            trace = _libelle_outil_integre(bloc)
+                            if trace:
+                                await contexte.etape(*trace, cle_outil=bloc.id)
+                # ⚠️ **Les résultats d'outils arrivent dans un `UserMessage`**,
+                # pas dans un `AssistantMessage` — c'est la convention du
+                # protocole, et c'est pour cela que cette branche a manqué au
+                # premier jet : on ne regardait que ce que le modèle DIT, jamais
+                # ce que ses outils RÉPONDENT.
+                #
+                # ⚠️ On n'écoute ici qu'une seule chose : l'échec d'une lecture
+                # web, pour retirer son adresse des sources. Rien d'autre du
+                # contenu ne doit remonter — il porte le texte intégral des
+                # pages lues, et ce module n'en met jamais une ligne dans un
+                # journal public.
+                elif isinstance(message, UserMessage):
+                    contenu = message.content
+                    if isinstance(contenu, list):
+                        for bloc in contenu:
+                            if isinstance(bloc, ToolResultBlock) and bloc.is_error:
+                                await contexte.lecture_ratee(bloc.tool_use_id)
                 elif isinstance(message, ResultMessage):
                     compteurs.noter_resultat(message)
                     if message.is_error:
