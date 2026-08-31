@@ -914,3 +914,55 @@ Les décisions d'avant la refonte ne sont conservées que si elles tiennent enco
 | 30 août 2026 | Cartouche « N annonces », teinte neutre | Sans lui, le regroupement ferait disparaître une offre sans que rien ne l'indique. Neutre parce qu'un comptage n'est pas un signal |
 | 30 août 2026 | Le squelette de `/` imite **une** ligne, pas quatre | Mesuré : un panneau vide fait 230 px, une ligne 222. Une barre unique cale les deux cas ; trois se trompaient de 450 px dans les deux à la fois |
 | 30 août 2026 | Six écrans vides sur `/`, dont « la notation n'a pas tourné » | Un message unique dirait la même chose une nuit calme et un matin où le système est à moitié en panne |
+
+---
+
+## Typographie — les règles détaillées, déplacées du `CLAUDE.md` le 31 août 2026
+
+Elles y vivaient depuis les amendements du 30 août, et n'existaient nulle part
+ailleurs. Elles en sont sorties parce que ce sont des **références propres à un
+module** : le `CLAUDE.md` ne garde que ce qui change le comportement sur
+n'importe quelle tâche, et il avait repassé son seuil de lisibilité (1 034 lignes,
+contre 955 déjà jugées trop le 29 août).
+
+⚠️ **Rien n'a été perdu ni reformulé** — le texte ci-dessous est celui du
+`CLAUDE.md`, transféré tel quel.
+
+**Polices** : titrage **Fredoka 700** — les `h1`, **les titres de section de la
+FICHE** (`titre-section`), **les étiquettes des deux notes** (`libelle-accent`,
+« Intérêt » / « Accessibilité », sur les trois écrans) et **le nom de
+l'employeur** (`nom-entreprise`, en liste comme sur la fiche). Amendements du
+30 août 2026, demandés par Maxime devant l'écran.
+⚠️ **`libelle-accent` ne déclare AUCUNE taille**, et c'est ce qui lui permet
+d'en avoir deux : **13 px sur la fiche, 11 en liste**, posées au point d'usage
+via la prop `aere`. Un utilitaire qui ne déclare pas une propriété ne peut pas
+se la disputer — c'est la parade au conflit à spécificité égale, payé trois fois
+sur ce projet (`nom-entreprise`, `accentue`, `libelle-mono`).
+⚠️ **FREDOKA N'A PAS D'ITALIQUE.** Le navigateur en synthétise une oblique
+mécanique, laide sur une géométrique ronde. Les deux emplacements
+« Entreprise non communiquée » — en liste et sur la fiche — restent donc en
+**Nunito**, classes écrites en clair : ce sont des états, pas des noms, et
+39 % des offres sont dans ce cas.
+⚠️ **`titre-section` est passé de 11 à 16 px** — il était plus petit que le texte
+qu'il annonce, ce qui inversait le rapport. Un titre de section n'a pas à écraser
+son contenu, il ne peut pas lui être inférieur. **Toute hauteur de squelette qui
+double une de ces sections se remesure alors** : un titre fait 22,4 px de haut au
+lieu de 15,4, et `loading.tsx` réservait 16 px — 38 px de décalage cumulé,
+invisibles en développement.
+⚠️ **`libelle-accent` est un utilitaire À PART, jamais `libelle-mono` surchargé
+par `font-display`** : les deux déclarent `font-family`, et à spécificité égale
+c'est l'ordre dans la feuille compilée qui tranche, pas le code qu'on lit. Quand
+deux classes se disputent une propriété, on en écrit une troisième.
+⚠️ **`libelle-mono` reste partout ailleurs** — cartouches, en-têtes de données,
+compteurs : sa chasse fixe y aligne des colonnes de chiffres, ce qu'une grotesque
+ronde ne fait pas.
+⚠️ **L'interlettrage de Fredoka est à 0,08em et non 0,12** : les 0,12em du mono
+détachaient les capitales au point de défaire le mot.
+⚠️ **Contre-intuition mesurée** : Fredoka est **plus ÉTROIT** que Geist Mono à
+taille égale — « ACCESSIBILITÉ » fait 86,4 px contre les 108 px réservés. Le
+couloir fixe des libellés de note n'a donc pas bougé. Ne pas « élargir pour faire
+de la place » sans mesurer. · texte et interface
+**Nunito** · données et étiquettes **Geist Mono**. Les trois par `next/font`.
+⚠️ **Fredoka n'est PAS livrée par le registre** — sans chargement explicite les
+titres retombent sur Nunito, sans erreur. ⚠️ **Geist Mono survit à la refonte** :
+sans chasse fixe, la colonne des salaires ondule sur 200 lignes.

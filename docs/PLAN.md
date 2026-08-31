@@ -617,24 +617,61 @@ assumé de la fermeture ». ⚠️ `groupe` et `effectif_annonce` peuvent rester
 sans dommage : ils ne sont plus produits depuis le 30 août, et les retirer casserait les
 fiches qui les portent déjà.
 
-### Critères d'acceptation
+### ✅ La question ouverte est TRANCHÉE — 31 août 2026
 
-- [ ] **Migration 11** : `clients`, `offre_commerciale` et `activite_ia` ajoutés à `rubrique_connue`
-- [ ] Section **« Business »** créée après « Taille et santé », et « Ce que l'agent a compris » supprimée
-- [ ] `modele_economique` déplacé dedans, sans changer sa forme ni son marqueur
-- [ ] Trois rubriques ajoutées : **clients** · **offre commerciale** · **ce qu'elle fait réellement en IA**
-- [ ] ⚠️ **Le prompt cadre le piège des « clients »** : sur une page de références, un logo peut être un partenaire, un investisseur ou une technologie employée. Une liste de logos n'est pas une liste de clients, et le marqueur reste *déduit*
-- [ ] *(à trancher)* La technique attendue sur ce poste — voir l'avertissement ci-dessus
-- [ ] Chacune porte son marqueur *vérifié* ou *déduit*
-- [ ] **Les sources consultées sont listées**, chacune avec son adresse
-- [ ] Un site officiel injoignable **ne fait pas échouer l'enrichissement** : la fiche se rend partielle, les rubriques manquantes en « non disponible »
-- [ ] La borne de durée et d'étapes tient **malgré l'exploration** — c'est la phase qui la met à l'épreuve
+**« La technique attendue sur ce poste » (US-19) n'entre PAS dans la fiche
+d'enrichissement.** Décision de Maxime, prise en ouverture de phase.
+
+Le motif, qui vaut au-delà du cas : **ce n'est pas la même matière.** Les quatre
+autres rubriques parlent de l'ENTREPRISE et exigent d'aller lire son site ; la
+technique attendue parle du POSTE et se trouve dans le texte de l'annonce —
+affiché sur la même fiche, deux sections plus haut. On aurait payé un agent pour
+reformuler un texte déjà à l'écran, et déséquilibré une section « Business » avec
+une bulle qui n'y appartient pas.
+
+⚠️ **US-19 n'est ni livrée ni refusée** : elle reste un objectif, dont la
+destination naturelle est la NOTATION — qui lit déjà l'annonce entière et rend
+une note d'accessibilité. Ne pas la rouvrir ici.
+
+### ✅ La jauge d'enveloppe est REMONTÉE dans cette phase — 31 août 2026
+
+Elle était rangée en « à construire un jour ». Maxime l'a redemandée à l'ouverture
+de la phase 7, elle y entre. Ce qui a été construit, et les deux pièges tranchés
+en la construisant, sont consignés au § Phase 7 · tranche 7.1 ci-dessous.
+
+### Découpage : 7.1 construit, 7.2 mesure — et une seule dépense
+
+⚠️ **Tout est construit AVANT le premier appel facturé, délibérément.** Un
+enrichissement réel coûte de l'argent : la 7.1 s'éprouve sur du contenu posé à la
+main en base, la 7.2 dépense une fois et ce même appel sert deux fois — il prouve
+la chaîne et donne le chiffre qui re-règle l'enveloppe.
+
+### Critères d'acceptation — tranche 7.1 (construction), CLOSE
+
+- [x] **Migration 11** : `clients`, `offre_commerciale` et `activite_ia` ajoutés à `rubrique_connue` — appliquée puis **éprouvée par 19 essais**, dont le refus de `activite_IA` (casse majuscule) et de `offre` (collision de vocabulaire)
+- [x] Section **« Business »** créée après « Taille et santé », et « Ce que l'agent a compris » supprimée — vu à l'écran
+- [x] `modele_economique` déplacé dedans, sans changer sa forme ni son marqueur — c'est un déplacement d'affichage, aucune ligne de base modifiée
+- [x] Trois rubriques ajoutées : **clients** · **offre commerciale** · **ce qu'elle fait réellement en IA** — dans `RUBRIQUES_REDIGEES`, le schéma de `rendre_fiche`, le prompt et `TITRES_RUBRIQUES`
+- [x] ⚠️ **Le prompt cadre le piège des « clients »** : une grille de logos mêle clients, partenaires, investisseurs et fournisseurs — « un logo AWS ou NVIDIA désigne presque toujours un fournisseur, jamais un client ». Le marqueur reste *déduit*
+- [x] *(tranché)* La technique attendue sur ce poste — **non reprise**, voir ci-dessus
+- [x] Chacune porte son marqueur *vérifié* ou *déduit*
+- [x] **Les sources consultées sont listées**, chacune avec son adresse — colonne `url` sur l'étape, liens cliquables, dédoublonnés
+- [x] Une fiche dont toutes les rubriques sont longues s'affiche sans casser la mise en page à 375 px — **0 élément débordant**, URL de 58 caractères passée sur deux lignes
+- [x] Une fiche dont **toutes** les rubriques sont « non disponible » reste lisible et ne ressemble pas à un bogue
+- [x] **États** : fiche complète · fiche partielle · toutes rubriques non disponibles — les trois posés en base et regardés
+- [x] 375 px, mode sombre, console propre — **0 erreur, 0 avertissement**
+- [x] **La jauge d'enveloppe** : barre, pourcentage, chiffre en tokens, mention de la remise à zéro
+- [x] Le squelette de `loading.tsx` recalé sur la section allongée — **écart 0 px**, mesuré par substitution dans le DOM
+
+### Critères d'acceptation — tranche 7.2 (l'essai réel), À FAIRE
+
+- [ ] Un enrichissement RÉEL produit les quatre rubriques sur une vraie entreprise
+- [ ] Un site officiel injoignable **ne fait pas échouer l'enrichissement** : la fiche se rend partielle, les rubriques manquantes en « non disponible » — *éprouvé sur contenu posé à la main, pas encore sur un agent qui rencontre vraiment le cas*
+- [ ] La borne de durée et d'étapes tient **malgré l'exploration** — c'est la phase qui la met à l'épreuve. Desserrées en 7.1 à **45 tours et 300 s**, budget inchangé à 0,50 $
 - [ ] Le **coût réel** d'un enrichissement est mesuré, en euros **et en tokens**, et comparé aux deux estimations du PRD (0,20 € à 1 € · 100 000 à 150 000 tokens) ; l'écart est consigné
-- [ ] **L'enveloppe quotidienne de 300 000 tokens est re-réglée sur cette mesure** — c'est le seul moment du plan où l'on dispose du chiffre réel, et une enveloppe laissée sur une estimation ne borne rien de connu
-- [ ] Une fiche dont toutes les rubriques sont longues s'affiche sans casser la mise en page à 375 px
-- [ ] Une fiche dont **toutes** les rubriques sont « non disponible » reste lisible et ne ressemble pas à un bogue
-- [ ] **États** : fiche complète · fiche partielle · toutes rubriques non disponibles
-- [ ] 375 px, mode sombre, console propre
+- [ ] **L'enveloppe quotidienne de 300 000 tokens est re-réglée sur cette mesure**, ainsi que `COUT_PRESUME_TOKENS` — c'est le seul moment du plan où l'on dispose du chiffre réel
+- [ ] Les sources consultées de cette fiche s'ouvrent et disent bien ce que la fiche affirme
+
 
 ### Bloquée par
 
@@ -642,49 +679,47 @@ Phase 6.
 
 ---
 
-## À construire un jour : la jauge de consommation du jour
+## ✅ CONSTRUITE : la jauge de consommation du jour
 
-Demandée par Maxime le 31 août 2026, **explicitement pas pour aujourd'hui**. Non
-planifiée dans une phase : c'est un petit écran, à glisser quand il tombera bien.
+Demandée le 31 août 2026 et rangée le jour même en « à construire un jour ».
+Maxime l'a redemandée quelques heures plus tard, à l'ouverture de la phase 7 :
+**elle est construite, dans la tranche 7.1.**
 
-**Ce qu'il veut** : une barre horizontale montrant le pourcentage de l'enveloppe
-quotidienne consommé, **le chiffre en tokens à côté** (« pour qu'on se rende compte »),
-et le temps restant avant la remise à zéro. Emplacement : près du bouton d'enrichissement,
-**sur la fiche d'une offre uniquement**.
+**Ce qu'elle montre**, près du bouton d'enrichissement sur la fiche d'une offre —
+et là seulement : une barre horizontale, le pourcentage, le chiffre en tokens
+(« pour qu'on se rende compte ») et la mention de la remise à zéro.
 
-⚠️ **Rien à construire côté données.** `EtatEnveloppe` rend déjà `consommes`, `plafond`,
-`reste` et `depassee`, et la page de la fiche les lit déjà pour décider si le bouton
-part. C'est de l'affichage pur — ce qui explique qu'aucune phase ne le porte.
+**Les trois points qui restaient à trancher, et ce qu'ils ont donné :**
 
-✅ **L'EMPLACEMENT EST TRANCHÉ : la FICHE d'une offre, et elle seule** — Maxime, le
-31 août 2026. La jauge va donc près du bouton d'enrichissement, dans la section
-« Enrichissement ». **Ne pas la mettre dans la liste** : le bouton n'y est pas, et une
-jauge posée là parlerait d'une action qu'on n'y déclenche pas.
+1. ⚠️ **La réserve d'un enrichissement en vol.** `calculerConsommation()` réserve
+   `COUT_PRESUME_TOKENS` (150 000) dès le clic : une jauge nourrie du seul total
+   bondirait à 50 % avant qu'un token soit dépensé. **Tranché : on montre les
+   deux parts.** `detaillerConsommation()` sépare `reels` et `reserves` — la même
+   règle, vue de deux façons, ce qui interdit que la garde et l'écran divergent.
+   ⚠️ **La réserve se distingue par une TEXTURE (hachures), pas par une teinte** :
+   mesuré, trois densités d'une même encre sur une barre de 8 px donnaient
+   1,64:1 entre réserve et rail vide, c'est-à-dire rien.
+2. ⚠️ **Le temps restant avant minuit.** **Tranché : pas de décompte.** La page
+   est rendue côté serveur ; un compte à rebours y serait figé à l'heure du
+   chargement et vieillirait en silence — le défaut que le projet porte déjà,
+   assumé, sur l'indicateur de veille. « Remise à zéro à minuit » est vrai sans
+   horloge.
+3. ⚠️ **Le chiffre en toutes lettres.** Demandé par Maxime, et c'est aussi le
+   plancher d'accessibilité : la barre porte `aria-hidden`, l'information est
+   dans le texte. ⚠️ **Le jour où ce texte disparaîtrait, la piste à 1,3:1
+   redeviendrait un défaut.**
 
-**Trois points restent à trancher AVANT d'écrire, chacun déjà rencontré ailleurs :**
+⚠️ **Une décision de système prise en la construisant** : la jauge est en teintes
+NEUTRES. Les six accents sont pris et portent chacun un rôle ; la peindre en bleu
+l'aurait rattachée à la note d'intérêt, qui n'a rien à voir. **Une consommation
+est une quantité, pas un signal catégoriel** — elle ne consomme donc aucun accent,
+et le septième signal que le `CLAUDE.md` interdit reste interdit.
 
-1. ⚠️ **La jauge afficherait plus que le consommé réel pendant qu'un agent tourne.**
-   `calculerConsommation()` **réserve** `COUT_PRESUME_TOKENS` (150 000) pour chaque
-   enrichissement en vol — c'est ce qui bouche le trou de concurrence trouvé en revue
-   le 30 août. Une jauge nourrie de ce chiffre bondirait à 50 % au clic puis
-   redescendrait à la conclusion, ce qui se lit comme un bug. **Montrer les deux
-   nombres, ou dire que la réserve est une réserve** — ne pas la masquer, elle est
-   vraie.
-2. ⚠️ **Le temps restant avant minuit NE PEUT PAS être rendu côté serveur.** Le
-   `CLAUDE.md` porte déjà le même défaut sur l'indicateur de veille : « ne vieillit pas
-   dans un onglet resté ouvert ». Un décompte figé est pire que pas de décompte. Deux
-   issues : un composant client avec sa propre horloge, ou écrire simplement
-   « remise à zéro à minuit », qui est vrai sans horloge.
-3. ⚠️ **Le chiffre en toutes lettres n'est pas une redondance, c'est le plancher
-   d'accessibilité.** Une jauge seule fait porter l'information par une longueur, ce que
-   le projet interdit. C'est d'ailleurs ce que Maxime demande de lui-même.
+⚠️ **Ce n'est PAS l'écran de suivi d'exploitation** — celui-là reste en évolution
+prévue et parle d'exécutions, de réussite et de durée sur plusieurs semaines. Ici
+on montre un seul nombre, celui du jour. **Ne pas fusionner les deux**, et surtout
+ne jamais nommer l'un ni l'autre « analytics » (règle 1 du `CLAUDE.md`).
 
-⚠️ **Ce n'est PAS l'écran de suivi d'exploitation** — celui-là reste en évolution prévue
-et parle d'exécutions, de réussite et de durée sur plusieurs semaines. Ici on montre un
-seul nombre, celui du jour. **Ne pas fusionner les deux**, et surtout ne jamais nommer
-l'un ni l'autre « analytics » (règle 1 du `CLAUDE.md`).
-
----
 
 ## Phase retirée, puis REFUSÉE : l'enrichissement automatique nocturne
 

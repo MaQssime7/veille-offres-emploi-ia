@@ -143,6 +143,14 @@ le site devant un interlocuteur technique pour montrer ce qu'il sait construire.
 19. **US-19** — En tant que Maxime, je veux connaître la technique attendue sur
     le poste quand elle est mentionnable, afin de préparer l'entretien et
     d'évaluer l'écart avec mon expérience.
+    ⚠️ **Écartée de l'ENRICHISSEMENT le 31 août 2026, et non abandonnée.** Elle
+    parle du POSTE, alors que toute la fiche d'enrichissement parle de
+    l'ENTREPRISE — et la technique attendue est déjà dans le texte de l'annonce,
+    affiché sur la même fiche. L'y chercher par agent aurait payé la
+    reformulation d'un texte déjà à l'écran. Sa destination naturelle est la
+    NOTATION, qui lit l'annonce entière et rend déjà une note d'accessibilité.
+    ⚠️ Ne pas la réintroduire dans la section « Business » : c'est la décision
+    qu'on vient de prendre, pas une omission.
 20. **US-20** — En tant que Maxime, je veux voir le chiffre d'affaires quand il
     est public, afin de situer la solidité de l'entreprise.
 21. **US-21** — En tant que Maxime, je veux voir les sources consultées par

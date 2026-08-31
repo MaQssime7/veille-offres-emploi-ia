@@ -6,6 +6,238 @@ tout l'historique est ici.
 
 ---
 
+## 31 août 2026 (après-midi) — La phase 7 construit « Business », les sources, et la jauge
+
+Tranche 7.1. Tout est bâti **avant** le premier appel facturé : l'agent réel de la
+7.2 servira deux fois — il prouvera la chaîne et donnera le chiffre qui re-règle
+l'enveloppe. Un seul enrichissement payé pour deux besoins.
+
+### La question ouverte de la phase, tranchée en ouverture
+
+« La technique attendue sur ce poste » (US-19) **n'entre pas** dans la fiche. Le
+motif tient en une phrase et vaut au-delà du cas : **ce n'est pas la même
+matière.** Les quatre autres rubriques parlent de l'ENTREPRISE et exigent d'aller
+lire son site ; celle-ci parle du POSTE et se trouve dans le texte de l'annonce,
+affiché deux sections plus haut sur la même fiche. On aurait payé un agent pour
+reformuler ce qui est déjà à l'écran.
+
+### LinkedIn : mesuré, puis refusé — et l'intuition de Maxime était juste
+
+Maxime a demandé si l'agent pouvait lire LinkedIn pour l'effectif et l'activité IA,
+« qui sont à jour ». **Il avait raison sur le fond** : la page publique d'OCTO rend,
+dans ses données structurées, `numberOfEmployees: 842` — un effectif précis et
+récent, là où le registre INSEE ne donne qu'une tranche parfois vieille de huit ans.
+
+Trois obstacles, mesurés plutôt que supposés :
+
+1. **Le `robots.txt` de LinkedIn l'interdit en toutes lettres**, dès sa première
+   ligne : « The use of robots or other automated means to access LinkedIn without
+   the express permission of LinkedIn is strictly prohibited », puis
+   `User-agent: * → Disallow: /`.
+2. **Le dépôt est public et sert de pièce à conviction en entretien.** Un module qui
+   aspire LinkedIn n'y passe pas pour une astuce.
+3. ⚠️ **Le test venait d'une adresse résidentielle, l'agent tourne sur GitHub
+   Actions.** Un centre de données, dont LinkedIn bloque les adresses en priorité —
+   le même piège que le registre public, déjà documenté. On aurait construit quelque
+   chose qui marche sur le Mac et échoue en production.
+
+⚠️ **Et récupérer des OFFRES ailleurs que chez France Travail est au hors périmètre
+opposable du PRD** — ce n'est pas un arbitrage technique, c'est le cadrage.
+
+### Migration 11 : deux besoins, une migration
+
+`rubrique_connue` passe de trois à six valeurs. ⚠️ `groupe` et `effectif_annonce`
+**restent dans la liste** bien que l'agent ne les produise plus : trois fiches en
+portent, et retirer un mot d'une contrainte casserait toute écriture future sur ces
+lignes-là. **Une liste fermée s'étend ; elle ne se nettoie pas.**
+
+Et une colonne `url` sur `etapes_enrichissement`. ⚠️ **Pourquoi une colonne et non
+une quatrième table `sources_enrichissement`** : une étape de lecture EST une
+source. Deux tables porteraient la même information sous deux formes, et la règle
+« ce qui se calcule ne se stocke pas » s'applique telle quelle — la liste des
+sources est l'ensemble des étapes qui portent une `url`.
+
+⚠️ **L'adresse était déjà à moitié là, et c'est le piège :** depuis le 30 août, une
+étape s'intitule « Lecture de octo.com/nos-clients ». Ce libellé est du texte MIS
+EN FORME — protocole retiré, `www.` retiré, chemin tronqué à 60 caractères pour
+tenir dans `libelle_borne`. **Reconstruire un lien à partir de lui donnerait une
+adresse fausse une fois sur trois, et un lien faux vers une source est pire
+qu'aucun lien : il fait croire qu'on peut vérifier.**
+
+**Éprouvée par 19 essais**, tous conformes : `activite_IA` (casse majuscule) refusé,
+`offre` refusé, `javascript:`, `data:`, `file://`, url avec espace, avec chevron,
+vide, de 2001 caractères — tous refusés. Base rendue à l'identique.
+
+### Trois épaisseurs contre un lien exécutable
+
+L'adresse d'une source vient d'un modèle qui a lu des pages que personne ne
+contrôle, et l'écran en fait un `<a href>`. Un `javascript:` glissé par une page
+hostile s'exécuterait dans la session déjà authentifiée de Maxime.
+
+La parade est **volontairement redondante** : contrôle Python à l'écriture (l'étape
+garde son libellé, l'adresse douteuse est jetée), contrainte `url_est_une_adresse_web`
+en base, et revérification au rendu. Les deux premières ne servent pas la même
+chose — l'une évite de perdre une étape, l'autre garantit qu'une adresse
+dangereuse n'entre jamais. La troisième ne protège rien aujourd'hui : elle protège
+le jour où quelqu'un ajoutera un chemin d'écriture qui contourne les deux autres.
+
+### ⚠️ Un défaut DORMANT trouvé en mesurant : le lien du site officiel était illisible
+
+En mesurant le contraste des nouveaux liens de sources : **1,99:1 contre 4,5
+exigés**. Et le lien « Site officiel », posé en tranche 6.4, portait **exactement le
+même défaut depuis sa création** — jamais mesuré, parce qu'un lien ne ressemble pas
+à un cas limite.
+
+La cause est le piège central du système, pris à l'envers : `--primary` vaut
+`#c9a8ff`, un lavande **fait pour être un fond sous de l'encre foncée**. Employé
+comme couleur de texte, il disparaît.
+
+Correction : un jeton `--primary-texte` (`#7c3aed`, **5,70:1 mesuré**), même patron
+que `--interet-texte` et `--success-texte` — une famille, deux jetons. ⚠️ **En
+sombre il vaut le pastel nu** : le problème est propre au mode clair, où assombrir
+est la seule direction libre. Les deux liens passent à **5,70:1 en clair, 8,13:1 en
+sombre**. ⚠️ Le `variant="link"` du `Button`, **utilisé nulle part**, portait le même
+défaut : corrigé avant d'avoir servi.
+
+### La jauge d'enveloppe, et pourquoi la réserve est hachurée
+
+Remontée dans la phase à la demande de Maxime. Les deux pièges annoncés dans le
+plan ont été tranchés en construisant :
+
+**La réserve.** Un enrichissement en vol immobilise 150 000 tokens dès le clic —
+c'est ce qui bouche le trou de concurrence du 30 août. Une jauge nourrie du seul
+total **bondirait de 0 à 50 % avant qu'un token soit dépensé**. `detaillerConsommation()`
+sépare donc `reels` et `reserves`, et `calculerConsommation()` n'en garde que le
+total : **la même règle vue de deux façons, jamais deux règles** — sinon la jauge et
+la garde pourraient un jour raconter deux histoires différentes sans qu'aucune
+erreur ne soit levée. Un test garde exactement cette propriété.
+
+⚠️ **La réserve se distingue par une TEXTURE, pas par une teinte — et c'est une
+correction mesurée.** Le premier jet la peignait en encre atténuée sur une piste
+atténuée : **1,64:1 entre les deux en mode sombre**, indiscernable du rail vide.
+Trois densités d'une même encre sur une barre de 8 px ne peuvent pas s'écarter
+assez ; le problème est structurel, pas un mauvais réglage. Des hachures d'encre
+pleine se distinguent du plein par leur trame et du vide par leur encre, **sans
+dépendre d'aucun rapport de clarté**.
+
+**Le décompte avant minuit : abandonné, et c'est la bonne réponse.** La page est
+rendue côté serveur ; un compte à rebours y serait figé à l'heure du chargement.
+« Remise à zéro à minuit » est vrai sans horloge.
+
+⚠️ **Décision de système : la jauge est en teintes NEUTRES.** Les six accents sont
+pris et portent chacun un rôle ; la peindre en bleu l'aurait rattachée à la note
+d'intérêt, qui n'a rien à voir. **Une consommation est une quantité, pas un signal
+catégoriel** — elle ne consomme donc aucun accent.
+
+### Le squelette, encore — quatrième saut évité
+
+La jauge allonge la section d'enrichissement de **34 px** (186 contre 152 réservés).
+`loading.tsx` recalé à 11,625 rem, **écart 0 px** vérifié par substitution dans le
+DOM. ⚠️ La mesure porte sur « pas encore enrichie ET rien en vol », le cas de 576
+offres sur 580 : un enrichissement en vol ajoute la ligne de réserve et porte la
+carte à 209 px, mais ce cas dure quelques minutes par jour et ne doit pas commander
+le squelette.
+
+### Une supposition remplacée par un chronomètre
+
+Le commentaire du `timeout` de 8 minutes justifiait sa valeur par le poids des
+dépendances — « ~190 Mo, le SDK embarque son binaire ». **Mesuré sur deux exécutions
+réelles : l'installation prend 8 à 11 secondes**, et tout ce qui n'est pas l'agent
+tient en ~15 s. Le chiffre de 8 minutes était bon, sa justification était fausse —
+et une justification fausse fait mal raisonner le suivant. **Le poids d'un
+téléchargement ne dit rien de sa durée sur le réseau d'un centre de données.**
+
+### `/code-review` : quatre défauts réels, deux points que la mesure contredit
+
+**1. La jauge restait figée après la conclusion — le plus visible, et le plus
+juste.** Ses nombres venaient du rendu serveur, et `suivreEnrichissement`
+n'appelle **délibérément pas** `revalidatePath` (l'y ajouter ferait rejouer tout
+le rendu de la fiche toutes les 1,5 s : 89 112 octets contre 323). L'écran
+annonçait donc « Enrichissement terminé » au-dessus d'une barre affirmant encore
+« dont 150 000 réservés », avec un total ignorant la dépense réelle — jusqu'à un
+rechargement manuel. **Le sondage renvoie maintenant l'enveloppe à la
+conclusion**, et à ce moment seulement : une lecture de plus, au moment précis où
+le nombre change. ✅ **Prouvé sans rechargement** : 226 244 dont 150 000 réservés
+→ **107 644**, la ligne de réserve disparue.
+
+**2. Le filtre d'URL Python n'était pas le jumeau de la contrainte SQL.**
+`re.IGNORECASE` acceptait `HTTPS://…` que Postgres refuse, et le `$` de Python
+tolère un saut de ligne final que POSIX refuse. **Ce qui passe le filtre et que
+la base rejette fait échouer la ligne entière — donc le libellé part avec
+l'adresse**, l'inverse exact de ce que le code promet. `fullmatch` sans
+indicateur ferme les deux ; huit cas éprouvés.
+
+**3. « Sources consultées » listait les pages DEMANDÉES, pas lues.** L'étape
+s'écrit quand l'agent réclame une page, plusieurs secondes avant qu'on sache si
+elle a répondu — c'est voulu, l'écran doit avancer. Mais un 403 ou un délai
+dépassé laissait une adresse sous « Sources consultées » que l'agent n'a jamais
+lue. ⚠️ **Le cas n'a rien de théorique : le premier enrichissement réel du projet
+s'est fait sur un site injoignable.** La boucle écoute désormais les
+`ToolResultBlock` en erreur et `lecture_ratee()` retire l'adresse — **le libellé
+reste**, la tentative a eu lieu et explique le temps passé.
+
+**4. `entreprise_site` se rendait sans revérification**, alors que les sources en
+avaient une. Une règle qui ne vaut que pour la moitié des cas n'est pas une
+règle : `estAdresseWeb()` couvre maintenant les deux liens. ⚠️ Et le préambule de
+la migration laissait croire à une contrainte de format sur `entreprise_site` —
+**il n'y en a aucune**, sa seule garde amont est `_valider_fiche()`.
+
+**Deux commentaires faux, corrigés** — et c'est le genre de défaut que ce projet
+traite comme un bug, parce qu'un commentaire faux fait mal raisonner le suivant :
+
+- « L'ORDRE DE CE TUPLE EST L'ORDRE D'AFFICHAGE » était faux. L'écran parcourt
+  `TITRES_RUBRIQUES` et retrouve chaque rubrique par son NOM ; le `rang` stocké
+  n'est jamais lu. **Quelqu'un voulant déplacer « clients » aurait édité le
+  fichier Python, relancé un enrichissement FACTURÉ, et constaté que rien n'a
+  bougé.**
+- La justification du `?? null` invoquait un `undefined` que PostgREST rendrait
+  pour les étapes antérieures à la migration. Impossible : soit la colonne
+  existe et les vieilles lignes valent `null`, soit elle n'existe pas et toute la
+  requête échoue.
+
+**Deux points rejetés, mesure à l'appui :**
+
+- La revue jugeait risqué de passer à 300 s sous un `timeout` de 8 min, en
+  estimant l'installation à « 1 à 2,5 min ». ⚠️ **Elle citait le commentaire du
+  workflow, pas le chronomètre.** Mesuré sur deux exécutions réelles :
+  **8 à 11 secondes**, ~15 s pour tout ce qui n'est pas l'agent. Marge réelle :
+  près de 3 minutes. Le commentaire fautif a été corrigé — c'est lui qui avait
+  induit la revue en erreur, ce qui illustre le coût d'une justification fausse.
+- Elle supposait la migration 11 non appliquée. Elle l'était, et éprouvée par
+  19 essais.
+
+### Vérifications
+
+- **Migration** : 19 essais, 19 conformes, base rendue à l'identique.
+- **122 tests** (6 nouveaux sur `detaillerConsommation`), dans les deux fuseaux.
+- **Trois états regardés**, posés à la main en base : fiche complète à texte long,
+  fiche partielle (site injoignable), fiche entièrement « non disponible ».
+- **Contrastes mesurés au canvas** : liens 5,70:1 (clair) et 8,13:1 (sombre) ·
+  barre pleine sur piste 9,32:1 et 13,08:1 · libellé 14,83:1.
+- **375 px et bureau**, clair et sombre : **0 élément débordant**, aucun défilement
+  horizontal, une URL de 58 caractères passée proprement sur deux lignes.
+- **Console : 0 erreur, 0 avertissement.**
+- **Focus clavier** sur les liens de sources : `outline solid 2px`, offset 2 px,
+  aucune `box-shadow` — la règle « jamais `ring` » tient.
+- **Concordance vérifiée** entre `RUBRIQUES_REDIGEES`, le schéma de `rendre_fiche` et
+  le prompt : aucun champ absent, aucun marqueur absent.
+- ⚠️ **La jauge se corrige seule à la conclusion, SANS rechargement** — le
+  parcours qui prouve le correctif n° 1 de la revue : 226 244 dont 150 000
+  réservés → 107 644, ligne de réserve disparue, écran passé à « terminé ».
+- **Aucune colonne sensible dans le document** : vingt noms cherchés (dont
+  `charge_brute`, `contact_nom`, `note_personnelle`, `sb_secret`, `JETON_GITHUB`)
+  dans 136 Ko, flux RSC compris — **zéro trouvé**, témoin positif valide. Règle
+  n° 4 du `CLAUDE.md`, refaite parce que les props du bloc ont changé.
+- **`_valider_fiche` éprouvée** sur trois cas : quatre rubriques acceptées avec leurs
+  rangs stables · une rubrique omise reste ABSENTE (jamais vide) · un marqueur
+  invalide est reproché au modèle sans perdre la fiche.
+
+⚠️ **Non vérifié, et c'est la tranche 7.2** : aucun agent réel n'a encore tourné avec
+ce prompt. Le coût, la tenue des bornes desserrées et la qualité des trois nouvelles
+rubriques restent inconnus.
+
+---
+
 ## 31 août 2026 — La 6.4 sort de l'écran, et « Business » est tranché sans être construit
 
 Séance d'interface, entièrement conduite par Maxime devant le rendu. Sept demandes, toutes

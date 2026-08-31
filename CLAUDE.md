@@ -14,7 +14,7 @@ de Maxime (`~/.claude/CLAUDE.md`), il ne le remplace pas.
 | API Anthropic : modèles, paramètres, sortie structurée, cache, batches | référence `/claude-api` |
 | Claude Agent SDK : surface d'API | `code.claude.com/docs/en/agent-sdk` |
 | Ce que le produit doit faire · ce qu'il refuse de faire | `docs/PRD.md` |
-| Identité visuelle : jetons, contrastes vérifiés, composants | `docs/DESIGN.md` |
+| Identité visuelle : jetons, contrastes vérifiés, composants, **et les sept règles typographiques mesurées** | `docs/DESIGN.md` |
 | Dans quel ordre construire · contenu de test · parcours à repasser | `docs/PLAN.md` |
 | Ce qui s'est passé et pourquoi, dans l'ordre | `docs/JOURNAL.md` |
 | **Comment le modèle note** : profil, postes visés, barèmes | `pipeline/criteres_pertinence.txt` — **c'est une donnée, pas du code**. ⚠️ `//` = commentaire retiré avant l'envoi, `##` = titre envoyé au modèle |
@@ -86,7 +86,6 @@ matière.
 |---|---|
 | Écran de suivi d'exploitation (exécutions, réussite, durée, coût) | Tracer chaque exécution et chaque enrichissement dès le premier jour, en **compteurs bruts** jamais en euros. Un historique ne se reconstitue pas |
 | Conversation avec l'agent **sur une offre enrichie** | Fiche stockée en **champs séparés**, pas en texte rédigé · identifiant d'offre stable · enveloppe par offre en **tokens cumulés** |
-| **Jauge de consommation du jour** — barre horizontale, pourcentage **et chiffre en tokens**, moment de la remise à zéro (demandée le 31 août 2026, **pas pour tout de suite**) | **Rien** : `EtatEnveloppe` rend déjà tout, c'est de l'affichage pur. ✅ Emplacement **tranché : la fiche d'une offre, et elle seule**. ⚠️ Mais **trois points restent à trancher avant d'écrire** — dont la réserve de `COUT_PRESUME_TOKENS` qui ferait bondir la jauge à 50 % au clic, et le décompte avant minuit qui **ne peut pas être rendu côté serveur**. Détail dans `docs/PLAN.md` § À construire un jour |
 
 ⚠️ **Quatre règles de vocabulaire et de périmètre, qui ne se déduisent d'aucun
 fichier :**
@@ -109,7 +108,7 @@ fichier :**
 
 **Cadrage complet** : `docs/PRD.md` — 37 user stories, 13 critères de succès.
 
-## État au 31 août 2026 — ✅ PHASE 6 CLOSE, la phase 7 est le prochain chantier
+## État au 31 août 2026 — ✅ PHASE 6 CLOSE · phase 7 EN COURS, tranche 7.1 close
 
 **Phases 1 à 6 CLOSES.** Le site est en ligne derrière son mot de passe, collecte et
 notation tournent sur le cron. `/` est le **compte rendu de la nuit**, `/offres` le
@@ -124,77 +123,99 @@ les faits qui commandent une tâche future.
 
 ⚠️ **Huit faits opposables, qui ne se déduisent d'aucun fichier :**
 
-1. ⚠️ **UN SEUL enrichissement PAR JOUR, uniquement en démo devant un recruteur** —
-   Maxime, 30 août. Ne jamais raisonner en débit : la bonne question n'est pas
-   « combien par jour » mais « est-ce qu'UN enrichissement, **plus sa relance si le
-   premier rate**, passe sans buter sur le plafond ». C'est ce scénario-là qui
-   re-réglera l'enveloppe en phase 7, pas un calcul de volume.
-2. ⚠️ **COÛT RÉEL MESURÉ : 0,1166 $ — 11,7 centimes**, 118 254 tokens, 13 tours en
-   Sonnet 5, sur un cas dégradé (site injoignable). **Dix fois moins que
-   l'estimation du PRD.** ⚠️ C'est UN point sur un cas défavorable : un haut de
-   fourchette, pas une moyenne.
-3. ⚠️ **L'enveloppe de 300 000 tokens tient pour l'usage réel, et deviendra juste
-   en phase 7**, qui ajoute de l'exploration. `COUT_PRESUME_TOKENS` (150 000) est du
-   bon ordre : ne pas le baisser sur une seule mesure, il réserve le coût d'un
-   enrichissement **en vol** et sous-réserver rouvrirait un trou déjà bouché.
+1. ⚠️ **UN SEUL enrichissement PAR JOUR, en démo devant un recruteur** — Maxime,
+   30 août. Ne jamais raisonner en débit : la bonne question est « est-ce qu'UN
+   enrichissement, **plus sa relance si le premier rate**, passe sans buter sur le
+   plafond ». C'est ce scénario qui re-réglera l'enveloppe, pas un calcul de volume.
+2. ⚠️ **COÛT RÉEL MESURÉ : 0,1166 $**, 118 254 tokens, 13 tours en Sonnet 5, sur un
+   cas dégradé (site injoignable). **Dix fois moins que l'estimation du PRD.** ⚠️ UN
+   point sur un cas défavorable : un haut de fourchette, pas une moyenne.
+3. ⚠️ **`COUT_PRESUME_TOKENS` (150 000) réserve le coût d'un enrichissement EN VOL.**
+   Ne pas le baisser sur une seule mesure : sous-réserver rouvrirait un trou déjà
+   bouché — dix clics dans la même minute lisaient tous « 0 consommé ».
 4. ⚠️ **LES ÉTAPES SONT DÉRIVÉES DU TRAVAIL, JAMAIS RACONTÉES PAR LE MODÈLE.** Nos
-   outils écrivent la leur avec leur résultat réel ; les outils intégrés sont
-   observés dans le flux. Une étape racontée pourrait mentir et coûterait un tour.
-   **Ne pas ajouter d'outil « écris une étape ».**
+   outils écrivent la leur avec leur résultat réel ; les intégrés sont observés dans
+   le flux. Une étape racontée pourrait mentir et coûterait un tour. **Ne pas ajouter
+   d'outil « écris une étape ».**
 5. ⚠️ **L'agent rend sa fiche par un OUTIL rappelable, dernière version gagnante.**
    C'est ce qui donne un sens à « au-delà de la borne, il rend ce qu'il a trouvé ».
    L'outil rend ses reproches **au modèle**, qui corrige — la base, elle, refuserait
    la fiche entière, déjà payée, pour une année manquante.
-6. ⚠️ **La borne de durée est INTERNE (240 s) ; le `timeout` du workflow (8 min)
-   n'est qu'un filet.** Un job tué par GitHub ne conclut rien : ligne bloquée,
-   écran qui pulse jusqu'à la péremption, tokens perdus pour l'enveloppe. **Ne
-   jamais rapprocher les deux**, et garder le filet sous les 10 min de péremption.
-7. ⚠️ **Le workflow d'enrichissement détient une clé FACTURÉE** : qui peut le
-   lancer peut faire dépenser. D'où `JETON_GITHUB` à portée fine, ce seul dépôt,
+6. ⚠️ **La borne de durée est INTERNE (300 s depuis la phase 7) ; le `timeout` du
+   workflow (8 min) n'est qu'un filet.** Un job tué par GitHub ne conclut rien :
+   ligne bloquée, écran qui pulse, tokens perdus. **Ne jamais les rapprocher.**
+   ⚠️ **Le vrai plafond n'est pas le filet mais les 10 min de `PEREMPTION_MINUTES`** —
+   c'est lui qu'il faudra bouger en premier si l'agent doit explorer plus longtemps.
+   ⚠️ **Mesuré le 31 août : tout ce qui n'est pas l'agent prend ~15 s** (installation
+   comprise), pas les « ~190 Mo donc c'est long » qu'un commentaire supposait.
+7. ⚠️ **Le workflow d'enrichissement détient une clé FACTURÉE** : qui peut le lancer
+   peut faire dépenser. D'où `JETON_GITHUB` à portée fine, ce seul dépôt,
    « Actions : write ».
-8. ⚠️ **`pipeline/registre.py` est une FRONTIÈRE avant d'être un client HTTP** :
-   il décide ce que le modèle a le droit de voir. **Liste blanche, jamais noire** —
-   le registre rend les dirigeants nommés avec leur date de naissance, et l'adresse
-   de voie du siège, qui est le domicile du dirigeant pour une entreprise
-   individuelle. ⚠️ **Toutes les mesures du registre public vivent dans ce
-   fichier**, abondamment commenté : un seul exercice comptable rendu et c'est le
-   dernier DÉPOSÉ (OCTO : 2016) · la moitié de la fiche n'y est pas · « Orion » rend
-   4 382 entreprises · la catégorie INSEE est calculée au niveau du GROUPE ·
-   **30 requêtes/seconde par ASN, et les cloud publics y butent** — GitHub Actions
-   en est un. **Ne pas les redécouvrir, ne pas les contredire de mémoire.**
+8. ⚠️ **`pipeline/registre.py` est une FRONTIÈRE avant d'être un client HTTP** : il
+   décide ce que le modèle a le droit de voir. **Liste blanche, jamais noire** — le
+   registre rend les dirigeants nommés avec leur date de naissance, et l'adresse du
+   siège, qui est le domicile du dirigeant pour une entreprise individuelle.
+   ⚠️ **Toutes les mesures du registre vivent dans ce fichier**, commenté : un seul
+   exercice rendu, et c'est le dernier DÉPOSÉ (OCTO : 2016) · la moitié de la fiche
+   n'y est pas · « Orion » rend 4 382 entreprises · **30 requêtes/s par ASN, et les
+   cloud publics y butent** — GitHub Actions en est un. **Ne pas les redécouvrir.**
 
-⚠️ **Ce que la fiche montre, et ce qu'elle NE cherche PLUS** (30-31 août) :
-identité (nom officiel, SIREN, création, site) · taille et santé (tranche
-millésimée, CA avec son exercice) · une rubrique rédigée, `modele_economique`.
-**Le groupe, l'effectif annoncé et la catégorie INSEE ont été retirés du prompt et
-du schéma, pas seulement de l'écran** — les demander coûtait des tours pour du
-texte que personne ne lit. Masquer sans cesser de chercher aurait payé deux fois.
+⚠️ **Trois règles de forme de la fiche, à ne pas défaire :**
 
-⚠️ **La fiche s'ouvre en FENÊTRE MODALE**, pas dans la page — ce qui clôt la
-question « deux colonnes ? » que le `DESIGN.md` laissait ouverte. Posée sur Radix
-parce que `pouf.css` portait déjà `.pouf-overlay` et `.pouf-dialog`, **écrits pour
-ses `data-state`** : le style attendait son composant. Radix apporte le focus
-piégé, `Échap`, et le reste de la page en `aria-hidden` — qu'une `<div>` ne donne
-pas.
+- **Le groupe, l'effectif annoncé et la catégorie INSEE ont été retirés du PROMPT et
+  du SCHÉMA, pas seulement de l'écran** — les demander coûtait des tours pour du
+  texte que personne ne lit. Masquer sans cesser de chercher aurait payé deux fois.
+- **La fiche s'ouvre en FENÊTRE MODALE** — ce qui clôt la question « deux colonnes ? »
+  du `DESIGN.md`. Posée sur Radix parce que `pouf.css` portait déjà `.pouf-overlay` et
+  `.pouf-dialog`, **écrits pour ses `data-state`** : le style attendait son composant.
+  Radix apporte le focus piégé, `Échap`, et le reste de la page en `aria-hidden`.
+- **L'affichage des étapes est UNE LIGNE, pas une liste** — l'étape en cours seule ;
+  le chemin complet est dans la fenêtre. Trois conséquences à ne pas défaire : le
+  **plancher de hauteur ne vaut que pendant l'exécution** · le **nombre d'étapes n'est
+  écrit qu'une fois** · **`aria-live` est sur le conteneur, jamais sur la ligne qui
+  change**, sinon rien n'est annoncé.
 
-⚠️ **L'affichage des étapes est UNE LIGNE, pas une liste** — l'étape en cours
-seule, remplacée par la suivante ; le chemin complet est dans la fenêtre. La
-version en liste défilante corrigeait un vrai défaut mais **répondait à côté** :
-le problème n'était pas la coupure, c'est qu'une liste n'était pas le bon objet.
-Trois conséquences à ne pas défaire : le **plancher de hauteur ne vaut que pendant
-l'exécution** · le **nombre d'étapes n'est écrit qu'une fois** · **`aria-live` est
-sur le conteneur, jamais sur la ligne qui change**, sinon rien n'est annoncé.
+### 🚧 PHASE 7 — tranche 7.1 CLOSE (construction), 7.2 à faire (l'essai réel)
 
-⚠️ **LA SECTION « BUSINESS » EST TRANCHÉE MAIS NON CONSTRUITE — phase 7.** Maxime
-l'a décrite le 31 août puis a choisi de la laisser à sa phase. La fiche comptera
-trois sections : **Identité · Taille et santé · Business** (modèle économique —
-qui y déménage — clients, offre commerciale, ce qu'elle fait en IA), et le titre
-« Ce que l'agent a compris » disparaîtra.
-⚠️ **`offre_commerciale`, JAMAIS `offre`** : ici « offre » veut dire *offre
-d'emploi*, partout. C'est le vocabulaire figé pris à l'envers — un mot pour deux
-choses. ⚠️ **Migration 11 nécessaire**, annoncée par la migration 10.
-⚠️ **« La technique attendue sur ce poste » (US-19) n'a pas été reprise** — à
-trancher en début de phase 7, pas à supposer. Détail dans `docs/PLAN.md` § Phase 7.
+La fiche compte désormais **trois sections : Identité · Taille et santé ·
+Business** (modèle économique, clients, offre commerciale, ce qu'elle fait en IA),
+plus **« Sources consultées »**. « Ce que l'agent a compris » a disparu. Récit
+complet dans `docs/JOURNAL.md` § 31 août (après-midi).
+
+⚠️ **Cinq faits opposables issus de la 7.1 :**
+
+1. ⚠️ **`offre_commerciale`, JAMAIS `offre`** : ici « offre » veut dire *offre
+   d'emploi*, partout — table `offres`, route `/offres`, `offre_identifiant`. Le
+   vocabulaire figé pris à l'envers : un mot pour deux choses.
+2. ✅ **US-19 (« la technique attendue sur ce poste ») est ÉCARTÉE de
+   l'enrichissement, pas abandonnée** — décision de Maxime, 31 août. Motif :
+   **ce n'est pas la même matière**, elle parle du POSTE quand la fiche parle de
+   l'ENTREPRISE, et elle est déjà dans le texte de l'annonce affiché deux
+   sections plus haut. Destination naturelle : la notation. **Ne pas la
+   réintroduire dans « Business ».**
+3. ⚠️ **Les sources sont OBSERVÉES, jamais déclarées** : chaque ligne vient d'un
+   `WebFetch` réellement passé, capté dans le flux. Même règle que les étapes.
+   ⚠️ **La liste ne se stocke PAS à part** — c'est l'ensemble des étapes qui
+   portent une `url`. Une étape de lecture EST une source ; deux tables auraient
+   divergé.
+   ⚠️ **`libelle` et `url` ne se déduisent pas l'un de l'autre** : le libellé perd
+   le protocole, le `www.` et tout chemin au-delà de 60 caractères.
+4. ⚠️ **Bornes desserrées : 45 tours · 300 s · 0,50 $ inchangé.** Le budget n'a
+   pas bougé délibérément — le relever avant la mesure de la 7.2 desserrerait la
+   seule borne exprimée dans la monnaie facturée, sur un chiffre qu'on n'a pas.
+   ⚠️ **La contrainte sur `DUREE_MAX_SECONDES` ne vient pas du `timeout` du
+   workflow (8 min, mesuré large) mais des 10 min de `PEREMPTION_MINUTES`.**
+5. ⚠️ **LinkedIn : demandé, mesuré, REFUSÉ** — et l'intuition était juste, la page
+   publique rend un effectif à jour que le registre n'a pas. Trois obstacles :
+   le `robots.txt` l'interdit en toutes lettres · le dépôt est public et sert en
+   entretien · **le test venait d'une IP résidentielle, l'agent tourne sur GitHub
+   Actions**, dont LinkedIn bloque les adresses. ⚠️ Et récupérer des OFFRES
+   ailleurs que chez France Travail est **hors périmètre opposable**. Ne pas
+   rouvrir sans décision explicite.
+
+⚠️ **Ce que la 7.2 doit encore prouver, et qui n'est PAS vérifié** : aucun agent
+réel n'a tourné avec ce prompt. Le coût, la tenue des bornes desserrées et la
+qualité des trois nouvelles rubriques sont **inconnus**.
 
 ⚠️ **Reste à faire par Maxime** : poser `JETON_GITHUB` chez Vercel (il n'est qu'en
 local). Sans lui le bouton répond « jeton non configuré » **sur le site déployé
@@ -317,13 +338,13 @@ workflow finirait par mordre vers 4 ou 5 nuits.
 |---|---|
 | `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte · `/` le compte rendu de la nuit · `/offres` (six filtres, trois classements, statuts, coup de cœur) · la fiche `/offres/[identifiant]` (statuts, note, coup de cœur, **bloc d'enrichissement**) · thème à trois états |
 | Supabase | Région Paris. **Cinq tables.** RLS activé sans politique **et** droits retirés à `anon`/`authenticated` — deux verrous indépendants |
-| Migrations | **10**, toutes appliquées. La 10ᵉ ajoute les trois tables d'enrichissement |
+| Migrations | **11**, toutes appliquées. La 10ᵉ ajoute les trois tables d'enrichissement, la 11ᵉ ouvre « Business » (trois rubriques) et trace les sources (colonne `url` sur l'étape) |
 | Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris · **5 variables** (`JETON_GITHUB` reste à y poser) |
 | GitHub Actions | `collecte-nocturne.yml` (cron 02:23 UTC, collecte **et** notation) · **`enrichissement.yml`** (lancé par l'interface au clic) |
 | `pipeline/` | ⚠️ **Seul le CDI est collecté** (`TYPE_CONTRAT` dans `config.py`) |
 | Modules | `collecte.py` · `notation.py` · `salaire.py` · `employeur.py` · **`enrichissement.py`** (l'agent) · **`registre.py`** (la frontière vers le registre public) · `criteres_pertinence.txt` |
 | `.venv/` | À la racine, `requirements.txt` versionné |
-| Tests | `npm run verifie` depuis `interface/` — lint, typecheck, **116 tests dans les deux fuseaux** |
+| Tests | `npm run verifie` depuis `interface/` — lint, typecheck, **122 tests dans les deux fuseaux** |
 
 ## ⚠️ Neuf règles opposables, qui ne se déduisent d'aucun fichier
 
@@ -812,44 +833,18 @@ tout de suite quoi lire en premier, et pourquoi. **Direction** : pastel
 volumétrique — surfaces blanches arrondies sur fond lavande, relief « coussin »,
 six accents pastel qui portent **toujours de l'encre foncée, jamais du blanc**.
 
-**Polices** : titrage **Fredoka 700** — les `h1`, **les titres de section de la
-FICHE** (`titre-section`), **les étiquettes des deux notes** (`libelle-accent`,
-« Intérêt » / « Accessibilité », sur les trois écrans) et **le nom de
-l'employeur** (`nom-entreprise`, en liste comme sur la fiche). Amendements du
-30 août 2026, demandés par Maxime devant l'écran.
-⚠️ **`libelle-accent` ne déclare AUCUNE taille**, et c'est ce qui lui permet
-d'en avoir deux : **13 px sur la fiche, 11 en liste**, posées au point d'usage
-via la prop `aere`. Un utilitaire qui ne déclare pas une propriété ne peut pas
-se la disputer — c'est la parade au conflit à spécificité égale, payé trois fois
-sur ce projet (`nom-entreprise`, `accentue`, `libelle-mono`).
-⚠️ **FREDOKA N'A PAS D'ITALIQUE.** Le navigateur en synthétise une oblique
-mécanique, laide sur une géométrique ronde. Les deux emplacements
-« Entreprise non communiquée » — en liste et sur la fiche — restent donc en
-**Nunito**, classes écrites en clair : ce sont des états, pas des noms, et
-39 % des offres sont dans ce cas.
-⚠️ **`titre-section` est passé de 11 à 16 px** — il était plus petit que le texte
-qu'il annonce, ce qui inversait le rapport. Un titre de section n'a pas à écraser
-son contenu, il ne peut pas lui être inférieur. **Toute hauteur de squelette qui
-double une de ces sections se remesure alors** : un titre fait 22,4 px de haut au
-lieu de 15,4, et `loading.tsx` réservait 16 px — 38 px de décalage cumulé,
-invisibles en développement.
-⚠️ **`libelle-accent` est un utilitaire À PART, jamais `libelle-mono` surchargé
-par `font-display`** : les deux déclarent `font-family`, et à spécificité égale
-c'est l'ordre dans la feuille compilée qui tranche, pas le code qu'on lit. Quand
-deux classes se disputent une propriété, on en écrit une troisième.
-⚠️ **`libelle-mono` reste partout ailleurs** — cartouches, en-têtes de données,
-compteurs : sa chasse fixe y aligne des colonnes de chiffres, ce qu'une grotesque
-ronde ne fait pas.
-⚠️ **L'interlettrage de Fredoka est à 0,08em et non 0,12** : les 0,12em du mono
-détachaient les capitales au point de défaire le mot.
-⚠️ **Contre-intuition mesurée** : Fredoka est **plus ÉTROIT** que Geist Mono à
-taille égale — « ACCESSIBILITÉ » fait 86,4 px contre les 108 px réservés. Le
-couloir fixe des libellés de note n'a donc pas bougé. Ne pas « élargir pour faire
-de la place » sans mesurer. · texte et interface
-**Nunito** · données et étiquettes **Geist Mono**. Les trois par `next/font`.
+**Polices** : titrage **Fredoka 700** · texte et interface **Nunito** · données
+et étiquettes **Geist Mono**. Les trois par `next/font`.
+⚠️ **Sept règles typographiques MESURÉES vivent dans `docs/DESIGN.md` § Typographie**
+— qui porte quelle police, pourquoi `libelle-accent` ne déclare aucune taille,
+pourquoi **Fredoka n'a pas d'italique**, l'interlettrage à 0,08em, et la
+contre-intuition qui piège (**Fredoka est plus ÉTROIT que Geist Mono** à taille
+égale). **Les lire avant de toucher à une police ou à une classe de libellé** :
+elles ont été payées trois fois en conflits de spécificité.
 ⚠️ **Fredoka n'est PAS livrée par le registre** — sans chargement explicite les
 titres retombent sur Nunito, sans erreur. ⚠️ **Geist Mono survit à la refonte** :
 sans chasse fixe, la colonne des salaires ondule sur 200 lignes.
+
 **Icônes** : **lucide**, figé à l'installation. **Ne jamais en mélanger un
 second.** ⚠️ Le composant `Icon` du registre tire `@tabler/icons-react` : ne pas
 l'installer.
@@ -904,7 +899,7 @@ et jamais `border-foreground`** : l'encre de page est claire en sombre et tombai
 (transparente au repos) **et sur le menu « Trier »**, sinon la rangée se décale ou
 se désaligne.
 
-⚠️ **Trois pièges MESURÉS, qui ne se voient dans aucune erreur** (détail dans
+⚠️ **Quatre pièges MESURÉS, qui ne se voient dans aucune erreur** (détail dans
 `docs/DESIGN.md`) :
 
 1. **`--muted` veut dire deux choses opposées** — surface chez shadcn, couleur de
@@ -919,6 +914,16 @@ se désaligne.
    1,06 à 1,99:1 contre 3:1 requis. D'où **deux jetons par note** — la variante
    nue pour les fonds de pastille, la variante `-barre` (assombrie) pour les
    jauges. En mode sombre ils passent nus, le problème est propre au clair.
+
+4. ⚠️ **`--primary` est un FOND, jamais une couleur de texte** — et le défaut
+   était **dormant depuis la tranche 6.4**, trouvé le 31 août 2026 en mesurant
+   autre chose. Le lavande `#c9a8ff` pèse **1,99:1 sur une carte blanche** : le
+   lien « Site officiel » de la fiche d'enrichissement était illisible depuis sa
+   création, parce qu'un lien ne ressemble pas à un cas limite et que personne ne
+   l'avait mesuré. **Le mot prend `--primary-texte`** (`#7c3aed`, 5,70:1), même
+   patron que `--interet-texte` et `--success-texte` : une famille, deux jetons.
+   ⚠️ **En sombre, `--primary-texte` vaut le pastel nu** — le problème est propre
+   au clair, où assombrir est la seule direction libre.
 
 ⚠️ **`components/pouf/pouf.css` est ADAPTÉ**, donc non remplaçable par un
 `shadcn add` qui l'écraserait. Quatre adaptations signalées sur place par

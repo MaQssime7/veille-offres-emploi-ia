@@ -53,20 +53,34 @@ jobs:
     # plus important de la tranche 6.3, et il se lit à l'envers de l'intuition.
     #
     # La borne qui compte est désormais `DUREE_MAX_SECONDES` dans
-    # `pipeline/enrichissement.py` (240 s) : à son expiration, l'agent s'arrête
-    # et le script ÉCRIT ce qu'il avait trouvé. Un job tué par GitHub, lui, ne
-    # conclut rien — la ligne reste `en_cours`, l'écran pulse jusqu'à la
-    # péremption, et les tokens déjà brûlés sont perdus pour l'enveloppe du
-    # jour. Le filet doit donc rester NETTEMENT au-dessus de la borne interne,
-    # sans quoi c'est lui qui mord et on perd la conclusion propre.
+    # `pipeline/enrichissement.py` — **300 s depuis la phase 7** : à son
+    # expiration, l'agent s'arrête et le script ÉCRIT ce qu'il avait trouvé. Un
+    # job tué par GitHub, lui, ne conclut rien — la ligne reste `en_cours`,
+    # l'écran pulse jusqu'à la péremption, et les tokens déjà brûlés sont perdus
+    # pour l'enveloppe du jour. Le filet doit donc rester NETTEMENT au-dessus de
+    # la borne interne, sans quoi c'est lui qui mord et on perd la conclusion
+    # propre.
     #
-    # Pourquoi 8 et non 5 : l'installation des dépendances pèse maintenant
-    # ~190 Mo (le SDK embarque son binaire Claude Code), ce qui mange une part
-    # du budget avant que l'agent démarre. 240 s d'agent + installation + marge
-    # tiennent dans 8 min, et restent sous les 10 min de `PEREMPTION_MINUTES`
-    # (`interface/lib/enrichissement.ts`) — le seuil au-delà duquel l'interface
-    # déclare la tentative morte. Dépasser 10 ferait conclure un enrichissement
-    # que l'écran a déjà annoncé perdu.
+    # ⚠️ **MESURÉ le 31 août 2026 sur deux exécutions réelles, et la version
+    # précédente de ce commentaire se trompait de raison.** Elle justifiait les
+    # 8 minutes par le poids des dépendances — « ~190 Mo, le SDK embarque son
+    # binaire Claude Code » — en laissant croire que l'installation mangeait une
+    # part sérieuse du budget. Relevé au chronomètre de GitHub : récupération du
+    # code, installation de Python et des dépendances prennent **8 à 11
+    # secondes**, et tout ce qui n'est pas l'agent tient en **~15 secondes**.
+    # Le poids d'un téléchargement ne dit rien de sa durée quand le réseau du
+    # runner est celui d'un centre de données.
+    #
+    # Le budget réel est donc : 300 s d'agent + ~15 s de mise en place = ~5 min
+    # 15, **contre 8 min de filet — presque 3 minutes de marge**. Le chiffre de
+    # 8 était bon, sa justification ne l'était pas.
+    #
+    # ⚠️ **Le plafond, lui, ne vient PAS de la durée du job mais des 10 min de
+    # `PEREMPTION_MINUTES`** (`interface/lib/enrichissement.ts`), au-delà
+    # desquelles l'interface déclare la tentative morte. Dépasser 10 ferait
+    # conclure un enrichissement que l'écran a déjà annoncé perdu. C'est cette
+    # borne-là qu'il faudra bouger en premier si l'agent doit un jour explorer
+    # plus longtemps, pas le `timeout` ci-dessous.
     timeout-minutes: 8
 
     steps:
