@@ -108,12 +108,13 @@ fichier :**
 
 **Cadrage complet** : `docs/PRD.md` — 37 user stories, 13 critères de succès.
 
-## État au 31 août 2026 — ✅ PHASE 6 CLOSE · phase 7 EN COURS, tranche 7.1 close
+## État au 31 août 2026 — ✅ PHASES 6 ET 7 CLOSES
 
-**Phases 1 à 6 CLOSES.** Le site est en ligne derrière son mot de passe, collecte et
+**Phases 1 à 7 CLOSES.** Le site est en ligne derrière son mot de passe, collecte et
 notation tournent sur le cron. `/` est le **compte rendu de la nuit**, `/offres` le
 **plan de travail**. L'interface écrit en base, et l'agent d'enrichissement tourne au
-clic. **580 offres, 146 notées, 4 enrichies.**
+clic. **580 offres, 146 notées, 6 enrichies.** La fiche d'entreprise est complète :
+identité, taille et santé, business en quatre rubriques, et les sources consultées.
 
 ### ✅ PHASE 6 CLOSE — l'enrichissement par agent, de bout en bout
 
@@ -126,13 +127,23 @@ les faits qui commandent une tâche future.
 1. ⚠️ **UN SEUL enrichissement PAR JOUR, en démo devant un recruteur** — Maxime,
    30 août. Ne jamais raisonner en débit : la bonne question est « est-ce qu'UN
    enrichissement, **plus sa relance si le premier rate**, passe sans buter sur le
-   plafond ». C'est ce scénario qui re-réglera l'enveloppe, pas un calcul de volume.
-2. ⚠️ **COÛT RÉEL MESURÉ : 0,1166 $**, 118 254 tokens, 13 tours en Sonnet 5, sur un
-   cas dégradé (site injoignable). **Dix fois moins que l'estimation du PRD.** ⚠️ UN
-   point sur un cas défavorable : un haut de fourchette, pas une moyenne.
-3. ⚠️ **`COUT_PRESUME_TOKENS` (150 000) réserve le coût d'un enrichissement EN VOL.**
-   Ne pas le baisser sur une seule mesure : sous-réserver rouvrirait un trou déjà
-   bouché — dix clics dans la même minute lisaient tous « 0 consommé ».
+   plafond ». C'est ce scénario qui a re-réglé l'enveloppe, pas un calcul de volume.
+2. ⚠️ **COÛT RÉEL — TROIS mesures en Sonnet 5, toutes dix fois sous l'estimation du
+   PRD** : **118 254** tokens / 13 tours sur un cas dégradé (site injoignable, prompt
+   complet) · **46 257** / 5 tours sur un cas favorable, prompt réduit · **55 198** /
+   5 tours / 35 s sur un cas favorable avec les QUATRE rubriques — soit **0,086 $** au
+   tarif introductif de Sonnet 5, **0,129 $** au tarif plein.
+   ⚠️ **Le pire cas reste 118 254**, et c'est lui qui dimensionne la réserve.
+3. ✅ **ENVELOPPE ET RÉSERVE RE-RÉGLÉES SUR LA MESURE — et la conclusion est de ne
+   RIEN CHANGER.** Ce n'est pas une abstention, c'est le résultat, et le motif est le
+   seul point à retenir : **une réserve se dimensionne sur le PIRE cas, une enveloppe
+   sur le scénario d'usage.** `COUT_PRESUME_TOKENS` (150 000) couvre les 118 254 du
+   cas dégradé avec 27 % de marge ; l'enveloppe (300 000) couvre un enrichissement
+   plus sa relance, soit 2 × 118 254 = 236 508.
+   ⚠️ **Ne pas baisser la réserve au motif qu'elle vaut trois fois le coût courant** :
+   c'est exactement ce qu'une réserve doit faire, et sous-réserver rouvrirait le trou
+   de concurrence bouché le 30 août — dix clics dans la même minute lisaient tous
+   « 0 consommé ».
 4. ⚠️ **LES ÉTAPES SONT DÉRIVÉES DU TRAVAIL, JAMAIS RACONTÉES PAR LE MODÈLE.** Nos
    outils écrivent la leur avec leur résultat réel ; les intégrés sont observés dans
    le flux. Une étape racontée pourrait mentir et coûterait un tour. **Ne pas ajouter
@@ -155,34 +166,31 @@ les faits qui commandent une tâche future.
    décide ce que le modèle a le droit de voir. **Liste blanche, jamais noire** — le
    registre rend les dirigeants nommés avec leur date de naissance, et l'adresse du
    siège, qui est le domicile du dirigeant pour une entreprise individuelle.
-   ⚠️ **Toutes les mesures du registre vivent dans ce fichier**, commenté : un seul
-   exercice rendu, et c'est le dernier DÉPOSÉ (OCTO : 2016) · la moitié de la fiche
-   n'y est pas · « Orion » rend 4 382 entreprises · **30 requêtes/s par ASN, et les
-   cloud publics y butent** — GitHub Actions en est un. **Ne pas les redécouvrir.**
+   ⚠️ **Toutes ses mesures vivent dans ce fichier, commenté** — dont **30 requêtes/s
+   par ASN, où les cloud publics butent** (GitHub Actions en est un). **Ne pas les
+   redécouvrir, ne pas les contredire de mémoire.**
 
 ⚠️ **Trois règles de forme de la fiche, à ne pas défaire :**
 
-- **Le groupe, l'effectif annoncé et la catégorie INSEE ont été retirés du PROMPT et
-  du SCHÉMA, pas seulement de l'écran** — les demander coûtait des tours pour du
-  texte que personne ne lit. Masquer sans cesser de chercher aurait payé deux fois.
-- **La fiche s'ouvre en FENÊTRE MODALE** — ce qui clôt la question « deux colonnes ? »
-  du `DESIGN.md`. Posée sur Radix parce que `pouf.css` portait déjà `.pouf-overlay` et
-  `.pouf-dialog`, **écrits pour ses `data-state`** : le style attendait son composant.
-  Radix apporte le focus piégé, `Échap`, et le reste de la page en `aria-hidden`.
-- **L'affichage des étapes est UNE LIGNE, pas une liste** — l'étape en cours seule ;
-  le chemin complet est dans la fenêtre. Trois conséquences à ne pas défaire : le
-  **plancher de hauteur ne vaut que pendant l'exécution** · le **nombre d'étapes n'est
-  écrit qu'une fois** · **`aria-live` est sur le conteneur, jamais sur la ligne qui
-  change**, sinon rien n'est annoncé.
+- **Le groupe, l'effectif annoncé et la catégorie INSEE sont sortis du PROMPT et du
+  SCHÉMA, pas seulement de l'écran** — masquer sans cesser de chercher aurait payé
+  le travail deux fois.
+- **La fiche s'ouvre en FENÊTRE MODALE**, sur Radix — `pouf.css` portait déjà
+  `.pouf-overlay` et `.pouf-dialog`, écrits pour ses `data-state`. Apporte le focus
+  piégé, `Échap` et l'`aria-hidden` qu'une `<div>` ne donne pas.
+- **Les étapes s'affichent UNE LIGNE à la fois**, pas en liste. Trois conséquences :
+  le **plancher de hauteur ne vaut que pendant l'exécution** · le **nombre d'étapes
+  n'est écrit qu'une fois** · **`aria-live` est sur le conteneur, jamais sur la ligne
+  qui change**, sinon rien n'est annoncé.
 
-### 🚧 PHASE 7 — tranche 7.1 CLOSE (construction), 7.2 à faire (l'essai réel)
+### ✅ PHASE 7 CLOSE — « Business », les sources, et la jauge
 
 La fiche compte désormais **trois sections : Identité · Taille et santé ·
 Business** (modèle économique, clients, offre commerciale, ce qu'elle fait en IA),
 plus **« Sources consultées »**. « Ce que l'agent a compris » a disparu. Récit
 complet dans `docs/JOURNAL.md` § 31 août (après-midi).
 
-⚠️ **Cinq faits opposables issus de la 7.1 :**
+⚠️ **Six faits opposables issus de la phase :**
 
 1. ⚠️ **`offre_commerciale`, JAMAIS `offre`** : ici « offre » veut dire *offre
    d'emploi*, partout — table `offres`, route `/offres`, `offre_identifiant`. Le
@@ -200,11 +208,14 @@ complet dans `docs/JOURNAL.md` § 31 août (après-midi).
    divergé.
    ⚠️ **`libelle` et `url` ne se déduisent pas l'un de l'autre** : le libellé perd
    le protocole, le `www.` et tout chemin au-delà de 60 caractères.
-4. ⚠️ **Bornes desserrées : 45 tours · 300 s · 0,50 $ inchangé.** Le budget n'a
-   pas bougé délibérément — le relever avant la mesure de la 7.2 desserrerait la
-   seule borne exprimée dans la monnaie facturée, sur un chiffre qu'on n'a pas.
+4. ⚠️ **Bornes desserrées à 45 tours · 300 s, budget inchangé à 0,50 $ — et elles
+   n'ont PAS été mises à l'épreuve.** L'agent réel a consommé **5 tours et 35 s** :
+   le desserrage n'a pas servi, et le critère « la borne tient malgré
+   l'exploration » n'est pas *vérifié*, il est *non atteint*. Ne pas le lire comme
+   une validation.
    ⚠️ **La contrainte sur `DUREE_MAX_SECONDES` ne vient pas du `timeout` du
-   workflow (8 min, mesuré large) mais des 10 min de `PEREMPTION_MINUTES`.**
+   workflow (8 min, mesuré large : tout ce qui n'est pas l'agent prend ~15 s) mais
+   des 10 min de `PEREMPTION_MINUTES`.**
 5. ⚠️ **LinkedIn : demandé, mesuré, REFUSÉ** — et l'intuition était juste, la page
    publique rend un effectif à jour que le registre n'a pas. Trois obstacles :
    le `robots.txt` l'interdit en toutes lettres · le dépôt est public et sert en
@@ -213,9 +224,22 @@ complet dans `docs/JOURNAL.md` § 31 août (après-midi).
    ailleurs que chez France Travail est **hors périmètre opposable**. Ne pas
    rouvrir sans décision explicite.
 
-⚠️ **Ce que la 7.2 doit encore prouver, et qui n'est PAS vérifié** : aucun agent
-réel n'a tourné avec ce prompt. Le coût, la tenue des bornes desserrées et la
-qualité des trois nouvelles rubriques sont **inconnus**.
+6. ⚠️ **L'AGENT N'EXPLORE PAS — il lit UNE page et puise le reste dans l'annonce.**
+   Le prompt dit « trois à cinq pages suffisent » ; l'agent réel en a lu **une**
+   (l'accueil), et les quatre rubriques citent des éléments qui viennent du texte
+   de l'annonce — `CTO.ai`, `Copilot`, `CAC 40`, `MLOps`. ✅ **Rien n'est
+   halluciné** : chaque affirmation a été retrouvée soit sur la page lue, soit
+   dans l'annonce, et le marqueur `deduit` est donc juste.
+   ⚠️ **Mais deux conséquences à ne pas perdre** : « Sources consultées » ne
+   montre qu'une ligne alors que la matière vient surtout de l'annonce, qui n'est
+   pas une page web et n'y figure pas · et une annonce décrit **un poste**, pas le
+   business complet, donc `clients` et `offre_commerciale` héritent de ce biais.
+   **Constat mesuré, non corrigé** : faire lire cinq pages coûterait plus pour un
+   gain non démontré. À rouvrir avec une mesure, pas avec une intuition.
+
+⚠️ **Reste à vérifier, et qui ne l'a PAS été** : le comportement sur un site
+injoignable avec le nouveau prompt. Le seul cas dégradé mesuré date du 30 août,
+avec l'ancien prompt.
 
 ⚠️ **Reste à faire par Maxime** : poser `JETON_GITHUB` chez Vercel (il n'est qu'en
 local). Sans lui le bouton répond « jeton non configuré » **sur le site déployé
@@ -300,8 +324,7 @@ Travail est **absent sur 39 %** des offres, intermédiaire dans 36 % des cas, et
 | Sujet | État |
 |---|---|
 | ⚠️ **`muted-foreground` échoue le plancher d'accessibilité en mode SOMBRE** | **2,75:1** sur les cartes, **3,18:1** sur le fond de page, contre 4,5 exigés. Mesuré le 30 août sur des libellés qui existaient avant (« APPELLATION », « Pas encore notée »). **En clair ils passent à 5,9** — le défaut est propre au sombre. ⚠️ **Signalé, non corrigé** : éclaircir ce jeton touche tous les écrans, c'est une décision de système qui appartient à Maxime |
-| ⚠️ **Le coût de la fiche RÉDUITE n'est pas mesuré en Sonnet** | Les 11,7 centimes du 30 août portaient sur la fiche complète (groupe et effectif annoncé compris) et sur un cas dégradé. Depuis, le prompt a maigri et l'agent explore moins — le vrai chiffre de production est donc **inférieur et inconnu**. ⚠️ Le seul essai depuis la réduction a été fait **en Haiku**, qui ne mesure pas le coût de Sonnet. Le prochain enrichissement réel donnera le chiffre |
-| ⚠️ **Les notes d'apprentissage des phases 5 et 6 restent à écrire** | Obligation du `CLAUDE.md` global — une note par phase dans `~/Documents/Coffre Obsidian/Maxime M/Apprentissage/`. Matière de la 6 : la contrainte d'unicité partielle comme garde de concurrence, les deux horloges, la réservation d'enveloppe |
+| ⚠️ **Les notes d'apprentissage des phases 5 à 7 restent à écrire** | Obligation du `CLAUDE.md` global — une note par phase dans `~/Documents/Coffre Obsidian/Maxime M/Apprentissage/`. Matière de la 6 : la contrainte d'unicité partielle comme garde de concurrence, les deux horloges, la réservation d'enveloppe. Matière de la 7 : **une réserve se dimensionne sur le PIRE cas, une enveloppe sur le scénario d'usage** · un commentaire faux fait mal raisonner le suivant · une texture se distingue là où trois teintes échouent |
 | ⚠️ **La rustine `gh workflow run` EFFACE le compte rendu de la nuit** | La collecte écrit en `ignore-duplicates` : relancée le matin, elle réussit avec zéro offre nouvelle et devient « la dernière collecte réussie ». ⚠️ **Non corrigé délibérément** — préférer « la dernière non vide » empêcherait d'afficher une vraie nuit blanche. Disparaîtra avec le déclencheur externe, **qui existe désormais** (phase 6) |
 | ⚠️ **L'indicateur de veille ne vieillit pas dans un onglet resté ouvert** | Calculé au rendu serveur. Le corriger demanderait une horloge dans le navigateur pour une information qui change une fois par jour. **Signalé, non corrigé** |
 | ⚠️ **Le plafond de 200 lignes — desserré, pas résolu** | Le jour où plus de 200 offres portent une note, celles de la nuit disparaissent. **L'échéance est un compte, pas une date.** ⚠️ **Ne pas forcer en payant** : 200 est aussi le seuil où l'écran casse |
@@ -367,7 +390,11 @@ workflow finirait par mordre vers 4 ou 5 nuits.
    (ce module n'importe rien du tout, il ne peut tirer aucun secret) mais elle
    était piégeuse dans l'autre sens : qui vérifiait la règle en comptant trouvait
    dix et pouvait croire qu'un module avait perdu son `server-only`. **Recompter
-   plutôt que recopier.** — `utils.ts` mis à part, qui ne porte que le `cn()` de
+   plutôt que recopier.** ⚠️ **Et recompter JUSTE** : un `grep server-only` compte
+   à l'envers, parce que six de ces dix modules *mentionnent* la chaîne dans leur
+   en-tête pour expliquer pourquoi ils ne l'ont pas. Le seul critère est une ligne
+   qui COMMENCE par `import "server-only";` — mesuré ainsi le 31 août 2026 : huit
+   modules protégés, onze sans, soit dix hors `utils.ts`. — `utils.ts` mis à part, qui ne porte que le `cn()` de
    shadcn. C'est leur raison d'être : les composants clients ont besoin des mêmes
    constantes que le serveur (libellés de statut, borne de longueur de la note,
    accord du pluriel) ; s'ils allaient les chercher dans `lib/offres.ts`, ils
@@ -660,7 +687,7 @@ which python                   # doit afficher .../veille-offres-emploi-ia/.venv
 
 ```bash
 # Interface — depuis interface/
-npm run verifie      # lint + typecheck + les 93 tests, DANS LES DEUX FUSEAUX
+npm run verifie      # lint + typecheck + les tests, DANS LES DEUX FUSEAUX
 ```
 
 ⚠️ **`verifie` lance la suite deux fois, et la seconde est celle qui compte** :

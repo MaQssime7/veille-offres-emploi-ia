@@ -6,6 +6,112 @@ tout l'historique est ici.
 
 ---
 
+## 31 août 2026 (soir) — L'agent tourne pour de vrai, et dit ce qu'on ne lui demandait pas
+
+Tranche 7.2. Un seul enrichissement facturé, sur Wavestone. Il devait servir deux fois —
+prouver la chaîne et donner le chiffre — et il a servi trois fois.
+
+### Un run pour rien, et ce qu'il a quand même appris
+
+Le premier clic a produit une fiche à UNE rubrique et zéro source. Cause : **le workflow
+fait un `checkout` du dépôt distant**, et les dix-neuf fichiers de la 7.1 étaient restés
+en local, non commités. GitHub a exécuté le code de la veille.
+
+C'est une erreur de ma part — j'ai dit « lance-le » sans avoir poussé, alors que j'avais
+lu la mécanique du déclencheur le matin même.
+
+Le run n'est pas perdu pour autant : il **ferme une question ouverte du projet**. Le
+`CLAUDE.md` notait que « le coût de la fiche RÉDUITE n'est pas mesuré en Sonnet » — les
+11,7 centimes du 30 août portaient sur la fiche complète et un cas dégradé, et le seul
+essai depuis était en Haiku. On a désormais le chiffre : **46 257 tokens, 5 tours, 29 s**.
+
+⚠️ **Et il prouve autre chose, gratuitement** : l'ancien code a tourné contre une base
+déjà migrée sans broncher. C'est exactement ce qu'une migration additive doit faire, et
+c'est plus convaincant qu'un test.
+
+### Le vrai run : 55 198 tokens, 5 tours, 35 secondes
+
+Après le push, le second clic a produit les quatre rubriques. **0,086 $** au tarif
+introductif de Sonnet 5, **0,129 $** au tarif plein — soit **dix fois sous l'estimation
+du PRD**, et sous la borne basse de son estimation en tokens.
+
+Détail qui vaut d'être vu dans la facture : **écrire le cache a coûté cinq fois plus
+cher que le lire**, sur 2,4 fois moins de tokens (1,25× le prix d'entrée contre 0,1×).
+C'est la même mécanique qui rend les Batches inutiles à une seule offre.
+
+### Le re-réglage de l'enveloppe : ne rien changer, et c'est un résultat
+
+Trois mesures en Sonnet 5 : **118 254** (cas dégradé, prompt complet), **46 257**
+(favorable, prompt réduit), **55 198** (favorable, quatre rubriques).
+
+`COUT_PRESUME_TOKENS` vaut 150 000, soit près de trois fois le coût courant — la
+tentation est de le baisser. **C'est l'erreur.** Une réserve ne se dimensionne pas sur
+la moyenne mais sur le **pire cas** : 150 000 couvre les 118 254 du cas dégradé avec
+27 % de marge. Et l'enveloppe ne se dimensionne pas sur un run mais sur le **scénario
+d'usage** que Maxime a fixé — un enrichissement plus sa relance si le premier rate, soit
+2 × 118 254 = 236 508, qui passe sous 300 000.
+
+**Les deux valeurs tiennent. Ne rien changer est la conclusion, pas une abstention.**
+
+### La question de Maxime : « tu ne peux pas remettre l'enveloppe à zéro ? »
+
+Non, et le motif vaut au-delà du cas. L'enveloppe n'est pas un compteur qu'on
+décrémente : c'est la **somme des traces réelles** du jour. La remettre à zéro
+signifierait supprimer les lignes des enrichissements déjà faits — effacer la mesure de
+ce qu'on a dépensé, donc perdre l'historique dont vit l'écran de suivi prévu, et faire
+d'une borne quelque chose qu'on contourne quand elle gêne.
+
+Ce qui existe à la place : **relever le plafond**, qui est une constante versionnée. La
+différence est entre **changer la règle** — visible, tracé, relisible dans six mois — et
+**effacer la mesure**, invisible.
+
+### ⚠️ Le constat non programmé : l'agent n'explore pas
+
+Le prompt dit « trois à cinq pages suffisent ». **L'agent en a lu une**, l'accueil. Les
+quatre rubriques citent pourtant `CTO.ai`, `Copilot`, `CAC 40`, `MLOps` — tous absents
+de cette page.
+
+Vérifié plutôt que supposé : **tous sont dans le texte de l'annonce**, retrouvés par
+comptage. ✅ Rien n'est halluciné et le marqueur `deduit` est exact.
+
+⚠️ **Mais deux conséquences que le critère d'acceptation n'attrapait pas.** « Sources
+consultées » ne montre qu'une ligne alors que la matière vient surtout de l'annonce, qui
+n'est pas une page web et n'y figure donc pas. Et une annonce décrit **un poste**, pas le
+business complet : `clients` et `offre_commerciale` héritent de ce biais.
+
+**Mesuré, non corrigé.** Faire lire cinq pages coûterait davantage pour un gain non
+démontré, et la fiche obtenue est bonne. À rouvrir avec une mesure, jamais avec une
+intuition.
+
+### Deux critères non atteints, et la différence compte
+
+- ⚠️ **La borne desserrée n'a pas été mise à l'épreuve** : 5 tours et 35 s sur 45 et 300
+  disponibles. Le desserrage de la 7.1 n'a pas servi. Le critère n'est pas *vérifié*, il
+  est *non atteint* — et confondre les deux ferait croire à une validation.
+- ⚠️ **Le site injoignable avec le nouveau prompt n'est pas vérifié.** Le seul cas
+  dégradé mesuré date du 30 août, avec l'ancien prompt.
+
+### Passe de documentation
+
+Trois incohérences trouvées en croisant la doc avec la base et le code :
+
+1. « 4 enrichies » alors qu'il y en a 6.
+2. ⚠️ **Le `CLAUDE.md` se contredisait sur le nombre de tests** — 122 dans le tableau des
+   briques, 93 dans le bloc de commandes. Le nombre est retiré du bloc de commandes :
+   un compteur écrit à deux endroits diverge toujours.
+3. La question ouverte « le coût de la fiche réduite n'est pas mesuré en Sonnet » était
+   résolue et traînait encore dans le tableau.
+
+⚠️ **Et un faux positif instructif**, qui a failli devenir une quatrième « incohérence » :
+un `grep server-only` sur `lib/` compte **à l'envers**, parce que six des dix modules
+concernés *mentionnent* la chaîne dans leur en-tête pour expliquer pourquoi ils ne
+l'importent pas. Le seul critère est une ligne qui COMMENCE par `import "server-only";`.
+Recompté ainsi : huit protégés, onze sans, soit dix hors `utils.ts` — le `CLAUDE.md`
+avait raison. **La règle « recompter plutôt que recopier » ne suffit pas ; encore
+faut-il recompter juste.**
+
+---
+
 ## 31 août 2026 (après-midi) — La phase 7 construit « Business », les sources, et la jauge
 
 Tranche 7.1. Tout est bâti **avant** le premier appel facturé : l'agent réel de la

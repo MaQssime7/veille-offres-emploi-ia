@@ -663,14 +663,33 @@ la chaîne et donne le chiffre qui re-règle l'enveloppe.
 - [x] **La jauge d'enveloppe** : barre, pourcentage, chiffre en tokens, mention de la remise à zéro
 - [x] Le squelette de `loading.tsx` recalé sur la section allongée — **écart 0 px**, mesuré par substitution dans le DOM
 
-### Critères d'acceptation — tranche 7.2 (l'essai réel), À FAIRE
+### Critères d'acceptation — tranche 7.2 (l'essai réel), CLOSE
 
-- [ ] Un enrichissement RÉEL produit les quatre rubriques sur une vraie entreprise
-- [ ] Un site officiel injoignable **ne fait pas échouer l'enrichissement** : la fiche se rend partielle, les rubriques manquantes en « non disponible » — *éprouvé sur contenu posé à la main, pas encore sur un agent qui rencontre vraiment le cas*
-- [ ] La borne de durée et d'étapes tient **malgré l'exploration** — c'est la phase qui la met à l'épreuve. Desserrées en 7.1 à **45 tours et 300 s**, budget inchangé à 0,50 $
-- [ ] Le **coût réel** d'un enrichissement est mesuré, en euros **et en tokens**, et comparé aux deux estimations du PRD (0,20 € à 1 € · 100 000 à 150 000 tokens) ; l'écart est consigné
-- [ ] **L'enveloppe quotidienne de 300 000 tokens est re-réglée sur cette mesure**, ainsi que `COUT_PRESUME_TOKENS` — c'est le seul moment du plan où l'on dispose du chiffre réel
-- [ ] Les sources consultées de cette fiche s'ouvrent et disent bien ce que la fiche affirme
+Un seul enrichissement facturé, sur Wavestone (`6426819`), le 31 août 2026.
+
+- [x] Un enrichissement RÉEL produit les quatre rubriques sur une vraie entreprise — **4/4 écrites**, toutes marquées `deduit`, entre 177 et 373 caractères
+- [x] Le **coût réel** est mesuré, en euros **et en tokens** : **55 198 tokens, 5 tours, 35 s → 0,086 $** au tarif introductif de Sonnet 5 (0,129 $ au tarif plein). ⚠️ **Dix fois sous l'estimation du PRD** (0,20 € à 1 €), et sous la borne basse de son estimation en tokens (100 000)
+- [x] **L'enveloppe et `COUT_PRESUME_TOKENS` sont re-réglées sur la mesure — et la conclusion est de ne RIEN CHANGER.** ⚠️ **C'est un résultat, pas une abstention** : une réserve se dimensionne sur le **pire cas** (118 254, le cas dégradé du 30 août), une enveloppe sur le **scénario d'usage** (un enrichissement plus sa relance = 236 508). Les deux valeurs tiennent
+- [x] Les sources consultées s'ouvrent et disent bien ce que la fiche affirme — la page citée porte « conseil » ×24, « Copilot » ×5, « IA générative » ×2, « bourse » ×1. ⚠️ **Et ce qu'elle ne portait pas — `CTO.ai`, `CAC 40`, `MLOps` — a été retrouvé dans l'ANNONCE**, donc rien n'est halluciné et le marqueur `deduit` est juste
+- [ ] ⚠️ **NON ATTEINT : la borne de durée et d'étapes n'a pas été mise à l'épreuve.** L'agent a consommé **5 tours et 35 s** sur 45 et 300 disponibles. Le desserrage de la 7.1 n'a pas servi ; le critère n'est pas *vérifié*, il est *non atteint*
+- [ ] ⚠️ **NON VÉRIFIÉ : le site injoignable avec le NOUVEAU prompt.** Éprouvé sur contenu posé à la main en 7.1, et sur un agent réel le 30 août — mais avec l'ancien prompt
+
+### ⚠️ Le constat que la 7.2 a produit, et qui n'était pas au programme
+
+**L'agent n'explore pas : il lit UNE page et puise le reste dans l'annonce.** Le prompt
+dit « trois à cinq pages suffisent » ; il en a lu une, l'accueil. Les quatre rubriques
+citent `CTO.ai`, `Copilot`, `CAC 40`, `MLOps` — tous absents de la page lue, tous
+présents dans le texte de l'annonce.
+
+✅ **Rien n'est halluciné**, et le marqueur `deduit` est exact. ⚠️ **Mais deux
+conséquences** : « Sources consultées » ne montre qu'une ligne alors que la matière
+vient surtout de l'annonce, qui n'est pas une page web et n'y figure pas · et une
+annonce décrit **un poste**, pas le business complet, donc `clients` et
+`offre_commerciale` héritent de ce biais.
+
+**Constat mesuré, non corrigé.** Faire lire cinq pages coûterait davantage pour un gain
+non démontré — la fiche produite est bonne à 0,086 $. À rouvrir avec une mesure, jamais
+avec une intuition.
 
 
 ### Bloquée par
