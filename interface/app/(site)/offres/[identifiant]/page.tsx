@@ -245,13 +245,24 @@ export default async function PageOffre({
             serveur tant qu'il n'est pas rendu.
             Sa place : après les renseignements France Travail, avant l'annonce.
             On lit d'abord ce que la source déclare, puis ce que l'agent a
-            vérifié — et les deux avant le texte brut. */}
+            vérifié — et les deux avant le texte brut.
+
+            ⚠️ **Les trois nombres de l'enveloppe partent un par un, jamais
+            l'objet `enveloppe` entier.** Il ne porte aujourd'hui que des
+            agrégats — aucun secret, aucune donnée d'offre — mais la discipline
+            de props ne se relâche pas selon le contenu du moment : c'est le
+            jour où quelqu'un ajoutera un champ à `EtatEnveloppe` que le passage
+            en bloc coûterait quelque chose, et ce jour-là rien ne le
+            signalera. */}
         <BlocEnrichissement
           identifiant={offre.identifiant}
           etatInitial={etatEnrichissement}
           plafondAtteint={enveloppe.depassee && enveloppe.connue}
           enveloppeIllisible={!enveloppe.connue}
           indisponible={!enrichissement.ok}
+          tokensReels={enveloppe.reels}
+          tokensReserves={enveloppe.reserves}
+          tokensPlafond={enveloppe.plafond}
         />
 
         <section aria-labelledby="titre-description">

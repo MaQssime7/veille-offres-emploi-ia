@@ -211,17 +211,23 @@ export default function ChargementFiche() {
               assez longtemps pour être vu. Trois sauts déjà payés — 297 px,
               93 px, 222 px.
 
-              **152 px MESURÉS au DOM** le 30 août sur l'état « pas encore
-              enrichie », soit 9,5 rem : titre en mono, deux lignes de
-              paragraphe explicatif, bouton. ⚠️ C'est l'état de **578 offres sur
-              580** — un squelette s'aligne sur ce que sa page affiche le plus
-              souvent, pas sur son cas le plus riche. Une fiche déjà enrichie
-              montrera plus haut, et c'est le bon arbitrage : mieux vaut un
-              squelette trop court sur le cas rare que trop long sur le cas
-              courant. */}
+              ⚠️ **REMESURÉ le 31 août 2026 : 186 px, soit 11,625 rem** — la
+              jauge d'enveloppe ajoutée en phase 7 a allongé la section de
+              **34 px** (libellé + barre + deux lignes de texte). L'ancienne
+              valeur de 9,5 rem aurait produit un quatrième saut, après les
+              trois déjà payés — 297 px, 93 px, 222 px.
+
+              ⚠️ **La mesure porte sur l'état « pas encore enrichie » ET sans
+              enrichissement en vol**, c'est-à-dire le cas de 576 offres sur
+              580. Un enrichissement en vol ajoute la ligne « dont 150 000
+              réservés » et porte la carte à 209 px : ce cas-là dure quelques
+              minutes par jour et ne doit pas commander le squelette. Un
+              squelette s'aligne sur ce que sa page affiche le plus souvent,
+              pas sur son cas le plus riche — mieux vaut trop court sur le cas
+              rare que trop long sur le cas courant. */}
           <div>
             <div className="mb-3 h-[1.4rem] w-32 bg-muted" />
-            <div className="h-[9.5rem] carte-produit" />
+            <div className="h-[11.625rem] carte-produit" />
           </div>
 
           <div>

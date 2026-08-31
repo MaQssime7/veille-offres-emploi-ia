@@ -70,10 +70,19 @@ export function BlocEnrichissement({
   plafondAtteint,
   enveloppeIllisible = false,
   indisponible = false,
+  tokensReels,
+  tokensReserves,
+  tokensPlafond,
 }: {
   identifiant: string;
   etatInitial: EtatEnrichissement;
   plafondAtteint: boolean;
+  /** Ce qui a été RÉELLEMENT facturé aujourd'hui. Voir `JaugeEnveloppe`. */
+  tokensReels: number;
+  /** Ce que les enrichissements en vol immobilisent sans l'avoir dépensé. */
+  tokensReserves: number;
+  /** L'enveloppe du jour, `ENVELOPPE_QUOTIDIENNE_TOKENS`. */
+  tokensPlafond: number;
   /**
    * L'enveloppe du jour n'a pas pu être lue.
    *
@@ -95,6 +104,39 @@ export function BlocEnrichissement({
   const [etat, setEtat] = useState(etatInitial);
   const [message, setMessage] = useState<string | null>(null);
   const [enCoursDeClic, demarrer] = useTransition();
+
+  /**
+   * ⚠️ **L'enveloppe est un ÉTAT, pas seulement une prop — correctif de revue
+   * du 31 août 2026.** Ses nombres viennent du rendu serveur, et ce composant
+   * ne le redemande jamais : `suivreEnrichissement` n'appelle délibérément pas
+   * `revalidatePath` (voir `RYTHME_MS`). Laissée sur les props, la jauge restait
+   * donc figée à sa valeur du chargement : l'écran annonçait « Enrichissement
+   * terminé » au-dessus d'une barre affirmant encore « dont 150 000 réservés
+   * pour l'enrichissement en cours », avec un total ignorant ce qui venait
+   * d'être dépensé. Il fallait recharger la page pour voir juste.
+   *
+   * Le sondage renvoie maintenant l'enveloppe **à la conclusion**, et c'est ici
+   * qu'elle atterrit.
+   */
+  const [enveloppe, setEnveloppe] = useState({
+    reels: tokensReels,
+    reserves: tokensReserves,
+    plafond: tokensPlafond,
+  });
+
+  /**
+   * ⚠️ **Recalculé sur l'enveloppe COURANTE, et c'est de l'affichage seul.**
+   * La prop `plafondAtteint` vieillit avec les nombres qui l'ont produite : à la
+   * conclusion d'un gros enrichissement, le bouton se rouvrait en « Relancer »
+   * alors que l'enveloppe venait de se remplir. **La garde qui compte reste
+   * côté serveur**, dans `demanderEnrichissement` — celle-ci ne fait qu'éviter
+   * de proposer un geste qui serait refusé.
+   *
+   * ⚠️ On garde `plafondAtteint` comme plancher : le serveur peut savoir la
+   * journée fermée pour une raison que ces trois nombres ne montrent pas.
+   */
+  const plafondCourant =
+    plafondAtteint || enveloppe.reels + enveloppe.reserves >= enveloppe.plafond;
 
   /**
    * ⚠️ **Le sondage est une chaîne de `setTimeout`, jamais un `setInterval`.**
@@ -120,6 +162,11 @@ export function BlocEnrichissement({
 
       if (resultat.ok) {
         setEtat(resultat.etat);
+        // ⚠️ `null` pendant le travail — la jauge garde alors son dernier
+        // nombre sûr, réservation comprise, qui est exact. `null` signifie
+        // aussi « enveloppe illisible » : dans les deux cas on ne remplace pas
+        // une valeur juste par un zéro inventé.
+        if (resultat.enveloppe) setEnveloppe(resultat.enveloppe);
         // ⚠️ **On n'arme PAS la suite ici quand l'état a conclu.** Le
         // changement d'état démonte cet effet, qui nettoie sa minuterie : c'est
         // ce qui réalise « le sondage s'arrête quand l'enrichissement se
@@ -317,14 +364,14 @@ export function BlocEnrichissement({
             size="lg"
             onClick={lancer}
             loading={enAttente}
-            disabled={plafondAtteint || enveloppeIllisible || indisponible}
+            disabled={plafondCourant || enveloppeIllisible || indisponible}
           >
             {!enAttente && (
               <Sparkles className="size-4 shrink-0" aria-hidden="true" />
             )}
             {enAttente
               ? "Enrichissement en cours"
-              : plafondAtteint
+              : plafondCourant
                 ? "Plafond du jour atteint"
                 : enveloppeIllisible
                   ? "Enveloppe non vérifiable"
@@ -340,10 +387,9 @@ export function BlocEnrichissement({
               contradiction — celui qui tourne, lui, ira au bout. Ces messages
               expliquent pourquoi on ne peut PAS lancer ; ils n'ont rien à dire
               tant que quelque chose est déjà parti. */}
-          {plafondAtteint && !enAttente && (
+          {plafondCourant && !enAttente && (
             <p className="text-sm leading-relaxed text-muted-foreground">
-              L’enveloppe quotidienne de tokens est consommée. Elle repart de
-              zéro à minuit.
+              L’enveloppe quotidienne de tokens est consommée.
             </p>
           )}
 
@@ -359,10 +405,180 @@ export function BlocEnrichissement({
               {message}
             </p>
           )}
+
+          {/* ⚠️ **La jauge ne se tait JAMAIS, même quand l'enveloppe est
+              illisible** — elle affiche alors zéro sur le plafond, et le
+              message d'à côté explique qu'on n'a pas pu vérifier. La masquer
+              ferait disparaître le seul repère de dépense au moment précis où
+              le bouton refuse de partir sans qu'on sache pourquoi. */}
+          <JaugeEnveloppe
+            reels={enveloppe.reels}
+            reserves={enveloppe.reserves}
+            plafond={enveloppe.plafond}
+          />
         </div>
       </div>
     </section>
   );
+}
+
+/**
+ * Ce que la journée a consommé sur l'enveloppe, en barre et en toutes lettres.
+ *
+ * Entre : les tokens réellement facturés, ceux réservés par un enrichissement
+ * en vol, et le plafond du jour.
+ * Sort : une barre à deux segments et la même information écrite.
+ * Casse : ne lève pas. Un plafond à zéro ne divise rien, un dépassement sature
+ * la barre à 100 % au lieu de la faire déborder de son cadre.
+ *
+ * ⚠️ **DEUX SEGMENTS, parce qu'un seul nombre mentirait à l'œil.** Un
+ * enrichissement en vol réserve `COUT_PRESUME_TOKENS` (150 000) avant d'avoir
+ * dépensé un token — c'est ce qui empêche dix clics dans la même minute de
+ * crever l'enveloppe ensemble. Une jauge nourrie du seul total **bondirait de
+ * 0 à 50 % au clic** puis redescendrait à la conclusion : le chiffre serait
+ * vrai et se lirait comme un défaut. Le segment pâle dit « pas encore dépensé,
+ * mais déjà retenu ».
+ *
+ * ⚠️ **« Remise à zéro à minuit », et surtout PAS un décompte.** Cette page est
+ * rendue côté serveur : un temps restant y serait figé à l'heure du chargement
+ * et vieillirait en silence dans un onglet resté ouvert — le défaut que le
+ * projet porte déjà, assumé, sur l'indicateur de veille. Une phrase vraie sans
+ * horloge vaut mieux qu'un compte à rebours qui ment.
+ *
+ * ⚠️ **La barre porte `aria-hidden`, et l'information ne repose jamais sur
+ * elle.** Le total, le plafond et le pourcentage sont écrits juste dessous —
+ * c'est ce qui rend acceptable que le segment de réserve soit un pastel sous
+ * les 3:1 exigés d'un objet graphique en mode clair, exactement l'arbitrage
+ * déjà tenu pour les barres de note. **Le jour où ce texte disparaîtrait, ce
+ * choix redeviendrait un défaut.**
+ */
+function JaugeEnveloppe({
+  reels,
+  reserves,
+  plafond,
+}: {
+  reels: number;
+  reserves: number;
+  plafond: number;
+}) {
+  const total = reels + reserves;
+  // Un plafond à zéro ne devrait pas exister, mais une division par zéro rend
+  // `Infinity` — et `width: Infinity%` casse la mise en page sans erreur.
+  const part = (valeur: number) =>
+    plafond > 0 ? Math.min(100, (valeur / plafond) * 100) : 0;
+
+  const partReels = part(reels);
+  // ⚠️ La réserve est bornée par CE QUI RESTE après le réel, sinon les deux
+  // segments additionnés dépassent 100 % et le second déborde de la piste.
+  const partReserves = Math.min(part(reserves), 100 - partReels);
+  const pourcentage = plafond > 0 ? Math.min(100, Math.round((total / plafond) * 100)) : 0;
+
+  return (
+    // ⚠️ **Largeur BORNÉE, et ce n'est pas cosmétique.** Vu à l'écran : à pleine
+    // largeur de carte (930 px), la barre écrasait les deux boutons au-dessus
+    // et se lisait comme l'objet principal de la section — alors que l'objet
+    // principal est le bouton. Même arbitrage que les barres de note sur la
+    // fiche, bornées à 13 rem. En dessous de `sm`, elle reprend toute la
+    // largeur : la place y est comptée et la borne n'a plus de sens.
+    <div className="mt-2 w-full sm:max-w-sm">
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        {/* ⚠️ **Le libellé ne se retire pas, même pour gagner une ligne.** Sans
+            lui, « 204 944 / 300 000 tokens » ne dit pas DE QUOI la barre est une
+            fraction — on lit un compteur sans savoir ce qu'il compte. C'est la
+            même règle que « Intérêt » et « Accessibilité » devant les barres de
+            note, et elle a la même raison. */}
+        <span className="libelle-mono text-foreground">Enveloppe du jour</span>
+        <span className="shrink-0 font-mono text-sm tabular-nums text-foreground">
+          {pourcentage}&nbsp;%
+        </span>
+      </div>
+
+      <span
+        aria-hidden="true"
+        // ⚠️ **Teintes NEUTRES, et c'est une décision de système, pas un défaut
+        // de goût.** Les six accents du projet sont pris et portent chacun un
+        // rôle : le bleu est la note d'intérêt, la menthe l'accessibilité, le
+        // jaune le temporel. Une jauge de consommation peinte en bleu se serait
+        // lue comme un troisième usage du bleu et aurait suggéré un lien avec
+        // la note d'intérêt, qui n'existe pas. **Une consommation est une
+        // quantité, pas un signal catégoriel** : elle n'a donc pas à prendre un
+        // accent, et le septième signal que le `CLAUDE.md` interdit reste
+        // interdit.
+        className="flex h-2 w-full overflow-hidden rounded-full bg-foreground/12"
+      >
+        {/* La largeur est calculée à l'exécution : Tailwind lit le code source
+            pour savoir quelles classes produire et ne peut pas générer
+            `w-[37%]` pour une valeur qu'il ne voit pas. Le style en ligne est
+            ici la solution correcte, pas un raccourci. Même raisonnement que
+            les barres de note. */}
+        <span className="block h-full bg-foreground" style={{ width: `${partReels}%` }} />
+
+        {/* ⚠️ **La réserve se distingue par une TEXTURE, pas par une teinte — et
+            c'est une correction mesurée le 31 août 2026.** Le premier jet la
+            peignait en encre atténuée (`bg-foreground/35`) sur une piste
+            atténuée : mesuré au canvas, **1,64:1 entre les deux en mode
+            sombre**, c'est-à-dire indiscernable du rail vide. Trois densités
+            d'une même encre sur une barre de 8 px de haut ne peuvent pas
+            s'écarter assez — le problème est structurel, pas un mauvais
+            réglage.
+            Des hachures d'encre PLEINE règlent ça sans couleur tierce : elles
+            se distinguent du plein par leur trame et du vide par leur encre,
+            dans les deux modes, **sans dépendre d'un rapport de clarté**. Et
+            « retenu, pas encore dépensé » se lit naturellement en hachuré.
+            ⚠️ `currentColor` et non un jeton en dur : la trame suit l'encre du
+            mode courant, sinon elle serait noire sur fond sombre. */}
+        <span
+          className="block h-full text-foreground"
+          style={{
+            width: `${partReserves}%`,
+            backgroundImage:
+              "repeating-linear-gradient(135deg, currentColor 0 2px, transparent 2px 5px)",
+          }}
+        />
+      </span>
+
+      <p className="mt-1.5 text-sm leading-relaxed text-foreground">
+        <span className="font-mono tabular-nums">
+          {formaterMilliers(total)} / {formaterMilliers(plafond)}
+        </span>{" "}
+        tokens
+      </p>
+
+      {reserves > 0 && (
+        // ⚠️ Ce n'est pas un détail à masquer : sans cette ligne, le bond de la
+        // barre au clic n'a aucune explication à l'écran.
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          dont <span className="font-mono tabular-nums">{formaterMilliers(reserves)}</span>{" "}
+          réservés pour l’enrichissement en cours
+        </p>
+      )}
+
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        Remise à zéro à minuit.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * 112000 → « 112 000 », avec des espaces INSÉCABLES.
+ *
+ * ⚠️ **Écrit à la main plutôt que `toLocaleString("fr-FR")`, et c'est une
+ * précaution d'hydratation.** Ce composant est rendu une première fois sur le
+ * serveur puis réhydraté dans le navigateur : si les deux environnements ne
+ * s'accordent pas sur le séparateur de milliers — Node et les navigateurs ont
+ * employé tour à tour l'espace fine insécable U+202F et l'espace insécable
+ * U+00A0 selon leur version d'ICU — React signale une différence d'hydratation
+ * en console et remplace le nœud. Un caractère écrit en dur ne peut pas
+ * diverger.
+ *
+ * ⚠️ Insécable et non ordinaire : « 300 000 » coupé en fin de ligne se lirait
+ * comme deux nombres.
+ */
+function formaterMilliers(valeur: number): string {
+  return Math.max(0, Math.round(valeur))
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");
 }
 
 /**

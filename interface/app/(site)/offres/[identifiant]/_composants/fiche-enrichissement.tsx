@@ -31,6 +31,32 @@ import { accorder } from "@/lib/francais";
  * exactes sur la mauvaise entreprise restent fausses. Mettre le SIREN en tête et
  * le doute en bas de page inverserait exactement l'ordre de lecture qu'il faut.
  */
+/**
+ * Cette adresse peut-elle devenir un `href` sans danger ?
+ *
+ * ⚠️ **Dernière épaisseur d'un contrôle qui en compte trois, et la seule qui
+ * soit au point d'usage.** Toute adresse rendue par cette fiche a été trouvée
+ * par un modèle sur des pages que personne ne contrôle. Un `javascript:` ou un
+ * `data:text/html` glissé par une page hostile deviendrait, une fois posé dans
+ * un `<a href>`, du code exécutable dans la session déjà authentifiée de
+ * Maxime.
+ *
+ * ⚠️ **Les deux adresses de la fiche n'ont PAS les mêmes gardes en amont, et
+ * c'est pour cela que ce contrôle est ici.** L'`url` d'une source est tenue par
+ * la contrainte `url_est_une_adresse_web` (migration 11) *et* par un filtre
+ * Python ; `entreprise_site`, lui, n'a **aucune** contrainte en base — sa seule
+ * garde amont est `_valider_fiche()`. Relevé en revue le 31 août 2026 : le lien
+ * du site officiel se rendait sans aucune revérification, alors que les sources
+ * en avaient une. Une règle qui ne vaut que pour la moitié des cas n'est pas
+ * une règle.
+ *
+ * ⚠️ La casse est ignorée à dessein : ce qui doit être refusé, c'est le
+ * SCHÉMA — `HTTPS://` est parfaitement sûr, `javascript:` ne l'est jamais.
+ */
+function estAdresseWeb(valeur: string | null): valeur is string {
+  return typeof valeur === "string" && /^https?:\/\//i.test(valeur);
+}
+
 export function FicheEnrichissement({
   fiche,
   etapes,
@@ -74,7 +100,7 @@ export function FicheEnrichissement({
       <Appariement fiche={fiche} />
 
       <Groupe titre="Identité" lignes={identite}>
-        {fiche.site ? (
+        {estAdresseWeb(fiche.site) ? (
           <div className="contents">
             <dt className="libelle-mono text-foreground">Site officiel</dt>
             <dd className="flex flex-wrap items-center gap-2">
@@ -90,7 +116,7 @@ export function FicheEnrichissement({
                 href={fiche.site}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="focus-produit inline-flex items-center gap-1.5 text-base leading-relaxed text-primary underline-offset-4 hover:underline"
+                className="focus-produit inline-flex items-center gap-1.5 text-base leading-relaxed text-primary-texte underline-offset-4 hover:underline"
               >
                 {fiche.site.replace(/^https?:\/\/(www\.)?/, "")}
                 <ExternalLink className="size-3.5" aria-hidden="true" />
@@ -110,8 +136,18 @@ export function FicheEnrichissement({
 
       <Groupe titre="Taille et santé" lignes={taille} />
 
+      {/* ⚠️ **« Business », et plus « Ce que l'agent a compris »** — décision de
+          Maxime le 31 août 2026, construite en phase 7. Les quatre rubriques
+          répondent à une seule question — de quoi cette entreprise vit-elle —
+          et l'ancien titre décrivait le PRODUCTEUR du texte plutôt que son
+          sujet. Un lecteur qui cherche « à qui ils vendent » ne va pas le
+          chercher sous « ce que l'agent a compris ».
+
+          ⚠️ **`modele_economique` a DÉMÉNAGÉ ici sans changer de forme ni de
+          marqueur** : c'est un déplacement d'affichage, pas une migration. Sa
+          ligne en base est identique à celle des fiches d'août. */}
       <section>
-        <h3 className="titre-section mb-3">Ce que l’agent a compris</h3>
+        <h3 className="titre-section mb-3">Business</h3>
         <div className="flex flex-col gap-3">
           {Object.entries(TITRES_RUBRIQUES).map(([cle, titre]) => {
             const rubrique = fiche.rubriques.find((r) => r.rubrique === cle);
@@ -138,6 +174,8 @@ export function FicheEnrichissement({
           })}
         </div>
       </section>
+
+      <Sources etapes={etapes} />
 
       {etapes.length > 0 ? (
         <details className="group">
@@ -204,6 +242,90 @@ function Appariement({ fiche }: { fiche: FicheEntreprise }) {
           </p>
         ) : null}
       </div>
+    </section>
+  );
+}
+
+/**
+ * Les pages que l'agent a réellement ouvertes — US-21.
+ *
+ * Entre : toutes les étapes de la tentative.
+ * Sort : la liste des adresses consultées, dédoublonnée, chacune cliquable.
+ * Casse : rien. Aucune source se dit en toutes lettres, ce qui explique une
+ * fiche pauvre au lieu de la laisser inexpliquée.
+ *
+ * ⚠️ **Ces sources ne sont pas déclarées par le modèle, elles sont OBSERVÉES.**
+ * Chaque ligne vient d'un appel à `WebFetch` réellement passé, capté dans le
+ * flux de la conversation. C'est la même règle que les étapes : une source
+ * racontée pourrait mentir, et coûterait un tour. L'agent ne peut donc pas
+ * cacher une page qu'il a ouverte, ni en inventer une qu'il n'a pas demandée.
+ *
+ * ⚠️ **Et une DEMANDE n'est pas une LECTURE — la distinction a coûté un
+ * correctif, trouvé en revue le 31 août 2026.** L'étape s'écrit au moment où
+ * l'agent réclame une page, plusieurs secondes avant qu'on sache si elle a
+ * répondu ; c'est délibéré, l'écran doit avancer pendant que le réseau
+ * travaille. Le premier jet s'arrêtait là, et une page rendant 403 ou expirant
+ * apparaissait ici comme une source consultée — sur le cas que le projet a
+ * lui-même mesuré, un site injoignable, la fiche aurait cité des pages que
+ * l'agent n'a jamais lues. `lecture_ratee()` retire désormais l'adresse quand
+ * le résultat de l'outil est une erreur ; **le libellé reste au chemin
+ * suivi**, parce que la tentative a bien eu lieu et explique le temps passé.
+ *
+ * ⚠️ **TROISIÈME épaisseur du contrôle anti-exécution, et elle est délibérée.**
+ * La contrainte `url_est_une_adresse_web` (migration 11) et le filtre de
+ * `ecrire_etape` interdisent déjà qu'un `javascript:` entre en base. Ce test-ci
+ * ne protège donc rien aujourd'hui — il protège le jour où quelqu'un ajoutera
+ * un chemin d'écriture qui contourne les deux autres. Un `href` construit à
+ * partir d'une valeur qu'un modèle a lue sur une page hostile ne se rend jamais
+ * sans être revérifié à l'endroit même du rendu.
+ */
+function Sources({ etapes }: { etapes: Etape[] }) {
+  const vues = new Set<string>();
+  const sources = etapes.filter((etape) => {
+    if (!estAdresseWeb(etape.url)) return false;
+    if (vues.has(etape.url)) return false;
+    vues.add(etape.url);
+    return true;
+  });
+
+  return (
+    <section>
+      <h3 className="titre-section mb-3">Sources consultées</h3>
+      {sources.length === 0 ? (
+        // ⚠️ Ce cas n'est PAS un défaut : le site peut avoir été injoignable, ou
+        // l'entreprise non identifiée. Le dire explique une fiche pauvre — la
+        // section muette laisserait croire à un oubli d'affichage.
+        <p className="carte-produit p-5 text-base leading-relaxed text-foreground">
+          <span className="italic">
+            Aucune page web n’a pu être consultée pour cette fiche.
+          </span>
+        </p>
+      ) : (
+        <ul className="carte-produit flex flex-col gap-2.5 p-5">
+          {sources.map((source) => (
+            <li key={source.url} className="flex items-start gap-2">
+              <ExternalLink
+                className="mt-1.5 size-3.5 shrink-0 text-foreground"
+                aria-hidden="true"
+              />
+              {/* ⚠️ `rel="noopener noreferrer"`, comme sur le site officiel :
+                  `noopener` empêche la page ouverte de manipuler la nôtre par
+                  `window.opener`, `noreferrer` lui cache d'où vient le clic.
+                  ⚠️ `break-all` et non `break-words` : une adresse ne contient
+                  aucune espace, et sans lui une URL longue déborde la fenêtre à
+                  375 px au lieu de passer à la ligne. */}
+              <a
+                href={source.url!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-produit break-all text-base leading-relaxed text-primary-texte underline-offset-4 hover:underline"
+              >
+                {source.url!.replace(/^https?:\/\/(www\.)?/, "")}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

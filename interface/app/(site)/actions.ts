@@ -515,9 +515,23 @@ export async function demanderEnrichissement(
 }
 
 
-/** Ce que le sondage rend au bloc d'enrichissement. */
+/**
+ * Ce que le sondage rend au bloc d'enrichissement.
+ *
+ * ⚠️ **`enveloppe` n'accompagne QUE les états conclus, et ce n'est pas une
+ * économie de bouts de chandelle.** Le sondage repasse toutes les 1,5 s : y
+ * joindre systématiquement l'enveloppe ajouterait une requête Supabase par
+ * tour, sur le chemin le plus fréquent du site, pour un nombre qui ne bouge
+ * qu'une fois — à la conclusion, quand les compteurs de tokens sont enfin
+ * écrits. On la lit donc au moment précis où elle change.
+ */
 export type ResultatSuivi =
-  | { ok: true; etat: EtatEnrichissement }
+  | {
+      ok: true;
+      etat: EtatEnrichissement;
+      /** Les trois nombres de la jauge. `null` tant que l'agent travaille. */
+      enveloppe: { reels: number; reserves: number; plafond: number } | null;
+    }
   | { ok: false; message: string };
 
 /**
@@ -561,8 +575,40 @@ export async function suivreEnrichissement(
     return { ok: false, message: "Impossible de lire l’état de cette offre." };
   }
 
+  const maintenant = new Date();
+  const etat = calculerEtatEnrichissement(lecture.dernier, lecture.etapes, maintenant);
+
+  // ⚠️ **La jauge doit retomber juste à la conclusion, et rien d'autre ne la
+  // rafraîchit** — correctif de revue, 31 août 2026. Ses nombres viennent du
+  // rendu serveur de la page ; or ce sondage n'appelle DÉLIBÉRÉMENT pas
+  // `revalidatePath` (voir `RYTHME_MS` côté client : l'y ajouter ferait
+  // rejouer tout le rendu de la fiche toutes les 1,5 s, mesuré à 89 112 octets
+  // contre 323). Sans ce renvoi, l'écran affichait « Enrichissement terminé »
+  // au-dessus d'une jauge annonçant encore « dont 150 000 réservés pour
+  // l'enrichissement en cours » — la réservation d'un travail achevé, et un
+  // total ignorant les tokens réellement dépensés, jusqu'à un rechargement
+  // manuel.
+  //
+  // ⚠️ Une seule lecture de plus, et seulement quand l'état a conclu : pendant
+  // le travail, la jauge du rendu initial est exacte — la réservation y est
+  // déjà comptée.
+  const conclu = etat.etat === "reussi" || etat.etat === "echoue";
+  if (!conclu) return { ok: true, etat, enveloppe: null };
+
+  const enveloppe = await lireEnveloppeDuJour(maintenant);
   return {
     ok: true,
-    etat: calculerEtatEnrichissement(lecture.dernier, lecture.etapes, new Date()),
+    etat,
+    // ⚠️ Une enveloppe illisible ne rend pas `0 / 300 000` : elle rend `null`,
+    // et l'écran garde le dernier nombre sûr. Afficher zéro après un aléa
+    // réseau de 20 ms serait une information fausse, pas une information
+    // manquante — la distinction que `veille.ts` fait déjà partout.
+    enveloppe: enveloppe.connue
+      ? {
+          reels: enveloppe.reels,
+          reserves: enveloppe.reserves,
+          plafond: enveloppe.plafond,
+        }
+      : null,
   };
 }
