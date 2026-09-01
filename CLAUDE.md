@@ -243,9 +243,13 @@ complet dans `docs/JOURNAL.md` § 31 août (après-midi).
 injoignable avec le nouveau prompt. Le seul cas dégradé mesuré date du 30 août,
 avec l'ancien prompt.
 
-⚠️ **Reste à faire par Maxime** : poser `JETON_GITHUB` chez Vercel (il n'est qu'en
-local). Sans lui le bouton répond « jeton non configuré » **sur le site déployé
-uniquement** — voir `docs/HEBERGEMENT.md`.
+✅ **`JETON_GITHUB` est posée chez Vercel depuis le 31 août 2026 au soir**, en
+Production, marquée *Sensitive*, et le site a été redéployé pour qu'elle s'applique.
+Jeton à portée fine, vérifié valide sur ce dépôt et sur le workflow d'enrichissement.
+⚠️ **Il expire le 19 janvier 2027, et sa panne sera parfaitement silencieuse** : le
+site marchera, la veille tournera, seul « Enrichir » cessera d'agir.
+⚠️ **Reste à vérifier par Maxime** : un clic réel sur « Enrichir » depuis le site
+déployé — le seul test qui prouve la chaîne de bout en bout, et il est facturé.
 
 ### ⚠️ LE SEUIL D'INTÉRÊT — hors phase, construit le 31 août 2026
 
@@ -465,7 +469,7 @@ workflow finirait par mordre vers 4 ou 5 nuits.
 | `interface/` | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui moteur `radix`. La porte · `/` le compte rendu de la nuit · `/offres` (six filtres, trois classements, statuts, coup de cœur, **seuil d'intérêt à 40**) · la fiche `/offres/[identifiant]` (statuts, note, coup de cœur, **bloc d'enrichissement**) · thème à trois états |
 | Supabase | Région Paris. **Cinq tables.** RLS activé sans politique **et** droits retirés à `anon`/`authenticated` — deux verrous indépendants |
 | Migrations | **12**, toutes appliquées. La 10ᵉ ajoute les trois tables d'enrichissement, la 11ᵉ ouvre « Business » (trois rubriques) et trace les sources (colonne `url` sur l'étape), la 12ᵉ ajoute `offres.supprime_a` — la corbeille |
-| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris · **5 variables** (`JETON_GITHUB` reste à y poser) |
+| Vercel | https://veille-offres-emploi-ia.vercel.app · `Root Directory = interface` · région Paris · **6 variables**, toutes *Sensitive*. ⚠️ `JETON_GITHUB` est posée en **Production uniquement** — pas en Preview, où le bouton « Enrichir » répondrait donc « jeton non configuré » |
 | GitHub Actions | `collecte-nocturne.yml` (cron 02:23 UTC, collecte **et** notation) · **`enrichissement.yml`** (lancé par l'interface au clic) |
 | `pipeline/` | ⚠️ **Seul le CDI est collecté** (`TYPE_CONTRAT` dans `config.py`) |
 | Modules | `collecte.py` · `notation.py` · `salaire.py` · `employeur.py` · **`enrichissement.py`** (l'agent) · **`registre.py`** (la frontière vers le registre public) · `criteres_pertinence.txt` |
@@ -865,9 +869,13 @@ Les clés de ce projet donnent accès à un compte facturé et à une base de do
    client, jamais commitée. **Le navigateur ne parle jamais directement à Supabase.**
 5. ⚠️ **Aucune variable `NEXT_PUBLIC_` sur ce projet** : ce préfixe publie la valeur
    dans le code source de la page sans le moindre message d'erreur.
-6. **Chez Vercel, exactement 5 variables** : `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
-   `MOT_DE_PASSE_SITE`, `SECRET_SESSION`, et **`JETON_GITHUB` depuis le 30 août
-   2026**. Ni la clé Anthropic ni les identifiants France Travail — le pipeline
+6. **Chez Vercel, exactement 6 variables** : `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
+   `MOT_DE_PASSE_SITE`, `SECRET_SESSION`, et **`JETON_GITHUB`, réellement posée le
+   31 août 2026** (déclarée nécessaire le 30, posée le 31 — le compte disait 5
+   entre les deux). ⚠️ **Production uniquement, pas Preview** : voir
+   `docs/HEBERGEMENT.md` pour l'arbitrage, qui n'est pas qu'une question
+   d'hygiène — un aperçu parle à la même base, donc un enrichissement lancé
+   depuis un aperçu est facturé pour de vrai. Ni la clé Anthropic ni les identifiants France Travail — le pipeline
    tourne chez GitHub Actions, et les garder offrirait une clé facturée à qui
    entrerait dans le compte.
    ⚠️ **`JETON_GITHUB` sert à lancer le workflow d'enrichissement** au clic

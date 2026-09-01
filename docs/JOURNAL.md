@@ -148,6 +148,36 @@ un geste qui, lui, n'est pas réversible passé huit secondes.
   du jour n'a rapporté aucune offre, donc l'écran est en état « collecte vide » et
   n'affiche aucune ligne. **Le dire plutôt que de laisser croire que je l'ai vu.**
 
+### Mise en ligne, le soir même
+
+Deux commits et non trois, et le motif vaut d'être noté : le seuil et la corbeille se
+croisent dans les mêmes fichiers (`lib/offres.ts`, `offres/page.tsx`, `etats.tsx`,
+`stockage.py`). Séparés, **aucun des deux ne compilerait** — trois commits dont deux
+cassés valent moins qu'un commit honnête. L'en-tête, elle, était réellement autonome.
+
+Contrôle avant de pousser : aucun fichier de secret dans le diff, aucune valeur
+ressemblant à une clé Supabase, Anthropic ou un jeton GitHub.
+
+✅ **`JETON_GITHUB` posée chez Vercel** par Maxime, en Production, *Sensitive*. Vérifié
+avant la pose, sans jamais afficher la valeur : jeton valide, voit le dépôt, voit
+`enrichissement.yml`, **expire le 19 janvier 2027**. Redéploiement lancé au CLI —
+`Ready` en 47 s, aliasé sur le domaine.
+
+Vérifié en production, et c'est le contrôle qui compte après un déploiement touchant le
+layout : `/`, `/offres` et une fiche renvoient toutes **307 vers `/connexion`**, et
+**zéro donnée d'offre** dans le HTML servi sans session.
+
+⚠️ **Ce que je ne peux pas vérifier, et c'est volontaire** : les pages protégées en
+ligne. Il faudrait le vrai mot de passe du site, que je ne lis ni ne demande jamais —
+même pour vérifier mon propre travail. Tout ce qui est décrit plus haut a été vu en
+local, avec un mot de passe de test.
+
+⚠️ **Le jeton n'est PAS en Preview**, contrairement à ce que prescrivait
+`HEBERGEMENT.md`. Laissé tel quel en attendant l'arbitrage de Maxime, avec un argument
+pour ne pas l'ajouter : un aperçu Vercel parle à la **même base** que la production,
+donc un enrichissement lancé depuis un aperçu consommerait l'enveloppe réelle et serait
+facturé. L'absence du jeton ferme cette porte.
+
 ---
 
 ## 31 août 2026 (nuit) — Le seuil d'intérêt passe à 40 et devient global

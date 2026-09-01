@@ -447,7 +447,8 @@ Quatre choses qui se défendent en entretien :
   **quatre matins sur six**, et 10 offres sur 574 dépassaient ce score. Abaissé à
   **35** : deux matins vides, 20 offres. Descendre à 25 n'en ajouterait que 7 —
   le gain s'aplatit. Le seuil est figé par un test : le changer casse la suite au
-  lieu de passer inaperçu.
+  lieu de passer inaperçu. **Suite le 31 août** : il vaut désormais **40** et
+  s'applique aux deux écrans — voir plus bas.
 - **France Travail publie le même poste deux fois, et la déduplication par
   identifiant ne peut pas le voir.** Une version « f/h », une version « (H/F) »,
   deux identifiants, deux lignes en base : **29 annonces en trop sur 574**. L'écran
@@ -515,3 +516,52 @@ tokens restent vides tant qu'un enrichissement tourne, si bien que dix lancés d
 même minute lisaient tous « zéro consommé ». Un enrichissement en vol **réserve**
 désormais son coût présumé, et ce calcul — le seul code qui protège d'une facture
 emballée — est une fonction pure couverte par huit tests.
+
+### Le seuil d'affichage et la corbeille — 31 août 2026, hors phase
+
+`/offres` montrait 580 lignes dont **434 jamais notées** : l'arriéré d'avant la mise
+en place du cron, que la notation ne reprendra pas puisqu'elle ne tourne que sur la
+dernière collecte. Les quelques annonces à lire s'y noyaient. Deux gestes répondent à
+ça, et les deux ont commencé par une mesure plutôt que par du code.
+
+- **Le seuil ne s'est pas choisi rond, il s'est lu dans la distribution.** Les 146
+  offres notées font deux paquets séparés par un vide : **115 sous 20**, quinze entre
+  20 et 39, **seize au-dessus de 40**. Le seuil coupe juste après le trou. Passer à
+  50 — l'autre option envisagée — n'aurait retiré que **quatre** annonces, toutes
+  dans la bande 40-49 : on aurait coupé dans ce qui reste, plus dans le bruit.
+- **Cacher n'est pas supprimer, et c'est cette propriété qui rend la décision
+  réversible.** Le pipeline continue de tout collecter et de tout noter : baisser le
+  seuil rend les offres immédiatement, sans recollecte et sans repayer une notation.
+  France Travail dépublie ses annonces — une ligne effacée ne revient jamais.
+- **Le seuil filtre ce que le modèle propose, jamais ce qu'on a désigné soi-même.**
+  « Coup de cœur » et « Candidaté » y échappent : sinon une offre likée à 30 quitterait
+  ses coups de cœur, et sans le moindre message, puisqu'une offre cachée ne laisse
+  aucune trace. Ce qui a imposé **trois régimes** et non un booléen : avec deux états,
+  l'onglet « Toutes » cessait d'être un sur-ensemble et pouvait afficher **moins** que
+  la pilule voisine.
+- **`NULL >= 40` est faux en SQL** : une offre pas encore notée disparaît aussi. C'est
+  ce qui écarte les 434 gratuitement — et ce qui fait qu'un ratage de la notation vide
+  l'écran sans qu'aucun job ne rougisse. D'où « N retenues **sur M** » affiché en
+  permanence : l'écart est la seule chose qui trahisse ce cas.
+- **La corbeille n'est pas un quatrième statut**, pour la raison déjà apprise avec le
+  coup de cœur : un statut est exclusif, donc retirer une offre candidatée effacerait
+  la trace de la candidature. C'est un marqueur transverse, vérifié contre la base —
+  après écriture, le statut valait toujours `a_traiter`. Et elle se distingue
+  d'« Écarté », qui existait déjà : « Écarté » dit *regardé, pas pour moi* et l'offre
+  reste dans son onglet ; la corbeille dit *ne me la remontre jamais*.
+- ⚠️ **Un défaut vu en vrai, pas en théorie.** Pendant les essais, une seconde offre
+  est partie à la corbeille sans avoir été visée. Cause établie par le journal du
+  serveur : la liste met **~900 ms** à se réorganiser après la fin d'une action, et le
+  bouton restait actif sur la ligne qui prenait la place — une seule barre d'annulation
+  existait, la seconde suppression a écrasé la première sans un mot. Le bouton est
+  désormais désactivé pendant l'écriture. L'incident vaut plus que le correctif : il
+  s'est produit dans la première demi-heure d'usage, sur le seul geste qui n'est pas
+  réversible passé huit secondes.
+- **Et le bouton ne se cliquait même pas au départ** : la ligne est un « lien-carte »
+  dont le lien étendu couvre toute la surface et avalait le clic. À la souris, on
+  aurait ouvert la fiche en croyant avoir supprimé — aucune erreur nulle part.
+
+L'en-tête a été refaite le même soir : une pilule blanche flottant sur le fond lavande,
+deux onglets, deux actions en icônes rondes. **Sans logo ni nom de marque** — le produit
+n'en a pas, et en inventer un pour remplir l'emplacement du gabarit aurait été pire que
+le vide.

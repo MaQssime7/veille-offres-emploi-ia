@@ -4,7 +4,7 @@ Tout ce qui concerne la mise en ligne et l'outillage d'infrastructure. Sorti du
 `CLAUDE.md` le 26 août 2026 : c'est de la **procédure**, pas une règle qui change
 mon comportement sur n'importe quelle tâche.
 
-**Ce qui reste dans le `CLAUDE.md`** : les règles opposables — les 5 variables et
+**Ce qui reste dans le `CLAUDE.md`** : les règles opposables — les 6 variables et
 pas une de plus, `interface/.env.local` détient l'unique copie, un aperçu parle à
 la vraie base. Le *comment faire* est ici.
 
@@ -26,7 +26,20 @@ par git).
 aucune ligne du site ne les lit, et les garder offrait la clé Anthropic — qui est
 facturée — à qui entrerait dans le compte Vercel.
 
-#### ⚠️ `JETON_GITHUB` — ajoutée le 30 août 2026, phase 6
+#### ⚠️ `JETON_GITHUB` — ajoutée le 30 août 2026, POSÉE chez Vercel le 31 au soir
+
+✅ **État au 31 août 2026** : posée en **Production**, marquée *Sensitive*, et le
+site redéployé — une variable ne s'applique qu'aux déploiements suivants (piège 1
+ci-dessous). Jeton vérifié avant la pose : valide, voit le dépôt, voit
+`enrichissement.yml`. **Expiration : 19 janvier 2027.**
+
+⚠️ **PAS posée en Preview, contrairement à ce que la commande ci-dessous
+prescrit.** Conséquence : sur un déploiement d'aperçu, « Enrichir » répondra
+« jeton non configuré » ; rien d'autre ne casse. **Décision à trancher**, et
+l'argument n'est pas seulement l'hygiène des secrets : un aperçu Vercel parle à
+la **même base** que la production, donc un enrichissement lancé depuis un aperçu
+consommerait l'enveloppe réelle et serait facturé pour de vrai. L'absence du
+jeton en Preview ferme cette porte.
 
 C'est elle qui permet à l'interface de lancer le workflow `enrichissement.yml` au
 clic sur « Enrichir » (`interface/lib/github.ts`). **Sans elle, le bouton répond
